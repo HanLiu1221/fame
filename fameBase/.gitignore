@@ -3,7 +3,6 @@
 obj/
 icons/
 bin/
-Properties/
 *.aht
 *.DS_Store
 *.2xt
