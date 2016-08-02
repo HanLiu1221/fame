@@ -1,0 +1,23 @@
+*.png
+*.ico
+obj/
+icons/
+bin/
+Properties/
+*.aht
+*.csproj
+*.DS_Store
+*.2xt
+Data/
+*.b0r
+*.config
+*.t23
+*.2ou
+*.bin
+*.obj
+*.vssettings
+*.xml
+*.suo
+*.dll
+Visual Studio 2013/
+Holger/MeasureApp.7z
