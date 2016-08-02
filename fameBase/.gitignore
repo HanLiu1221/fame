@@ -2,7 +2,6 @@
 *.ico
 obj/
 icons/
-bin/
 *.aht
 *.DS_Store
 *.2xt
