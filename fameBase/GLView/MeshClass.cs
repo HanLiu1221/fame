@@ -8,7 +8,7 @@ using Geometry;
 
 using TrimeshWrapper;
 
-namespace SketchPlatform
+namespace FameBase
 {
     public unsafe class MeshClass
     {

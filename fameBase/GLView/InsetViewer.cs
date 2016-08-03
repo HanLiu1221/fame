@@ -14,7 +14,7 @@ using Tao.Platform.Windows;
 using Component;
 using Geometry;
 
-namespace SketchPlatform
+namespace FameBase
 {
     public class InsetViewer : SimpleOpenGlControl
     {

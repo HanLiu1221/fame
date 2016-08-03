@@ -17,7 +17,7 @@ using Component;
 using System.Runtime.Serialization.Json;
 using System.Web.Script.Serialization;
 
-namespace SketchPlatform
+namespace FameBase
 {
     public class GLViewer :  SimpleOpenGlControl
     {

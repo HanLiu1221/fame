@@ -1,4 +1,4 @@
-﻿namespace SketchPlatform
+﻿namespace FameBase
 {
 	partial class Interface
 	{
@@ -65,7 +65,7 @@
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.toolboxPanel = new System.Windows.Forms.Panel();
-            this.glViewer = new SketchPlatform.GLViewer();
+            this.glViewer = new FameBase.GLViewer();
             this.keyboardLabel = new System.Windows.Forms.Label();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.menu.SuspendLayout();
@@ -410,7 +410,7 @@
             this.glViewer.AutoSwapBuffers = true;
             this.glViewer.BackColor = System.Drawing.Color.Black;
             this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = SketchPlatform.GLViewer.UIMode.Viewing;
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
             this.glViewer.DepthBits = ((byte)(16));
             this.glViewer.Location = new System.Drawing.Point(171, 3);
             this.glViewer.Name = "glViewer";

@@ -6,7 +6,7 @@ using System.Text;
 using Tao.OpenGl;
 using System.IO;
 
-namespace SketchPlatform
+namespace FameBase
 {
     public class Shader
     {
