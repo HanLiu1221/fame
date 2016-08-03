@@ -78,35 +78,37 @@ namespace Component
 
         public Vector3d[] loadPrimitiveBoudingbox(string filename)
         {
-            StreamReader sr = new StreamReader(filename);
-            string line = "";
-            char[] separator = new char[] { ' ', '\t' };
-            int n = 0;
-            while (sr.Peek() > -1)
+            using (StreamReader sr = new StreamReader(filename))
             {
-                line = sr.ReadLine();
-                string[] array = line.Split(separator);
-                if (array.Length > 0 && array[0].Equals("end_header"))
+                string line = "";
+                char[] separator = new char[] { ' ', '\t' };
+                int n = 0;
+                while (sr.Peek() > -1)
                 {
-                    break;
+                    line = sr.ReadLine();
+                    string[] array = line.Split(separator);
+                    if (array.Length > 0 && array[0].Equals("end_header"))
+                    {
+                        break;
+                    }
+                    if (array.Length > 1 && array[0].Equals("element") && array[1].Equals("vertex"))
+                    {
+                        n = Int32.Parse(array[2]);
+                    }
                 }
-                if (array.Length > 1 && array[0].Equals("element") && array[1].Equals("vertex"))
+                Vector3d[] points = new Vector3d[n];
+                int[] ids = { 0, 1, 3, 2, 7, 6, 4, 5 };
+                for (int i = 0; i < n; ++i)
                 {
-                    n = Int32.Parse(array[2]);
+                    line = sr.ReadLine();
+                    string[] array = line.Split(separator);
+                    if (array.Length < 3) break;
+                    points[ids[i]] = new Vector3d(double.Parse(array[0]),
+                        double.Parse(array[1]),
+                        double.Parse(array[2]));
                 }
+                return points;
             }
-            Vector3d[] points = new Vector3d[n];
-            int[] ids = { 0, 1, 3, 2, 7, 6, 4, 5 };
-            for (int i = 0; i < n; ++i)
-            {
-                line = sr.ReadLine();
-                string[] array = line.Split(separator);
-                if (array.Length < 3) break;
-                points[ids[i]] = new Vector3d(double.Parse(array[0]),
-                    double.Parse(array[1]),
-                    double.Parse(array[2]));
-            }
-            return points;
         }//loadPrimitiveBoudingbox
 
         public bool shadedOrTexture()

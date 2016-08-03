@@ -65,9 +65,9 @@
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.toolboxPanel = new System.Windows.Forms.Panel();
+            this.glViewer = new SketchPlatform.GLViewer();
             this.keyboardLabel = new System.Windows.Forms.Label();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
-            this.glViewer = new SketchPlatform.GLViewer();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -110,21 +110,21 @@
             // 
             this.open3D.Name = "open3D";
             this.open3D.Size = new System.Drawing.Size(183, 22);
-            this.open3D.Text = "Open 3D file";
+            this.open3D.Text = "Open 3D model";
             this.open3D.Click += new System.EventHandler(this.open3D_Click);
             // 
             // import3D
             // 
             this.import3D.Name = "import3D";
             this.import3D.Size = new System.Drawing.Size(183, 22);
-            this.import3D.Text = "Import 3D file";
+            this.import3D.Text = "Import 3D model";
             this.import3D.Click += new System.EventHandler(this.import3D_Click);
             // 
             // saveAs3D
             // 
             this.saveAs3D.Name = "saveAs3D";
             this.saveAs3D.Size = new System.Drawing.Size(183, 22);
-            this.saveAs3D.Text = "Save As 3D file";
+            this.saveAs3D.Text = "Save As 3D model";
             this.saveAs3D.Click += new System.EventHandler(this.saveAs3D_Click);
             // 
             // loadSegmentsToolStripMenuItem
@@ -398,19 +398,6 @@
             this.toolboxPanel.Size = new System.Drawing.Size(171, 694);
             this.toolboxPanel.TabIndex = 2;
             // 
-            // keyboardLabel
-            // 
-            this.keyboardLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.keyboardLabel.AutoSize = true;
-            this.keyboardLabel.BackColor = System.Drawing.Color.Aquamarine;
-            this.keyboardLabel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.keyboardLabel.Location = new System.Drawing.Point(176, 615);
-            this.keyboardLabel.Name = "keyboardLabel";
-            this.keyboardLabel.Size = new System.Drawing.Size(120, 78);
-            this.keyboardLabel.TabIndex = 6;
-            this.keyboardLabel.Text = "Space: unlock view\r\nCtrl + C: clear all strokes\r\nS: sketch mode\r\nE: eraser mode\r\n" +
-    "V: view mode\r\nR: reset view";
-            // 
             // glViewer
             // 
             this.glViewer.AccumBits = ((byte)(0));
@@ -430,6 +417,19 @@
             this.glViewer.Size = new System.Drawing.Size(692, 694);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 12;
+            // 
+            // keyboardLabel
+            // 
+            this.keyboardLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.keyboardLabel.AutoSize = true;
+            this.keyboardLabel.BackColor = System.Drawing.Color.Aquamarine;
+            this.keyboardLabel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.keyboardLabel.Location = new System.Drawing.Point(176, 615);
+            this.keyboardLabel.Name = "keyboardLabel";
+            this.keyboardLabel.Size = new System.Drawing.Size(120, 78);
+            this.keyboardLabel.TabIndex = 6;
+            this.keyboardLabel.Text = "Space: unlock view\r\nCtrl + C: clear all strokes\r\nS: sketch mode\r\nE: eraser mode\r\n" +
+    "V: view mode\r\nR: reset view";
             // 
             // Interface
             // 

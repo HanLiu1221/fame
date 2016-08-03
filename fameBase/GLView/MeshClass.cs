@@ -36,11 +36,11 @@ namespace SketchPlatform
         }
         private Mesh mesh;
         public int tabIndex; // list of meshes
-        private float[] material = { 0.62f, 0.74f, 0.85f, 1.0f };
-        private float[] ambient = { 0.2f, 0.2f, 0.2f, 1.0f };
-        private float[] diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
-        private float[] specular = { 1.0f, 1.0f, 1.0f, 1.0f };
-        private float[] position = { 1.0f, 1.0f, 1.0f, 0.0f };
+        private float[] _material = { 0.62f, 0.74f, 0.85f, 1.0f };
+        private float[] _ambient = { 0.2f, 0.2f, 0.2f, 1.0f };
+        private float[] _diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
+        private float[] _specular = { 1.0f, 1.0f, 1.0f, 1.0f };
+        private float[] _position = { 1.0f, 1.0f, 1.0f, 0.0f };
 
         /******************** Function ********************/
         private double[] modelViewMat = new double[16];
@@ -334,11 +334,11 @@ namespace SketchPlatform
             //Gl.glEnable(Gl.GL_COLOR_MATERIAL);
             //Gl.glColorMaterial(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE);
             //Gl.glEnable(Gl.GL_CULL_FACE);
-            //Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE, material);
-            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_AMBIENT, ambient);
-            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_DIFFUSE, diffuse);
-            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_SPECULAR, specular);
-            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_POSITION, position);
+            //Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE, _material);
+            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_AMBIENT, _ambient);
+            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_DIFFUSE, _diffuse);
+            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_SPECULAR, _specular);
+            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_POSITION, _position);
             //Gl.glEnable(Gl.GL_LIGHT0);
             //Gl.glDepthFunc(Gl.GL_LESS);
             Gl.glEnable(Gl.GL_DEPTH_TEST);

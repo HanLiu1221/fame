@@ -39,9 +39,10 @@ namespace SketchPlatform
             // Create and compile the vertex shader
             // 1. read vertex shader file
             string[] shaderSource;
-            StreamReader sr = new StreamReader(file);
-            shaderSource = sr.ReadToEnd().Split('\n');
-            sr.Close();
+            using (StreamReader sr = new StreamReader(file))
+            {
+                shaderSource = sr.ReadToEnd().Split('\n');
+            }
 
             // 2 create the vertex shader
             this.vertexShader = Gl.glCreateShader(Gl.GL_VERTEX_SHADER);
@@ -59,9 +60,10 @@ namespace SketchPlatform
             // Create and compile the vertex shader
             // 1. read vertex shader file
             string[] shaderSource;
-            StreamReader sr = new StreamReader(file);
-            shaderSource = sr.ReadToEnd().Split('\n');
-            sr.Close();
+            using (StreamReader sr = new StreamReader(file))
+            {
+                shaderSource = sr.ReadToEnd().Split('\n');
+            }
 
             // 2 create the vertex shader
             this.fragmentShader = Gl.glCreateShader(Gl.GL_FRAGMENT_SHADER);

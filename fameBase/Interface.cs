@@ -22,10 +22,14 @@ namespace SketchPlatform
         /*********Var**********/
         private void open3D_Click(object sender, EventArgs e)
         {
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*";
-            dialog.CheckFileExists = true;
-            if (dialog.ShowDialog(this) == DialogResult.OK)
+            // clear existing models and load a new one
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Open a 3D model",
+                Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*",
+                CheckFileExists = true
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
             {
                 string filename = dialog.FileName;
                 // load mesh
@@ -42,13 +46,16 @@ namespace SketchPlatform
 
         private void import3D_Click(object sender, EventArgs e)
         {
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*";
-            dialog.CheckFileExists = true;
+            // preserve the existing models
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Import a 3D model",
+                Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*",
+                CheckFileExists = true
+            };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string filename = dialog.FileName;
-                // add mesh
                 this.glViewer.importMesh(filename);
             }
             this.glViewer.Refresh();

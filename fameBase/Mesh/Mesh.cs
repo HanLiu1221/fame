@@ -232,21 +232,24 @@ namespace Geometry
 			{
 				return;
 			}
-			StreamReader sr = new StreamReader(meshFileName);
-			// mesh file type
-			string extension = Path.GetExtension(meshFileName); 
-			if(extension.Equals(".off"))
-			{
-				loadOffMesh(sr, normalize);
-			} else if (extension.Equals(".ply"))
+            using (StreamReader sr = new StreamReader(meshFileName))
             {
-                LoadPlyfile(sr, normalize);
+                // mesh file type
+                string extension = Path.GetExtension(meshFileName);
+                if (extension.Equals(".off"))
+                {
+                    loadOffMesh(sr, normalize);
+                }
+                else if (extension.Equals(".ply"))
+                {
+                    LoadPlyfile(sr, normalize);
+                }
+                else // default ".obj"
+                {
+                    loadObjMesh(sr, normalize);
+                }
+                sr.Close();
             }
-            else // default ".obj"
-            {
-                loadObjMesh(sr, normalize);
-            }
-			sr.Close();
             this.flags = new bool[this.vertexCount];
 		}
 

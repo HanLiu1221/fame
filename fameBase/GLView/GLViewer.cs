@@ -53,7 +53,7 @@ namespace SketchPlatform
         {
             this.meshClasses = new List<MeshClass>();
             this.segmentClasses = new List<SegmentClass>();
-            this.currModelTransformMatrix = Matrix4d.IdentityMatrix();
+            this._currModelTransformMatrix = Matrix4d.IdentityMatrix();
             this.arcBall = new ArcBall(this.Width, this.Height);
             this.initializeColors();
             this.camera = new Camera();
@@ -80,7 +80,7 @@ namespace SketchPlatform
             this.insetViewer.BorderStyle = BorderStyle.None;
             this.insetViewer.AutoSwapBuffers = true;
             this.insetViewer.BackColor = System.Drawing.Color.Transparent;
-            this.insetViewer.accModelView(this.currModelTransformMatrix, this.eye);
+            this.insetViewer.accModelView(this._currModelTransformMatrix, this.eye);
 			int h = this.Height / 3, w = h * 4 / 3;
 			int off = 50;
 			this.insetViewer.Location = new Point(this.Location.X + this.Width - w - off / 2,
@@ -166,17 +166,17 @@ namespace SketchPlatform
         private static Vector3d eyePosition3D = new Vector3d(0, 0, 1.5);
         private static Vector3d eyePosition2D = new Vector3d(0, 1, 1.5);
         Vector3d eye = new Vector3d(0, 0, 1.5);
-        private float[] material = { 0.62f, 0.74f, 0.85f, 1.0f };
-        private float[] ambient = { 0.2f, 0.2f, 0.2f, 1.0f };
-        private float[] diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
-        private float[] specular = { 1.0f, 1.0f, 1.0f, 1.0f };
-        private float[] position = { 1.0f, 1.0f, 1.0f, 0.0f };
+        private float[] _material = { 0.62f, 0.74f, 0.85f, 1.0f };
+        private float[] _ambient = { 0.2f, 0.2f, 0.2f, 1.0f };
+        private float[] _diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
+        private float[] _specular = { 1.0f, 1.0f, 1.0f, 1.0f };
+        private float[] _position = { 1.0f, 1.0f, 1.0f, 0.0f };
 
         /******************** Variables ********************/
         private UIMode currUIMode = UIMode.Viewing;
-        private Matrix4d currModelTransformMatrix = Matrix4d.IdentityMatrix();
-        private Matrix4d modelTransformMatrix = Matrix4d.IdentityMatrix();
-        private Matrix4d fixedModelView = Matrix4d.IdentityMatrix();
+        private Matrix4d _currModelTransformMatrix = Matrix4d.IdentityMatrix();
+        private Matrix4d _modelTransformMatrix = Matrix4d.IdentityMatrix();
+        private Matrix4d _fixedModelView = Matrix4d.IdentityMatrix();
         private Matrix4d scaleMat = Matrix4d.IdentityMatrix();
         private Matrix4d transMat = Matrix4d.IdentityMatrix();
         private Matrix4d rotMat = Matrix4d.IdentityMatrix();
@@ -455,7 +455,7 @@ namespace SketchPlatform
             if (this.currSegmentClass == null) return;
             //Vector3d z = new Vector3d(0, 0, 1);
             //Matrix4d mvp = this.camera.GetProjMat().Inverse();
-            //mvp = this.modelTransformMatrix.Inverse() * mvp;
+            //mvp = this._modelTransformMatrix.Inverse() * mvp;
             //mvp = this.camera.GetProjMat().Transpose() * mvp;
             //this.eye = (mvp * new Vector4d(z, 1)).ToHomogeneousVector();
             Vector2d max_coord = Vector2d.MinCoord();
@@ -760,44 +760,47 @@ namespace SketchPlatform
         {
             if (this.currSegmentClass == null) return;
             string filename = foldername + "\\sequence.txt";
-            StreamWriter sw = new StreamWriter(filename);
-            for (int i = 0; i < this.currSegmentClass.segments.Count; ++i)
+            using (StreamWriter sw = new StreamWriter(filename))
             {
-                sw.WriteLine("box:" + i.ToString());
+                for (int i = 0; i < this.currSegmentClass.segments.Count; ++i)
+                {
+                    sw.WriteLine("box:" + i.ToString());
+                }
             }
-            sw.Close();
         }
 
         public void writeModelViewMatrix(string filename)
         {
-            StreamWriter sw = new StreamWriter(filename);
-            for (int i = 0; i < 4; ++i)
+            using (StreamWriter sw = new StreamWriter(filename))
             {
-                for (int j = 0; j < 4; ++j)
+                for (int i = 0; i < 4; ++i)
                 {
-                    sw.Write(this.currModelTransformMatrix[i, j].ToString() + " ");
+                    for (int j = 0; j < 4; ++j)
+                    {
+                        sw.Write(this._currModelTransformMatrix[i, j].ToString() + " ");
+                    }
                 }
             }
-            sw.Close();
         }
 
         public void readModelModelViewMatrix(string filename)
         {
-            StreamReader sr = new StreamReader(filename);
-            char[] separator = { ' '};
-            string s = sr.ReadLine();
-            s.Trim();
-            string[] strs = s.Split(separator);
-            double[] arr = new double[strs.Length];
-            for (int i = 0; i < arr.Length; ++i)
+            using (StreamReader sr = new StreamReader(filename))
             {
-                if (strs[i] == "") continue;
-                arr[i] = double.Parse(strs[i]);
+                char[] separator = { ' ' };
+                string s = sr.ReadLine();
+                s.Trim();
+                string[] strs = s.Split(separator);
+                double[] arr = new double[strs.Length];
+                for (int i = 0; i < arr.Length; ++i)
+                {
+                    if (strs[i] == "") continue;
+                    arr[i] = double.Parse(strs[i]);
+                }
+                this._currModelTransformMatrix = new Matrix4d(arr);
+                this._fixedModelView = new Matrix4d(arr);
             }
-            this.currModelTransformMatrix = new Matrix4d(arr);
-            this.fixedModelView = new Matrix4d(arr);
-
-			this.insetViewer.accModelView(this.currModelTransformMatrix, this.eye);
+			this.insetViewer.accModelView(this._currModelTransformMatrix, this.eye);
 			this.insetViewer.Refresh();
         }
 
@@ -840,7 +843,7 @@ namespace SketchPlatform
 
 			if (this.showSharpEdge)
 			{
-				//this.currSegmentClass.calculateContourPoint(this.currModelTransformMatrix, this.eye);
+				//this.currSegmentClass.calculateContourPoint(this._currModelTransformMatrix, this.eye);
 				if (this.currSegmentClass != null)
 				{
 					this.computeContourEdges();
@@ -862,7 +865,7 @@ namespace SketchPlatform
 				if (this.currSegmentClass != null)
 				{
 					if (!this.isShowContour()) return;
-					Matrix4d T = this.currModelTransformMatrix;
+					Matrix4d T = this._currModelTransformMatrix;
 					Matrix4d Tv = T.Inverse();
 					foreach (Segment seg in this.currSegmentClass.segments)
 					{
@@ -927,7 +930,7 @@ namespace SketchPlatform
 						Vector3d v0 = new Vector3d(mesh.VertexPos[j],
 							mesh.VertexPos[j + 1],
 							mesh.VertexPos[j + 2]);
-						Vector3d v1 = (this.currModelTransformMatrix * new Vector4d(v0, 1)).ToVector3D();
+						Vector3d v1 = (this._currModelTransformMatrix * new Vector4d(v0, 1)).ToVector3D();
 						vertexPos[j] = v1.x;
 						vertexPos[j + 1] = v1.y;
 						vertexPos[j + 2] = v1.z;
@@ -943,7 +946,7 @@ namespace SketchPlatform
 						for (int i = 0; i < this.silhouettePoints.Count; ++i)
 						{
 							Vector3d v = this.silhouettePoints[i];
-							Vector3d vt = (this.currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
+							Vector3d vt = (this._currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
 							this.silhouettePoints[i] = vt;
 						}
 					}
@@ -953,7 +956,7 @@ namespace SketchPlatform
 						for (int i = 0; i < this.contourPoints.Count; ++i)
 						{
 							Vector3d v = this.contourPoints[i];
-							Vector3d vt = (this.currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
+							Vector3d vt = (this._currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
 							this.contourPoints[i] = vt;
 						}
 					}
@@ -963,7 +966,7 @@ namespace SketchPlatform
 						for (int i = 0; i < this.suggestiveContourPoints.Count; ++i)
 						{
 							Vector3d v = this.suggestiveContourPoints[i];
-							Vector3d vt = (this.currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
+							Vector3d vt = (this._currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
 							this.suggestiveContourPoints[i] = vt;
 						}
 					}
@@ -973,7 +976,7 @@ namespace SketchPlatform
 						for (int i = 0; i < this.apparentRidgePoints.Count; ++i)
 						{
 							Vector3d v = this.apparentRidgePoints[i];
-							Vector3d vt = (this.currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
+							Vector3d vt = (this._currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
 							this.apparentRidgePoints[i] = vt;
 						}
 					}
@@ -983,7 +986,7 @@ namespace SketchPlatform
 						for (int i = 0; i < this.boundaryPoints.Count; ++i)
 						{
 							Vector3d v = this.boundaryPoints[i];
-							Vector3d vt = (this.currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
+							Vector3d vt = (this._currModelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
 							this.boundaryPoints[i] = vt;
 						}
 					}
@@ -996,7 +999,7 @@ namespace SketchPlatform
             if (this.currSegmentClass == null || (this.meshClasses == null || this.meshClasses.Count == 0)) return;
             this.contourPoints = new List<Vector3d>();
             this.sharpEdges = new List<Vector3d>();
-            //this.currSegmentClass.calculateContourPoint(this.currModelTransformMatrix, this.eye);
+            //this.currSegmentClass.calculateContourPoint(this._currModelTransformMatrix, this.eye);
             if (this.currSegmentClass != null)
             {
                 this.computeContourEdges();
@@ -1189,7 +1192,7 @@ namespace SketchPlatform
                 Vector3d v0 = new Vector3d(mesh.VertexPos[j],
                     mesh.VertexPos[j + 1],
                     mesh.VertexPos[j + 2]);
-                Vector3d v1 = (this.currModelTransformMatrix * new Vector4d(v0, 1)).ToVector3D();
+                Vector3d v1 = (this._currModelTransformMatrix * new Vector4d(v0, 1)).ToVector3D();
                 vertexPos[j] = v1.x;
                 vertexPos[j + 1] = v1.y;
                 vertexPos[j + 2] = v1.z;
@@ -1270,7 +1273,7 @@ namespace SketchPlatform
                 Vector3d v0 = new Vector3d(mesh.VertexPos[j],
                     mesh.VertexPos[j + 1],
                     mesh.VertexPos[j + 2]);
-                Vector3d v1 = (this.currModelTransformMatrix * new Vector4d(v0, 1)).ToVector3D();
+                Vector3d v1 = (this._currModelTransformMatrix * new Vector4d(v0, 1)).ToVector3D();
                 vertexPos[j] = v1.x;
                 vertexPos[j + 1] = v1.y;
                 vertexPos[j + 2] = v1.z;
@@ -1308,12 +1311,12 @@ namespace SketchPlatform
 
         private Vector3d getCurPos(Vector3d v)
         {
-            return (this.currModelTransformMatrix * new Vector4d(v, 1)).ToVector3D();
+            return (this._currModelTransformMatrix * new Vector4d(v, 1)).ToVector3D();
         }
 
         private Vector3d getOriPos(Vector3d v)
         {
-            return (this.modelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
+            return (this._modelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
         }
 
         private void calculateStrokePointDepthByCameraPos()
@@ -1648,33 +1651,33 @@ namespace SketchPlatform
         public void exportContour(String filename)
         {
             if (this.currSegmentClass == null) return;
-            StreamWriter sw = new StreamWriter(filename);
-
-            ContourJson contour = new ContourJson();
-            contour.viewMatrix = this.currModelTransformMatrix.ToArray();
-            contour.segmentContour = new List<SegmentJson>();
-            for (int i = 0; i < this.currSegmentClass.segments.Count; ++i)
+            using (StreamWriter sw = new StreamWriter(filename))
             {
-                SegmentJson segJson = new SegmentJson();
-                Segment seg = this.currSegmentClass.segments[i];
-                segJson.index = i;
-                List<double> points = new List<double>();
-                if (seg.contourPoints != null && seg.contourPoints.Count > 0)
+                ContourJson contour = new ContourJson();
+                contour.viewMatrix = this._currModelTransformMatrix.ToArray();
+                contour.segmentContour = new List<SegmentJson>();
+                for (int i = 0; i < this.currSegmentClass.segments.Count; ++i)
                 {
-                    foreach (Vector3d v in seg.contourPoints)
+                    SegmentJson segJson = new SegmentJson();
+                    Segment seg = this.currSegmentClass.segments[i];
+                    segJson.index = i;
+                    List<double> points = new List<double>();
+                    if (seg.contourPoints != null && seg.contourPoints.Count > 0)
                     {
-                        for (int j = 0; j < 3; ++j)
+                        foreach (Vector3d v in seg.contourPoints)
                         {
-                            points.Add(v[j]);
+                            for (int j = 0; j < 3; ++j)
+                            {
+                                points.Add(v[j]);
+                            }
                         }
                     }
+                    segJson.contourPoints = points;
+                    contour.segmentContour.Add(segJson);
                 }
-                segJson.contourPoints = points;
-                contour.segmentContour.Add(segJson);
+                string jsonFile = new JavaScriptSerializer().Serialize(contour);
+                sw.Write(jsonFile);
             }
-            string jsonFile = new JavaScriptSerializer().Serialize(contour);
-            sw.Write(jsonFile);
-            sw.Close();
         }
 
         //########## set modes ##########//
@@ -1755,8 +1758,8 @@ namespace SketchPlatform
             {
                 this.eye = new Vector3d(eyePosition3D);
             }
-            this.currModelTransformMatrix = Matrix4d.IdentityMatrix();
-            this.modelTransformMatrix = Matrix4d.IdentityMatrix();
+            this._currModelTransformMatrix = Matrix4d.IdentityMatrix();
+            this._modelTransformMatrix = Matrix4d.IdentityMatrix();
             this.rotMat = Matrix4d.IdentityMatrix();
             this.scaleMat = Matrix4d.IdentityMatrix();
             this.transMat = Matrix4d.IdentityMatrix();
@@ -1780,8 +1783,8 @@ namespace SketchPlatform
             {
                 this.eye = new Vector3d(eyePosition3D);
             }
-            this.currModelTransformMatrix = new Matrix4d(this.fixedModelView);
-            this.modelTransformMatrix = Matrix4d.IdentityMatrix();
+            this._currModelTransformMatrix = new Matrix4d(this._fixedModelView);
+            this._modelTransformMatrix = Matrix4d.IdentityMatrix();
             this.cal2D();
 			if (this.enableHiddencheck || this.condition)
             {
@@ -1798,8 +1801,8 @@ namespace SketchPlatform
             double[] arr = { 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1 };
             // camera model
             //double[] arr = { -1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1 };
-            this.currModelTransformMatrix = new Matrix4d(arr);
-            this.modelTransformMatrix = Matrix4d.IdentityMatrix();
+            this._currModelTransformMatrix = new Matrix4d(arr);
+            this._modelTransformMatrix = Matrix4d.IdentityMatrix();
             this.cal2D();
             if (this.enableHiddencheck || this.condition)
             {
@@ -1812,7 +1815,7 @@ namespace SketchPlatform
         private void updateCamera()
         {
             if (this.camera == null) return;
-            Matrix4d m = this.currModelTransformMatrix;
+            Matrix4d m = this._currModelTransformMatrix;
             double[] ballmat =  m.Transpose().ToArray();	// matrix applied with arcball
             this.camera.SetBallMatrix(ballmat);
             this.camera.Update();
@@ -1823,7 +1826,7 @@ namespace SketchPlatform
         {
             //if (this.currMeshClass == null) return;
             this.arcBall = new ArcBall(this.Width, this.Height);
-            //this.currModelTransformMatrix = Matrix4d.IdentityMatrix();
+            //this._currModelTransformMatrix = Matrix4d.IdentityMatrix();
             switch (e.Button)
             {
                 case System.Windows.Forms.MouseButtons.Middle:
@@ -1855,7 +1858,7 @@ namespace SketchPlatform
 
         private void viewMouseUp()
         {
-            this.currModelTransformMatrix = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.currModelTransformMatrix;
+            this._currModelTransformMatrix = this.arcBall.getTransformMatrix(this.nPointPerspective) * this._currModelTransformMatrix;
             if (this.arcBall.motion == ArcBall.MotionType.Pan)
             {
 				this.transMat = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.transMat;
@@ -1868,9 +1871,9 @@ namespace SketchPlatform
 				this.scaleMat = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.scaleMat;
             }
             this.arcBall.mouseUp();
-            //this.modelTransformMatrix = this.transMat * this.rotMat * this.scaleMat;
+            //this._modelTransformMatrix = this.transMat * this.rotMat * this.scaleMat;
 
-            this.modelTransformMatrix = this.currModelTransformMatrix.Transpose();
+            this._modelTransformMatrix = this._currModelTransformMatrix.Transpose();
             this.cal2D();
 			if (this.enableHiddencheck || this.condition)
             {
@@ -1895,7 +1898,7 @@ namespace SketchPlatform
                     {
                         if (this.currMeshClass != null)
                         {
-							Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.currModelTransformMatrix;
+							Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this._currModelTransformMatrix;
                             Gl.glMatrixMode(Gl.GL_MODELVIEW);
                             Gl.glPushMatrix();
                             Gl.glMultMatrixd(m.Transpose().ToArray());
@@ -1916,7 +1919,7 @@ namespace SketchPlatform
                     {
                         if (this.currSegmentClass != null)
                         {
-                            Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.currModelTransformMatrix;
+                            Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this._currModelTransformMatrix;
                             Gl.glMatrixMode(Gl.GL_MODELVIEW);
                             Gl.glPushMatrix();
                             Gl.glMultMatrixd(m.Transpose().ToArray());
@@ -2015,7 +2018,7 @@ namespace SketchPlatform
                             if (Math.Abs(trans.y) > Math.Abs(trans.x))
                             {
                                 this.eye.y += trans.y;
-								this.currModelTransformMatrix[1,3] += trans.y;
+								this._currModelTransformMatrix[1,3] += trans.y;
                             }
 							//else
 							//{
@@ -2463,7 +2466,7 @@ namespace SketchPlatform
             double wg = this.Width;
             double hg = this.Height;
 
-            // relative position [0, 1]
+            // relative _position [0, 1]
             //foreach (Stroke stroke in this.sketchStrokes)
             //{
                 foreach (StrokePoint sp in stroke.strokePoints)
@@ -2894,7 +2897,7 @@ namespace SketchPlatform
         //        Glu.gluLookAt(this.eye.x, this.eye.y, this.eye.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
         //    }
         //    //this.drawPoints3d(new Vector3d[1] { this.eye }, Color.DarkOrange, 10.0f);
-        //    Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.currModelTransformMatrix;
+        //    Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this._currModelTransformMatrix;
         //    m = Matrix4d.TranslationMatrix(this.objectCenter) * m * Matrix4d.TranslationMatrix(
         //        new Vector3d() - this.objectCenter);
         //    //m[1, 0] = 0;
@@ -2953,7 +2956,7 @@ namespace SketchPlatform
             Glu.gluLookAt(this.eye.x, this.eye.y, this.eye.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
             Matrix4d transformMatrix = this.arcBall.getTransformMatrix(this.nPointPerspective);
-            Matrix4d m = transformMatrix * this.currModelTransformMatrix;
+            Matrix4d m = transformMatrix * this._currModelTransformMatrix;
 
             m = Matrix4d.TranslationMatrix(this.objectCenter) * m * Matrix4d.TranslationMatrix(
                 new Vector3d() - this.objectCenter);
@@ -3105,28 +3108,29 @@ namespace SketchPlatform
             {
                 filename = this.foldername + "\\contour.sketch";
             }
-            StreamWriter sw = new StreamWriter(filename);
-            int idx = 0;
-            foreach (Segment seg in this.currSegmentClass.segments)
+            using (StreamWriter sw = new StreamWriter(filename))
             {
-                sw.WriteLine("segment " + idx.ToString());
-                if (seg.sketch == null) continue;
-                int i = 0;
-                foreach (DrawStroke2d drawStroke in seg.sketch)
+                int idx = 0;
+                foreach (Segment seg in this.currSegmentClass.segments)
                 {
-                    Stroke stroke = drawStroke.strokes[0];
-                    sw.WriteLine("sketch " + i.ToString());
-                    sw.WriteLine(stroke.strokePoints.Count().ToString());
-                    foreach (StrokePoint sp in stroke.strokePoints)
+                    sw.WriteLine("segment " + idx.ToString());
+                    if (seg.sketch == null) continue;
+                    int i = 0;
+                    foreach (DrawStroke2d drawStroke in seg.sketch)
                     {
-                        //sw.WriteLine(sp.pos2.x.ToString() + " " + sp.pos2.y.ToString());
-                        sw.WriteLine(sp.pos2_local.x.ToString() + " " + sp.pos2_local.y.ToString());
+                        Stroke stroke = drawStroke.strokes[0];
+                        sw.WriteLine("sketch " + i.ToString());
+                        sw.WriteLine(stroke.strokePoints.Count().ToString());
+                        foreach (StrokePoint sp in stroke.strokePoints)
+                        {
+                            //sw.WriteLine(sp.pos2.x.ToString() + " " + sp.pos2.y.ToString());
+                            sw.WriteLine(sp.pos2_local.x.ToString() + " " + sp.pos2_local.y.ToString());
+                        }
+                        ++i;
                     }
-                    ++i;
+                    ++idx;
                 }
-                ++idx;
             }
-            sw.Close();
         }//saveSketches
 
         public void loadSketches(string filename)
@@ -3139,70 +3143,61 @@ namespace SketchPlatform
             }
             if (!File.Exists(filename)) return;
             this.cal2D();
-            StreamReader sr = new StreamReader(filename);
-            char[] separator = { ' ' };
-            Segment currSeg = null;
-            foreach (Segment seg in this.currSegmentClass.segments)
+            using (StreamReader sr = new StreamReader(filename))
             {
-                seg.sketch = new List<DrawStroke2d>();
+                char[] separator = { ' ' };
+                Segment currSeg = null;
+                foreach (Segment seg in this.currSegmentClass.segments)
+                {
+                    seg.sketch = new List<DrawStroke2d>();
+                }
+                Color color = SegmentClass.PenColor;
+                while (sr.Peek() > -1)
+                {
+                    string line = sr.ReadLine();
+                    string[] tokens = line.Split(separator);
+                    int n = 0;
+                    if (tokens.Length > 0 && tokens[0] == "segment")
+                    {
+                        int segId = Int32.Parse(tokens[1]);
+                        currSeg = this.currSegmentClass.segments[segId];
+                        currSeg.sketch = new List<DrawStroke2d>();
+                        //color = Color.FromArgb(rand.Next(255), rand.Next(255), rand.Next(255));
+                        continue;
+                    }
+                    if (tokens.Length > 0 && tokens[0] == "sketch")
+                    {
+                        line = sr.ReadLine();
+                        tokens = line.Split(separator);
+                        n = Int32.Parse(tokens[0]);
+                    }
+
+                    List<Vector2d> points = new List<Vector2d>();
+                    for (int i = 0; i < n; ++i)
+                    {
+                        line = sr.ReadLine();
+                        tokens = line.Split(separator);
+                        double x = double.Parse(tokens[0]);
+                        double y = double.Parse(tokens[1]);
+                        Vector2d p = new Vector2d(x, y);
+                        points.Add(p);
+                    }
+                    Stroke stroke = new Stroke(points, SegmentClass.PenSize);
+                    //stroke.strokeColor = SegmentClass.PenColor;
+                    stroke.strokeColor = color;
+                    //stroke.changeStyle2d((int)SegmentClass.strokeStyle);
+                    this.updateSketchStrokePositionToLocalCoord(stroke);
+                    DrawStroke2d drawStroke = new DrawStroke2d(stroke);
+                    for (int i = 1; i < drawStroke.strokes.Count; ++i)
+                    {
+                        this.storeSketchStrokePositionToLocalCoord(drawStroke.strokes[i]);
+                    }
+                    if (currSeg != null)
+                    {
+                        currSeg.sketch.Add(drawStroke);
+                    }
+                }
             }
-            Color color = SegmentClass.PenColor;
-            while (sr.Peek() > -1)
-            {
-                string line = sr.ReadLine();
-                string[] tokens = line.Split(separator);
-                int n = 0;
-                if (tokens.Length > 0 && tokens[0] == "segment")
-                {
-                    int segId = Int32.Parse(tokens[1]);
-                    currSeg = this.currSegmentClass.segments[segId];
-                    currSeg.sketch = new List<DrawStroke2d>();
-                    //color = Color.FromArgb(rand.Next(255), rand.Next(255), rand.Next(255));
-                    continue;
-                }
-                if (tokens.Length > 0 && tokens[0] == "sketch")
-                {
-                    line = sr.ReadLine();
-                    tokens = line.Split(separator);
-                    n = Int32.Parse(tokens[0]);
-                }
-                
-                List<Vector2d> points = new List<Vector2d>();
-                for (int i = 0; i < n; ++i)
-                {
-                    line = sr.ReadLine();
-                    tokens = line.Split(separator);
-                    double x = double.Parse(tokens[0]);
-                    double y = double.Parse(tokens[1]);
-                    Vector2d p = new Vector2d(x, y);
-                    points.Add(p);
-                }
-                Stroke stroke = new Stroke(points, SegmentClass.PenSize);
-                //stroke.strokeColor = SegmentClass.PenColor;
-                stroke.strokeColor = color;
-                //stroke.changeStyle2d((int)SegmentClass.strokeStyle);
-                this.updateSketchStrokePositionToLocalCoord(stroke);
-                DrawStroke2d drawStroke = new DrawStroke2d(stroke);
-                for (int i = 1; i < drawStroke.strokes.Count; ++i)
-                {
-                    this.storeSketchStrokePositionToLocalCoord(drawStroke.strokes[i]);
-                }
-                if (currSeg != null)
-                {
-                    currSeg.sketch.Add(drawStroke);
-                }
-            }
-            //this.updateSketchStrokePositionToLocalCoord();
-            //foreach (Stroke stroke in this.sketchStrokes)
-            //{
-            //    DrawStroke2d drawStroke = new DrawStroke2d(stroke);
-            //    for(int i = 1; i < drawStroke.strokes.Count;++i ){
-            //        this.storeSketchStrokePositionToLocalCoord(drawStroke.strokes[i]);
-            //    }
-                
-            //    seg.sketch.Add(drawStroke);
-            //}
-            sr.Close();
         }
 
         private void drawPaperBoundary2d()
