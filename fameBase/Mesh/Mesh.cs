@@ -167,6 +167,14 @@ namespace Geometry
             this.collectMeshInfo();
 		}
 
+        public Object Clone()
+        {
+            double[] vPos = vertexPos.Clone() as double[];
+            int[] fIndex = faceVertexIndex.Clone() as int[];
+            Mesh m = new Mesh(vPos, fIndex);
+            return m;
+        }
+
         private void LoadPlyfile(StreamReader sr, bool normalize)
         {
             List<double> vertexArray = new List<double>();

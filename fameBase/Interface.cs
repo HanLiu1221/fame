@@ -150,22 +150,6 @@ namespace FameBase
             this.glViewer.Refresh();
         }
 
-        private void layoutModelSet(List<ModelViewer> modelViewers)
-        {
-            if (modelViewers == null) return;
-            int w = 200;
-            int h = 200;
-            int i = 0;
-            foreach (ModelViewer mv in modelViewers)
-            {
-                mv.SetBounds(i * w, 0, w, h);
-                mv.BorderStyle = BorderStyle.FixedSingle;
-                mv.BackColor = Color.White;
-                this.modelViewLayoutPanel.Controls.Add(mv);
-            }
-            this.updateStats();
-        }
-
         private void saveAModelToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var dialog = new SaveFileDialog()
@@ -295,6 +279,35 @@ namespace FameBase
         public ContextMenuStrip getRightButtonMenu()
         {
             return this.partRelatedTools;
+        }
+
+        private void layoutModelSet(List<ModelViewer> modelViewers)
+        {
+            if (modelViewers == null) return;
+            int w = 200;
+            int h = 200;
+            int i = 0;
+            foreach (ModelViewer mv in modelViewers)
+            {
+                mv.SetBounds(i * w, 0, w, h);
+                mv.BorderStyle = BorderStyle.FixedSingle;
+                mv.BackColor = Color.White;
+                this.modelViewLayoutPanel.Controls.Add(mv);
+            }
+            this.updateStats();
+        }
+
+        private void addSelectedParts_Click(object sender, EventArgs e)
+        {
+            ModelViewer mv = this.glViewer.addSelectedPartsToBasket();
+            if (mv != null)
+            {
+                mv.Width = 200;
+                mv.Height = 200;
+                mv.BorderStyle = BorderStyle.FixedSingle;
+                mv.BackColor = Color.White;
+                this.partBasket.Controls.Add(mv);
+            }
         }
 	}
 }

@@ -66,6 +66,13 @@ namespace Component
             _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
         }
 
+        public Object Clone()
+        {
+            Mesh m = _mesh.Clone() as Mesh;
+            Part p = new Part(m);
+            return p;
+        }
+
         public Mesh _MESH
         {
             get

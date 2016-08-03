@@ -199,6 +199,7 @@ namespace FameBase
         List<Model> _models;
         List<Part> _selectedParts = new List<Part>();
         List<ModelViewer> _modelViewers = new List<ModelViewer>();
+        List<ModelViewer> _partViewers = new List<ModelViewer>();
         public static Color MeshColor = Color.FromArgb(173, 210, 222);
         Color _selectionColor = Color.FromArgb(231, 138, 195);
 
@@ -313,6 +314,7 @@ namespace FameBase
             _selectedParts = new List<Part>();
             _models = new List<Model>();
             _modelViewers = new List<ModelViewer>();
+            _partViewers = new List<ModelViewer>();
             this.meshClasses.Clear();
         }
 
@@ -546,8 +548,11 @@ namespace FameBase
         private void refreshModelViewers()
         {
             // view the same as the main view
-            if (_modelViewers == null) return;
             foreach (ModelViewer mv in _modelViewers)
+            {
+                mv.Refresh();
+            }
+            foreach (ModelViewer mv in _partViewers)
             {
                 mv.Refresh();
             }
@@ -557,6 +562,7 @@ namespace FameBase
         {
             _currModel = m;
             _selectedParts.Clear();
+            this.cal2D();
             this.Refresh();
         }
      
@@ -1280,6 +1286,24 @@ namespace FameBase
             this.Refresh();
         }// groupParts
 
+        public ModelViewer addSelectedPartsToBasket()
+        {
+            if (_selectedParts == null || _selectedParts.Count == 0)
+            {
+                return null;
+            }
+            List<Part> cloneParts = new List<Part>();
+            foreach (Part p in _selectedParts)
+            {
+                Part np = p.Clone() as Part;
+                cloneParts.Add(np);
+            }
+            Model m = new Model(cloneParts);
+            ModelViewer mv = new ModelViewer(m, this);
+            _partViewers.Add(mv);
+            return mv;
+        }// addSelectedPartsToBasket
+
         //######### end-Part-based #########//
 
         private void setViewMatrix()
@@ -1313,12 +1337,13 @@ namespace FameBase
             m = Matrix4d.TranslationMatrix(this.objectCenter) * m * Matrix4d.TranslationMatrix(
                 new Vector3d() - this.objectCenter);
 
-            if (_modelViewers != null)
+            foreach (ModelViewer mv in _modelViewers)
             {
-                foreach (ModelViewer mv in _modelViewers)
-                {
-                    mv.setModelViewMatrix(m);
-                }
+                mv.setModelViewMatrix(m);
+            }
+            foreach (ModelViewer mv in _partViewers)
+            {
+                mv.setModelViewMatrix(m);
             }
 
             Gl.glMatrixMode(Gl.GL_MODELVIEW);
@@ -1792,6 +1817,13 @@ namespace FameBase
 
             Gl.glDisable(Gl.GL_LIGHTING);
 
+            //Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            //Gl.glEnable(Gl.GL_LINE_SMOOTH);
+            //Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
+            //Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
+            //Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
+            //Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
+
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -1828,6 +1860,13 @@ namespace FameBase
 
         private void drawQuad3d(Plane3D q, Color c)
         {
+            Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            Gl.glEnable(Gl.GL_LINE_SMOOTH);
+            Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
+            Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
+            Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
+            Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
+
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
             // face
@@ -1839,11 +1878,21 @@ namespace FameBase
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
+            Gl.glDisable(Gl.GL_POINT_SMOOTH);
+            Gl.glDisable(Gl.GL_LINE_SMOOTH);
+            Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
         }
 
         private void drawQuadTransparent3d(Plane3D q, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
+
+            Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            Gl.glEnable(Gl.GL_LINE_SMOOTH);
+            Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
+            Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
+            //Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
+            //Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
 
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -1861,6 +1910,9 @@ namespace FameBase
             Gl.glDisable(Gl.GL_BLEND);
             Gl.glEnable(Gl.GL_CULL_FACE);
             Gl.glEnable(Gl.GL_LIGHTING);
+            Gl.glDisable(Gl.GL_POINT_SMOOTH);
+            Gl.glDisable(Gl.GL_LINE_SMOOTH);
+            //Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
         }
 
         private void drawQuadEdge3d(Plane3D q, Color c)
@@ -2017,8 +2069,12 @@ namespace FameBase
             if (m == null) return;
 
 
-            Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glEnable(Gl.GL_LINE_SMOOTH);
+            //Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            //Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
+            //Gl.glEnable(Gl.GL_LINE_SMOOTH);
+            //Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
+            //Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
+            //Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -2109,9 +2165,9 @@ namespace FameBase
                 Gl.glEnd();
             }
 
-            Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
-            Gl.glDisable(Gl.GL_LINE_SMOOTH);
-            Gl.glDisable(Gl.GL_POINT_SMOOTH);
+            //Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
+            //Gl.glDisable(Gl.GL_LINE_SMOOTH);
+            //Gl.glDisable(Gl.GL_POINT_SMOOTH);
             Gl.glDisable(Gl.GL_BLEND);
             Gl.glDepthMask(Gl.GL_TRUE);
 
