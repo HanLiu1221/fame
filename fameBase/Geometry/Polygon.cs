@@ -7,22 +7,22 @@ using Geometry;
 
 namespace Geometry
 {
-    public class Polygon
+    public class Polygon2D
     {
         public static double thresh = 1e-6;
 
-        public Polygon()
+        public Polygon2D()
         { }
 
-        static public bool isPointInPolygon(Vector2d v, Vector2d[] points)
+        static public bool isPointInPolygon(Vector2d v, Vector2d[] points3d)
         {
             bool odd = false;
-            for (int i = 0, j = points.Length - 1; i < points.Length; j = i++ )
+            for (int i = 0, j = points3d.Length - 1; i < points3d.Length; j = i++ )
             {
-                if ((points[i].y < v.y && points[j].y >= v.y) ||
-                    (points[j].y < v.y && points[i].y >= v.y))
+                if ((points3d[i].y < v.y && points3d[j].y >= v.y) ||
+                    (points3d[j].y < v.y && points3d[i].y >= v.y))
                 {
-                    if (points[i].x + (v.y - points[i].y) / (points[j].y - points[i].y) * (points[j].x - points[i].x) < v.x)
+                    if (points3d[i].x + (v.y - points3d[i].y) / (points3d[j].y - points3d[i].y) * (points3d[j].x - points3d[i].x) < v.x)
                     {
                         odd = !odd;
                     }
@@ -36,14 +36,14 @@ namespace Geometry
             return s + (e - s) * rand.NextDouble();
         }
 
-        public static bool PointInPoly(Vector2d p, Vector2d[] points)
+        public static bool PointInPoly(Vector2d p, Vector2d[] points3d)
         {
             bool c = false;
-            int n = points.Length;
+            int n = points3d.Length;
             for (int i = 0, j = n - 1; i < n; j = i++)
             {
-                if (((points[i].y > p.y) != (points[j].y > p.y)) &&
-                    (p.x < (points[j].x - points[i].x) * (p.y - points[i].y) / (points[j].y - points[i].y) + points[i].x))
+                if (((points3d[i].y > p.y) != (points3d[j].y > p.y)) &&
+                    (p.x < (points3d[j].x - points3d[i].x) * (p.y - points3d[i].y) / (points3d[j].y - points3d[i].y) + points3d[i].x))
                     c = !c;
             }
             return c;
@@ -186,65 +186,65 @@ namespace Geometry
         }//FindLinesegmentCircleIntersection
 
 
-    }// Polygon
+    }// Polygon2D
 
-    public class Quad2d : Polygon
+    public class Quad2d : Polygon2D
     {
-        public Vector2d[] points = new Vector2d[4];
+        public Vector2d[] points3d = new Vector2d[4];
         public Quad2d(Vector2d v1, Vector2d v2)
         {
-            points[0] = new Vector2d(v1);
-            points[1] = new Vector2d(v2.x, v1.y);
-            points[2] = new Vector2d(v2);
-            points[3] = new Vector2d(v1.x, v2.y);
+            points3d[0] = new Vector2d(v1);
+            points3d[1] = new Vector2d(v2.x, v1.y);
+            points3d[2] = new Vector2d(v2);
+            points3d[3] = new Vector2d(v1.x, v2.y);
         }
 
         static public bool isPointInQuad(Vector2d v, Quad2d q)
         {
             Vector2d minv = Vector2d.MaxCoord();
             Vector2d maxv = Vector2d.MinCoord();
-            for (int i = 0; i < q.points.Length; ++i)
+            for (int i = 0; i < q.points3d.Length; ++i)
             {
-                minv = Vector2d.Min(minv, q.points[i]);
-                maxv = Vector2d.Max(maxv, q.points[i]);
+                minv = Vector2d.Min(minv, q.points3d[i]);
+                maxv = Vector2d.Max(maxv, q.points3d[i]);
             }
             return v.x <= maxv.x && v.x >= minv.x && v.y <= maxv.y && v.y >= minv.y;
         }
     }// Quad2d
 
-    public class Plane
+    public class Plane3D
     {
-        public Vector3d[] points = null;
-        public Vector2d[] points2 = null;
+        public Vector3d[] points3d = null;
+        public Vector2d[] points2d = null;
         public Vector3d normal;
         public Vector3d center;
         private int Npoints = 0;
         public double depth = 0;
 
-        public Plane() { }
+        public Plane3D() { }
 
-        public Plane(Vector3d[] vs)
+        public Plane3D(Vector3d[] vs)
         {
             if (vs == null) return;
             // newly created
             this.Npoints = vs.Length;
-            this.points = new Vector3d[Npoints];
+            this.points3d = new Vector3d[Npoints];
             for (int i = 0; i < Npoints; ++i)
             {
-                this.points[i] = new Vector3d(vs[i]);
+                this.points3d[i] = new Vector3d(vs[i]);
             }
             this.calclulateCenterNormal();
         }
 
-        public Plane(List<Vector3d> vs)
+        public Plane3D(List<Vector3d> vs)
         {
-            // copy points
-            this.points = vs.ToArray();
-            this.Npoints = this.points.Length;
+            // copy points3d
+            this.points3d = vs.ToArray();
+            this.Npoints = this.points3d.Length;
             this.calclulateCenterNormal();
         }
 
-        public Plane(Vector3d center, Vector3d normal)
+        public Plane3D(Vector3d center, Vector3d normal)
         {
             this.center = center;
             this.normal = normal;
@@ -256,11 +256,11 @@ namespace Geometry
             this.center = new Vector3d();
             for (int i = 0; i < this.Npoints; ++i)
             {
-                this.center += this.points[i];
+                this.center += this.points3d[i];
             }
             this.center /= this.Npoints;
-            Vector3d v1 = (this.points[1] - this.points[0]).normalize();
-            Vector3d v2 = (this.points[this.Npoints - 1] - this.points[0]).normalize();
+            Vector3d v1 = (this.points3d[1] - this.points3d[0]).normalize();
+            Vector3d v2 = (this.points3d[this.Npoints - 1] - this.points3d[0]).normalize();
             this.normal = (v1.Cross(v2)).normalize();
         }
 
@@ -268,10 +268,10 @@ namespace Geometry
         {
             for (int i = 0; i < this.Npoints; ++i )
             {
-                Vector3d v = this.points[i];
+                Vector3d v = this.points3d[i];
                 Vector4d v4 = (T * new Vector4d(v, 1));
                 double t = T[0, 3];
-                this.points[i] = (T * new Vector4d(v, 1)).ToVector3D();
+                this.points3d[i] = (T * new Vector4d(v, 1)).ToVector3D();
             }
             if (this.Npoints > 0)
             {
@@ -287,7 +287,7 @@ namespace Geometry
 
         public Object clone()
         {
-            Plane cloned = new Plane(this.points);
+            Plane3D cloned = new Plane3D(this.points3d);
             return cloned;
         }
     }
@@ -325,13 +325,13 @@ namespace Geometry
         }
     }//Line3d
 
-    public class Triangle
+    public class Triangle3D
     {
         public Vector3d u;
         public Vector3d v;
         public Vector3d w;
 
-        public Triangle(Vector3d p1, Vector3d p2, Vector3d p3)
+        public Triangle3D(Vector3d p1, Vector3d p2, Vector3d p3)
         {
             this.u = new Vector3d(p1);
             this.v = new Vector3d(p2);
@@ -343,8 +343,8 @@ namespace Geometry
     {
         public Vector3d u;
         public Vector3d v;
-        public Vector3d[] points; // curved arrow
-        public Triangle cap;
+        public Vector3d[] points3d; // curved arrow
+        public Triangle3D cap;
         private double min_dcap = 0.04;
         private double max_dcap = 0.06;
         public bool active = false;
@@ -367,29 +367,29 @@ namespace Geometry
             double d2 = d * 0.6;
             Vector3d v1 = c + dir * d2;
             Vector3d v2 = c - dir * d2;
-            this.cap = new Triangle(v1, p2, v2);
+            this.cap = new Triangle3D(v1, p2, v2);
         }
     }
 
     public class Ellipse3D
     {
-        public Vector3d[] points = null;
+        public Vector3d[] points3d = null;
         public int npoints = 20;
 
         public Ellipse3D(Vector3d[] pts)
         {
-            this.points = pts;
+            this.points3d = pts;
         }
 
         public Ellipse3D(Vector3d c, Vector3d u, Vector3d v, double a, double b)
         {
-            points = new Vector3d[this.npoints];
+            points3d = new Vector3d[this.npoints];
             double alpha = Math.PI * 2 / this.npoints;
             for (int i = 0; i < this.npoints; ++i)
             {
                 double angle = alpha * i;
                 Vector3d p = c + a * Math.Cos(angle) * u + b * Math.Sin(angle) * v;
-                points[i] = p;
+                points3d[i] = p;
             }
         }
 
@@ -397,8 +397,8 @@ namespace Geometry
 
     public class Circle3D
     {
-        public Vector3d[] points = null;
-        public Vector2d[] points2 = null;
+        public Vector3d[] points3d = null;
+        public Vector2d[] points2d = null;
         public int npoints = 60;
         public Vector3d center;
         public Vector2d center2;
@@ -437,11 +437,11 @@ namespace Geometry
             }
             Vector3d a = (p - center).normalize();
             Vector3d b = (a.Cross(n)).normalize();
-            this.points = new Vector3d[npoints];
+            this.points3d = new Vector3d[npoints];
             for (int i = 0; i < npoints; ++i)
             {
                 double angle = i * 2 * Math.PI / npoints;
-                this.points[i] = c + (a * Math.Cos(angle) + b * Math.Sin(angle)) * radius;
+                this.points3d[i] = c + (a * Math.Cos(angle) + b * Math.Sin(angle)) * radius;
             }
         }
 
@@ -451,7 +451,7 @@ namespace Geometry
             double min_dist = double.MaxValue;
             b = new Vector2d[2];
             a = new Vector2d[2];
-            foreach (Vector2d v2 in this.points2)
+            foreach (Vector2d v2 in this.points2d)
             {
                 double dist = (center2 - v2).Length();
                 if (dist > max_dist)
@@ -497,7 +497,7 @@ namespace Geometry
             double min_angle_2 = double.MaxValue;
             double max_dist = double.MinValue;
             double min_dist = double.MaxValue;
-            foreach (Vector2d v2 in this.points2)
+            foreach (Vector2d v2 in this.points2d)
             {
                 Vector2d v2_d1 = (v2 - van1).normalize();
                 Vector2d v2_d2 = (v2 - van2).normalize();
@@ -551,7 +551,7 @@ namespace Geometry
             Vector2d circle_van_2 = new Vector2d();
             double min_angle_1 = double.MaxValue;
             double min_angle_2 = double.MaxValue;
-            foreach (Vector2d v2 in this.points2)
+            foreach (Vector2d v2 in this.points2d)
             {
                 Vector2d v2_d1 = (v2 - van1).normalize();
                 Vector2d v2_d2 = (v2 - van2).normalize();
@@ -592,16 +592,16 @@ namespace Geometry
             Vector2d far1 = this.guideLines[1].u2;
             Vector2d far2 = this.guideLines[1].v2;
             double max_dist = double.MinValue;
-            for (int i = 0; i < this.points2.Length - 1; ++i)
+            for (int i = 0; i < this.points2d.Length - 1; ++i)
             {
-                for (int j = i + 1; j < this.points2.Length; ++j)
+                for (int j = i + 1; j < this.points2d.Length; ++j)
                 {
-                    double dist = (this.points2[i]-this.points2[j]).Length();
+                    double dist = (this.points2d[i]-this.points2d[j]).Length();
                     if (dist > max_dist)
                     {
                         max_dist = dist;
-                        far1 = this.points2[i];
-                        far2 = this.points2[j];
+                        far1 = this.points2d[i];
+                        far2 = this.points2d[j];
                     }
                 }
             }
@@ -618,48 +618,33 @@ namespace Geometry
             this.angleLines[0] = new Line3d(a1, a2);
             this.angleLines[1] = new Line3d(b1, a2);
         }
-        //public void calGuideLines(Vector2d van1, Vector2d van2)
-        //{
-        //    // major axes
-        //    // minor axes alwaays recede the vanishing point
-        //    this.guideLines = new Line3d[2];
-        //    Vector2d v1 = (this.a[0] - van1).normalize();
-        //    Vector2d v2 = (this.a[1] - van1).normalize();
-        //    Vector2d v3 = (this.a[0] - van2).normalize();
-        //    Vector2d v4 = (this.a[1] - van2).normalize();
+    }
 
-        //    double ang1 = Math.Abs(Math.Acos(v1.Dot(v2)));
-        //    double ang2 = Math.Abs(Math.Acos(v3.Dot(v4)));
-        //    double ra = (this.a[0] - this.a[1]).Length() / 2;
-        //    double rb = (this.b[0] - this.b[1]).Length() / 2;
-        //    if (ang1 < ang2)
-        //    {
-        //        Vector2d va = (this.center2 - van1).normalize();
-        //        this.guideLines[0] = new Line3d(van1, this.center2 + ra * va);
-        //        Vector2d vb = new Vector2d(-va.y, va.x);
-        //        this.guideLines[1] = new Line3d(center2 + vb * rb, center2 - vb * rb);
-        //    }
-        //    else
-        //    {
-        //        Vector2d va = (this.center2 - van2).normalize();
-        //        this.guideLines[0] = new Line3d(van2, this.center2 + ra * va);
-        //        Vector2d vb = new Vector2d(-va.y, va.x);
-        //        this.guideLines[1] = new Line3d(center2 + vb * rb, center2 - vb * rb);
-        //    }
-        //    this.angleLines = new Line3d[2];
-        //    double dis = (this.a[0] - this.a[1]).Length() / 5;
-        //    Vector2d c = (this.a[0] + this.a[1]) / 2;
-        //    Vector2d diry = this.a[0].y > this.a[1].y ?
-        //        (this.a[0] - this.a[1]).normalize() :
-        //        (this.a[1] - this.a[0]).normalize();
-        //    Vector2d dirx = this.b[0].x > this.b[1].x ?
-        //        (this.b[0] - this.b[1]).normalize() :
-        //        (this.b[1] - this.b[0]).normalize();
-        //    Vector2d a1 = c + diry * dis;
-        //    Vector2d a2 = a1 + dirx * dis;
-        //    Vector2d b1 = c + dirx * dis;
-        //    this.angleLines[0] = new Line3d(a1, a2);
-        //    this.angleLines[1] = new Line3d(b1, a2);
-        //}
+    /* Primitive of a part*/
+    public class Prim
+    {
+        public Vector3d[] points3d = null;
+        public Vector2d[] points2d = null;
+
+        public Prim(Vector3d a, Vector3d b)
+        {
+            // axis-aligned cuboid
+            // a: minimal vector
+            // b: maximal vector
+            points3d = new Vector3d[8];
+            points3d[0] = new Vector3d(a);
+            points3d[1] = new Vector3d(a.x, a.y, b.z);
+            points3d[2] = new Vector3d(b.x, a.y, b.z);
+            points3d[3] = new Vector3d(b.x, a.y, a.z);
+            points3d[4] = new Vector3d(a.x, b.y, a.z);
+            points3d[5] = new Vector3d(a.x, b.y, b.z);
+            points3d[6] = new Vector3d(b.x, b.y, b.z);
+            points3d[7] = new Vector3d(b);
+        }
+
+        public Prim(Vector3d[] arr)
+        {
+            points3d = arr;
+        }
     }
 }

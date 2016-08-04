@@ -368,16 +368,10 @@ namespace Geometry
             return v;
         }
 
-        static public Vector3d MaxCoord()
-        {
-            return new Vector3d(double.MaxValue, double.MaxValue, double.MaxValue);
-        }
+        static public Vector3d MaxCoord = new Vector3d(double.MaxValue, double.MaxValue, double.MaxValue);
 
-        static public Vector3d MinCoord()
-        {
-            return new Vector3d(double.MinValue, double.MinValue, double.MinValue);
-        }
-	}//class-Vector3d
+        static public Vector3d MinCoord = new Vector3d(double.MinValue, double.MinValue, double.MinValue);
+    }//class-Vector3d
 
 	public class Vector4d
 	{ 

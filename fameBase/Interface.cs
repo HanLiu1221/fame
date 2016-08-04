@@ -116,16 +116,14 @@ namespace FameBase
             this.glViewer.setUIMode(4);
         }
 
-        private void loadSegmentsToolStripMenuItem_Click(object sender, EventArgs e)
+        private void loadParts_Click(object sender, EventArgs e)
         {
-            FolderBrowserDialog dialog = new FolderBrowserDialog();
-            dialog.SelectedPath = "D:\\Projects\\sketchingTutorial\\FameBase\\Data\\old\\segments";
-            //dialog.SelectedPath = "D:\\Projects\\sketchingTutorial\\CGPlatform\\Data";
-            //if (dialog.ShowDialog(this) == DialogResult.OK)
-            //{
+            var dialog = new FolderBrowserDialog();
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
                 string folderName = dialog.SelectedPath;
-                this.glViewer.loadSegments(folderName);
-            //}
+                this.glViewer.loadPartBasedModels(folderName);
+            }
             this.glViewer.Refresh();
         }
 

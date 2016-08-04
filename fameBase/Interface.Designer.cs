@@ -34,7 +34,7 @@
             this.open3D = new System.Windows.Forms.ToolStripMenuItem();
             this.import3D = new System.Windows.Forms.ToolStripMenuItem();
             this.saveAs3D = new System.Windows.Forms.ToolStripMenuItem();
-            this.loadSegmentsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadParts = new System.Windows.Forms.ToolStripMenuItem();
             this.outputSeqToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadTriMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tools = new System.Windows.Forms.ToolStripDropDownButton();
@@ -96,7 +96,7 @@
             this.open3D,
             this.import3D,
             this.saveAs3D,
-            this.loadSegmentsToolStripMenuItem,
+            this.loadParts,
             this.outputSeqToolStripMenuItem,
             this.loadTriMeshToolStripMenuItem});
             this.ModelFile.Image = ((System.Drawing.Image)(resources.GetObject("ModelFile.Image")));
@@ -127,18 +127,18 @@
             this.saveAs3D.Text = "Save As 3D model";
             this.saveAs3D.Click += new System.EventHandler(this.saveAs3D_Click);
             // 
-            // loadSegmentsToolStripMenuItem
+            // loadParts
             // 
-            this.loadSegmentsToolStripMenuItem.Name = "loadSegmentsToolStripMenuItem";
-            this.loadSegmentsToolStripMenuItem.Size = new System.Drawing.Size(183, 22);
-            this.loadSegmentsToolStripMenuItem.Text = "Load Segments";
-            this.loadSegmentsToolStripMenuItem.Click += new System.EventHandler(this.loadSegmentsToolStripMenuItem_Click);
+            this.loadParts.Name = "loadParts";
+            this.loadParts.Size = new System.Drawing.Size(183, 22);
+            this.loadParts.Text = "Load parts";
+            this.loadParts.Click += new System.EventHandler(this.loadParts_Click);
             // 
             // outputSeqToolStripMenuItem
             // 
             this.outputSeqToolStripMenuItem.Name = "outputSeqToolStripMenuItem";
             this.outputSeqToolStripMenuItem.Size = new System.Drawing.Size(183, 22);
-            this.outputSeqToolStripMenuItem.Text = "Output Primitive seq";
+            this.outputSeqToolStripMenuItem.Text = "Output primitive seq";
             this.outputSeqToolStripMenuItem.Click += new System.EventHandler(this.outputSeqToolStripMenuItem_Click);
             // 
             // loadTriMeshToolStripMenuItem
@@ -476,7 +476,7 @@
         private System.Windows.Forms.ToolStripMenuItem viewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem resetViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem modelColorToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem loadSegmentsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem loadParts;
         private System.Windows.Forms.Panel toolboxPanel;
         private System.Windows.Forms.ColorDialog strokeColorDialog;
         private System.Windows.Forms.ToolStripMenuItem reloadViewToolStripMenuItem;

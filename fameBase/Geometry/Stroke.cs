@@ -20,7 +20,7 @@ namespace Component
         public Vector2d u2;
         public Vector2d v2;
         private int npoints;
-        //stroke points
+        //stroke points3d
         public List<StrokePoint> strokePoints;
         public List<Vector3d> meshVertices3d;
         public List<Vector2d> meshVertices2d;
@@ -30,7 +30,7 @@ namespace Component
         private double size3 = (double)SegmentClass.StrokeSize / 500;
         public Color strokeColor = SegmentClass.StrokeColor;
         public int opacity = 0;
-        public Plane hostPlane;
+        public Plane3D hostPlane;
         public double depth = 1.0;
         public int ncapoints = 5;
         private static readonly Random rand = new Random();
@@ -99,14 +99,14 @@ namespace Component
             this.changeStyle2d((int)SegmentClass.strokeStyle);
         }//sampleStrokePoints
 
-        public void setStrokeMeshPoints(List<Vector2d> points, List<Vector2d> normals)
+        public void setStrokeMeshPoints(List<Vector2d> points3d, List<Vector2d> normals)
         {
             this.meshVertices2d = new List<Vector2d>();
             double radius = this.size2;
-            this.npoints = points.Count;
+            this.npoints = points3d.Count;
             for (int i = 0; i < this.npoints; ++i)
             {
-                Vector2d p = points[i];
+                Vector2d p = points3d[i];
                 Vector2d nor = normals[i].normalize();
                 Vector2d v1 = p + nor * radius;
                 Vector2d v2 = p - nor * radius;
@@ -116,27 +116,27 @@ namespace Component
             this.buildStrokeMeshFace();
         }// setStrokeMeshPoints
 
-        public Stroke(List<Vector2d> points, double size2)
+        public Stroke(List<Vector2d> points3d, double size2)
         {
             this.meshVertices2d = new List<Vector2d>();
             this.size2 = size2;
             double radius = this.size2 / 2;
-            this.npoints = points.Count;
+            this.npoints = points3d.Count;
             this.strokePoints = new List<StrokePoint>();
             this.size3 = size2 / 500;
             for (int i = 0; i < this.npoints; ++i)
             {
-                Vector2d p = points[i];
+                Vector2d p = points3d[i];
                 this.strokePoints.Add(new StrokePoint(p));
                 Vector2d nor = new Vector2d();
                 if (i + 1 < this.npoints)
                 {
-                    Vector2d d = points[i + 1] - points[i];
+                    Vector2d d = points3d[i + 1] - points3d[i];
                     nor = new Vector2d(-d.y, d.x);
                 }
                 else
                 {
-                    Vector2d d = points[i] - points[i - 1];
+                    Vector2d d = points3d[i] - points3d[i - 1];
                     nor = new Vector2d(-d.y, d.x);
                 }
                 nor.normalize();
@@ -474,8 +474,8 @@ namespace Component
             int N = this.npoints;
             float start = (float)N;
             
-            double r_size2 = Polygon.getRandomDoubleInRange(rand, this.size2 / 4, this.size2);
-            double r_size3 = Polygon.getRandomDoubleInRange(rand, this.size3 / 4, this.size3);
+            double r_size2 = Polygon2D.getRandomDoubleInRange(rand, this.size2 / 4, this.size2);
+            double r_size3 = Polygon2D.getRandomDoubleInRange(rand, this.size3 / 4, this.size3);
             if (this.isBoxEdge)
             {
                 r_size2 = this.size2;
@@ -569,7 +569,7 @@ namespace Component
             //this.addCapfrom2D(2);
             //this.meshVertices3d = new List<Vector3d>();
             //Matrix4d invMat =  T.Inverse();
-            //Plane plane = this.hostPlane.clone() as Plane;
+            //Plane3D plane = this.hostPlane.clone() as Plane3D;
             //plane.Transform(T);
             //foreach (Vector2d v2 in this.meshVertices2d)
             //{
@@ -586,7 +586,7 @@ namespace Component
             int N = this.strokePoints.Count;
             float start = (float)N;
 
-            double r_size2 = Polygon.getRandomDoubleInRange(rand, this.size2, this.size2 * 2);
+            double r_size2 = Polygon2D.getRandomDoubleInRange(rand, this.size2, this.size2 * 2);
             if (this.isBoxEdge)
             {
                 r_size2 = this.size2 * 2;
@@ -698,7 +698,7 @@ namespace Component
 			double error = 0;
 			foreach (StrokePoint pt in this.strokePoints)
 			{
-				Vector2d foot = Polygon.FindPointTolineFootPrint(pt.pos2,p,q);
+				Vector2d foot = Polygon2D.FindPointTolineFootPrint(pt.pos2,p,q);
 				new_stroke_points.Add(new StrokePoint(foot));
 				if (double.IsNaN(foot.x) || double.IsNaN(foot.y))
 					error_detected = true;
@@ -720,18 +720,18 @@ namespace Component
 			q = new Vector2d();
 			if (this.strokePoints.Count < 2) return false;
 			double thresh = 1e-4;
-			// regress a line to fit the stroke points
+			// regress a line to fit the stroke points3d
 			int npoints = this.strokePoints.Count;
 			int nvars = 1;
 			double[,] xy = new double[npoints, nvars + 1];
 			int i = 0;
-			List<Vector2d> points2 = new List<Vector2d>();
+			List<Vector2d> points2d = new List<Vector2d>();
 			
 			foreach (StrokePoint v in this.strokePoints)
 			{
 				xy[i, 0] = v.pos2.x;
 				xy[i, 1] = v.pos2.y;
-				points2.Add(v.pos2);
+				points2d.Add(v.pos2);
 				i++;
 			}
 
@@ -748,7 +748,7 @@ namespace Component
 
 				// using non-linear optimization -- for case when there is a vetical line which causes the linear regression unstable
 				LineOptimizer opt = new LineOptimizer();
-				opt.Init(points2, new double[3] { a, -1, b });
+				opt.Init(points2d, new double[3] { a, -1, b });
 				double[] abc = opt.Optimize();
 				a = abc[0]; b = abc[1]; c = abc[2];
 				double error = opt.GetFittingError(abc);
@@ -785,7 +785,7 @@ namespace Component
 				}
 			}
 
-			Console.WriteLine("line regression failed, will use start - end points");
+			Console.WriteLine("line regression failed, will use start - end points3d");
 			
 			return false;
 		}
@@ -800,7 +800,7 @@ namespace Component
         public Vector2d v2;
         private int nSketch = 0;
         public List<Stroke> strokes;
-        public Plane hostPlane;
+        public Plane3D hostPlane;
         private static readonly Random rand = new Random();
         public Arrow3D guideArrow;
         private bool isBoxEdge = true; // false -> guide line, less random strokes
@@ -820,7 +820,7 @@ namespace Component
 
         public GuideLine() { }
 
-        public GuideLine(Vector3d v1, Vector3d v2, Plane plane, bool isBoxEdge)
+        public GuideLine(Vector3d v1, Vector3d v2, Plane3D plane, bool isBoxEdge)
         {
             this.u = v1;
             this.v = v2;
@@ -849,9 +849,9 @@ namespace Component
             strokes.Add(stroke);
         }
 
-        public void setHostPlane(Plane plane)
+        public void setHostPlane(Plane3D plane)
         {
-            this.hostPlane = plane.clone() as Plane;
+            this.hostPlane = plane.clone() as Plane3D;
             if (this.strokes != null && this.strokes.Count > 0)
             {
                 this.guideArrow = new Arrow3D(this.strokes[0].u3, this.strokes[0].v3, plane.normal);
@@ -1000,10 +1000,10 @@ namespace Component
                 this.vanLines = new Line3d[2][];
             }
             this.vanLines[vidx] = new Line3d[2];
-            Vector3d[] points = new Vector3d[2] { this.u, this.v };
-            for (int i = 0; i < points.Length; ++i)
+            Vector3d[] points3d = new Vector3d[2] { this.u, this.v };
+            for (int i = 0; i < points3d.Length; ++i)
             {
-                Vector3d vi = points[i];
+                Vector3d vi = points3d[i];
                 Vector3d d = (vi - v).normalize();
                 ext = getRandomDoubleInRange(rand, 0, 0.2);
                 Vector3d v1 = vi + ext * d;
@@ -1022,11 +1022,11 @@ namespace Component
                 this.vanLines = new Line3d[2][];
             }
             this.vanLines[vidx] = new Line3d[2];
-            Vector2d[] points = new Vector2d[2] { this.u2, this.v2 };
+            Vector2d[] points3d = new Vector2d[2] { this.u2, this.v2 };
             Vector2d dir =  (this.v2-this.u2).normalize();
-            for (int i = 0; i < points.Length; ++i)
+            for (int i = 0; i < points3d.Length; ++i)
             {
-                Vector2d vi = points[i];
+                Vector2d vi = points3d[i];
                 Vector2d d = (vi - v).normalize();
                 ext = getRandomDoubleInRange(rand, 0, 20);
                 Vector2d v1 = vi + ext * d;
@@ -1051,7 +1051,7 @@ namespace Component
         //endpoints
         public Vector2d u2;
         public Vector2d v2;
-        //stroke points
+        //stroke points3d
         public List<Stroke> strokes;
         public double strokeGap = 0.1;
 
@@ -1144,14 +1144,14 @@ namespace Component
                 double theta = this.getRandomDoubleInRange(rand, -angle, angle);
                 // 2. rotate from which point
                 int idx = rand.Next(1, this.strokes[0].strokePoints.Count - 1);
-                List<Vector2d> points = new List<Vector2d>();
+                List<Vector2d> points3d = new List<Vector2d>();
 
                 // left: rotate theta
                 // right: rotate -theta
                 //for (int j = 0; j < npoints; ++j)
                 //{
                 //    Vector2d vr = this.strokes[0].strokePoints[j].pos2.rotate(theta);
-                //    points.Add(vr);
+                //    points3d.Add(vr);
                 //}
                 double dist = this.getRandomDoubleInRange(rand, 0, len/2);
                 double d = dist / idx;
@@ -1161,7 +1161,7 @@ namespace Component
                     Vector2d norm = new Vector2d(-dir.y, dir.x);
                     norm.normalize();
                     Vector2d trans = this.strokes[0].strokePoints[j].pos2 + d * (idx - j) * norm;
-                    points.Add(trans);
+                    points3d.Add(trans);
                 }
                 dist = this.getRandomDoubleInRange(rand, 0, len/2);
                 d = dist / (this.strokes[0].strokePoints.Count - idx);
@@ -1176,10 +1176,10 @@ namespace Component
                     Vector2d norm = -1 * new Vector2d(-dir.y, dir.x);
                     norm.normalize();
                     Vector2d trans = this.strokes[0].strokePoints[j].pos2 + d * (j - idx) * norm;
-                    points.Add(trans);
+                    points3d.Add(trans);
                 }
 
-                Stroke stroke = new Stroke(points, SegmentClass.PenSize/2);
+                Stroke stroke = new Stroke(points3d, SegmentClass.PenSize/2);
                 stroke.strokeColor = SegmentClass.sideStrokeColor;
                 this.strokes.Add(stroke);
             }
@@ -1197,14 +1197,14 @@ namespace Component
             double[,] xy = new double[n, 2];
             int i = 0;
             int nvar = 1;
-            List<Vector2d> points = new List<Vector2d>();
+            List<Vector2d> points3d = new List<Vector2d>();
             p = new Vector2d();
             q = new Vector2d();
             foreach (StrokePoint sp in stroke.strokePoints)
             {
                 xy[i, 0] = sp.pos2.x;
                 xy[i, 1] = sp.pos2.y;
-                points.Add(sp.pos2);
+                points3d.Add(sp.pos2);
                 ++i;
             }
             alglib.linearmodel lrmodel;
@@ -1219,7 +1219,7 @@ namespace Component
 
                 // using non-linear optimization -- for case when there is a vetical line which causes the linear regression unstable
                 LineOptimizer opt = new LineOptimizer();
-                opt.Init(points, new double[3] { a, -1, b });
+                opt.Init(points3d, new double[3] { a, -1, b });
                 double[] abc = opt.Optimize();
                 a = abc[0]; b = abc[1]; c = abc[2];
                 double error = opt.GetFittingError(abc);
@@ -1259,7 +1259,7 @@ namespace Component
             double err = 0.0;
             foreach (StrokePoint pt in stroke.strokePoints)
             {
-                Vector2d foot = Polygon.FindPointTolineFootPrint(pt.pos2,
+                Vector2d foot = Polygon2D.FindPointTolineFootPrint(pt.pos2,
                     stroke.strokePoints[0].pos2, stroke.strokePoints[stroke.strokePoints.Count - 1].pos2
                     );
                 err += (foot - pt.pos2).Length();
@@ -1285,17 +1285,17 @@ namespace Component
 
     public class Primitive
     {
-        public Vector3d[] points = null;
-        public Vector2d[] points2 = null;
-        public Plane[] planes = null;
+        public Vector3d[] points3d = null;
+        public Vector2d[] points2d = null;
+        public Plane3D[] planes = null;
         public GuideLine[] edges = null;
         public List<List<GuideLine>> guideLines = null;
         public List<Circle3D> circles = null;
         public Line3d[][] vanLines;
         public Line3d[][] vanEllipses;
         private static readonly Random rand = new Random();
-        public List<Plane> facesToDraw;
-        public List<Plane> facesToHighlight;
+        public List<Plane3D> facesToDraw;
+        public List<Plane3D> facesToHighlight;
         public int activeFaceIndex = -1;
         public int highlightFaceIndex = -1;
         public int guideBoxIdx = -1;
@@ -1327,64 +1327,64 @@ namespace Component
                     break;
             }
             this.guideLines = new List<List<GuideLine>>();
-            this.facesToDraw = new List<Plane>();
-            this.facesToHighlight = new List<Plane>();
+            this.facesToDraw = new List<Plane3D>();
+            this.facesToHighlight = new List<Plane3D>();
             this.circles = new List<Circle3D>();
         }
 
         private void createBoxPrimitive(Vector3d[] vs)
         {
             this.type = "Box";
-            this.points = new Vector3d[vs.Length];
+            this.points3d = new Vector3d[vs.Length];
             for (int i = 0; i < vs.Length; ++i)
             {
-                this.points[i] = new Vector3d(vs[i]);
+                this.points3d[i] = new Vector3d(vs[i]);
             }
             // faces
-            this.planes = new Plane[6];
+            this.planes = new Plane3D[6];
             List<Vector3d> vslist = new List<Vector3d>();
             for (int i = 0; i < 4; ++i)
             {
-                vslist.Add(this.points[i]);
+                vslist.Add(this.points3d[i]);
             }
-            this.planes[0] = new Plane(vslist);
+            this.planes[0] = new Plane3D(vslist);
             vslist = new List<Vector3d>();
             for (int i = 4; i < 8; ++i)
             {
-                vslist.Add(this.points[i]);
+                vslist.Add(this.points3d[i]);
             }
-            this.planes[1] = new Plane(vslist);
+            this.planes[1] = new Plane3D(vslist);
             int r = 2;
             for (int i = 0; i < 4; ++i)
             {
                 vslist = new List<Vector3d>();
-                vslist.Add(this.points[i]);
-                vslist.Add(this.points[(i + 1) % 4]);
-                vslist.Add(this.points[((i + 1) % 4 + 4) % 8]);
-                vslist.Add(this.points[(i + 4) % 8]);
-                this.planes[r++] = new Plane(vslist);
+                vslist.Add(this.points3d[i]);
+                vslist.Add(this.points3d[(i + 1) % 4]);
+                vslist.Add(this.points3d[((i + 1) % 4 + 4) % 8]);
+                vslist.Add(this.points3d[(i + 4) % 8]);
+                this.planes[r++] = new Plane3D(vslist);
             }
             this.edges = new GuideLine[12];
             int s = 0;
-            Plane plane = new Plane();
+            Plane3D plane = new Plane3D();
             int[] series = { 0, 3, 0, 5 };
 
 			for (int i = 0; i < 4; ++i)
 			{
-				plane = this.planes[series[i]].clone() as Plane;
-				edges[s++] = new GuideLine(this.points[i], this.points[(i + 1) % 4], plane, true);
+				plane = this.planes[series[i]].clone() as Plane3D;
+				edges[s++] = new GuideLine(this.points3d[i], this.points3d[(i + 1) % 4], plane, true);
 			}
 			series = new int[] { 5, 3, 3, 5 };
 			for (int i = 0; i < 4; ++i)
 			{
-				plane = this.planes[series[i]].clone() as Plane;
-				edges[s++] = new GuideLine(this.points[i], this.points[i + 4], plane, true);
+				plane = this.planes[series[i]].clone() as Plane3D;
+				edges[s++] = new GuideLine(this.points3d[i], this.points3d[i + 4], plane, true);
 			}
 			series = new int[] { 1, 3, 1, 5 };
 			for (int i = 0; i < 4; ++i)
 			{
-				plane = this.planes[series[i]].clone() as Plane;
-				edges[s++] = new GuideLine(this.points[i + 4], this.points[4 + (i + 1) % 4], plane, true);
+				plane = this.planes[series[i]].clone() as Plane3D;
+				edges[s++] = new GuideLine(this.points3d[i + 4], this.points3d[4 + (i + 1) % 4], plane, true);
 			}
 
             
@@ -1392,47 +1392,47 @@ namespace Component
 
         private void createPlanePrimitive(Vector3d[] vs)
         {
-            this.type = "Plane";
-            this.points = new Vector3d[vs.Length];
+            this.type = "Plane3D";
+            this.points3d = new Vector3d[vs.Length];
             for (int i = 0; i < vs.Length; ++i)
             {
-                this.points[i] = new Vector3d(vs[i]);
+                this.points3d[i] = new Vector3d(vs[i]);
             }
             // face
-            this.planes = new Plane[1];
+            this.planes = new Plane3D[1];
             List<Vector3d> vslist = new List<Vector3d>();
             for (int i = 0; i < 4; ++i)
             {
-                vslist.Add(this.points[i]);
+                vslist.Add(this.points3d[i]);
             }
-            this.planes[0] = new Plane(vslist);
+            this.planes[0] = new Plane3D(vslist);
 
             this.edges = new GuideLine[4];
-            Plane plane = new Plane();
+            Plane3D plane = new Plane3D();
             for (int i = 0; i < 4; ++i)
             {
-                plane = this.planes[0].clone() as Plane;
-                edges[i] = new GuideLine(this.points[i], this.points[(i + 1) % 4], plane, true);
+                plane = this.planes[0].clone() as Plane3D;
+                edges[i] = new GuideLine(this.points3d[i], this.points3d[(i + 1) % 4], plane, true);
             }
         }
 
         private void createLinePrimitive(Vector3d[] vs)
         {
             this.type = "Line";
-            this.points = new Vector3d[vs.Length];
+            this.points3d = new Vector3d[vs.Length];
             for (int i = 0; i < vs.Length; ++i)
             {
-                this.points[i] = new Vector3d(vs[i]);
+                this.points3d[i] = new Vector3d(vs[i]);
             }
             int nlines = vs.Length / 2;
             this.edges = new GuideLine[nlines];
-            Plane plane = new Plane();
+            Plane3D plane = new Plane3D();
             for (int i = 0; i < nlines; ++i)
             {
-                plane = new Plane(
-                    (this.points[2 * i] + this.points[2 * i + 1]) / 2,
+                plane = new Plane3D(
+                    (this.points3d[2 * i] + this.points3d[2 * i + 1]) / 2,
                     new Vector3d(0, 0, 1));
-                edges[i] = new GuideLine(this.points[2 * i], this.points[2 * i + 1], plane, true);
+                edges[i] = new GuideLine(this.points3d[2 * i], this.points3d[2 * i + 1], plane, true);
             }
         }
 
@@ -1452,10 +1452,10 @@ namespace Component
 
         public void normalize(Vector3d center, double scale)
         {
-            for (int i = 0;i < points.Length;++i)
+            for (int i = 0;i < points3d.Length;++i)
             {
-                points[i] /= scale;
-                points[i] -= center;
+                points3d[i] /= scale;
+                points3d[i] -= center;
             }
             foreach (GuideLine line in this.edges)
             {
@@ -1480,14 +1480,14 @@ namespace Component
             {
                 this.vanLines = new Line3d[2][];
             }
-            this.vanLines[vidx] = new Line3d[this.points.Length];
-            for (int i = 0; i < this.points.Length; ++i)
+            this.vanLines[vidx] = new Line3d[this.points3d.Length];
+            for (int i = 0; i < this.points3d.Length; ++i)
             {
-                Vector3d vi = this.points[i];
+                Vector3d vi = this.points3d[i];
                 Vector3d d = (vi - v).normalize();
-                ext = Polygon.getRandomDoubleInRange(rand, 0, 0.2);
+                ext = Polygon2D.getRandomDoubleInRange(rand, 0, 0.2);
                 Vector3d v1 = vi + ext * d;
-                ext = Polygon.getRandomDoubleInRange(rand, 0, 0.2);
+                ext = Polygon2D.getRandomDoubleInRange(rand, 0, 0.2);
                 Vector3d v2 = v - ext * d;
                 Line3d line = new Line3d(v1, v2);
                 this.vanLines[vidx][i] = line;
@@ -1501,35 +1501,35 @@ namespace Component
             {
                 this.vanLines = new Line3d[2][];
             }
-            this.vanLines[vidx] = new Line3d[this.points.Length];
-            for (int i = 0; i < this.points.Length; ++i)
+            this.vanLines[vidx] = new Line3d[this.points3d.Length];
+            for (int i = 0; i < this.points3d.Length; ++i)
             {
-                Vector2d vi = this.points2[i];
+                Vector2d vi = this.points2d[i];
                 Vector2d d = (vi - v).normalize();
-                ext = Polygon.getRandomDoubleInRange(rand, 0, 20);
+                ext = Polygon2D.getRandomDoubleInRange(rand, 0, 20);
                 Vector2d v1 = vi + ext * d;
-                ext = Polygon.getRandomDoubleInRange(rand, 0, 20);
+                ext = Polygon2D.getRandomDoubleInRange(rand, 0, 20);
                 Vector2d v2 = v - ext * d;
                 Line3d line = new Line3d(v1, v2);
                 this.vanLines[vidx][i] = line;
             }
         }
 
-        public Plane[] GetYPairFaces()
+        public Plane3D[] GetYPairFaces()
         {
-            return new Plane[2] {
+            return new Plane3D[2] {
 				this.planes[0], this.planes[2]
 			};
         }
-        public Plane[] GetXPairFaces()
+        public Plane3D[] GetXPairFaces()
         {
-            return new Plane[2] {
+            return new Plane3D[2] {
 				this.planes[3], this.planes[5]
 			};
         }
-        public Plane[] GetZPairFaces()
+        public Plane3D[] GetZPairFaces()
         {
-            return new Plane[2] {
+            return new Plane3D[2] {
 				this.planes[1], this.planes[4]
 			};
         }
@@ -1539,7 +1539,7 @@ namespace Component
             Primitive cloneBox = new Primitive();
             // only change the active value
             // for convenience, copy other values
-            cloneBox.points = this.points;
+            cloneBox.points3d = this.points3d;
             cloneBox.planes = this.planes;
             cloneBox.vanLines = this.vanLines;
             cloneBox.edges = this.edges;
@@ -1613,13 +1613,13 @@ namespace Component
     {
         private int multivariate = 1;
         private double[] initialx = null;	// a*x + b*y +c = 0; this is a more general line equation
-        private List<Vector2d> points = null;
+        private List<Vector2d> points3d = null;
 
-        public void Init(List<Vector2d> points, double[] init_x)
+        public void Init(List<Vector2d> points3d, double[] init_x)
         {
-            int n = points.Count;
+            int n = points3d.Count;
             this.initialx = init_x;
-            this.points = points;
+            this.points3d = points3d;
             this.multivariate = n;
         }
         public double[] Optimize()
@@ -1654,19 +1654,19 @@ namespace Component
         public double GetFittingError(double[] x)
         {
             double error = 0;
-            foreach (Vector2d p in this.points)
+            foreach (Vector2d p in this.points3d)
             {
                 double a = x[0], b = x[1], c = x[2];
                 double d = Math.Abs(a * p.x + b * p.y + c);
                 d /= Math.Sqrt(a * a + b * b);
                 error += d;
             }
-            return error / this.points.Count;
+            return error / this.points3d.Count;
         }
         private void function(double[] x, double[] func, object obj)
         {
             int _functionIndex = 0;
-            foreach (Vector2d pt in this.points)
+            foreach (Vector2d pt in this.points3d)
             {
                 double a = x[0], b = x[1], c = x[2];
                 double d = (a * pt.x + b * pt.y + c);
@@ -1678,7 +1678,7 @@ namespace Component
         private void jacobi(double[] x, double[] func, double[,] jacoi, object obj)
         {
             int _functionIndex = 0;
-            foreach (Vector2d pt in this.points)
+            foreach (Vector2d pt in this.points3d)
             {
                 double a = x[0], b = x[1], c = x[2];
                 double d = (a * pt.x + b * pt.y + c);

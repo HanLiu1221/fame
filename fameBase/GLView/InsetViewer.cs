@@ -283,7 +283,7 @@ namespace FameBase
             }
         }//drawVanishingGuide2d
 
-        private void drawQuad3d(Plane q, Color c)
+        private void drawQuad3d(Plane3D q, Color c)
         {
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -292,17 +292,17 @@ namespace FameBase
             Gl.glBegin(Gl.GL_POLYGON);
             for (int i = 0; i < 4; ++i)
             {
-                Gl.glVertex3dv(q.points[i].ToArray());
+                Gl.glVertex3dv(q.points3d[i].ToArray());
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
         }
 
-        private void drawQuadEdge3d(Plane q, Color c)
+        private void drawQuadEdge3d(Plane3D q, Color c)
         {
             for (int i = 0; i < 4; ++i)
             {
-                this.drawLines3D(q.points[i], q.points[(i + 1) % q.points.Length], c, (float)SegmentClass.StrokeSize * 1.5f);
+                this.drawLines3D(q.points3d[i], q.points3d[(i + 1) % q.points3d.Length], c, (float)SegmentClass.StrokeSize * 1.5f);
             }
         }
 

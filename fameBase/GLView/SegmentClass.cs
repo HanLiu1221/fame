@@ -96,18 +96,18 @@ namespace Component
                         n = Int32.Parse(array[2]);
                     }
                 }
-                Vector3d[] points = new Vector3d[n];
+                Vector3d[] points3d = new Vector3d[n];
                 int[] ids = { 0, 1, 3, 2, 7, 6, 4, 5 };
                 for (int i = 0; i < n; ++i)
                 {
                     line = sr.ReadLine();
                     string[] array = line.Split(separator);
                     if (array.Length < 3) break;
-                    points[ids[i]] = new Vector3d(double.Parse(array[0]),
+                    points3d[ids[i]] = new Vector3d(double.Parse(array[0]),
                         double.Parse(array[1]),
                         double.Parse(array[2]));
                 }
-                return points;
+                return points3d;
             }
         }//loadPrimitiveBoudingbox
 
@@ -125,17 +125,17 @@ namespace Component
 
         public Vector3d NormalizeSegmentsToBox()
         {
-            Vector3d maxCoord = Vector3d.MinCoord();
-            Vector3d minCoord = Vector3d.MaxCoord();
-            Vector3d m_maxCoord = Vector3d.MinCoord();
-            Vector3d m_minCoord = Vector3d.MaxCoord();
+            Vector3d maxCoord = Vector3d.MinCoord;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            Vector3d m_maxCoord = Vector3d.MinCoord;
+            Vector3d m_minCoord = Vector3d.MaxCoord;
             foreach (Segment seg in this.segments)
             {
                 if (seg.mesh == null) continue;
                 m_maxCoord = Vector3d.Max(m_maxCoord, seg.mesh.MaxCoord);
                 m_minCoord = Vector3d.Min(m_minCoord, seg.mesh.MinCoord);
-                maxCoord = Vector3d.Max(maxCoord, seg.boundingbox.points[6]);
-                minCoord = Vector3d.Min(minCoord, seg.boundingbox.points[0]);
+                maxCoord = Vector3d.Max(maxCoord, seg.boundingbox.points3d[6]);
+                minCoord = Vector3d.Min(minCoord, seg.boundingbox.points3d[0]);
             }
             Vector3d center = (maxCoord + minCoord) / 2;
             Vector3d m_d = m_maxCoord - m_minCoord;

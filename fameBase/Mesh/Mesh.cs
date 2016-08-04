@@ -63,10 +63,10 @@ namespace Geometry
         private List<List<int>> vertexFaceIndex = null;
 		private int vertexCount = 0;
 		private int faceCount = 0;
-        private Vector3d minCoord = Vector3d.MaxCoord();
-        private Vector3d maxCoord = Vector3d.MinCoord();
+        private Vector3d minCoord = Vector3d.MaxCoord;
+        private Vector3d maxCoord = Vector3d.MinCoord;
         private bool[] flags;
-
+        private string sourceFile;
         public HalfEdge edgeIter = null;
 		
 		// to avoid changing the count of vertex/face
@@ -232,6 +232,7 @@ namespace Geometry
 			{
 				return;
 			}
+            sourceFile = meshFileName;
             using (StreamReader sr = new StreamReader(meshFileName))
             {
                 // mesh file type

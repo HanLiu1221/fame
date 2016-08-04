@@ -232,6 +232,9 @@ namespace FameBase
         private StrokePoint[] paperPos = null;
         private Vector2d[] paperPosLines = null;
 
+        /******************** Vars ********************/
+        List<Model> _models;
+
         /******************** Functions ********************/
 
         public UIMode CurrentUIMode
@@ -393,10 +396,14 @@ namespace FameBase
             this.Refresh();
         }
 
-        public void loadSegments(string segfolder)
+        public void loadPartBasedModels(string segfolder)
         {
+            // Data fromat:
+            // n Parts
+            // Part #i:
+            // bbox vertices
+            // mesh file loc
             this.clearContext();
-
             this.segmentClasses = new List<SegmentClass>();
             int idx = segfolder.LastIndexOf('\\');
             string bbofolder = segfolder.Substring(0, idx + 1);
@@ -411,7 +418,7 @@ namespace FameBase
                 segStats = new int[2];
                 segStats[0] = sc.segments.Count;
             }
-        }// loadSegments
+        }// loadPartBasedModel
      
         private void cal2D()
         {
@@ -463,12 +470,12 @@ namespace FameBase
             foreach (Segment seg in this.currSegmentClass.segments)
             {
                 Primitive box = seg.boundingbox;
-                box.points2 = new Vector2d[box.points.Length];
-                for (int i = 0; i < box.points.Length; ++i)
+                box.points2d = new Vector2d[box.points3d.Length];
+                for (int i = 0; i < box.points3d.Length; ++i)
                 {
-                    box.points2[i] = this.camera.Project(box.points[i]).ToVector2d();
-                    max_coord = Vector2d.Max(max_coord, box.points2[i]);
-                    min_coord = Vector2d.Min(min_coord, box.points2[i]);
+                    box.points2d[i] = this.camera.Project(box.points3d[i]).ToVector2d();
+                    max_coord = Vector2d.Max(max_coord, box.points2d[i]);
+                    min_coord = Vector2d.Min(min_coord, box.points2d[i]);
                 }
                 List<GuideLine> allLines = seg.boundingbox.getAllLines();
                 foreach (GuideLine line in allLines)
@@ -488,23 +495,23 @@ namespace FameBase
                 }
                 if (seg.boundingbox.planes != null)
                 {
-                    foreach (Plane plane in seg.boundingbox.planes)
+                    foreach (Plane3D plane in seg.boundingbox.planes)
                     {
-                        plane.points2 = new Vector2d[plane.points.Length];
-                        for (int i = 0; i < plane.points.Length; ++i)
+                        plane.points2d = new Vector2d[plane.points3d.Length];
+                        for (int i = 0; i < plane.points3d.Length; ++i)
                         {
-                            Vector3d v3 = this.camera.Project(plane.points[i]);
-                            plane.points2[i] = v3.ToVector2d();
+                            Vector3d v3 = this.camera.Project(plane.points3d[i]);
+                            plane.points2d[i] = v3.ToVector2d();
                         }
                     }
                 }
                 foreach (Circle3D circle in seg.boundingbox.circles)
                 {
-                    circle.points2 = new Vector2d[circle.points.Length];
-                    for (int i = 0; i < circle.points.Length; ++i)
+                    circle.points2d = new Vector2d[circle.points3d.Length];
+                    for (int i = 0; i < circle.points3d.Length; ++i)
                     {
-                        Vector3d v3 = circle.points[i];
-                        circle.points2[i] = this.camera.Project(v3).ToVector2d();
+                        Vector3d v3 = circle.points3d[i];
+                        circle.points2d[i] = this.camera.Project(v3).ToVector2d();
                     }
                     circle.center2 = this.camera.Project(circle.center).ToVector2d();
                     circle.calAxes();
@@ -539,15 +546,15 @@ namespace FameBase
                 Primitive box = seg.boundingbox;
                 if (seg.boundingbox.planes != null)
                 {
-                    foreach (Plane plane in seg.boundingbox.planes)
+                    foreach (Plane3D plane in seg.boundingbox.planes)
                     {
-                        plane.points2 = new Vector2d[plane.points.Length];
-                        for (int i = 0; i < plane.points.Length; ++i)
+                        plane.points2d = new Vector2d[plane.points3d.Length];
+                        for (int i = 0; i < plane.points3d.Length; ++i)
                         {
-                            Vector3d v3 = this.camera.Project(plane.points[i]);
-                            plane.points2[i] = v3.ToVector2d();
-                            minCoord = Vector2d.Min(minCoord, plane.points2[i]);
-                            maxCoord = Vector2d.Max(maxCoord, plane.points2[i]);
+                            Vector3d v3 = this.camera.Project(plane.points3d[i]);
+                            plane.points2d[i] = v3.ToVector2d();
+                            minCoord = Vector2d.Min(minCoord, plane.points2d[i]);
+                            maxCoord = Vector2d.Max(maxCoord, plane.points2d[i]);
                         }
                     }
                 }
@@ -742,14 +749,14 @@ namespace FameBase
             if (seg == null) return null;
             Primitive box = seg.boundingbox;
             int[] ids = { 1, 2, 6, 5 };
-            Vector3d u = (box.points[ids[2]] + box.points[ids[3]]) / 2 - (box.points[ids[0]] + box.points[ids[1]]) / 2;
-            Vector3d v = (box.points[ids[0]] + box.points[ids[3]]) / 2 - (box.points[ids[1]] + box.points[ids[2]]) / 2;
-            double a = (box.points[ids[0]] - box.points[ids[3]]).Length();
-            double b = (box.points[ids[0]] - box.points[ids[1]]).Length();
+            Vector3d u = (box.points3d[ids[2]] + box.points3d[ids[3]]) / 2 - (box.points3d[ids[0]] + box.points3d[ids[1]]) / 2;
+            Vector3d v = (box.points3d[ids[0]] + box.points3d[ids[3]]) / 2 - (box.points3d[ids[1]] + box.points3d[ids[2]]) / 2;
+            double a = (box.points3d[ids[0]] - box.points3d[ids[3]]).Length();
+            double b = (box.points3d[ids[0]] - box.points3d[ids[1]]).Length();
             Vector3d c = new Vector3d();
             for (int i = 0; i < ids.Length; ++i)
             {
-                c += box.points[ids[i]];
+                c += box.points3d[ids[i]];
             }
             c /= ids.Length;
             Ellipse3D e = new Ellipse3D(c, u, v, a, b);
@@ -899,22 +906,22 @@ namespace FameBase
 						{
 							seg.computeBoundary(Tv, this.eye);
 						}
-                        List<Vector3d> points = new List<Vector3d>();
+                        List<Vector3d> points3d = new List<Vector3d>();
                         if (seg.contourPoints.Count > 0)
                         {
-                            points = seg.contourPoints;
+                            points3d = seg.contourPoints;
                         }
                         else if (seg.silhouettePoints.Count > 0)
                         {
-                            points = seg.silhouettePoints;
+                            points3d = seg.silhouettePoints;
                         }
-                        List<Vector2d> points2 = new List<Vector2d>();
-                        foreach (Vector3d v3 in points)
+                        List<Vector2d> points2d = new List<Vector2d>();
+                        foreach (Vector3d v3 in points3d)
                         {
                             Vector2d v2 = this.camera.Project(v3).ToVector2d();
-                            points2.Add(v2);
+                            points2d.Add(v2);
                         }
-                        Stroke segStroke = new Stroke(points2, SegmentClass.StrokeSize);
+                        Stroke segStroke = new Stroke(points2d, SegmentClass.StrokeSize);
                         this.createDrawStroke(seg, segStroke);
 					}
 				}
@@ -1369,7 +1376,7 @@ namespace FameBase
             this.clearScene();
             // draw the whole sceen from "Draw3D()" to get the visibility info depth value
             int n = 0;
-            int nsample = 10; // sample 10 points on each line
+            int nsample = 10; // sample 10 points3d on each line
 
             foreach (GuideLine edge in seg.boundingbox.edges)
             {
@@ -1465,7 +1472,7 @@ namespace FameBase
             this.clearScene();
             // draw the whole sceen from "Draw3D()" to get the visibility info depth value
             int n = 0;
-            int nsample = 10; // sample 10 points on each line
+            int nsample = 10; // sample 10 points3d on each line
             // drawAllActiveBoxes() or drawSketchyEdges3D_hiddenLine()
             foreach (Segment seg in this.currSegmentClass.segments)
             {
@@ -1661,18 +1668,18 @@ namespace FameBase
                     SegmentJson segJson = new SegmentJson();
                     Segment seg = this.currSegmentClass.segments[i];
                     segJson.index = i;
-                    List<double> points = new List<double>();
+                    List<double> points3d = new List<double>();
                     if (seg.contourPoints != null && seg.contourPoints.Count > 0)
                     {
                         foreach (Vector3d v in seg.contourPoints)
                         {
                             for (int j = 0; j < 3; ++j)
                             {
-                                points.Add(v[j]);
+                                points3d.Add(v[j]);
                             }
                         }
                     }
-                    segJson.contourPoints = points;
+                    segJson.contourPoints = points3d;
                     contour.segmentContour.Add(segJson);
                 }
                 string jsonFile = new JavaScriptSerializer().Serialize(contour);
@@ -2085,7 +2092,7 @@ namespace FameBase
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            // to get the correct 2d info of the points
+            // to get the correct 2d info of the points3d
             //this.Refresh();
             this.cal2D();
             this.updateSketchStrokePositionToLocalCoord();
@@ -2188,7 +2195,7 @@ namespace FameBase
             foreach (Segment seg in this.currSegmentClass.segments)
             {
                 if (seg.boundingbox == null) continue;
-                foreach (Vector2d v in seg.boundingbox.points2)
+                foreach (Vector2d v in seg.boundingbox.points2d)
                 {
                     if (this.selectedSeg == seg)
                     {
@@ -2425,13 +2432,13 @@ namespace FameBase
             }
         }//addADrawStroke
 
-        private void findClosestVertex(List<Vector2d> points)
+        private void findClosestVertex(List<Vector2d> points3d)
         {
 			if (this.contourPoints.Count == 0 && this.sharpEdges.Count == 0) return;
 			double thresh = 2.0f;
-			for (int i = 0; i < points.Count; ++i) 
+			for (int i = 0; i < points3d.Count; ++i) 
 			{
-				Vector2d p = points[i];
+				Vector2d p = points3d[i];
 				//double mind = double.MaxValue;
 				//Vector3d closed = 
 				foreach (Vector3d v in this.contourPoints)
@@ -2439,7 +2446,7 @@ namespace FameBase
 					Vector2d v2 = this.camera.Project(v).ToVector2d();
 					if ((p - v2).Length() < thresh)
 					{
-						points[i] = new Vector2d(v2);
+						points3d[i] = new Vector2d(v2);
 						break;
 					}
 				}
@@ -2655,7 +2662,7 @@ namespace FameBase
                     drawStroke.strokes.RemoveAt(1);
 				}
                 Stroke stroke = drawStroke.strokes[0];
-                // get the set of points that is on the radius
+                // get the set of points3d that is on the radius
                 List<int> point_in_radii = new List<int>();
                 // endpoint
                 double len_to_left = (pos - stroke.strokePoints[0].pos2).Length();
@@ -2764,7 +2771,7 @@ namespace FameBase
                     if (left_end_in)
                     {
                         StrokePoint u = I, v = new_stroke_points[0];
-                        Vector2d q = Polygon.FindLinesegmentCircleIntersection(u.pos2, v.pos2, pos, this.penRadius);
+                        Vector2d q = Polygon2D.FindLinesegmentCircleIntersection(u.pos2, v.pos2, pos, this.penRadius);
                         new_stroke_points.Insert(0, new StrokePoint(q));	// at head
 						//stroke.strokePoints = new_stroke_points;
 
@@ -2772,7 +2779,7 @@ namespace FameBase
                     if (right_end_in)
                     {
                         StrokePoint u = J, v = new_stroke_points[new_stroke_points.Count - 1];
-                        Vector2d q = Polygon.FindLinesegmentCircleIntersection(u.pos2, v.pos2, pos, this.penRadius);
+                        Vector2d q = Polygon2D.FindLinesegmentCircleIntersection(u.pos2, v.pos2, pos, this.penRadius);
                         new_stroke_points.Add(new StrokePoint(q));		// at tail
 						//stroke.strokePoints = new_stroke_points;
                     }
@@ -3026,10 +3033,10 @@ namespace FameBase
                 this.drawLines2D(this.currSketchPoints, SegmentClass.PenColor, (float)SegmentClass.PenSize * 2);
                 //this.drawPoints2d(this.currSketchPoints.ToArray(), SegmentClass.PenColor, (float)SegmentClass.PenSize);
             }
-            //foreach (List<Vector2d> points in this.sketchPoints)
+            //foreach (List<Vector2d> points3d in this.sketchPoints)
             //{
-            //    //this.drawLines2D(points, Color.Black, 4.0f);
-            //    this.drawPoints2d(points.ToArray(), Color.Black, 4.0f);
+            //    //this.drawLines2D(points3d, Color.Black, 4.0f);
+            //    this.drawPoints2d(points3d.ToArray(), Color.Black, 4.0f);
             //}
         }
 
@@ -3172,7 +3179,7 @@ namespace FameBase
                         n = Int32.Parse(tokens[0]);
                     }
 
-                    List<Vector2d> points = new List<Vector2d>();
+                    List<Vector2d> points3d = new List<Vector2d>();
                     for (int i = 0; i < n; ++i)
                     {
                         line = sr.ReadLine();
@@ -3180,9 +3187,9 @@ namespace FameBase
                         double x = double.Parse(tokens[0]);
                         double y = double.Parse(tokens[1]);
                         Vector2d p = new Vector2d(x, y);
-                        points.Add(p);
+                        points3d.Add(p);
                     }
-                    Stroke stroke = new Stroke(points, SegmentClass.PenSize);
+                    Stroke stroke = new Stroke(points3d, SegmentClass.PenSize);
                     //stroke.strokeColor = SegmentClass.PenColor;
                     stroke.strokeColor = color;
                     //stroke.changeStyle2d((int)SegmentClass.strokeStyle);
@@ -3457,7 +3464,7 @@ namespace FameBase
             }
         }//drawSegments
 
-        private void drawTriangle(Triangle t)
+        private void drawTriangle(Triangle3D t)
         {
             Gl.glVertex3dv(t.u.ToArray());
             Gl.glVertex3dv(t.v.ToArray());
@@ -3474,10 +3481,10 @@ namespace FameBase
             Gl.glLineWidth(1.0f);
             Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glBegin(Gl.GL_LINES);
-            for (int i = 0; i < e.points.Length; ++i)
+            for (int i = 0; i < e.points3d.Length; ++i)
             {
-                Gl.glVertex3dv(e.points[i].ToArray());
-                Gl.glVertex3dv(e.points[(i + 1) % e.points.Length].ToArray());
+                Gl.glVertex3dv(e.points3d[i].ToArray());
+                Gl.glVertex3dv(e.points3d[(i + 1) % e.points3d.Length].ToArray());
             }
             Gl.glEnd();
 
@@ -3491,10 +3498,10 @@ namespace FameBase
             Gl.glLineWidth(1.0f);
             Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glBegin(Gl.GL_LINES);
-            for (int i = 0; i < e.points2.Length; ++i)
+            for (int i = 0; i < e.points2d.Length; ++i)
             {
-                Gl.glVertex3dv(e.points2[i].ToArray());
-                Gl.glVertex3dv(e.points2[(i + 1) % e.points.Length].ToArray());
+                Gl.glVertex3dv(e.points2d[i].ToArray());
+                Gl.glVertex3dv(e.points2d[(i + 1) % e.points3d.Length].ToArray());
             }
             Gl.glEnd();
 
@@ -3507,10 +3514,10 @@ namespace FameBase
             Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
 
             Gl.glBegin(Gl.GL_LINES);
-            for (int i = 0; i < e.points.Length; ++i)
+            for (int i = 0; i < e.points3d.Length; ++i)
             {
-                Gl.glVertex3dv(e.points[i].ToArray());
-                Gl.glVertex3dv(e.points[(i + 1) % e.points.Length].ToArray());
+                Gl.glVertex3dv(e.points3d[i].ToArray());
+                Gl.glVertex3dv(e.points3d[(i + 1) % e.points3d.Length].ToArray());
             }
             Gl.glEnd();
 
@@ -3523,10 +3530,10 @@ namespace FameBase
             Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
 
             Gl.glBegin(Gl.GL_LINES);
-            for (int i = 0; i < e.points.Length; ++i)
+            for (int i = 0; i < e.points3d.Length; ++i)
             {
-                Gl.glVertex3dv(e.points[i].ToArray());
-                Gl.glVertex3dv(e.points[(i + 1) % e.points.Length].ToArray());
+                Gl.glVertex3dv(e.points3d[i].ToArray());
+                Gl.glVertex3dv(e.points3d[(i + 1) % e.points3d.Length].ToArray());
             }
             Gl.glEnd();
 
@@ -3564,7 +3571,7 @@ namespace FameBase
             }
         }// DrawHighlight3D
 
-        private void drawPoints2d(Vector2d[] points, Color c, float pointSize)
+        private void drawPoints2d(Vector2d[] points3d, Color c, float pointSize)
         {
             Gl.glEnable(Gl.GL_POINT_SMOOTH);
             Gl.glEnable(Gl.GL_BLEND);
@@ -3574,7 +3581,7 @@ namespace FameBase
             Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glPointSize(pointSize);
             Gl.glBegin(Gl.GL_POINTS);
-            foreach (Vector2d v in points)
+            foreach (Vector2d v in points3d)
             {
                 Gl.glVertex2dv(v.ToArray());
             }
@@ -3582,7 +3589,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_POINT_SMOOTH);
         }
 
-        private void drawPoints3d(Vector3d[] points, Color c, float pointSize)
+        private void drawPoints3d(Vector3d[] points3d, Color c, float pointSize)
         {
             Gl.glEnable(Gl.GL_POINT_SMOOTH);
             Gl.glEnable(Gl.GL_BLEND);
@@ -3592,7 +3599,7 @@ namespace FameBase
             Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glPointSize(pointSize);
             Gl.glBegin(Gl.GL_POINTS);
-            foreach (Vector3d v in points)
+            foreach (Vector3d v in points3d)
             {
                 Gl.glVertex3dv(v.ToArray());
             }
@@ -3665,13 +3672,13 @@ namespace FameBase
             Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
         }
 
-        private void drawPlane2D(Plane plane)
+        private void drawPlane2D(Plane3D plane)
         {
-            if (plane.points2 == null) return;
+            if (plane.points2d == null) return;
             Gl.glColor3ub(0, 0, 255);
             Gl.glPointSize(4.0f);
             Gl.glBegin(Gl.GL_POINTS);
-            foreach (Vector2d p in plane.points2)
+            foreach (Vector2d p in plane.points2d)
             {
                 Gl.glVertex2dv(p.ToArray());
             }
@@ -3788,14 +3795,14 @@ namespace FameBase
             //Gl.glLineWidth(2.0f);
         }
 
-        // vanishing lines associated with the the two vanishing points
+        // vanishing lines associated with the the two vanishing points3d
         int[] vp1 = { 1, 5, 4, 0 };
         int[] vp2 = { 1, 2, 3, 0 };
         private void drawVanishingLines3d(Primitive box)
         {
             switch (box.type)
             {
-                case "Plane":
+                case "Plane3D":
                 case "Line":
                     drawPlaneVanishingLine3d(box);
                     break;
@@ -3904,7 +3911,7 @@ namespace FameBase
             Primitive box = seg.boundingbox;
             switch (box.type)
             {
-                case "Plane":
+                case "Plane3D":
                 case "Line":
                     drawPlaneLines2d(box, c, width);
                     break;
@@ -4063,7 +4070,7 @@ namespace FameBase
             
         }
 
-        private void drawLines2D(List<Vector2d> points, Color c, float linewidth)
+        private void drawLines2D(List<Vector2d> points3d, Color c, float linewidth)
         {
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -4073,10 +4080,10 @@ namespace FameBase
             Gl.glLineWidth(linewidth);
             Gl.glBegin(Gl.GL_LINES);
             Gl.glColor3ub(c.R, c.G, c.B);
-            for (int i = 0; i < points.Count - 1;++i )
+            for (int i = 0; i < points3d.Count - 1;++i )
             {
-                Gl.glVertex2dv(points[i].ToArray());
-                Gl.glVertex2dv(points[i+1].ToArray());
+                Gl.glVertex2dv(points3d[i].ToArray());
+                Gl.glVertex2dv(points3d[i+1].ToArray());
             }
             Gl.glEnd();
 
@@ -4129,7 +4136,7 @@ namespace FameBase
             Gl.glLineWidth(1.0f);
         }
 
-        private void drawLines3D(List<Vector3d> points, Color c, float linewidth)
+        private void drawLines3D(List<Vector3d> points3d, Color c, float linewidth)
         {
 
             Gl.glEnable(Gl.GL_BLEND);
@@ -4142,7 +4149,7 @@ namespace FameBase
             Gl.glLineWidth(linewidth);
             Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glBegin(Gl.GL_LINES);
-            foreach (Vector3d p in points)
+            foreach (Vector3d p in points3d)
             {
                 Gl.glVertex3dv(p.ToArray());
             }
@@ -4248,7 +4255,7 @@ namespace FameBase
             Gl.glBegin(Gl.GL_POLYGON);
             for (int i = 0; i < 4; ++i)
             {
-                Gl.glVertex2dv(q.points[i].ToArray());
+                Gl.glVertex2dv(q.points3d[i].ToArray());
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
@@ -4259,8 +4266,8 @@ namespace FameBase
             Gl.glBegin(Gl.GL_LINES);
             for (int i = 0; i < 4; ++i)
             {
-                Gl.glVertex2dv(q.points[i].ToArray());
-                Gl.glVertex2dv(q.points[(i + 1) % 4].ToArray());
+                Gl.glVertex2dv(q.points3d[i].ToArray());
+                Gl.glVertex2dv(q.points3d[(i + 1) % 4].ToArray());
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_LINE_SMOOTH);
@@ -4271,7 +4278,7 @@ namespace FameBase
             Gl.glPopMatrix();
         }
 
-        private void drawQuad3d(Plane q, Color c)
+        private void drawQuad3d(Plane3D q, Color c)
         {
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -4280,13 +4287,13 @@ namespace FameBase
             Gl.glBegin(Gl.GL_POLYGON);
             for (int i = 0; i < 4; ++i)
             {
-                Gl.glVertex3dv(q.points[i].ToArray());
+                Gl.glVertex3dv(q.points3d[i].ToArray());
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
         }
 
-        private void drawQuadTransparent3d(Plane q, Color c)
+        private void drawQuadTransparent3d(Plane3D q, Color c)
         {
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -4295,17 +4302,17 @@ namespace FameBase
             Gl.glBegin(Gl.GL_POLYGON);
             for (int i = 0; i < 4; ++i)
             {
-                Gl.glVertex3dv(q.points[i].ToArray());
+                Gl.glVertex3dv(q.points3d[i].ToArray());
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
         }
 
-        private void drawQuadEdge3d(Plane q, Color c)
+        private void drawQuadEdge3d(Plane3D q, Color c)
         {
             for (int i = 0; i < 4; ++i)
             {
-                this.drawLines3D(q.points[i], q.points[(i + 1) % q.points.Length], c, (float)SegmentClass.StrokeSize * 1.5f);
+                this.drawLines3D(q.points3d[i], q.points3d[(i + 1) % q.points3d.Length], c, (float)SegmentClass.StrokeSize * 1.5f);
             }
         }
 
@@ -4607,15 +4614,15 @@ namespace FameBase
                     // lines
                     for (int j = 0; j < 4; ++j)
                     {
-                        this.drawLines3D(box.planes[i].points[j], box.planes[i].points[(j + 1) % 4], lineColor, 2.0f);
+                        this.drawLines3D(box.planes[i].points3d[j], box.planes[i].points3d[(j + 1) % 4], lineColor, 2.0f);
                     }
                 }
             }
             if (box.type == "Line")
             {
-                for (int j = 0; j < box.points.Length; j += 2)
+                for (int j = 0; j < box.points3d.Length; j += 2)
                 {
-                    this.drawLines3D(box.points[j], box.points[j + 1], lineColor, 2.0f);
+                    this.drawLines3D(box.points3d[j], box.points3d[j + 1], lineColor, 2.0f);
                 }
             }
         }// drawBoundingboxWithEdges
@@ -4639,15 +4646,15 @@ namespace FameBase
                     // lines
                     for (int j = 0; j < 4; ++j)
                     {
-                        this.drawLines3D(box.planes[i].points[j], box.planes[i].points[(j + 1) % 4], c, 2.0f);
+                        this.drawLines3D(box.planes[i].points3d[j], box.planes[i].points3d[(j + 1) % 4], c, 2.0f);
                     }
                 }
             }
             if (box.type == "Line")
             {
-                for (int j = 0; j < box.points.Length; j += 2)
+                for (int j = 0; j < box.points3d.Length; j += 2)
                 {
-                    this.drawLines3D(box.points[j], box.points[j+1], c, 2.0f);
+                    this.drawLines3D(box.points3d[j], box.points3d[j+1], c, 2.0f);
                 }
             }
         }// drawBoundingboxWithEdges
@@ -4663,7 +4670,7 @@ namespace FameBase
                 Gl.glBegin(Gl.GL_POLYGON);
                 for (int j = 0; j < 4; ++j)
                 {
-                    Gl.glVertex3dv(box.planes[i].points[j].ToArray());
+                    Gl.glVertex3dv(box.planes[i].points3d[j].ToArray());
                 }
                 Gl.glEnd();
             }
@@ -5226,9 +5233,9 @@ namespace FameBase
             }
         }//drawSegmentBoundary
 
-        public void drawContours(List<Vector3d> points, float width, Color c)
+        public void drawContours(List<Vector3d> points3d, float width, Color c)
         {
-            if (points == null) return;
+            if (points3d == null) return;
 
             Gl.glEnable(Gl.GL_DEPTH_TEST);
             Gl.glDepthMask(Gl.GL_FALSE);
@@ -5244,9 +5251,9 @@ namespace FameBase
             Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glBegin(Gl.GL_LINES);
 
-            for (int i = 0; i < points.Count; i++)
+            for (int i = 0; i < points3d.Count; i++)
             {
-                Vector3d p1 = points[i];
+                Vector3d p1 = points3d[i];
                 Gl.glVertex3dv(p1.ToArray());
             }
 
@@ -5254,9 +5261,9 @@ namespace FameBase
 
             Gl.glPointSize(width * 0.5f);
             Gl.glBegin(Gl.GL_POINTS);
-            for (int i = 0; i < points.Count; i++)
+            for (int i = 0; i < points3d.Count; i++)
             {
-                Vector3d p1 = points[i];
+                Vector3d p1 = points3d[i];
                 Gl.glVertex3dv(p1.ToArray());
             }
             Gl.glEnd();
@@ -5389,11 +5396,11 @@ namespace FameBase
             }
             if (this.currMeshClass != null && this.contourLines != null)
             {
-                foreach (List<Vector3d> points in this.contourLines)
+                foreach (List<Vector3d> points3d in this.contourLines)
                 {
-                    for (int i = 0; i < points.Count - 1; ++i)
+                    for (int i = 0; i < points3d.Count - 1; ++i)
                     {
-                        this.drawLines3D(points[i], points[i + 1], Color.Blue, 2.0f);
+                        this.drawLines3D(points3d[i], points3d[i + 1], Color.Blue, 2.0f);
                     }
                 }
             }
