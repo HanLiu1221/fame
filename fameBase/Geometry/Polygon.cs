@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 using System.Text;
 
 using Geometry;
@@ -623,28 +624,56 @@ namespace Geometry
     /* Primitive of a part*/
     public class Prim
     {
-        public Vector3d[] points3d = null;
-        public Vector2d[] points2d = null;
+        Vector3d[] _points3d = null;
+        Vector2d[] _points2d = null;
+        Vector3d _maxCoord = Vector3d.MinCoord;
+        Vector3d _minCoord = Vector3d.MaxCoord;
 
         public Prim(Vector3d a, Vector3d b)
         {
             // axis-aligned cuboid
             // a: minimal vector
             // b: maximal vector
-            points3d = new Vector3d[8];
-            points3d[0] = new Vector3d(a);
-            points3d[1] = new Vector3d(a.x, a.y, b.z);
-            points3d[2] = new Vector3d(b.x, a.y, b.z);
-            points3d[3] = new Vector3d(b.x, a.y, a.z);
-            points3d[4] = new Vector3d(a.x, b.y, a.z);
-            points3d[5] = new Vector3d(a.x, b.y, b.z);
-            points3d[6] = new Vector3d(b.x, b.y, b.z);
-            points3d[7] = new Vector3d(b);
+            _points3d = new Vector3d[8];
+            _points3d[0] = new Vector3d(a);
+            _points3d[1] = new Vector3d(a.x, a.y, b.z);
+            _points3d[2] = new Vector3d(b.x, a.y, b.z);
+            _points3d[3] = new Vector3d(b.x, a.y, a.z);
+            _points3d[4] = new Vector3d(a.x, b.y, a.z);
+            _points3d[5] = new Vector3d(a.x, b.y, b.z);
+            _points3d[6] = new Vector3d(b.x, b.y, b.z);
+            _points3d[7] = new Vector3d(b);
+            _minCoord = new Vector3d(a);
+            _maxCoord = new Vector3d(b);
+
         }
 
         public Prim(Vector3d[] arr)
         {
-            points3d = arr;
+            if (arr == null) return;
+            Debug.Assert(arr.Length == Common._nPrimPoint);
+            _points3d = new Vector3d[arr.Length];
+            for(int i = 0; i < arr.Length; ++i)
+            {
+                _points3d[i] = new Vector3d(arr[i]);
+                _maxCoord = Vector3d.Max(_maxCoord, arr[i]);
+                _minCoord = Vector3d.Min(_minCoord, arr[i]);
+            }
+        }
+
+        public Vector3d MaxCoord {
+            get
+            {
+                return _maxCoord;
+            }
+        }
+
+        public Vector3d MinCoord
+        {
+            get
+            {
+                return _minCoord;
+            }
         }
     }
 }

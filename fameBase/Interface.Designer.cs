@@ -34,7 +34,7 @@
             this.open3D = new System.Windows.Forms.ToolStripMenuItem();
             this.import3D = new System.Windows.Forms.ToolStripMenuItem();
             this.saveAs3D = new System.Windows.Forms.ToolStripMenuItem();
-            this.loadParts = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadPartBasedModels = new System.Windows.Forms.ToolStripMenuItem();
             this.outputSeqToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadTriMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tools = new System.Windows.Forms.ToolStripDropDownButton();
@@ -68,6 +68,7 @@
             this.glViewer = new FameBase.GLViewer();
             this.keyboardLabel = new System.Windows.Forms.Label();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
+            this.loadAPartBasedModel = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -96,7 +97,8 @@
             this.open3D,
             this.import3D,
             this.saveAs3D,
-            this.loadParts,
+            this.loadAPartBasedModel,
+            this.loadPartBasedModels,
             this.outputSeqToolStripMenuItem,
             this.loadTriMeshToolStripMenuItem});
             this.ModelFile.Image = ((System.Drawing.Image)(resources.GetObject("ModelFile.Image")));
@@ -127,12 +129,12 @@
             this.saveAs3D.Text = "Save As 3D model";
             this.saveAs3D.Click += new System.EventHandler(this.saveAs3D_Click);
             // 
-            // loadParts
+            // loadPartBasedModels
             // 
-            this.loadParts.Name = "loadParts";
-            this.loadParts.Size = new System.Drawing.Size(183, 22);
-            this.loadParts.Text = "Load parts";
-            this.loadParts.Click += new System.EventHandler(this.loadParts_Click);
+            this.loadPartBasedModels.Name = "loadPartBasedModels";
+            this.loadPartBasedModels.Size = new System.Drawing.Size(183, 22);
+            this.loadPartBasedModels.Text = "Load models";
+            this.loadPartBasedModels.Click += new System.EventHandler(this.loadAPartBasedModel_Click);
             // 
             // outputSeqToolStripMenuItem
             // 
@@ -431,6 +433,13 @@
             this.keyboardLabel.Text = "Space: unlock view\r\nCtrl + C: clear all strokes\r\nS: sketch mode\r\nE: eraser mode\r\n" +
     "V: view mode\r\nR: reset view";
             // 
+            // loadAPartBasedModel
+            // 
+            this.loadAPartBasedModel.Name = "loadAPartBasedModel";
+            this.loadAPartBasedModel.Size = new System.Drawing.Size(183, 22);
+            this.loadAPartBasedModel.Text = "Load a model";
+            this.loadAPartBasedModel.Click += new System.EventHandler(this.loadAPartBasedModel_Click);
+            // 
             // Interface
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -476,7 +485,7 @@
         private System.Windows.Forms.ToolStripMenuItem viewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem resetViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem modelColorToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem loadParts;
+        private System.Windows.Forms.ToolStripMenuItem loadPartBasedModels;
         private System.Windows.Forms.Panel toolboxPanel;
         private System.Windows.Forms.ColorDialog strokeColorDialog;
         private System.Windows.Forms.ToolStripMenuItem reloadViewToolStripMenuItem;
@@ -496,6 +505,7 @@
         private System.Windows.Forms.ToolStripMenuItem eraserToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem clearAllToolStripMenuItem1;
         private GLViewer glViewer;
+        private System.Windows.Forms.ToolStripMenuItem loadAPartBasedModel;
 
 	}
 }

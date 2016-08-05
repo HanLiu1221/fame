@@ -140,6 +140,7 @@
     <Compile Include="Component\Contour.cs" />
     <Compile Include="Component\Part.cs" />
     <Compile Include="Component\Segment.cs" />
+    <Compile Include="Geometry\Common.cs" />
     <Compile Include="Geometry\JsonFile.cs" />
     <Compile Include="Geometry\Polygon.cs" />
     <Compile Include="Geometry\SparseMatrix.cs" />

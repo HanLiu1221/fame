@@ -624,7 +624,6 @@ namespace Geometry
             Vector3d d = this.maxCoord - this.minCoord;
             double scale = d.x > d.y ? d.x : d.y;
             scale = d.z > scale ? d.z : scale;
-            //scale /= 1.5; 
             scale /= 2; // [-1, 1]
             for (int i = 0, j = 0; i < this.VertexCount; ++i, j += 3)
             {
@@ -635,8 +634,6 @@ namespace Geometry
                     this.vertexPos[j + k] /= scale;
                 }
             }
-
-
         }
 
         public void normalize(Vector3d center, double scale)

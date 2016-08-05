@@ -116,9 +116,22 @@ namespace FameBase
             this.glViewer.setUIMode(4);
         }
 
-        private void loadParts_Click(object sender, EventArgs e)
+        private void loadAPartBasedModel_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog();
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Open a part-based model info",
+                DefaultExt = ".pam"
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                this.glViewer.loadAPartBasedModel(dialog.FileName);
+            }
+        }
+
+        private void loadPartBasedModels_Click(object sender, EventArgs e)
+        {
+            var dialog = new FolderBrowserDialog() { SelectedPath = "..\\..\\data" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;

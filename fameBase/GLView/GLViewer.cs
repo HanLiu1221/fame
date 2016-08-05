@@ -233,6 +233,7 @@ namespace FameBase
         private Vector2d[] paperPosLines = null;
 
         /******************** Vars ********************/
+        Model _currModel;
         List<Model> _models;
 
         /******************** Functions ********************/
@@ -404,21 +405,70 @@ namespace FameBase
             // bbox vertices
             // mesh file loc
             this.clearContext();
-            this.segmentClasses = new List<SegmentClass>();
-            int idx = segfolder.LastIndexOf('\\');
-            string bbofolder = segfolder.Substring(0, idx + 1);
-            bbofolder += "bounding_boxes\\";
-            SegmentClass sc = new SegmentClass();
-            if (sc.ReadSegments(segfolder, bbofolder))
+            _models = new List<Model>();
+            string[] files = Directory.GetFiles(segfolder);
+            foreach (string file in files)
             {
-                this.setRandomSegmentColor(sc);
-                this.segmentClasses.Add(sc);
-                this.currSegmentClass = sc;
-                this.calculateSketchMesh2d();
-                segStats = new int[2];
-                segStats[0] = sc.segments.Count;
+                loadAPartBasedModel(file);
+                _models.Add(_currModel);
             }
-        }// loadPartBasedModel
+        }// loadPartBasedModels
+
+        public void loadAPartBasedModel(string filename)
+        {
+            if (!File.Exists(filename))
+            {
+                return;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                string s = sr.ReadLine();
+                s.Trim();
+                string[] strs = s.Split(separator);
+                int n = 0;
+                try {
+                    n = Int16.Parse(strs[0]);
+                }
+                catch (System.FormatException)
+                {
+                    MessageBox.Show("Wrong data format - need to know #n parts.");
+                    return;
+                }
+                List<Part> parts = new List<Part>();
+                string folder = filename.Substring(filename.LastIndexOf('\\'));
+                for (int i = 0; i < n; ++i)
+                {
+                    // read a part
+                    // bbox vertices:
+                    s = sr.ReadLine(); // description of #i part
+                    s = sr.ReadLine();
+                    strs = s.Split(separator);
+                    if (strs.Length != Common._nPrimPoint * 3)
+                    {
+                        MessageBox.Show("Need " + Common._nPrimPoint.ToString() + " vertices for bounding box #" + i.ToString() + ".");
+                        return;
+                    }
+                    Vector3d[] pnts = new Vector3d[Common._nPrimPoint];
+                    for (int j = 0, k = 0; j < Common._nPrimPoint; ++j)
+                    {
+                        pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++])); 
+                    }
+                    Prim prim = new Prim(pnts);
+                    // mesh loc:
+                    s = sr.ReadLine();
+                    string meshFile = folder + s;
+                    if (!File.Exists(meshFile))
+                    {
+                        MessageBox.Show("Mesh does not exist at #" + i.ToString() + ".");
+                    }
+                    Mesh mesh = new Mesh(meshFile, true);
+                    Part part = new Part(mesh, prim);
+                    parts.Add(part);
+                }
+                _currModel = new Model(parts);
+            }
+        }// loadAPartBasedModel
      
         private void cal2D()
         {

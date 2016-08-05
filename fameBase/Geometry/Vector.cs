@@ -208,6 +208,15 @@ namespace Geometry
 			z = array[2];
 		}
 
+        public Vector3d(double[] array, int idx)
+        {
+            if (idx <= 0 || array.Length < idx + 3) return;
+            // for mesh vertex
+            x = array[idx];
+            y = array[idx + 1];
+            z = array[idx + 2];
+        }
+
         public Vector3d(Vector3d v)
         {
             this.x = v.x;
