@@ -153,6 +153,11 @@ namespace Component
             }
             return min_dist;
         }
+
+        private void initializeParts()
+        {
+            // find parts by measuring point distance
+        }
     }// Model
 
     public class Joint

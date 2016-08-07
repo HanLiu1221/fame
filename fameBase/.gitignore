@@ -15,4 +15,6 @@ Data/
 *.xml
 *.suo
 Visual Studio 2013/
-Holger/MeasureApp.7z
+bin/Debug
+bin/Release
+bin/x64
