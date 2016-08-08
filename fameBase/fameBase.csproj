@@ -137,26 +137,19 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Component\Contour.cs" />
     <Compile Include="Component\Part.cs" />
-    <Compile Include="Component\Segment.cs" />
     <Compile Include="Geometry\Common.cs" />
     <Compile Include="Geometry\JsonFile.cs" />
     <Compile Include="Geometry\Polygon.cs" />
     <Compile Include="Geometry\SparseMatrix.cs" />
-    <Compile Include="Geometry\Stroke.cs" />
     <Compile Include="Geometry\SVD.cs" />
     <Compile Include="GLView\Camera.cs" />
-    <Compile Include="GLView\InsetViewer.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Include="GLView\Shader.cs" />
     <Compile Include="GLView\GLViewer.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="GLView\ImageClass.cs" />
     <Compile Include="GLView\MeshClass.cs" />
-    <Compile Include="GLView\SegmentClass.cs" />
     <Compile Include="Interface.cs">
       <SubType>Form</SubType>
     </Compile>

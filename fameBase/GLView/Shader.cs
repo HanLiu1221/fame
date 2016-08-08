@@ -37,21 +37,21 @@ namespace FameBase
         public void CreateAndCompileVertexShader(string file)
         {
             // Create and compile the vertex shader
-            // 1. read vertex shader file
-            string[] shaderSource;
             using (StreamReader sr = new StreamReader(file))
             {
+                // 1. read vertex shader file
+                string[] shaderSource;
                 shaderSource = sr.ReadToEnd().Split('\n');
-            }
 
-            // 2 create the vertex shader
-            this.vertexShader = Gl.glCreateShader(Gl.GL_VERTEX_SHADER);
-            Gl.glShaderSource(vertexShader, 1, shaderSource, new IntPtr());
-            Gl.glCompileShader(vertexShader);
+                // 2 create the vertex shader
+                this.vertexShader = Gl.glCreateShader(Gl.GL_VERTEX_SHADER);
+                Gl.glShaderSource(vertexShader, 1, shaderSource, new IntPtr());
+                Gl.glCompileShader(vertexShader);
 
-            if (!this.CompileSuccessful(this.vertexShader))
-            {
-                Console.WriteLine("glsl vertex shader compile failed");
+                if (!this.CompileSuccessful(this.vertexShader))
+                {
+                    Console.WriteLine("glsl vertex shader compile failed");
+                }
             }
         }
 

@@ -96,7 +96,7 @@ namespace FameBase
             if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 GLViewer.ModelColor = colorDialog.Color;
-                this.glViewer.setSegmentColor(colorDialog.Color);
+                this.glViewer.setMeshColor(colorDialog.Color);
                 this.glViewer.Refresh();
             }
         }
@@ -140,15 +140,25 @@ namespace FameBase
             this.glViewer.Refresh();
         }
 
+        private void saveAModelToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new SaveFileDialog()
+            {
+                Title = "Save a part-based model",
+                DefaultExt = ".pam",
+                CheckFileExists = true,
+                OverwritePrompt = true
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                this.glViewer.saveAPartBasedModel(dialog.FileName);
+            }
+        }
+
         private void reloadViewToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.reloadView();
             this.glViewer.Refresh();
-        }
-
-        private void outputSeqToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.outputBoxSequence();
         }
 
 
@@ -183,7 +193,7 @@ namespace FameBase
             dialog.CheckFileExists = true;
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
-                string filename = dialog.FileName;
+                this.glViewer.saveObj(null, dialog.FileName);
             }
         }
 
@@ -242,22 +252,6 @@ namespace FameBase
         {
             this.boxToolStripMenuItem.Checked = true;
             this.glViewer.setUIMode(9);
-        }
-
-        private void sketchToolStripMenuItem1_Click(object sender, EventArgs e)
-        {
-            this.glViewer.setUIMode(5);
-        }
-
-        private void eraserToolStripMenuItem_Click_1(object sender, EventArgs e)
-        {
-            this.glViewer.setUIMode(6);
-        }
-
-        private void clearAllToolStripMenuItem1_Click(object sender, EventArgs e)
-        {
-            this.glViewer.clearAllStrokes();
-            this.glViewer.Refresh();
         }
 
         protected override void OnResize(EventArgs e)

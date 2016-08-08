@@ -17,9 +17,10 @@ namespace Component
     {
         Mesh _mesh = null;
         Prim _boundingbox = null;
-        Color _color = Color.LightBlue;
         List<Part> _jointParts = new List<Part>();
         List<Joint> _joints = new List<Joint>();
+
+        public Color _COLOR = Color.LightBlue;
 
         public Part(Mesh m)
         {
@@ -94,9 +95,16 @@ namespace Component
     public class Model
     {
         List<Part> _parts;
+        Mesh _mesh; // the whole mesh
+
         public Model(List<Part> parts)
         {
             _parts = parts;
+        }
+
+        public Model(Mesh mesh)
+        {
+            _mesh = mesh;
         }
 
         private void normalize()
@@ -109,7 +117,8 @@ namespace Component
                 minCoord = Vector3d.Min(minCoord, part._BOUNDINGBOX.MinCoord);
 
             }
-        }
+        }// normalize
+
         private void calPartRelations()
         {
             if (_parts == null || _parts.Count == 0)
@@ -131,7 +140,7 @@ namespace Component
                     }
                 }
             }
-        }
+        }// calPartRelations
 
         private double calClosestPointBetweenMeshes(Mesh m1, Mesh m2, out Vector3d jointPoint)
         {
@@ -152,11 +161,36 @@ namespace Component
                 }
             }
             return min_dist;
-        }
+        }// calClosestPointBetweenMeshes
 
         private void initializeParts()
         {
             // find parts by measuring point distance
+        }
+
+        // Global get
+        public int _NPARTS
+        {
+            get
+            {
+                return _parts.Count;
+            }
+        }
+
+        public List<Part> _PARTS
+        {
+            get
+            {
+                return _parts;
+            }
+        }
+
+        public Mesh _MESH
+        {
+            get
+            {
+                return _mesh;
+            }
         }
     }// Model
 

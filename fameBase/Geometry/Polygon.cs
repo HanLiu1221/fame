@@ -628,6 +628,7 @@ namespace Geometry
         Vector2d[] _points2d = null;
         Vector3d _maxCoord = Vector3d.MinCoord;
         Vector3d _minCoord = Vector3d.MaxCoord;
+        Plane3D[] _planes = null;
 
         public Prim(Vector3d a, Vector3d b)
         {
@@ -645,7 +646,7 @@ namespace Geometry
             _points3d[7] = new Vector3d(b);
             _minCoord = new Vector3d(a);
             _maxCoord = new Vector3d(b);
-
+            createPlanes();
         }
 
         public Prim(Vector3d[] arr)
@@ -658,6 +659,35 @@ namespace Geometry
                 _points3d[i] = new Vector3d(arr[i]);
                 _maxCoord = Vector3d.Max(_maxCoord, arr[i]);
                 _minCoord = Vector3d.Min(_minCoord, arr[i]);
+            }
+            createPlanes();
+        }
+
+        private void createPlanes()
+        {
+            // faces
+            this._planes = new Plane3D[6];
+            List<Vector3d> vslist = new List<Vector3d>();
+            for (int i = 0; i < 4; ++i)
+            {
+                vslist.Add(this._points3d[i]);
+            }
+            this._planes[0] = new Plane3D(vslist);
+            vslist = new List<Vector3d>();
+            for (int i = 4; i < 8; ++i)
+            {
+                vslist.Add(this._points3d[i]);
+            }
+            this._planes[1] = new Plane3D(vslist);
+            int r = 2;
+            for (int i = 0; i < 4; ++i)
+            {
+                vslist = new List<Vector3d>();
+                vslist.Add(this._points3d[i]);
+                vslist.Add(this._points3d[(i + 1) % 4]);
+                vslist.Add(this._points3d[((i + 1) % 4 + 4) % 8]);
+                vslist.Add(this._points3d[(i + 4) % 8]);
+                this._planes[r++] = new Plane3D(vslist);
             }
         }
 
@@ -675,5 +705,33 @@ namespace Geometry
                 return _minCoord;
             }
         }
-    }
+
+        public Vector3d[] _POINTS3D
+        {
+            get
+            {
+                return _points3d;
+            }
+        }
+
+        public Vector2d[] _POINTS2D
+        {
+            get
+            {
+                return _points2d;
+            }
+            set
+            {
+                this._points2d = value;
+            }
+        }
+
+        public Plane3D[] _PLANES
+        {
+            get
+            {
+                return _planes;
+            }
+        }
+    }// Prim
 }
