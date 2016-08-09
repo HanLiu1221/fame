@@ -141,7 +141,7 @@ namespace FameBase
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
-                this.glViewer.loadPartBasedModels(folderName);
+                this.glViewer.loadPartBasedModels(folderName, this.modelViewPanel.Location.X, this.modelViewPanel.Location.Y);
             }
             this.glViewer.Refresh();
         }
@@ -152,7 +152,6 @@ namespace FameBase
             {
                 Title = "Save a part-based model",
                 DefaultExt = ".pam",
-                CheckFileExists = true,
                 OverwritePrompt = true
             };
             if (dialog.ShowDialog() == DialogResult.OK)
@@ -259,6 +258,16 @@ namespace FameBase
         {
             base.OnResize(e);
             //adjustImageView();
+        }
+
+        private void groupToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.groupParts();
+        }
+
+        public ContextMenuStrip getRightButtonMenu()
+        {
+            return this.partRelatedTools;
         }
 	}
 }

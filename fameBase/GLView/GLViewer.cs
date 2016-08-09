@@ -109,11 +109,10 @@ namespace FameBase
         private bool drawVertex = false;
         private bool drawEdge = false;
         private bool drawFace = true;
-        private bool drawBbox = false;
+        private bool drawBbox = true;
         private bool isDrawAxes = false;
         private bool isDrawQuad = false;
 
-        public bool showMesh = false;
         public bool showSketchyEdges = true;
         public bool showSketchyContour = false;
         public bool showGuideLines = false;
@@ -202,13 +201,12 @@ namespace FameBase
         public static Color[] ColorSet;
         static public Color ModelColor;
         public static Color GuideLineColor;
-        private Vector2d[] paperPosLines = null;
 
         /******************** Vars ********************/
         Model _currModel;
         List<Model> _models;
-        Part _selectedPart;
         List<Part> _selectedParts = new List<Part>();
+        List<ModelViewer> _modelViewers = new List<ModelViewer>();
         public static Color MeshColor = Color.FromArgb(173, 210, 222);
 
         /******************** Functions ********************/
@@ -319,7 +317,6 @@ namespace FameBase
         public void clearContext()
         {
             this.currMeshClass = null;
-            _selectedPart = null;
             _selectedParts = new List<Part>();
             this.meshClasses.Clear();
         }
@@ -385,17 +382,21 @@ namespace FameBase
             {
                 // vertex
                 string s = "";
-                for (int i = 0; i < mesh.VertexCount;)
+                for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
                 {
                     s = "v";
-                    s += " " + mesh.VertexPos[i++].ToString();
+                    s += " " + mesh.VertexPos[j++].ToString();
+                    s += " " + mesh.VertexPos[j++].ToString();
+                    s += " " + mesh.VertexPos[j++].ToString();
                     sw.WriteLine(s);
                 }
                 // face
-                for (int i = 0; i < mesh.FaceCount;)
+                for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
                 {
                     s = "f";
-                    s += " " + mesh.FaceVertexIndex[i++].ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
                     sw.WriteLine(s);
                 }
             }
@@ -403,8 +404,7 @@ namespace FameBase
 
         public void saveAPartBasedModel(string filename)
         {
-            string dir = Path.GetDirectoryName(filename);
-            if (!Directory.Exists(dir))
+            if (!Directory.Exists(Path.GetDirectoryName(filename)))
             {
                 MessageBox.Show("Directory does not exist!");
                 return;
@@ -419,12 +419,13 @@ namespace FameBase
             // bbox vertices
             // mesh file loc
             // comments start with "%"
-            string meshDir = dir + "\\mesh";
+            string meshDir = filename.Substring(0, filename.LastIndexOf('.')) + "\\";
+            int loc = filename.LastIndexOf('\\');
+            string meshFolder = filename.Substring(loc, filename.LastIndexOf('.') - loc);
             if (!Directory.Exists(meshDir))
             {
                 Directory.CreateDirectory(meshDir);
             }
-            meshDir += "\\";
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 sw.WriteLine(_currModel._NPARTS.ToString() + " parts");
@@ -435,15 +436,15 @@ namespace FameBase
                     Part ipart = _currModel._PARTS[i];
                     foreach (Vector3d v in ipart._BOUNDINGBOX._POINTS3D)
                     {
-                        sw.Write(string.Format("{0:0.###}%", v.x) + " " +
-                            string.Format("{0:0.###}%", v.y) + " " +
-                            string.Format("{0:0.###}%", v.z) + " ");
+                        sw.Write(string.Format("{0:0.###}", v.x) + " " +
+                            string.Format("{0:0.###}", v.y) + " " +
+                            string.Format("{0:0.###}", v.z) + " ");
                     }
                     sw.WriteLine();
                     // save mesh
                     string meshName = "part_" + i.ToString() + ".obj";
                     this.saveObj(ipart._MESH, meshDir + meshName);
-                    sw.WriteLine("\\mesh\\" + meshName);
+                    sw.WriteLine(meshFolder + "\\" + meshName);
                 }
             }
         }// saveAPartBasedModel
@@ -461,8 +462,7 @@ namespace FameBase
                 string s = "%";
                 while (s.Length > 0 && s[0] == '%')
                 {
-                    s = sr.ReadLine();
-                    s.Trim();
+                    s = sr.ReadLine().Trim();
                 }
                 string[] strs = s.Split(separator);
                 int n = 0;
@@ -475,16 +475,15 @@ namespace FameBase
                     return;
                 }
                 List<Part> parts = new List<Part>();
-                string folder = filename.Substring(filename.LastIndexOf('\\'));
+                string folder = filename.Substring(0, filename.LastIndexOf('\\'));
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
                     // bbox vertices:
-                    s = sr.ReadLine(); // description of #i part
+                    s = sr.ReadLine().Trim(); // description of #i part
                     while (s.Length > 0 && s[0] == '%')
                     {
-                        s = sr.ReadLine();
-                        s.Trim();
+                        s = sr.ReadLine().Trim();
                     }
                     strs = s.Split(separator);
                     if (strs.Length != Common._nPrimPoint * 3)
@@ -499,17 +498,17 @@ namespace FameBase
                     }
                     Prim prim = new Prim(pnts);
                     // mesh loc:
+                    s = sr.ReadLine().Trim();
                     while (s.Length > 0 && s[0] == '%')
                     {
-                        s = sr.ReadLine();
-                        s.Trim();
+                        s = sr.ReadLine().Trim();
                     }
                     string meshFile = folder + s;
                     if (!File.Exists(meshFile))
                     {
                         MessageBox.Show("Mesh does not exist at #" + i.ToString() + ".");
                     }
-                    Mesh mesh = new Mesh(meshFile, true);
+                    Mesh mesh = new Mesh(meshFile, false);
                     Part part = new Part(mesh, prim);
                     parts.Add(part);
                 }
@@ -517,7 +516,7 @@ namespace FameBase
             }
         }// loadAPartBasedModel
 
-        public void loadPartBasedModels(string segfolder)
+        public void loadPartBasedModels(string segfolder, int x, int y)
         {
             if (!Directory.Exists(segfolder))
             {
@@ -526,11 +525,18 @@ namespace FameBase
             }
             this.clearContext();
             _models = new List<Model>();
+            _modelViewers = new List<ModelViewer>();
             string[] files = Directory.GetFiles(segfolder);
+            int w = 100;
+            int h = 100;
+            int i = 0;
             foreach (string file in files)
             {
                 loadAPartBasedModel(file);
                 _models.Add(_currModel);
+                ModelViewer modelViewer = new ModelViewer(_currModel);
+                modelViewer.SetBounds(x + w * (i++), y, w, h);
+                _modelViewers.Add(modelViewer);
             }
         }// loadPartBasedModels
      
@@ -946,10 +952,17 @@ namespace FameBase
                             Gl.glPushMatrix();
                             Gl.glMultMatrixd(m.Transpose().ToArray());
 
-                            this.selectMouseDown((int)this.currUIMode,
-                                Control.ModifierKeys == Keys.Shift,
-                                Control.ModifierKeys == Keys.Control);
-
+                            if (e.Button == System.Windows.Forms.MouseButtons.Right)
+                            {
+                                this.ContextMenuStrip = Program.GetFormMain().getRightButtonMenu();
+                                this.ContextMenuStrip.Show();
+                            }
+                            else
+                            {
+                                this.selectMouseDown((int)this.currUIMode,
+                                    Control.ModifierKeys == Keys.Shift,
+                                    Control.ModifierKeys == Keys.Control);
+                            }
                             Gl.glMatrixMode(Gl.GL_MODELVIEW);
                             Gl.glPopMatrix();
 
@@ -1039,9 +1052,11 @@ namespace FameBase
                 case UIMode.BoxSelection:
                     {
                         this.isDrawQuad = false;
-                        if (this._currModel != null)
+                        if (this._currModel != null && e.Button != System.Windows.Forms.MouseButtons.Right)
                         {
-                            this.selectMouseUp((int)this.currUIMode, this.highlightQuad);
+                            this.selectMouseUp(this.highlightQuad, 
+                                Control.ModifierKeys == Keys.Shift,
+                                Control.ModifierKeys == Keys.Control);
                         }
                         break;
                     }
@@ -1069,15 +1084,6 @@ namespace FameBase
         {
             switch (mode)
             {
-                case 4:
-                    {
-                        _selectedPart = null;
-                        if (!isShift)
-                        {
-                            _selectedParts = new List<Part>();
-                        }
-                        break;
-                    }
                 default:
                     break;
             }
@@ -1087,11 +1093,21 @@ namespace FameBase
         {
         }
 
-        public void selectMouseUp(int mode, Quad2d q)
+        public void selectMouseUp(Quad2d q, bool isShift, bool isCtrl)
         {
-            if (this.currUIMode == UIMode.BoxSelection && q != null)
+            switch (this.currUIMode)
             {
-                this.selectBbox(q);
+                case UIMode.BoxSelection:
+                    {
+                        if (!isShift && !isCtrl)
+                        {
+                            _selectedParts = new List<Part>();
+                        }
+                        this.selectBbox(q, isCtrl);
+                        break;
+                    }
+                default:
+                    break;
             }
             this.isDrawQuad = false;
         }
@@ -1148,6 +1164,11 @@ namespace FameBase
                     {
                         break;
                     }
+                case Keys.S:
+                    {
+                        this.currUIMode = UIMode.BoxSelection;
+                        break;
+                    }
                 case Keys.Space:
                     {
                         this.lockView = !this.lockView;
@@ -1190,13 +1211,13 @@ namespace FameBase
         }// onPaint
 
         //######### Part-based #########//
-        public void selectBbox(Quad2d q)
+        public void selectBbox(Quad2d q, bool isCtrl)
         {
-            if (this._currModel == null) return;
+            if (this._currModel == null || q == null) return;
             foreach (Part p in this._currModel._PARTS)
             {
                 if (p._BOUNDINGBOX == null) continue;
-                if (_selectedParts.Contains(p))
+                if (!isCtrl && _selectedParts.Contains(p))
                 {
                     continue;
                 }
@@ -1206,7 +1227,15 @@ namespace FameBase
                     //v2.y = this.Height - v2.y;
                     if (Quad2d.isPointInQuad(v2, q))
                     {
-                        this._selectedParts.Add(p);
+                        if (isCtrl)
+                        {
+                            _selectedParts.Remove(p);
+                            break;
+                        }
+                        else
+                        {
+                            this._selectedParts.Add(p);
+                        }
                         break;
                     }
                 }
@@ -1216,6 +1245,19 @@ namespace FameBase
         public void setMeshColor(Color c)
         {
         }
+
+        public void groupParts()
+        {
+            if (_currModel == null)
+            {
+                return;
+            }
+            Part newPart = _currModel.groupParts(_selectedParts);
+            _selectedParts.Clear();
+            _selectedParts.Add(newPart);
+            this.cal2D();
+            this.Refresh();
+        }// groupParts
 
         //######### end-Part-based #########//
 
@@ -1251,6 +1293,14 @@ namespace FameBase
 
             m = Matrix4d.TranslationMatrix(this.objectCenter) * m * Matrix4d.TranslationMatrix(
                 new Vector3d() - this.objectCenter);
+
+            if (_modelViewers != null)
+            {
+                foreach (ModelViewer mv in _modelViewers)
+                {
+                    mv.setModelViewMatrix(m);
+                }
+            }
 
             Gl.glMatrixMode(Gl.GL_MODELVIEW);
 
@@ -1320,9 +1370,14 @@ namespace FameBase
             }
             
             // Draw all meshes
-            this.drawAllMeshes();
-
-            this.drawParts();       
+            if (_currModel != null)
+            {
+                this.drawParts();
+            }
+            else
+            {
+                this.drawAllMeshes();
+            }       
 
             this.DrawHighlight3D();
 
@@ -1375,19 +1430,16 @@ namespace FameBase
             {
                 return;
             }
-            
+
             foreach (Part part in this._currModel._PARTS)
             {
-                if (this.showMesh)
+                if (this.drawFace)
                 {
-                    if (this.drawFace)
-                    {
-                        this.drawMeshFace(part._MESH, part._COLOR, false);                       
-                    }
-                    if (this.drawEdge)
-                    {
-                        this.drawMeshEdge(part._MESH);
-                    }
+                    this.drawMeshFace(part._MESH, part._COLOR, false);
+                }
+                if (this.drawEdge)
+                {
+                    this.drawMeshEdge(part._MESH);
                 }
                 if (this.drawBbox)
                 {
@@ -2133,6 +2185,5 @@ namespace FameBase
                 Gl.glEnd();
             }
         }// drawBoundingbox
-
     }// GLViewer
 }// namespace

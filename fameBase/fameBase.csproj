@@ -144,6 +144,9 @@
     <Compile Include="Geometry\SparseMatrix.cs" />
     <Compile Include="Geometry\SVD.cs" />
     <Compile Include="GLView\Camera.cs" />
+    <Compile Include="GLView\ModelViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="GLView\Shader.cs" />
     <Compile Include="GLView\GLViewer.cs">
       <SubType>UserControl</SubType>

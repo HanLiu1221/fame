@@ -63,6 +63,7 @@ namespace Component
         {
             _mesh = m;
             _boundingbox = bbox;
+            _COLOR = Color.FromArgb(100, Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
         }
 
         public Mesh _MESH
@@ -342,8 +343,12 @@ namespace Component
             }// while
         }// mergeNearbyParts
 
-        private void groupParts(List<Part> parts)
+        public Part groupParts(List<Part> parts)
         {
+            if (parts == null || parts.Count == 0)
+            {
+                return null;
+            }
             List<int> vIndex = new List<int>();
             List<double> vPos = new List<double>();
             List<int> fIndex = new List<int>();
@@ -356,6 +361,7 @@ namespace Component
             }
             Part newPart = new Part(_mesh, vIndex.ToArray(), vPos.ToArray(), fIndex.ToArray());
             _parts.Add(newPart);
+            return newPart;
         }// group parts
 
         // Global get
