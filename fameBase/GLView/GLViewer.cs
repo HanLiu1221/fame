@@ -208,7 +208,7 @@ namespace FameBase
         Model _currModel;
         List<Model> _models;
         Part _selectedPart;
-        List<Part> _selectedParts;
+        List<Part> _selectedParts = new List<Part>();
         public static Color MeshColor = Color.FromArgb(173, 210, 222);
 
         /******************** Functions ********************/
@@ -319,6 +319,8 @@ namespace FameBase
         public void clearContext()
         {
             this.currMeshClass = null;
+            _selectedPart = null;
+            _selectedParts = new List<Part>();
             this.meshClasses.Clear();
         }
 
@@ -538,13 +540,11 @@ namespace FameBase
             //if (this.currSegmentClass == null) return;
 
             // reset the current 3d transformation again to check in the camera info, projection/modelview
-            
             Gl.glViewport(0, 0, this.Width, this.Height);
             Gl.glMatrixMode(Gl.GL_PROJECTION);
-
-            Gl.glPushMatrix();
-
             Gl.glLoadIdentity();
+
+
             double aspect = (double)this.Width / this.Height;
             if (this.nPointPerspective == 3)
             {
@@ -554,17 +554,23 @@ namespace FameBase
             {
                 Glu.gluPerspective(45, aspect, 0.1, 1000);
             }
-            Glu.gluLookAt(this.eye.x, this.eye.y, this.eye.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);            
+            Gl.glMatrixMode(Gl.GL_MODELVIEW);
+            Gl.glLoadIdentity();
 
+            Glu.gluLookAt(this.eye.x, this.eye.y, this.eye.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
+            Matrix4d transformMatrix = this.arcBall.getTransformMatrix(this.nPointPerspective);
+            Matrix4d m = transformMatrix * this._currModelTransformMatrix;
+
+            m = Matrix4d.TranslationMatrix(this.objectCenter) * m * Matrix4d.TranslationMatrix(
+                new Vector3d() - this.objectCenter);
 
             this.calculatePoint2DInfo();
 
-            Gl.glMatrixMode(Gl.GL_PROJECTION);
-            Gl.glPopMatrix();
+            Gl.glMatrixMode(Gl.GL_MODELVIEW);
 
-
-            
+            Gl.glPushMatrix();
+            Gl.glMultMatrixd(m.Transpose().ToArray());
         }//cal2D
 
         private void calculatePoint2DInfo()
@@ -577,12 +583,11 @@ namespace FameBase
             foreach (Part p in this._currModel._PARTS)
             {
                 Prim box = p._BOUNDINGBOX;
-                Vector2d[] points2d = new Vector2d[box._POINTS3D.Length];
                 for (int i = 0; i < box._POINTS3D.Length; ++i)
                 {
-                    points2d[i] = this.camera.Project(box._POINTS3D[i]).ToVector2d();
+                    Vector2d v2 = this.camera.Project(box._POINTS3D[i]).ToVector2d();
+                    p._BOUNDINGBOX._POINTS2D[i] = new Vector2d(v2.x, this.Height - v2.y); 
                 }
-                box._POINTS2D = points2d;
             }
         }
 
@@ -740,19 +745,19 @@ namespace FameBase
         {
             switch (i)
             {
-                case 2:
+                case 1:
                     this.currUIMode = UIMode.VertexSelection;
                     break;
-                case 3:
+                case 2:
                     this.currUIMode = UIMode.EdgeSelection;
                     break;
-                case 4:
+                case 3:
                     this.currUIMode = UIMode.FaceSelection;
                     break;
-                case 6:
+                case 4:
                     this.currUIMode = UIMode.BoxSelection;
                     break;
-                case 1:
+                case 0:
                 default:
                     this.currUIMode = UIMode.Viewing;
                     break;
@@ -948,7 +953,7 @@ namespace FameBase
                             Gl.glMatrixMode(Gl.GL_MODELVIEW);
                             Gl.glPopMatrix();
 
-                           
+                            this.isDrawQuad = true;
                         }
                         break;
                     }
@@ -979,7 +984,6 @@ namespace FameBase
                         {
                             this.highlightQuad = new Quad2d(this.mouseDownPos, this.currMousePos);
                             this.currMeshClass.selectMouseMove((int)this.currUIMode, this.highlightQuad);
-                            //this.Refresh();
                             this.isDrawQuad = true;
                         }
                         break;
@@ -1035,7 +1039,10 @@ namespace FameBase
                 case UIMode.BoxSelection:
                     {
                         this.isDrawQuad = false;
-                        this.selectMouseUp((int)this.currUIMode, this.highlightQuad);
+                        if (this._currModel != null)
+                        {
+                            this.selectMouseUp((int)this.currUIMode, this.highlightQuad);
+                        }
                         break;
                     }
                 case UIMode.Viewing:
@@ -1062,9 +1069,13 @@ namespace FameBase
         {
             switch (mode)
             {
-                case 5:
+                case 4:
                     {
-                        this._selectedPart = null;
+                        _selectedPart = null;
+                        if (!isShift)
+                        {
+                            _selectedParts = new List<Part>();
+                        }
                         break;
                     }
                 default:
@@ -1185,17 +1196,17 @@ namespace FameBase
             foreach (Part p in this._currModel._PARTS)
             {
                 if (p._BOUNDINGBOX == null) continue;
+                if (_selectedParts.Contains(p))
+                {
+                    continue;
+                }
                 foreach (Vector2d v in p._BOUNDINGBOX._POINTS2D)
                 {
-                    if (this._selectedPart == p)
-                    {
-                        continue;
-                    }
                     Vector2d v2 = new Vector2d(v);
-                    v2.y = this.Height - v2.y;
+                    //v2.y = this.Height - v2.y;
                     if (Quad2d.isPointInQuad(v2, q))
                     {
-                        this._selectedPart = p;
+                        this._selectedParts.Add(p);
                         break;
                     }
                 }
@@ -1467,9 +1478,12 @@ namespace FameBase
 
         private void DrawHighlight3D()
         {
-            if (this._selectedPart != null)
+            if (this._selectedParts != null)
             {
-                this.drawBoundingboxEdges(this._selectedPart._BOUNDINGBOX, ColorSet[4]);
+                foreach (Part part in _selectedParts)
+                {
+                    this.drawBoundingboxEdges(part._BOUNDINGBOX, ColorSet[4]);
+                }
             }
 
             if (this.enableDepthTest)

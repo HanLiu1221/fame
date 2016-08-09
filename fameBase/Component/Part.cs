@@ -55,7 +55,7 @@ namespace Component
                 faceVertexIndex[j++] = d[fv3];
             }
             _mesh = new Mesh(vPos, faceVertexIndex);
-            _COLOR = Color.FromArgb(120, Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
+            _COLOR = Color.FromArgb(100, Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
             this.calculateBbox();
         }
 

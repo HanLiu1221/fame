@@ -635,7 +635,7 @@ namespace Geometry
             // axis-aligned cuboid
             // a: minimal vector
             // b: maximal vector
-            _points3d = new Vector3d[8];
+            _points3d = new Vector3d[Common._nPrimPoint];
             _points3d[0] = new Vector3d(a);
             _points3d[1] = new Vector3d(a.x, a.y, b.z);
             _points3d[2] = new Vector3d(b.x, a.y, b.z);
@@ -646,6 +646,7 @@ namespace Geometry
             _points3d[7] = new Vector3d(b.x, b.y, a.z);
             _minCoord = new Vector3d(a);
             _maxCoord = new Vector3d(b);
+            _points2d = new Vector2d[Common._nPrimPoint];
             createPlanes();
         }
 
@@ -660,6 +661,7 @@ namespace Geometry
                 _maxCoord = Vector3d.Max(_maxCoord, arr[i]);
                 _minCoord = Vector3d.Min(_minCoord, arr[i]);
             }
+            _points2d = new Vector2d[Common._nPrimPoint];
             createPlanes();
         }
 

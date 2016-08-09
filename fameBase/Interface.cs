@@ -109,17 +109,17 @@ namespace FameBase
 
         private void vertexSelection_Click(object sender, EventArgs e)
         {
-            this.glViewer.setUIMode(2);
+            this.glViewer.setUIMode(1);
         }
 
         private void edgeSelection_Click(object sender, EventArgs e)
         {
-            this.glViewer.setUIMode(3);
+            this.glViewer.setUIMode(2);
         }
 
         private void faceSelection_Click(object sender, EventArgs e)
         {
-            this.glViewer.setUIMode(4);
+            this.glViewer.setUIMode(3);
         }
 
         private void loadAPartBasedModel_Click(object sender, EventArgs e)
@@ -249,15 +249,10 @@ namespace FameBase
 			this.glViewer.Refresh();
 		}
 
-        private void strokeToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.setUIMode(8);
-        }
-
         private void boxToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.boxToolStripMenuItem.Checked = true;
-            this.glViewer.setUIMode(9);
+            this.glViewer.setUIMode(4);
         }
 
         protected override void OnResize(EventArgs e)
