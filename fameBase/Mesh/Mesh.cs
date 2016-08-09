@@ -69,7 +69,6 @@ namespace Geometry
         string sourceFile;
         int[][] _vv; // vertex-vertex adjancency
         int[][] _vf; // vertex-face
-        int[][] _ff; // face-face
         public HalfEdge edgeIter = null;
 		
 		public Mesh()

@@ -63,11 +63,11 @@
             this.boxToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
-            this.modelViewPanel = new System.Windows.Forms.Panel();
-            this.keyboardLabel = new System.Windows.Forms.Label();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
+            this.statsLabel = new System.Windows.Forms.Label();
             this.glViewer = new FameBase.GLViewer();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
@@ -108,21 +108,21 @@
             // loadAPartBasedModel
             // 
             this.loadAPartBasedModel.Name = "loadAPartBasedModel";
-            this.loadAPartBasedModel.Size = new System.Drawing.Size(152, 22);
+            this.loadAPartBasedModel.Size = new System.Drawing.Size(146, 22);
             this.loadAPartBasedModel.Text = "Load a model";
             this.loadAPartBasedModel.Click += new System.EventHandler(this.loadAPartBasedModel_Click);
             // 
             // saveAModelToolStripMenuItem
             // 
             this.saveAModelToolStripMenuItem.Name = "saveAModelToolStripMenuItem";
-            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.saveAModelToolStripMenuItem.Text = "Save a model";
             this.saveAModelToolStripMenuItem.Click += new System.EventHandler(this.saveAModelToolStripMenuItem_Click);
             // 
             // loadPartBasedModels
             // 
             this.loadPartBasedModels.Name = "loadPartBasedModels";
-            this.loadPartBasedModels.Size = new System.Drawing.Size(152, 22);
+            this.loadPartBasedModels.Size = new System.Drawing.Size(146, 22);
             this.loadPartBasedModels.Text = "Load models";
             this.loadPartBasedModels.Click += new System.EventHandler(this.loadPartBasedModels_Click);
             // 
@@ -358,11 +358,11 @@
             // 
             // viewPanel.Panel2
             // 
-            this.viewPanel.Panel2.Controls.Add(this.modelViewPanel);
+            this.viewPanel.Panel2.Controls.Add(this.statsLabel);
+            this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
-            this.viewPanel.Panel2.Controls.Add(this.keyboardLabel);
-            this.viewPanel.Size = new System.Drawing.Size(866, 675);
-            this.viewPanel.SplitterDistance = 31;
+            this.viewPanel.Size = new System.Drawing.Size(866, 735);
+            this.viewPanel.SplitterDistance = 29;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -372,32 +372,8 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(860, 32);
+            this.fileNameTabs.Size = new System.Drawing.Size(860, 30);
             this.fileNameTabs.TabIndex = 0;
-            // 
-            // modelViewPanel
-            // 
-            this.modelViewPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left)));
-            this.modelViewPanel.AutoSize = true;
-            this.modelViewPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.modelViewPanel.Location = new System.Drawing.Point(3, 3);
-            this.modelViewPanel.Name = "modelViewPanel";
-            this.modelViewPanel.Size = new System.Drawing.Size(171, 640);
-            this.modelViewPanel.TabIndex = 2;
-            // 
-            // keyboardLabel
-            // 
-            this.keyboardLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.keyboardLabel.AutoSize = true;
-            this.keyboardLabel.BackColor = System.Drawing.Color.Aquamarine;
-            this.keyboardLabel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.keyboardLabel.Location = new System.Drawing.Point(176, 567);
-            this.keyboardLabel.Name = "keyboardLabel";
-            this.keyboardLabel.Size = new System.Drawing.Size(167, 72);
-            this.keyboardLabel.TabIndex = 6;
-            this.keyboardLabel.Text = "Space: unlock view\r\nCtrl + C: clear all strokes\r\nS: sketch mode\r\nE: eraser mode\r\n" +
-    "V: view mode\r\nR: reset view";
             // 
             // partRelatedTools
             // 
@@ -413,6 +389,28 @@
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
+            // modelViewLayoutPanel
+            // 
+            this.modelViewLayoutPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
+            this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
+            this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
+            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 699);
+            this.modelViewLayoutPanel.TabIndex = 13;
+            // 
+            // statsLabel
+            // 
+            this.statsLabel.AutoSize = true;
+            this.statsLabel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.statsLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.statsLabel.ForeColor = System.Drawing.SystemColors.HotTrack;
+            this.statsLabel.Location = new System.Drawing.Point(216, 3);
+            this.statsLabel.Name = "statsLabel";
+            this.statsLabel.Size = new System.Drawing.Size(41, 16);
+            this.statsLabel.TabIndex = 14;
+            this.statsLabel.Text = "Stats:";
+            // 
             // glViewer
             // 
             this.glViewer.AccumBits = ((byte)(0));
@@ -427,18 +425,18 @@
             this.glViewer.ColorBits = ((byte)(32));
             this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
             this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(171, 3);
+            this.glViewer.Location = new System.Drawing.Point(212, 3);
             this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(692, 639);
+            this.glViewer.Size = new System.Drawing.Size(651, 699);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 12;
             // 
             // Interface
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(866, 714);
+            this.ClientSize = new System.Drawing.Size(866, 774);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -479,13 +477,11 @@
         private System.Windows.Forms.ToolStripMenuItem viewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem resetViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem modelColorToolStripMenuItem;
-        private System.Windows.Forms.Panel modelViewPanel;
         private System.Windows.Forms.ColorDialog strokeColorDialog;
         private System.Windows.Forms.ToolStripMenuItem reloadViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadTriMeshToolStripMenuItem;
-        private System.Windows.Forms.Label keyboardLabel;
         private System.Windows.Forms.ToolStripMenuItem screenCaptureToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem extractStrokesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem renderToolStripMenuItem;
@@ -499,6 +495,8 @@
         private System.Windows.Forms.ContextMenuStrip partRelatedTools;
         private System.Windows.Forms.ToolStripMenuItem boundingBoxToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem groupToolStripMenuItem;
+        private System.Windows.Forms.FlowLayoutPanel modelViewLayoutPanel;
+        private System.Windows.Forms.Label statsLabel;
 
 	}
 }

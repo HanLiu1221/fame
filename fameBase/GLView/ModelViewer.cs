@@ -9,13 +9,14 @@ using Geometry;
 
 namespace FameBase
 {
-    class ModelViewer : SimpleOpenGlControl
+    public class ModelViewer : SimpleOpenGlControl
     {
-        public ModelViewer(Model m) 
+        public ModelViewer(Model m, GLViewer glViewer) 
         {
             this.InitializeComponent();
             this.InitializeContexts();
             _model = m;
+            _mainView = glViewer;
         }
 
         private void InitializeComponent()
@@ -28,22 +29,101 @@ namespace FameBase
         }
 
         // data read from GLViewer
+        GLViewer _mainView;
         Model _model;
-        Matrix4d _modelView;
+        Matrix4d _modelViewMat = Matrix4d.IdentityMatrix();
         Vector3d _eye = new Vector3d(0, 0, 1.5);
+
+        public void setModelViewMatrix(Matrix4d m)
+        {
+            _modelViewMat = new Matrix4d(m);
+        }
+
+        protected override void OnMouseDoubleClick(System.Windows.Forms.MouseEventArgs e)
+        {
+            base.OnMouseDoubleClick(e);
+            _mainView.setCurrentModel(_model);
+            Program.GetFormMain().updateStats();
+        }
 
         protected override void OnPaint(System.Windows.Forms.PaintEventArgs e)
         {
-            base.OnPaint(e);
             this.MakeCurrent();
+            this.clearScene();
             draw();
             this.SwapBuffers();
         }// onPaint
 
-        public void setModelViewMatrix(Matrix4d m)
+        private void clearScene()
         {
-            _modelView = m;
-            this.Refresh();
+            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+            Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
+
+            Gl.glDisable(Gl.GL_BLEND);
+            Gl.glDisable(Gl.GL_LIGHTING);
+            Gl.glDisable(Gl.GL_NORMALIZE);
+
+            setDefaultMaterial();
+            SetDefaultLight();
+        }
+
+        private static void SetDefaultLight()
+        {
+            float[] col1 = new float[4] { 0.7f, 0.7f, 0.7f, 1.0f };
+            float[] col2 = new float[4] { 0.8f, 0.7f, 0.7f, 1.0f };
+            float[] col3 = new float[4] { 0, 0, 0, 1 };
+
+            float[] pos_1 = { 10, 0, 0 };
+            float[] pos_2 = { 0, 10, 0 };
+            float[] pos_3 = { 0, 0, 10 };
+            float[] pos_4 = { -10, 0, 0 };
+            float[] pos_5 = { 0, -10, 0 };
+            float[] pos_6 = { 0, 0, -10 };
+
+            float[] intensity = { 0.5f, 0.5f, 0.5f };
+            //Gl.glLightModeli(Gl.GL_LIGHT_MODEL_TWO_SIDE, Gl.GL_TRUE);
+            Gl.glEnable(Gl.GL_LIGHT0);
+            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_POSITION, pos_1);
+            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_DIFFUSE, col1);
+            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_INTENSITY, intensity);
+            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_SPECULAR, col1);
+
+            Gl.glEnable(Gl.GL_LIGHT1);
+            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_POSITION, pos_2);
+            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_DIFFUSE, col1);
+            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_INTENSITY, intensity);
+            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_SPECULAR, col1);
+
+            Gl.glEnable(Gl.GL_LIGHT2);
+            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_POSITION, pos_3);
+            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_DIFFUSE, col1);
+            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_SPECULAR, col1);
+            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_INTENSITY, intensity);
+
+            Gl.glEnable(Gl.GL_LIGHT4);
+            Gl.glLightfv(Gl.GL_LIGHT4, Gl.GL_POSITION, pos_5);
+            Gl.glLightfv(Gl.GL_LIGHT4, Gl.GL_DIFFUSE, col1);
+            Gl.glLightfv(Gl.GL_LIGHT4, Gl.GL_SPECULAR, col1);
+            Gl.glLightfv(Gl.GL_LIGHT4, Gl.GL_INTENSITY, intensity);
+
+            Gl.glEnable(Gl.GL_LIGHT5);
+            Gl.glLightfv(Gl.GL_LIGHT5, Gl.GL_POSITION, pos_6);
+            Gl.glLightfv(Gl.GL_LIGHT5, Gl.GL_DIFFUSE, col1);
+            Gl.glLightfv(Gl.GL_LIGHT5, Gl.GL_SPECULAR, col1);
+            Gl.glLightfv(Gl.GL_LIGHT5, Gl.GL_INTENSITY, intensity);
+        }
+        private void setDefaultMaterial()
+        {
+            float[] mat_a = new float[4] { 0.1f, 0.1f, 0.1f, 1.0f };
+            float[] mat_d = { 0.7f, 0.7f, 0.5f, 1.0f };
+            float[] mat_s = { 1.0f, 1.0f, 1.0f, 1.0f };
+            float[] shine = { 120.0f };
+
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT, mat_a);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_DIFFUSE, mat_d);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SPECULAR, mat_s);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SHININESS, shine);
+
         }
 
         private void draw()
@@ -72,7 +152,7 @@ namespace FameBase
             Gl.glMatrixMode(Gl.GL_MODELVIEW);
 
             Gl.glPushMatrix();
-            Gl.glMultMatrixd(_modelView.Transpose().ToArray());
+            Gl.glMultMatrixd(_modelViewMat.Transpose().ToArray());
 
             drawParts();
 
@@ -172,7 +252,7 @@ namespace FameBase
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
             {
-                this.drawQuad3d(box._PLANES[i], c);
+                this.drawQuadTransparent3d(box._PLANES[i], c);
             }
         }// drawBoundingbox
 
@@ -189,6 +269,28 @@ namespace FameBase
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
+        }
+
+        private void drawQuadTransparent3d(Plane3D q, Color c)
+        {
+            Gl.glDisable(Gl.GL_LIGHTING);
+
+            Gl.glEnable(Gl.GL_BLEND);
+            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+
+            Gl.glDisable(Gl.GL_CULL_FACE);
+            Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
+            // face
+            Gl.glColor4ub(c.R, c.G, c.B, 100);
+            Gl.glBegin(Gl.GL_POLYGON);
+            for (int i = 0; i < 4; ++i)
+            {
+                Gl.glVertex3dv(q.points3d[i].ToArray());
+            }
+            Gl.glEnd();
+            Gl.glDisable(Gl.GL_BLEND);
+            Gl.glEnable(Gl.GL_CULL_FACE);
+            Gl.glEnable(Gl.GL_LIGHTING);
         }
     }// ModelViewer
 }

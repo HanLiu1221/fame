@@ -40,6 +40,7 @@ namespace FameBase
                 this.fileNameTabs.TabPages.Add(tp);
                 this.fileNameTabs.SelectedTab = tp;
                 this.glViewer.setTabIndex(this.fileNameTabs.TabCount);
+                this.updateStats();
             }
             this.glViewer.Refresh();
         }
@@ -132,18 +133,37 @@ namespace FameBase
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 this.glViewer.loadAPartBasedModel(dialog.FileName);
+                this.updateStats();
             }
+            this.glViewer.Refresh();
         }
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = "..\\..\\data" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\Users\hla180\Desktop\HLiu\Fame\fameBase\models\test" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
-                this.glViewer.loadPartBasedModels(folderName, this.modelViewPanel.Location.X, this.modelViewPanel.Location.Y);
+                List<ModelViewer> modelViewers = this.glViewer.loadPartBasedModels(folderName);
+                layoutModelSet(modelViewers);
             }
             this.glViewer.Refresh();
+        }
+
+        private void layoutModelSet(List<ModelViewer> modelViewers)
+        {
+            if (modelViewers == null) return;
+            int w = 200;
+            int h = 200;
+            int i = 0;
+            foreach (ModelViewer mv in modelViewers)
+            {
+                mv.SetBounds(i * w, 0, w, h);
+                mv.BorderStyle = BorderStyle.FixedSingle;
+                mv.BackColor = Color.White;
+                this.modelViewLayoutPanel.Controls.Add(mv);
+            }
+            this.updateStats();
         }
 
         private void saveAModelToolStripMenuItem_Click(object sender, EventArgs e)
@@ -263,6 +283,13 @@ namespace FameBase
         private void groupToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.groupParts();
+            this.updateStats();
+        }
+
+        public void updateStats()
+        {
+            string stats = this.glViewer.getStats();
+            this.statsLabel.Text = stats;
         }
 
         public ContextMenuStrip getRightButtonMenu()
