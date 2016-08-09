@@ -79,6 +79,12 @@ namespace FameBase
             this.glViewer.setRenderOption(3);
         }
 
+        private void boundingBoxToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.boundingBoxToolStripMenuItem.Checked = !this.boundingBoxToolStripMenuItem.Checked;
+            this.glViewer.setRenderOption(4);
+        }
+
         private void viewToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.setUIMode(1);

@@ -642,8 +642,8 @@ namespace Geometry
             _points3d[3] = new Vector3d(b.x, a.y, a.z);
             _points3d[4] = new Vector3d(a.x, b.y, a.z);
             _points3d[5] = new Vector3d(a.x, b.y, b.z);
-            _points3d[6] = new Vector3d(b.x, b.y, b.z);
-            _points3d[7] = new Vector3d(b);
+            _points3d[6] = new Vector3d(b);
+            _points3d[7] = new Vector3d(b.x, b.y, a.z);
             _minCoord = new Vector3d(a);
             _maxCoord = new Vector3d(b);
             createPlanes();
@@ -684,9 +684,9 @@ namespace Geometry
             {
                 vslist = new List<Vector3d>();
                 vslist.Add(this._points3d[i]);
-                vslist.Add(this._points3d[(i + 1) % 4]);
-                vslist.Add(this._points3d[((i + 1) % 4 + 4) % 8]);
                 vslist.Add(this._points3d[(i + 4) % 8]);
+                vslist.Add(this._points3d[((i + 1) % 4 + 4) % 8]);
+                vslist.Add(this._points3d[(i + 1) % 4]);
                 this._planes[r++] = new Plane3D(vslist);
             }
         }

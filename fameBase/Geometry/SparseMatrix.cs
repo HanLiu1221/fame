@@ -41,7 +41,7 @@ namespace Geometry
 		}
 	}//class-Triplet	
 
-	public class sparseMatrix
+	public class SparseMatrix
 	{
 		private List<Triplet> triplets = null;
 		private int nRows, nCols, nTriplets;
@@ -74,19 +74,20 @@ namespace Geometry
 		}
 	#endregion
 
-		public sparseMatrix()
+		public SparseMatrix()
 		{
 			clear();
 		}
 
-		public sparseMatrix(int m,int n)
+		public SparseMatrix(int m,int n)
 		{
 			clear();
 			nRows = m;
 			nCols = n;
+            MakeRowColTriplets();
 		}
 
-		public sparseMatrix(List<Triplet> triplets, int nrow, int ncol)
+		public SparseMatrix(List<Triplet> triplets, int nrow, int ncol)
 		{
 			triplets = new List<Triplet>(triplets);
 			nRows = nrow;
@@ -95,7 +96,7 @@ namespace Geometry
 			MakeRowColTriplets();
 		}
 
-		public sparseMatrix(List<Triplet> triplets)
+		public SparseMatrix(List<Triplet> triplets)
 		{
 			triplets = new List<Triplet>(triplets);
 			nRows = 0;
@@ -121,15 +122,15 @@ namespace Geometry
 
 		private void MakeRowColTriplets()
 		{
-			rowTriplets = new List<List<Triplet>>(nRows);
-			colTriplets = new List<List<Triplet>>(nCols);
+			rowTriplets = new List<List<Triplet>>();
+			colTriplets = new List<List<Triplet>>();
 			for (int i = 0; i < nRows; ++i)
 			{
-				rowTriplets[i] = new List<Triplet>();
+				rowTriplets.Add(new List<Triplet>());
 			}
 			for (int i = 0; i < nCols; ++i)
 			{
-				colTriplets[i] = new List<Triplet>();
+                colTriplets.Add(new List<Triplet>());
 			}
 			for (int i = 0; i < nTriplets; ++i)
 			{
@@ -235,10 +236,38 @@ namespace Geometry
             {
                 rowTriplets[tri.row].Add(tri);
             }
-		} 
+		}
+
+        public int[][] getRowIndex()
+        {
+            int[][] rowIndex = new int[NRow][];
+            for (int i = 0; i < rowTriplets.Count; ++i)
+            {
+                rowIndex[i] = new int[rowTriplets[i].Count];
+                for (int j = 0; j < rowTriplets[i].Count; ++j)
+                {
+                    rowIndex[i][j] = rowTriplets[i][j].col;
+                }
+            }
+            return rowIndex;
+        }
+
+        public int[][] getColIndex()
+        {
+            int[][] colIndex = new int[NCol][];
+            for (int i = 0; i < colTriplets.Count; ++i)
+            {
+                colIndex[i] = new int[colTriplets[i].Count];
+                for (int j = 0; j < colTriplets[i].Count; ++j)
+                {
+                    colIndex[i][j] = colTriplets[i][j].row;
+                }
+            }
+            return colIndex;
+        }
 
 		// operators
-		static public sparseMatrix operator +(sparseMatrix mat1, sparseMatrix mat2)
+		static public SparseMatrix operator +(SparseMatrix mat1, SparseMatrix mat2)
 		{
 			if (mat1 == null || mat2 == null)
 			{
@@ -250,7 +279,7 @@ namespace Geometry
 				Console.WriteLine("Dimension not matched.");
 				return null;
 			}
-			sparseMatrix mat = new sparseMatrix(m, n);
+			SparseMatrix mat = new SparseMatrix(m, n);
 			List<Triplet> newTriplets = new List<Triplet>();
 			for (int r = 0; r < m; ++r )
 			{
@@ -295,28 +324,28 @@ namespace Geometry
 				}
 				newTriplets.AddRange(trips);
 			}//for-each-row
-			mat = new sparseMatrix(newTriplets, m, n);
+			mat = new SparseMatrix(newTriplets, m, n);
 			return mat;
 		}
 
-		static public sparseMatrix operator -(sparseMatrix mat1, sparseMatrix mat2)
+		static public SparseMatrix operator -(SparseMatrix mat1, SparseMatrix mat2)
 		{
 			if (mat1 == null || mat2 == null)
 			{
 				return null;
 			}
-			sparseMatrix minus_mat2 = -1.0 * mat2;
+			SparseMatrix minus_mat2 = -1.0 * mat2;
 			return mat1 + minus_mat2;
 		}
 
-		static public sparseMatrix operator *(double factor, sparseMatrix mat)
+		static public SparseMatrix operator *(double factor, SparseMatrix mat)
 		{
 			if (mat == null)
 			{
 				return null;
 			}
 			int m = mat.NRow, n = mat.NCol;
-			sparseMatrix new_mat = new sparseMatrix(m, n);
+			SparseMatrix new_mat = new SparseMatrix(m, n);
 			List<Triplet> newTriplets = new List<Triplet>();
 			for (int r = 0; r < m; ++r)
 			{
@@ -326,11 +355,11 @@ namespace Geometry
 					newTriplets.Add(new Triplet(r, rowr[j].col, rowr[j].value * factor));
 				}
 			}//for-each-row
-			mat = new sparseMatrix(newTriplets);
+			mat = new SparseMatrix(newTriplets);
 			return mat;
 		}
 
-		static public sparseMatrix operator /(sparseMatrix mat, double factor)
+		static public SparseMatrix operator /(SparseMatrix mat, double factor)
 		{
 			if (mat == null)
 			{
@@ -343,7 +372,7 @@ namespace Geometry
 			return 1.0/factor * mat;
 		}
 
-		static public sparseMatrix operator *(sparseMatrix mat1, sparseMatrix mat2)
+		static public SparseMatrix operator *(SparseMatrix mat1, SparseMatrix mat2)
 		{
 			if (mat1 == null || mat2 == null)
 			{
@@ -355,7 +384,7 @@ namespace Geometry
 				Console.WriteLine("Dimension not matched.");
 				return null;
 			}
-			sparseMatrix mat = new sparseMatrix(m, n);
+			SparseMatrix mat = new SparseMatrix(m, n);
 			List<Triplet> newTriplets = new List<Triplet>();
 			for (int r = 0; r < m; ++r)
 			{
@@ -390,8 +419,39 @@ namespace Geometry
 					}
 				}
 			}//for-each-row
-			mat = new sparseMatrix(newTriplets);
+			mat = new SparseMatrix(newTriplets);
 			return mat;
 		}
-	}//class-sparseMatrix
+
+        // comparable class
+        private class RowCompare : IComparer<Triplet>
+        {
+            public int Compare(Triplet t1, Triplet t2)
+            {
+                return t1.col - t2.col;
+            }
+        }
+
+        private class ColCompare : IComparer<Triplet>
+        {
+            public int Compare(Triplet t1, Triplet t2)
+            {
+                return t1.row - t2.row;
+            }
+        }
+
+        public void sort()
+        {
+            RowCompare rowCompare = new RowCompare();
+            ColCompare colCompare = new ColCompare();
+            foreach (List<Triplet> r in rowTriplets)
+            {
+                r.Sort(rowCompare);
+            }
+            foreach (List<Triplet> c in colTriplets)
+            {
+                c.Sort(colCompare);
+            }
+        }
+	}//class-SparseMatrix
 }

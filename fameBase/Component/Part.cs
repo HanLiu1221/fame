@@ -19,12 +19,44 @@ namespace Component
         Prim _boundingbox = null;
         List<Part> _jointParts = new List<Part>();
         List<Joint> _joints = new List<Joint>();
+        int[] _vertexIndexInParentMesh;
+        int[] _faceVIndexInParentMesh;
+        double[] _vertexPosInParentMesh;
 
         public Color _COLOR = Color.LightBlue;
 
         public Part(Mesh m)
         {
             _mesh = m;
+            this.calculateBbox();
+        }
+
+        public Part(Mesh m, int[] vIndex, double[] vPos, int[] fIndex)
+        {
+            // create a mesh part from a large mesh
+            // re-order the index of vertex, face
+            Dictionary<int, int> d = new Dictionary<int, int>();
+            _vertexIndexInParentMesh = vIndex;
+            _faceVIndexInParentMesh = fIndex;
+            _vertexPosInParentMesh = vPos;
+            int k = 0;
+            foreach (int idx in vIndex)
+            {
+                d.Add(idx, k++);
+            }
+            int[] faceVertexIndex = new int[fIndex.Length * 3];
+            for (int i = 0, j= 0; i < fIndex.Length; ++i)
+            {
+                int fv1 = m.FaceVertexIndex[fIndex[i] * 3];
+                int fv2 = m.FaceVertexIndex[fIndex[i] * 3 + 1];
+                int fv3 = m.FaceVertexIndex[fIndex[i] * 3 + 2];
+                faceVertexIndex[j++] = d[fv1];
+                faceVertexIndex[j++] = d[fv2];
+                faceVertexIndex[j++] = d[fv3];
+            }
+            _mesh = new Mesh(vPos, faceVertexIndex);
+            _COLOR = Color.FromArgb(120, Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
+            this.calculateBbox();
         }
 
         public Part(Mesh m, Prim bbox)
@@ -65,17 +97,41 @@ namespace Component
             }
         }
 
+        public int[] _VERTEXINDEX
+        {
+            get
+            {
+                return _vertexIndexInParentMesh;
+            }
+        }
+
+        public int[] _FACEVERTEXINDEX
+        {
+            get
+            {
+                return _faceVIndexInParentMesh;
+            }
+        }
+
+        public double[] _VERTEXPOS
+        {
+            get
+            {
+                return _vertexPosInParentMesh;
+            }
+        }
+
         private void calculateBbox()
         {
             if (_mesh == null)
             {
                 return;
             }
-            Vector3d maxv = Vector3d.MaxCoord;
-            Vector3d minv = Vector3d.MinCoord;
+            Vector3d maxv = Vector3d.MinCoord;
+            Vector3d minv = Vector3d.MaxCoord;
             for (int i = 0, j = 0; i < _mesh.VertexCount; ++i)
             {
-                Vector3d v = new Vector3d(_mesh.VertexPos[j++], _mesh.VertexPos[j++], _mesh.VertexPos[j]);
+                Vector3d v = new Vector3d(_mesh.VertexPos[j++], _mesh.VertexPos[j++], _mesh.VertexPos[j++]);
                 maxv = Vector3d.Max(v, maxv);
                 minv = Vector3d.Min(v, minv);
             }
@@ -105,19 +161,9 @@ namespace Component
         public Model(Mesh mesh)
         {
             _mesh = mesh;
+            this.initializeParts();
+            this.mergeNearbyParts();
         }
-
-        private void normalize()
-        {
-            // normalize the whole model to a unit box for cross-model analysis
-            Vector3d minCoord = Vector3d.MaxCoord;
-            Vector3d maxCoord = Vector3d.MinCoord;
-            foreach (Part part in _parts)
-            {
-                minCoord = Vector3d.Min(minCoord, part._BOUNDINGBOX.MinCoord);
-
-            }
-        }// normalize
 
         private void calPartRelations()
         {
@@ -165,8 +211,152 @@ namespace Component
 
         private void initializeParts()
         {
-            // find parts by measuring point distance
-        }
+            if (_mesh == null) return;
+            // find point cluster to form initial parts
+            int n = _mesh.VertexCount;
+            bool[] visited = new bool[n];
+            _parts = new List<Part>();
+            for (int k = 0; k < n; ++k)
+            {
+                if (visited[k]) continue;
+                Queue<int> q = new Queue<int>();
+                List<int> vIndex = new List<int>();
+                q.Enqueue(k);
+                visited[k] = true;
+                // region growing from i
+                while (q.Count > 0)
+                {
+                    int cur = q.Dequeue();
+                    vIndex.Add(cur);
+                    int[] curRow = _mesh._VV[cur];
+                    foreach (int j in curRow)
+                    {
+                        if (visited[j]) continue;
+                        q.Enqueue(j);
+                        visited[j] = true;
+                    }
+                }
+                // vertex position, face
+                double[] vPos = new double[vIndex.Count * 3];
+                for (int i = 0, j = 0; i < vIndex.Count; ++i)
+                {
+                    int idx = vIndex[i] * 3;
+                    vPos[j++] = _mesh.VertexPos[idx++];
+                    vPos[j++] = _mesh.VertexPos[idx++];
+                    vPos[j++] = _mesh.VertexPos[idx++];
+                }
+                HashSet<int> fIndex = new HashSet<int>();
+                foreach (int i in vIndex)
+                {
+                    foreach (int f in _mesh._VF[i])
+                    {
+                        fIndex.Add(f);
+                    }
+                }
+                Part part = new Part(_mesh, vIndex.ToArray(), vPos, fIndex.ToArray());
+                _parts.Add(part);
+            }
+        }// initializeParts
+
+        private void mergeNearbyParts()
+        {
+            // In some meshes, though a vertex is shared across triangles, however, multiple vertices 
+            // may be defined at the same position, causing inaccurate initial part clusters
+            alglib.kdtree kdt;
+            double[,] xy = new double[_mesh.VertexCount, 3];
+            int[] tags = new int[_mesh.VertexCount];
+            for (int i = 0, j = 0; i < _mesh.VertexCount; ++i)
+            {
+                xy[i, 0] = _mesh.VertexPos[j++];
+                xy[i, 1] = _mesh.VertexPos[j++];
+                xy[i, 2] = _mesh.VertexPos[j++];
+                tags[i] = i;
+            }
+            int nx = 3;
+            int ny = 0;
+            int normtype = 2;
+            alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out kdt);
+            while (true)
+            {
+                int[] labels = new int[_mesh.VertexCount];
+                int l = 0;
+                foreach (Part part in _parts)
+                {
+                    foreach (int idx in part._VERTEXINDEX)
+                    {
+                        labels[idx] = l;
+                    }
+                    ++l;
+                }
+                // search
+                Part pa = null;
+                Part pb = null;
+                int k = 5;
+                double[,] x = new double[0,0];
+                int[] tag = new int[0];
+                foreach (Part p1 in _parts)
+                {
+                    bool found = false;
+                    foreach (int v in p1._VERTEXINDEX)
+                    {
+                        double[] vpos = { _mesh.VertexPos[v * 3], _mesh.VertexPos[v * 3 + 1], _mesh.VertexPos[v * 3 + 2] };
+                        int res = alglib.kdtreequeryknn(kdt, vpos, k, true); // true for overlapping points
+                        alglib.kdtreequeryresultsx(kdt, ref x);
+                        alglib.kdtreequeryresultstags(kdt, ref tag);
+                        Vector3d v1 = new Vector3d(vpos[0],vpos[1],vpos[2]);
+                        for (int i = 0; i < k; ++i)
+                        {
+                            Part p2 = _parts[labels[tag[i]]];
+                            if (p1 == p2) continue;
+                            double d = (v1 - new Vector3d(x[i, 0], x[i, 1], x[i, 2])).Length();
+                            if (d < Common._thresh)
+                            {
+                                pa = p1;
+                                pb = p2;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found)
+                        {
+                            break;
+                        }
+                    }
+                    if (found)
+                    {
+                        break;
+                    }
+                }
+                if (pa != null && pb != null)
+                {
+                    // group parts
+                    List<Part> parts = new List<Part>();
+                    parts.Add(pa);
+                    parts.Add(pb);
+                    groupParts(parts);
+                }
+                else
+                {
+                    break; // couldn't find any parts for grouping
+                }
+            }// while
+        }// mergeNearbyParts
+
+        private void groupParts(List<Part> parts)
+        {
+            List<int> vIndex = new List<int>();
+            List<double> vPos = new List<double>();
+            List<int> fIndex = new List<int>();
+            foreach (Part part in parts)
+            {
+                vIndex.AddRange(part._VERTEXINDEX.ToList());
+                vPos.AddRange(part._VERTEXPOS.ToList());
+                fIndex.AddRange(part._FACEVERTEXINDEX.ToList());
+                _parts.Remove(part);
+            }
+            Part newPart = new Part(_mesh, vIndex.ToArray(), vPos.ToArray(), fIndex.ToArray());
+            _parts.Add(newPart);
+        }// group parts
 
         // Global get
         public int _NPARTS

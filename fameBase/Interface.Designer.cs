@@ -64,10 +64,11 @@
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.toolboxPanel = new System.Windows.Forms.Panel();
-            this.glViewer = new FameBase.GLViewer();
             this.keyboardLabel = new System.Windows.Forms.Label();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.glViewer = new FameBase.GLViewer();
+            this.boundingBoxToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -106,21 +107,21 @@
             // loadAPartBasedModel
             // 
             this.loadAPartBasedModel.Name = "loadAPartBasedModel";
-            this.loadAPartBasedModel.Size = new System.Drawing.Size(152, 22);
+            this.loadAPartBasedModel.Size = new System.Drawing.Size(146, 22);
             this.loadAPartBasedModel.Text = "Load a model";
             this.loadAPartBasedModel.Click += new System.EventHandler(this.loadAPartBasedModel_Click);
             // 
             // saveAModelToolStripMenuItem
             // 
             this.saveAModelToolStripMenuItem.Name = "saveAModelToolStripMenuItem";
-            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.saveAModelToolStripMenuItem.Text = "Save a model";
             this.saveAModelToolStripMenuItem.Click += new System.EventHandler(this.saveAModelToolStripMenuItem_Click);
             // 
             // loadPartBasedModels
             // 
             this.loadPartBasedModels.Name = "loadPartBasedModels";
-            this.loadPartBasedModels.Size = new System.Drawing.Size(152, 22);
+            this.loadPartBasedModels.Size = new System.Drawing.Size(146, 22);
             this.loadPartBasedModels.Text = "Load models";
             this.loadPartBasedModels.Click += new System.EventHandler(this.loadPartBasedModels_Click);
             // 
@@ -260,7 +261,8 @@
             this.renderOption.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.vertexToolStripMenuItem,
             this.wireFrameToolStripMenuItem,
-            this.faceToolStripMenuItem});
+            this.faceToolStripMenuItem,
+            this.boundingBoxToolStripMenuItem});
             this.renderOption.Image = ((System.Drawing.Image)(resources.GetObject("renderOption.Image")));
             this.renderOption.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.renderOption.Name = "renderOption";
@@ -271,14 +273,14 @@
             // vertexToolStripMenuItem
             // 
             this.vertexToolStripMenuItem.Name = "vertexToolStripMenuItem";
-            this.vertexToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.vertexToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.vertexToolStripMenuItem.Text = "Vertex";
             this.vertexToolStripMenuItem.Click += new System.EventHandler(this.pointToolStripMenuItem_Click);
             // 
             // wireFrameToolStripMenuItem
             // 
             this.wireFrameToolStripMenuItem.Name = "wireFrameToolStripMenuItem";
-            this.wireFrameToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.wireFrameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.wireFrameToolStripMenuItem.Text = "WireFrame";
             this.wireFrameToolStripMenuItem.Click += new System.EventHandler(this.wireFrameToolStripMenuItem_Click);
             // 
@@ -287,7 +289,7 @@
             this.faceToolStripMenuItem.Checked = true;
             this.faceToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.faceToolStripMenuItem.Name = "faceToolStripMenuItem";
-            this.faceToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.faceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.faceToolStripMenuItem.Text = "Face";
             this.faceToolStripMenuItem.Click += new System.EventHandler(this.faceToolStripMenuItem_Click);
             // 
@@ -357,8 +359,8 @@
             this.viewPanel.Panel2.Controls.Add(this.toolboxPanel);
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
             this.viewPanel.Panel2.Controls.Add(this.keyboardLabel);
-            this.viewPanel.Size = new System.Drawing.Size(866, 675);
-            this.viewPanel.SplitterDistance = 32;
+            this.viewPanel.Size = new System.Drawing.Size(866, 735);
+            this.viewPanel.SplitterDistance = 34;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -368,7 +370,7 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(860, 32);
+            this.fileNameTabs.Size = new System.Drawing.Size(860, 35);
             this.fileNameTabs.TabIndex = 0;
             // 
             // toolboxPanel
@@ -379,8 +381,26 @@
             this.toolboxPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.toolboxPanel.Location = new System.Drawing.Point(3, 3);
             this.toolboxPanel.Name = "toolboxPanel";
-            this.toolboxPanel.Size = new System.Drawing.Size(171, 638);
+            this.toolboxPanel.Size = new System.Drawing.Size(171, 696);
             this.toolboxPanel.TabIndex = 2;
+            // 
+            // keyboardLabel
+            // 
+            this.keyboardLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.keyboardLabel.AutoSize = true;
+            this.keyboardLabel.BackColor = System.Drawing.Color.Aquamarine;
+            this.keyboardLabel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.keyboardLabel.Location = new System.Drawing.Point(176, 617);
+            this.keyboardLabel.Name = "keyboardLabel";
+            this.keyboardLabel.Size = new System.Drawing.Size(120, 78);
+            this.keyboardLabel.TabIndex = 6;
+            this.keyboardLabel.Text = "Space: unlock view\r\nCtrl + C: clear all strokes\r\nS: sketch mode\r\nE: eraser mode\r\n" +
+    "V: view mode\r\nR: reset view";
+            // 
+            // partRelatedTools
+            // 
+            this.partRelatedTools.Name = "partRelatedTools";
+            this.partRelatedTools.Size = new System.Drawing.Size(61, 4);
             // 
             // glViewer
             // 
@@ -398,34 +418,23 @@
             this.glViewer.DepthBits = ((byte)(16));
             this.glViewer.Location = new System.Drawing.Point(171, 3);
             this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(692, 638);
+            this.glViewer.Size = new System.Drawing.Size(692, 696);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 12;
             // 
-            // keyboardLabel
+            // boundingBoxToolStripMenuItem
             // 
-            this.keyboardLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.keyboardLabel.AutoSize = true;
-            this.keyboardLabel.BackColor = System.Drawing.Color.Aquamarine;
-            this.keyboardLabel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.keyboardLabel.Location = new System.Drawing.Point(176, 565);
-            this.keyboardLabel.Name = "keyboardLabel";
-            this.keyboardLabel.Size = new System.Drawing.Size(167, 72);
-            this.keyboardLabel.TabIndex = 6;
-            this.keyboardLabel.Text = "Space: unlock view\r\nCtrl + C: clear all strokes\r\nS: sketch mode\r\nE: eraser mode\r\n" +
-    "V: view mode\r\nR: reset view";
-            // 
-            // partRelatedTools
-            // 
-            this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(61, 4);
+            this.boundingBoxToolStripMenuItem.Name = "boundingBoxToolStripMenuItem";
+            this.boundingBoxToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.boundingBoxToolStripMenuItem.Text = "BoundingBox";
+            this.boundingBoxToolStripMenuItem.Click += new System.EventHandler(this.boundingBoxToolStripMenuItem_Click);
             // 
             // Interface
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(866, 714);
+            this.ClientSize = new System.Drawing.Size(866, 774);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -484,6 +493,7 @@
         private System.Windows.Forms.ToolStripMenuItem saveAModelToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadPartBasedModels;
         private System.Windows.Forms.ContextMenuStrip partRelatedTools;
+        private System.Windows.Forms.ToolStripMenuItem boundingBoxToolStripMenuItem;
 
 	}
 }

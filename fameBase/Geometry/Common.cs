@@ -11,7 +11,7 @@ namespace Geometry
     {
         public static int _nPrimPoint = 8;
         public static double _thresh = 1e-6;
-
+        public static Random rand = new Random();
         public Common() { }
     }
 }

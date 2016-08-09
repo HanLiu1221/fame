@@ -109,10 +109,10 @@ namespace FameBase
         private bool drawVertex = false;
         private bool drawEdge = false;
         private bool drawFace = true;
+        private bool drawBbox = false;
         private bool isDrawAxes = false;
         private bool isDrawQuad = false;
 
-        public bool showBoundingbox = false;
         public bool showMesh = false;
         public bool showSketchyEdges = true;
         public bool showSketchyContour = false;
@@ -531,7 +531,6 @@ namespace FameBase
                 _models.Add(_currModel);
             }
         }// loadPartBasedModels
-
      
         private void cal2D()
         {
@@ -769,6 +768,9 @@ namespace FameBase
                     break;
                 case 2:
                     this.drawEdge = !this.drawEdge;
+                    break;
+                case 4:
+                    this.drawBbox = !this.drawBbox;
                     break;
                 case 3:
                 default:
@@ -1376,9 +1378,9 @@ namespace FameBase
                         this.drawMeshEdge(part._MESH);
                     }
                 }
-                if (this.showBoundingbox)
+                if (this.drawBbox)
                 {
-                    this.drawBoundingboxWithEdges(part._BOUNDINGBOX, part._COLOR, Color.Black);
+                    this.drawBoundingbox(part._BOUNDINGBOX, part._COLOR);
                 }
             }
         }//drawParts
@@ -2076,7 +2078,7 @@ namespace FameBase
             }
         }// drawBoundingboxWithEdges
 
-        public void drawBoundingbox(Prim box, Color c)
+        private void drawBoundingbox(Prim box, Color c)
         {
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
