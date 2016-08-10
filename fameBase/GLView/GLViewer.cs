@@ -536,6 +536,7 @@ namespace FameBase
                 _models.Add(_currModel);
                 ModelViewer modelViewer = new ModelViewer(_currModel);
                 modelViewer.SetBounds(x + w * (i++), y, w, h);
+                modelViewer.Show();
                 _modelViewers.Add(modelViewer);
             }
         }// loadPartBasedModels
