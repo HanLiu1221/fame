@@ -1482,7 +1482,8 @@ namespace FameBase
                 }
                 if (this.drawBbox)
                 {
-                    this.drawBoundingbox(part._BOUNDINGBOX, part._COLOR);
+                    this.drawBoundingboxPlanes(part._BOUNDINGBOX, part._COLOR);
+                    this.drawBoundingboxEdges(part._BOUNDINGBOX, part._COLOR);
                 }
             }
         }//drawParts
@@ -1577,7 +1578,7 @@ namespace FameBase
                     {
                         this.drawMeshFace(part._MESH, _selectionColor, false);
                     }
-                    this.drawBoundingbox(part._BOUNDINGBOX, _selectionColor);
+                    this.drawBoundingboxPlanes(part._BOUNDINGBOX, _selectionColor);
                     this.drawBoundingboxEdges(part._BOUNDINGBOX, _selectionColor);
                 }
             }
@@ -1726,13 +1727,10 @@ namespace FameBase
 
         private void drawLines3D(Vector3d v1, Vector3d v2, Color c, float linewidth)
         {
-
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
             Gl.glEnable(Gl.GL_LINE_SMOOTH);
             Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
-            Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
 
             Gl.glLineWidth(linewidth);
             Gl.glColor3ub(c.R, c.G, c.B);
@@ -1886,11 +1884,6 @@ namespace FameBase
         private void drawQuadTransparent3d(Plane3D q, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
-
-            Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glEnable(Gl.GL_LINE_SMOOTH);
-            Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
-            Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
             //Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
             //Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
 
@@ -1910,8 +1903,6 @@ namespace FameBase
             Gl.glDisable(Gl.GL_BLEND);
             Gl.glEnable(Gl.GL_CULL_FACE);
             Gl.glEnable(Gl.GL_LIGHTING);
-            Gl.glDisable(Gl.GL_POINT_SMOOTH);
-            Gl.glDisable(Gl.GL_LINE_SMOOTH);
             //Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
         }
 
@@ -2220,14 +2211,14 @@ namespace FameBase
             }
         }// drawBoundingboxWithEdges
 
-        private void drawBoundingbox(Prim box, Color c)
+        private void drawBoundingboxPlanes(Prim box, Color c)
         {
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
             {
                 this.drawQuadTransparent3d(box._PLANES[i], c);
             }
-        }// drawBoundingbox
+        }// drawBoundingboxPlanes
 
         public void drawBoundingboxEdges(Prim box, Color c)
         {
@@ -2260,6 +2251,6 @@ namespace FameBase
                 }
                 Gl.glEnd();
             }
-        }// drawBoundingbox
+        }// drawBoundingboxPlanes
     }// GLViewer
 }// namespace
