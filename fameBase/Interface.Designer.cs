@@ -63,18 +63,22 @@
             this.boxToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
-            this.modelViewPanel = new System.Windows.Forms.Panel();
-            this.keyboardLabel = new System.Windows.Forms.Label();
+            this.statsLabel = new System.Windows.Forms.Label();
+            this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
+            this.glViewer = new FameBase.GLViewer();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer = new FameBase.GLViewer();
+            this.fileSystemWatcher1 = new System.IO.FileSystemWatcher();
+            this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
+            this.addSelectedParts = new System.Windows.Forms.ToolStripButton();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
             this.viewPanel.Panel2.SuspendLayout();
             this.viewPanel.SuspendLayout();
             this.partRelatedTools.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.fileSystemWatcher1)).BeginInit();
             this.SuspendLayout();
             // 
             // menu
@@ -85,10 +89,11 @@
             this.file,
             this.tools,
             this.renderOption,
-            this.selectElement});
+            this.selectElement,
+            this.addSelectedParts});
             this.menu.Location = new System.Drawing.Point(0, 0);
             this.menu.Name = "menu";
-            this.menu.Size = new System.Drawing.Size(866, 39);
+            this.menu.Size = new System.Drawing.Size(1099, 39);
             this.menu.TabIndex = 0;
             this.menu.Text = "toolStrip1";
             // 
@@ -274,14 +279,14 @@
             // vertexToolStripMenuItem
             // 
             this.vertexToolStripMenuItem.Name = "vertexToolStripMenuItem";
-            this.vertexToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
+            this.vertexToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.vertexToolStripMenuItem.Text = "Vertex";
             this.vertexToolStripMenuItem.Click += new System.EventHandler(this.pointToolStripMenuItem_Click);
             // 
             // wireFrameToolStripMenuItem
             // 
             this.wireFrameToolStripMenuItem.Name = "wireFrameToolStripMenuItem";
-            this.wireFrameToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
+            this.wireFrameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.wireFrameToolStripMenuItem.Text = "WireFrame";
             this.wireFrameToolStripMenuItem.Click += new System.EventHandler(this.wireFrameToolStripMenuItem_Click);
             // 
@@ -290,7 +295,7 @@
             this.faceToolStripMenuItem.Checked = true;
             this.faceToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.faceToolStripMenuItem.Name = "faceToolStripMenuItem";
-            this.faceToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
+            this.faceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.faceToolStripMenuItem.Text = "Face";
             this.faceToolStripMenuItem.Click += new System.EventHandler(this.faceToolStripMenuItem_Click);
             // 
@@ -299,7 +304,7 @@
             this.boundingBoxToolStripMenuItem.Checked = true;
             this.boundingBoxToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.boundingBoxToolStripMenuItem.Name = "boundingBoxToolStripMenuItem";
-            this.boundingBoxToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
+            this.boundingBoxToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.boundingBoxToolStripMenuItem.Text = "BoundingBox";
             this.boundingBoxToolStripMenuItem.Click += new System.EventHandler(this.boundingBoxToolStripMenuItem_Click);
             // 
@@ -320,28 +325,28 @@
             // vertexSelection
             // 
             this.vertexSelection.Name = "vertexSelection";
-            this.vertexSelection.Size = new System.Drawing.Size(105, 22);
+            this.vertexSelection.Size = new System.Drawing.Size(152, 22);
             this.vertexSelection.Text = "vertex";
             this.vertexSelection.Click += new System.EventHandler(this.vertexSelection_Click);
             // 
             // edgeSelection
             // 
             this.edgeSelection.Name = "edgeSelection";
-            this.edgeSelection.Size = new System.Drawing.Size(105, 22);
+            this.edgeSelection.Size = new System.Drawing.Size(152, 22);
             this.edgeSelection.Text = "edge";
             this.edgeSelection.Click += new System.EventHandler(this.edgeSelection_Click);
             // 
             // faceSelection
             // 
             this.faceSelection.Name = "faceSelection";
-            this.faceSelection.Size = new System.Drawing.Size(105, 22);
+            this.faceSelection.Size = new System.Drawing.Size(152, 22);
             this.faceSelection.Text = "face";
             this.faceSelection.Click += new System.EventHandler(this.faceSelection_Click);
             // 
             // boxToolStripMenuItem
             // 
             this.boxToolStripMenuItem.Name = "boxToolStripMenuItem";
-            this.boxToolStripMenuItem.Size = new System.Drawing.Size(105, 22);
+            this.boxToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.boxToolStripMenuItem.Text = "box";
             this.boxToolStripMenuItem.Click += new System.EventHandler(this.boxToolStripMenuItem_Click);
             // 
@@ -358,11 +363,12 @@
             // 
             // viewPanel.Panel2
             // 
-            this.viewPanel.Panel2.Controls.Add(this.modelViewPanel);
+            this.viewPanel.Panel2.Controls.Add(this.partBasket);
+            this.viewPanel.Panel2.Controls.Add(this.statsLabel);
+            this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
-            this.viewPanel.Panel2.Controls.Add(this.keyboardLabel);
-            this.viewPanel.Size = new System.Drawing.Size(866, 675);
-            this.viewPanel.SplitterDistance = 31;
+            this.viewPanel.Size = new System.Drawing.Size(1099, 735);
+            this.viewPanel.SplitterDistance = 29;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -372,46 +378,31 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(860, 32);
+            this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
             this.fileNameTabs.TabIndex = 0;
             // 
-            // modelViewPanel
+            // statsLabel
             // 
-            this.modelViewPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            this.statsLabel.AutoSize = true;
+            this.statsLabel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.statsLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.statsLabel.ForeColor = System.Drawing.SystemColors.HotTrack;
+            this.statsLabel.Location = new System.Drawing.Point(216, 3);
+            this.statsLabel.Name = "statsLabel";
+            this.statsLabel.Size = new System.Drawing.Size(41, 16);
+            this.statsLabel.TabIndex = 14;
+            this.statsLabel.Text = "Stats:";
+            // 
+            // modelViewLayoutPanel
+            // 
+            this.modelViewLayoutPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left)));
-            this.modelViewPanel.AutoSize = true;
-            this.modelViewPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.modelViewPanel.Location = new System.Drawing.Point(3, 3);
-            this.modelViewPanel.Name = "modelViewPanel";
-            this.modelViewPanel.Size = new System.Drawing.Size(171, 640);
-            this.modelViewPanel.TabIndex = 2;
-            // 
-            // keyboardLabel
-            // 
-            this.keyboardLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.keyboardLabel.AutoSize = true;
-            this.keyboardLabel.BackColor = System.Drawing.Color.Aquamarine;
-            this.keyboardLabel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.keyboardLabel.Location = new System.Drawing.Point(176, 567);
-            this.keyboardLabel.Name = "keyboardLabel";
-            this.keyboardLabel.Size = new System.Drawing.Size(167, 72);
-            this.keyboardLabel.TabIndex = 6;
-            this.keyboardLabel.Text = "Space: unlock view\r\nCtrl + C: clear all strokes\r\nS: sketch mode\r\nE: eraser mode\r\n" +
-    "V: view mode\r\nR: reset view";
-            // 
-            // partRelatedTools
-            // 
-            this.partRelatedTools.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.groupToolStripMenuItem});
-            this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(108, 26);
-            // 
-            // groupToolStripMenuItem
-            // 
-            this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
-            this.groupToolStripMenuItem.Text = "Group";
-            this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
+            this.modelViewLayoutPanel.AutoScroll = true;
+            this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
+            this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
+            this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
+            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 699);
+            this.modelViewLayoutPanel.TabIndex = 13;
             // 
             // glViewer
             // 
@@ -427,18 +418,59 @@
             this.glViewer.ColorBits = ((byte)(32));
             this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
             this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(171, 3);
+            this.glViewer.Location = new System.Drawing.Point(212, 3);
             this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(692, 639);
+            this.glViewer.Size = new System.Drawing.Size(681, 699);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 12;
             // 
+            // partRelatedTools
+            // 
+            this.partRelatedTools.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.groupToolStripMenuItem});
+            this.partRelatedTools.Name = "partRelatedTools";
+            this.partRelatedTools.Size = new System.Drawing.Size(108, 26);
+            // 
+            // groupToolStripMenuItem
+            // 
+            this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.groupToolStripMenuItem.Text = "Group";
+            this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
+            // 
+            // fileSystemWatcher1
+            // 
+            this.fileSystemWatcher1.EnableRaisingEvents = true;
+            this.fileSystemWatcher1.SynchronizingObject = this;
+            // 
+            // partBasket
+            // 
+            this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.partBasket.AutoScroll = true;
+            this.partBasket.BackColor = System.Drawing.Color.White;
+            this.partBasket.Location = new System.Drawing.Point(896, 3);
+            this.partBasket.Name = "partBasket";
+            this.partBasket.Size = new System.Drawing.Size(203, 699);
+            this.partBasket.TabIndex = 15;
+            // 
+            // addSelectedParts
+            // 
+            this.addSelectedParts.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.addSelectedParts.Image = ((System.Drawing.Image)(resources.GetObject("addSelectedParts.Image")));
+            this.addSelectedParts.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.addSelectedParts.Name = "addSelectedParts";
+            this.addSelectedParts.Size = new System.Drawing.Size(33, 36);
+            this.addSelectedParts.Text = "Add";
+            this.addSelectedParts.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
+            this.addSelectedParts.Click += new System.EventHandler(this.addSelectedParts_Click);
+            // 
             // Interface
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(866, 714);
+            this.ClientSize = new System.Drawing.Size(1099, 774);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -452,6 +484,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).EndInit();
             this.viewPanel.ResumeLayout(false);
             this.partRelatedTools.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.fileSystemWatcher1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -479,13 +512,11 @@
         private System.Windows.Forms.ToolStripMenuItem viewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem resetViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem modelColorToolStripMenuItem;
-        private System.Windows.Forms.Panel modelViewPanel;
         private System.Windows.Forms.ColorDialog strokeColorDialog;
         private System.Windows.Forms.ToolStripMenuItem reloadViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadViewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadTriMeshToolStripMenuItem;
-        private System.Windows.Forms.Label keyboardLabel;
         private System.Windows.Forms.ToolStripMenuItem screenCaptureToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem extractStrokesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem renderToolStripMenuItem;
@@ -499,6 +530,11 @@
         private System.Windows.Forms.ContextMenuStrip partRelatedTools;
         private System.Windows.Forms.ToolStripMenuItem boundingBoxToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem groupToolStripMenuItem;
+        private System.Windows.Forms.FlowLayoutPanel modelViewLayoutPanel;
+        private System.Windows.Forms.Label statsLabel;
+        private System.Windows.Forms.FlowLayoutPanel partBasket;
+        private System.IO.FileSystemWatcher fileSystemWatcher1;
+        private System.Windows.Forms.ToolStripButton addSelectedParts;
 
 	}
 }

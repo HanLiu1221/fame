@@ -69,7 +69,6 @@ namespace Geometry
         string sourceFile;
         int[][] _vv; // vertex-vertex adjancency
         int[][] _vf; // vertex-face
-        int[][] _ff; // face-face
         public HalfEdge edgeIter = null;
 		
 		public Mesh()
@@ -167,6 +166,14 @@ namespace Geometry
             }
             this.collectMeshInfo();
 		}
+
+        public Object Clone()
+        {
+            double[] vPos = vertexPos.Clone() as double[];
+            int[] fIndex = faceVertexIndex.Clone() as int[];
+            Mesh m = new Mesh(vPos, fIndex);
+            return m;
+        }
 
         private void LoadPlyfile(StreamReader sr, bool normalize)
         {
