@@ -15,7 +15,7 @@ Data/
 *.xml
 *.suo
 Visual Studio 2013/
-bin/Debug
-bin/Release
-bin/x64
+bin/Debug/
+bin/Release/
+bin/x64/
 vs settings/

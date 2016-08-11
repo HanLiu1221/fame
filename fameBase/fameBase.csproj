@@ -8,8 +8,8 @@
     <ProjectGuid>{51C09568-D884-4E07-9DA4-8E3993AD8911}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>GraphicsPlatform</RootNamespace>
-    <AssemblyName>Sketching</AssemblyName>
+    <RootNamespace>Famebase</RootNamespace>
+    <AssemblyName>Famebase</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -137,6 +137,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Component\HumanPose.cs" />
     <Compile Include="Component\Part.cs" />
     <Compile Include="Geometry\Common.cs" />
     <Compile Include="Geometry\JsonFile.cs" />
