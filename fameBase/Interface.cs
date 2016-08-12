@@ -140,7 +140,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\Users\hla180\Desktop\HLiu\Fame\fameBase\models\test" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\fameBase\models\test" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
