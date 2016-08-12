@@ -757,7 +757,7 @@ namespace Geometry
             createPointClound();
         }
 
-        void createPointClound()
+        private void createPointClound()
         {
             double t = Math.PI;
             double r = t * 2;
@@ -775,6 +775,51 @@ namespace Geometry
                         _z * Math.Sin(v));
                     _points[i++] = p;
                 }
+            }
+        }// createPointClound
+
+        public void create(Vector3d u, Vector3d v)
+        {
+            // body bone
+            Vector3d center = (u + v) / 2;
+            Vector3d dir = (v - u).normalize();
+            double radius = (u - v).Length() / 2;
+            Matrix4d scaleMat = Matrix4d.ScalingMatrix(radius / _x, 1, 1);
+            Vector3d axis = new Vector3d(1, 0, 0);
+            Vector3d rotAxis = axis.Cross(dir).normalize();
+            Matrix4d transMat = Matrix4d.TranslationMatrix(center);
+            Matrix4d rotMat = Matrix4d.IdentityMatrix();
+            if (double.IsNaN(rotAxis.x) && double.IsNaN(rotAxis.y) && double.IsNaN(rotAxis.z))
+            {
+                double acos = axis.Dot(dir);
+                if (acos < -1)
+                {
+                    acos = -1;
+                }
+                else if (acos > 1)
+                {
+                    acos = 1;
+                }
+                double rot_angle = Math.Acos(acos);
+                rotMat = Matrix4d.RotationMatrix(rotAxis, rot_angle);
+            }
+            Matrix4d T = transMat * rotMat * scaleMat;
+            this.TransformFromUnit(T);
+        }// create
+
+        public void Transform(Matrix4d T)
+        {
+            for (int i = 0; i < _points.Length; ++i)
+            {
+                _points[i] = (T * new Vector4d(_points[i], 1)).ToVector3D();
+            }
+        }
+
+        public void TransformFromUnit(Matrix4d T)
+        {
+            for (int i = 0; i < _points.Length; ++i)
+            {
+                _points[i] = (T * new Vector4d(_unitPoints[i], 1)).ToVector3D();
             }
         }
     }// Ellipsoid
