@@ -61,8 +61,10 @@
             this.edgeSelection = new System.Windows.Forms.ToolStripMenuItem();
             this.faceSelection = new System.Windows.Forms.ToolStripMenuItem();
             this.boxToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.addSelectedParts = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
+            this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.statsLabel = new System.Windows.Forms.Label();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.glViewer = new FameBase.GLViewer();
@@ -70,8 +72,6 @@
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fileSystemWatcher1 = new System.IO.FileSystemWatcher();
-            this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
-            this.addSelectedParts = new System.Windows.Forms.ToolStripButton();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -279,14 +279,14 @@
             // vertexToolStripMenuItem
             // 
             this.vertexToolStripMenuItem.Name = "vertexToolStripMenuItem";
-            this.vertexToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.vertexToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.vertexToolStripMenuItem.Text = "Vertex";
             this.vertexToolStripMenuItem.Click += new System.EventHandler(this.pointToolStripMenuItem_Click);
             // 
             // wireFrameToolStripMenuItem
             // 
             this.wireFrameToolStripMenuItem.Name = "wireFrameToolStripMenuItem";
-            this.wireFrameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.wireFrameToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.wireFrameToolStripMenuItem.Text = "WireFrame";
             this.wireFrameToolStripMenuItem.Click += new System.EventHandler(this.wireFrameToolStripMenuItem_Click);
             // 
@@ -295,7 +295,7 @@
             this.faceToolStripMenuItem.Checked = true;
             this.faceToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.faceToolStripMenuItem.Name = "faceToolStripMenuItem";
-            this.faceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.faceToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.faceToolStripMenuItem.Text = "Face";
             this.faceToolStripMenuItem.Click += new System.EventHandler(this.faceToolStripMenuItem_Click);
             // 
@@ -304,7 +304,7 @@
             this.boundingBoxToolStripMenuItem.Checked = true;
             this.boundingBoxToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.boundingBoxToolStripMenuItem.Name = "boundingBoxToolStripMenuItem";
-            this.boundingBoxToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.boundingBoxToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.boundingBoxToolStripMenuItem.Text = "BoundingBox";
             this.boundingBoxToolStripMenuItem.Click += new System.EventHandler(this.boundingBoxToolStripMenuItem_Click);
             // 
@@ -325,30 +325,41 @@
             // vertexSelection
             // 
             this.vertexSelection.Name = "vertexSelection";
-            this.vertexSelection.Size = new System.Drawing.Size(152, 22);
+            this.vertexSelection.Size = new System.Drawing.Size(105, 22);
             this.vertexSelection.Text = "vertex";
             this.vertexSelection.Click += new System.EventHandler(this.vertexSelection_Click);
             // 
             // edgeSelection
             // 
             this.edgeSelection.Name = "edgeSelection";
-            this.edgeSelection.Size = new System.Drawing.Size(152, 22);
+            this.edgeSelection.Size = new System.Drawing.Size(105, 22);
             this.edgeSelection.Text = "edge";
             this.edgeSelection.Click += new System.EventHandler(this.edgeSelection_Click);
             // 
             // faceSelection
             // 
             this.faceSelection.Name = "faceSelection";
-            this.faceSelection.Size = new System.Drawing.Size(152, 22);
+            this.faceSelection.Size = new System.Drawing.Size(105, 22);
             this.faceSelection.Text = "face";
             this.faceSelection.Click += new System.EventHandler(this.faceSelection_Click);
             // 
             // boxToolStripMenuItem
             // 
             this.boxToolStripMenuItem.Name = "boxToolStripMenuItem";
-            this.boxToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.boxToolStripMenuItem.Size = new System.Drawing.Size(105, 22);
             this.boxToolStripMenuItem.Text = "box";
             this.boxToolStripMenuItem.Click += new System.EventHandler(this.boxToolStripMenuItem_Click);
+            // 
+            // addSelectedParts
+            // 
+            this.addSelectedParts.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.addSelectedParts.Image = ((System.Drawing.Image)(resources.GetObject("addSelectedParts.Image")));
+            this.addSelectedParts.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.addSelectedParts.Name = "addSelectedParts";
+            this.addSelectedParts.Size = new System.Drawing.Size(33, 36);
+            this.addSelectedParts.Text = "Add";
+            this.addSelectedParts.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
+            this.addSelectedParts.Click += new System.EventHandler(this.addSelectedParts_Click);
             // 
             // viewPanel
             // 
@@ -380,6 +391,17 @@
             this.fileNameTabs.SelectedIndex = 0;
             this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
             this.fileNameTabs.TabIndex = 0;
+            // 
+            // partBasket
+            // 
+            this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.partBasket.AutoScroll = true;
+            this.partBasket.BackColor = System.Drawing.Color.White;
+            this.partBasket.Location = new System.Drawing.Point(896, 3);
+            this.partBasket.Name = "partBasket";
+            this.partBasket.Size = new System.Drawing.Size(203, 699);
+            this.partBasket.TabIndex = 15;
             // 
             // statsLabel
             // 
@@ -442,28 +464,6 @@
             // 
             this.fileSystemWatcher1.EnableRaisingEvents = true;
             this.fileSystemWatcher1.SynchronizingObject = this;
-            // 
-            // partBasket
-            // 
-            this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.partBasket.AutoScroll = true;
-            this.partBasket.BackColor = System.Drawing.Color.White;
-            this.partBasket.Location = new System.Drawing.Point(896, 3);
-            this.partBasket.Name = "partBasket";
-            this.partBasket.Size = new System.Drawing.Size(203, 699);
-            this.partBasket.TabIndex = 15;
-            // 
-            // addSelectedParts
-            // 
-            this.addSelectedParts.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.addSelectedParts.Image = ((System.Drawing.Image)(resources.GetObject("addSelectedParts.Image")));
-            this.addSelectedParts.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.addSelectedParts.Name = "addSelectedParts";
-            this.addSelectedParts.Size = new System.Drawing.Size(33, 36);
-            this.addSelectedParts.Text = "Add";
-            this.addSelectedParts.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
-            this.addSelectedParts.Click += new System.EventHandler(this.addSelectedParts_Click);
             // 
             // Interface
             // 
