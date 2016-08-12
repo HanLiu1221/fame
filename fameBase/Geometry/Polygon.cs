@@ -736,4 +736,46 @@ namespace Geometry
             }
         }
     }// Prim
+
+    public class Ellipsoid
+    {
+        Vector3d[] _unitPoints; // start from the origin with radii x, y, z
+        Vector3d[] _points; // transform from the unit points
+        double _x;
+        double _y;
+        double _z;
+        int _nh; // # horizontal slices
+        int _nv; // # vertical slices
+
+        public Ellipsoid(double x, double y, double z, int n)
+        {
+            _x = x;
+            _y = y;
+            _z = z;
+            _nh = n;
+            _nv = n * 2;
+            createPointClound();
+        }
+
+        void createPointClound()
+        {
+            double t = Math.PI;
+            double r = t * 2;
+            double tstep = t / _nh;
+            double rstep = r / _nv;
+            int i = 0;
+            _unitPoints = new Vector3d[_nh * _nv];
+            for (double v = 0; v < t; v += tstep)
+            {
+                for (double u = 0; u < r; u += rstep)
+                {
+                    Vector3d p = new Vector3d(
+                        _x * Math.Cos(u) * Math.Sin(v),
+                        _y * Math.Sin(u) * Math.Sin(v),
+                        _z * Math.Sin(v));
+                    _points[i++] = p;
+                }
+            }
+        }
+    }// Ellipsoid
 }

@@ -12,6 +12,7 @@ namespace Component
 
     class BodyNode
     {
+        // represent by a solid sphere
         string _name;
         Vector3d _originPos;
         Vector3d _pos;
@@ -29,8 +30,10 @@ namespace Component
 
     class BodyBone
     {
+        // represent by a cylinder + ellipsoid
         BodyNode src;
         BodyNode dst;
         double radius; // of the cyclinder
+
     }// BodyBone
 }
