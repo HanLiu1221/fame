@@ -769,11 +769,10 @@ namespace Geometry
             {
                 for (double u = 0; u < r; u += rstep)
                 {
-                    Vector3d p = new Vector3d(
+                    _unitPoints[i++] = new Vector3d(
                         _x * Math.Cos(u) * Math.Sin(v),
                         _y * Math.Sin(u) * Math.Sin(v),
                         _z * Math.Sin(v));
-                    _points[i++] = p;
                 }
             }
         }// createPointClound
@@ -822,5 +821,53 @@ namespace Geometry
                 _points[i] = (T * new Vector4d(_unitPoints[i], 1)).ToVector3D();
             }
         }
+
+        public Vector3d[] getFaceVertices()
+        {
+            List<Vector3d> points = new List<Vector3d>();
+            for (int i = 0; i < _nh; ++i)
+            {
+                for (int j = 0; j < _nv; ++j)
+                {
+                    points.Add(_points[i * _nv + j]);
+                    points.Add(_points[i * _nv + j + 1]);
+                    points.Add(_points[(i + 1) * _nv + j + 1]);
+                    points.Add(_points[(i + 1) * _nv + j]);
+                }
+            }
+            return points.ToArray();
+        }// getFaceVertices
     }// Ellipsoid
+
+    public class Cylinder
+    {
+        double _radius;
+        Vector3d _src;
+        Vector3d _dst;
+        Mesh _mesh;
+        int _nslice = 20;
+
+        public Cylinder(Vector3d u, Vector3d v, double r)
+        {
+            _src = u;
+            _dst = v;
+            _radius = r;
+        }
+
+        public double _RADIUS
+        {
+            get
+            {
+                return _radius;
+            }
+        }
+
+        public int _NSLICE
+        {
+            get
+            {
+                return _nslice;
+            }
+        }
+    }// Cylinder
 }

@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 using System.Windows.Forms;
 using System.IO;
+using System.Drawing;
+
 using Tao.OpenGl;
 using Tao.Platform.Windows;
-//using OpenTK.Graphics.OpenGL;
-//using OpenTK.Platform.Windows;
-using System.Drawing;
 
 using Geometry;
 using Component;
@@ -1376,8 +1374,8 @@ namespace FameBase
 
             //Gl.glScaled((double)this.Width / this.startWid, (double)this.Height / this.startHeig, 1.0);
 
-            this.DrawHighlight2D();  
-         
+            this.DrawHighlight2D();
+
             /*****TEST*****/
             //this.drawTest2D();
 
@@ -1405,7 +1403,7 @@ namespace FameBase
             {
                 Gl.glEnable(Gl.GL_DEPTH_TEST);
             }
-            
+
             // Draw all meshes
             if (_currModel != null)
             {
@@ -1414,7 +1412,7 @@ namespace FameBase
             else
             {
                 this.drawAllMeshes();
-            }       
+            }
 
             this.DrawHighlight3D();
 
@@ -1532,6 +1530,11 @@ namespace FameBase
             Gl.glDisable(Gl.GL_LINE_SMOOTH);
         }// drawcircle2D
 
+        private void drawCylinder(Vector3d u, Vector3d v, double r)
+        {
+
+        }
+
         private void drawEllipseCurve3D(Ellipse3D e)
         {
             Gl.glEnable(Gl.GL_LINE_SMOOTH);
@@ -1563,6 +1566,40 @@ namespace FameBase
 
             Gl.glDisable(Gl.GL_LINE_SMOOTH);
         }// drawEllipse3D
+
+        private void drawEllipsoidTransparent(Ellipsoid e, Color c)
+        {
+            Gl.glDisable(Gl.GL_LIGHTING);
+            Gl.glEnable(Gl.GL_BLEND);
+            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+            Gl.glDisable(Gl.GL_DEPTH_TEST);
+            Vector3d[] points = e.getFaceVertices();
+            Vector3d[] quad = new Vector3d[4];
+            for (int i = 0; i < points.Length; i += 4)
+            {
+                for (int j = 0; j < 4; ++j)
+                {
+                    quad[j] = points[i + j];
+                }
+                this.drawQuad3d(quad, c);
+            }
+            Gl.glEnable(Gl.GL_LIGHTING);
+            Gl.glEnable(Gl.GL_DEPTH_TEST);
+        }// drawEllipsoidTransparent
+
+        private void drawEllipsoidSolid(Ellipsoid e, Color c)
+        {
+            Vector3d[] points = e.getFaceVertices();
+            Vector3d[] quad = new Vector3d[4];
+            for (int i = 0; i < points.Length; i += 4)
+            {
+                for (int j = 0; j < 4; ++j)
+                {
+                    quad[j] = points[i + j];
+                }
+                this.drawQuad3d(quad, c);
+            }
+        }// drawEllipsoidSolid
 
         private void DrawHighlight2D()
         {
@@ -1644,10 +1681,10 @@ namespace FameBase
             Gl.glLineWidth(linewidth);
             Gl.glBegin(Gl.GL_LINES);
             Gl.glColor3ub(c.R, c.G, c.B);
-            for (int i = 0; i < points3d.Count - 1;++i )
+            for (int i = 0; i < points3d.Count - 1; ++i)
             {
                 Gl.glVertex2dv(points3d[i].ToArray());
-                Gl.glVertex2dv(points3d[i+1].ToArray());
+                Gl.glVertex2dv(points3d[i + 1].ToArray());
             }
             Gl.glEnd();
 
@@ -1794,7 +1831,7 @@ namespace FameBase
             Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
 
             Gl.glEnable(Gl.GL_POINT_SMOOTH);
-			Gl.glEnable(Gl.GL_LINE_SMOOTH);
+            Gl.glEnable(Gl.GL_LINE_SMOOTH);
 
             SetDefaultMaterial();
 
@@ -1813,18 +1850,6 @@ namespace FameBase
             Gl.glPushMatrix();
             Gl.glLoadIdentity();
 
-            Gl.glDisable(Gl.GL_LIGHTING);
-
-            //Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            //Gl.glEnable(Gl.GL_LINE_SMOOTH);
-            //Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
-            //Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
-            //Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
-            //Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
-
-            Gl.glEnable(Gl.GL_BLEND);
-            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
-
             Gl.glDisable(Gl.GL_CULL_FACE);
             Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
             Gl.glColor4ub(c.R, c.G, c.B, 100);
@@ -1834,9 +1859,7 @@ namespace FameBase
                 Gl.glVertex2dv(q.points3d[i].ToArray());
             }
             Gl.glEnd();
-            
 
-            Gl.glEnable(Gl.GL_LINE_SMOOTH);
             Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glLineWidth(2.0f);
             Gl.glBegin(Gl.GL_LINES);
@@ -1846,9 +1869,6 @@ namespace FameBase
                 Gl.glVertex2dv(q.points3d[(i + 1) % 4].ToArray());
             }
             Gl.glEnd();
-            Gl.glDisable(Gl.GL_BLEND);
-            Gl.glDisable(Gl.GL_LINE_SMOOTH);
-            Gl.glEnable(Gl.GL_LIGHTING);
 
             Gl.glMatrixMode(Gl.GL_MODELVIEW);
             Gl.glPopMatrix();
@@ -1858,11 +1878,7 @@ namespace FameBase
 
         private void drawQuad3d(Plane3D q, Color c)
         {
-            Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glEnable(Gl.GL_LINE_SMOOTH);
             Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
-            Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
-            Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
             Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
 
             Gl.glEnable(Gl.GL_BLEND);
@@ -1876,8 +1892,25 @@ namespace FameBase
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
-            Gl.glDisable(Gl.GL_POINT_SMOOTH);
-            Gl.glDisable(Gl.GL_LINE_SMOOTH);
+            Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
+        }
+
+        private void drawQuad3d(Vector3d[] pos, Color c)
+        {
+            Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
+            Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
+
+            Gl.glEnable(Gl.GL_BLEND);
+            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+
+            Gl.glColor4ub(c.R, c.G, c.B, c.A);
+            Gl.glBegin(Gl.GL_POLYGON);
+            for (int i = 0; i < pos.Length; ++i)
+            {
+                Gl.glVertex3dv(pos[i].ToArray());
+            }
+            Gl.glEnd();
+            Gl.glDisable(Gl.GL_BLEND);
             Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
         }
 
@@ -1922,18 +1955,18 @@ namespace FameBase
         private static void SetDefaultLight()
         {
 
-            float[] col1 = new float[4]  { 0.7f, 0.7f, 0.7f, 1.0f };
+            float[] col1 = new float[4] { 0.7f, 0.7f, 0.7f, 1.0f };
             float[] col2 = new float[4] { 0.8f, 0.7f, 0.7f, 1.0f };
             float[] col3 = new float[4] { 0, 0, 0, 1 };//{ 1.0f, 1.0f, 1.0f, 1.0f };
 
-            float[] pos_1 = {10, 0,0};// { 0, -5, 10.0f };
-            float[] pos_2 = {0, 10, 0};// { 0, 5, -10.0f };
-            float[] pos_3 = {0,0,10};//{ -5, 5, -10.0f };
+            float[] pos_1 = { 10, 0, 0 };// { 0, -5, 10.0f };
+            float[] pos_2 = { 0, 10, 0 };// { 0, 5, -10.0f };
+            float[] pos_3 = { 0, 0, 10 };//{ -5, 5, -10.0f };
             float[] pos_4 = { -10, 0, 0 };// { 0, -5, 10.0f };
             float[] pos_5 = { 0, -10, 0 };// { 0, 5, -10.0f };
             float[] pos_6 = { 0, 0, -10 };//{ -5, 5, -10.0f };
 
-            float[] intensity = {0.5f, 0.5f, 0.5f};
+            float[] intensity = { 0.5f, 0.5f, 0.5f };
             //Gl.glLightModeli(Gl.GL_LIGHT_MODEL_TWO_SIDE, Gl.GL_TRUE);
             Gl.glEnable(Gl.GL_LIGHT0);
             Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_POSITION, pos_1);
@@ -2073,24 +2106,24 @@ namespace FameBase
 
             Gl.glShadeModel(Gl.GL_SMOOTH);
 
-			float[] mat_a = new float[4] { c.R / 255.0f, c.G / 255.0f, c.B / 255.0f, 1.0f };
+            float[] mat_a = new float[4] { c.R / 255.0f, c.G / 255.0f, c.B / 255.0f, 1.0f };
 
-			float[] ka = { 0.1f, 0.05f, 0.0f, 1.0f };
-			float[] kd = { .9f, .6f, .2f, 1.0f };
-			float[] ks = { 0, 0, 0, 0 };//{ .2f, .2f, .2f, 1.0f };
-			float[] shine = { 1.0f };
-			Gl.glColorMaterial(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE);
-			Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT, mat_a);
-			Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_DIFFUSE, mat_a);
-			Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SPECULAR, ks);
-			Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SHININESS, shine);            
+            float[] ka = { 0.1f, 0.05f, 0.0f, 1.0f };
+            float[] kd = { .9f, .6f, .2f, 1.0f };
+            float[] ks = { 0, 0, 0, 0 };//{ .2f, .2f, .2f, 1.0f };
+            float[] shine = { 1.0f };
+            Gl.glColorMaterial(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT, mat_a);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_DIFFUSE, mat_a);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SPECULAR, ks);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SHININESS, shine);
 
             Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
 
-			Gl.glEnable(Gl.GL_LIGHTING);
-			Gl.glEnable(Gl.GL_NORMALIZE);
+            Gl.glEnable(Gl.GL_LIGHTING);
+            Gl.glEnable(Gl.GL_NORMALIZE);
 
-            
+
             if (useMeshColor)
             {
                 Gl.glColor3ub(GLViewer.ModelColor.R, GLViewer.ModelColor.G, GLViewer.ModelColor.B);
@@ -2144,14 +2177,14 @@ namespace FameBase
                     Vector3d v3 = new Vector3d(
                         m.VertexPos[vidx3 * 3], m.VertexPos[vidx3 * 3 + 1], m.VertexPos[vidx3 * 3 + 2]);
                     Vector3d n1 = new Vector3d(m.VertexNormal[vidx1 * 3], m.VertexNormal[vidx1 * 3 + 1], m.VertexNormal[vidx1 * 3 + 2]);
-					Gl.glNormal3dv(n1.ToArray());
-					Gl.glVertex3d(v1.x, v1.y, v1.z);
-					Vector3d n2 = new Vector3d(m.VertexNormal[vidx2 * 3], m.VertexNormal[vidx2 * 3 + 1], m.VertexNormal[vidx2 * 3 + 2]);
-					Gl.glNormal3dv(n2.ToArray());
-					Gl.glVertex3d(v2.x, v2.y, v2.z);
-					Vector3d n3 = new Vector3d(m.VertexNormal[vidx3 * 3], m.VertexNormal[vidx3 * 3 + 1], m.VertexNormal[vidx3 * 3 + 2]);
-					Gl.glNormal3dv(n3.ToArray());
-					Gl.glVertex3d(v3.x, v3.y, v3.z);
+                    Gl.glNormal3dv(n1.ToArray());
+                    Gl.glVertex3d(v1.x, v1.y, v1.z);
+                    Vector3d n2 = new Vector3d(m.VertexNormal[vidx2 * 3], m.VertexNormal[vidx2 * 3 + 1], m.VertexNormal[vidx2 * 3 + 2]);
+                    Gl.glNormal3dv(n2.ToArray());
+                    Gl.glVertex3d(v2.x, v2.y, v2.z);
+                    Vector3d n3 = new Vector3d(m.VertexNormal[vidx3 * 3], m.VertexNormal[vidx3 * 3 + 1], m.VertexNormal[vidx3 * 3 + 2]);
+                    Gl.glNormal3dv(n3.ToArray());
+                    Gl.glVertex3d(v3.x, v3.y, v3.z);
                 }
                 Gl.glEnd();
             }
