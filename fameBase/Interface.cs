@@ -99,10 +99,10 @@ namespace FameBase
         private void modelColorToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ColorDialog colorDialog = new ColorDialog();
-            colorDialog.Color = GLViewer.ModelColor;
+            colorDialog.Color = GLDrawer.ModelColor;
             if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                GLViewer.ModelColor = colorDialog.Color;
+                GLDrawer.ModelColor = colorDialog.Color;
                 this.glViewer.setMeshColor(colorDialog.Color);
                 this.glViewer.Refresh();
             }
@@ -309,5 +309,34 @@ namespace FameBase
                 this.partBasket.Controls.Add(mv);
             }
         }
-	}
-}
+
+        private void loadHumanPoseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Load a human pose",
+                DefaultExt = ".pos"
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                this.glViewer.loadHuamPose(dialog.FileName);
+                this.updateStats();
+            }
+            this.glViewer.Refresh();
+        }
+
+        private void saveHumanPoseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new SaveFileDialog()
+            {
+                Title = "Save a human pose",
+                DefaultExt = ".pos",
+                OverwritePrompt = true
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                this.glViewer.saveHumanPose(dialog.FileName);
+            }
+        }
+	}// Interface
+}// namespace

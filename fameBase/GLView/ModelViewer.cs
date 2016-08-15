@@ -169,7 +169,7 @@ namespace FameBase
 
             foreach (Part part in _model._PARTS)
             {
-                this.drawMeshFace(part._MESH, part._COLOR);
+                GLDrawer.drawMeshFace(part._MESH, part._COLOR, true);
                 this.drawBoundingbox(part._BOUNDINGBOX, part._COLOR);
             }
         }//drawParts
@@ -205,7 +205,7 @@ namespace FameBase
             Gl.glEnable(Gl.GL_LIGHTING);
             Gl.glEnable(Gl.GL_NORMALIZE);
 
-            Gl.glColor3ub(GLViewer.ModelColor.R, GLViewer.ModelColor.G, GLViewer.ModelColor.B);
+            Gl.glColor3ub(GLDrawer.ModelColor.R, GLDrawer.ModelColor.G, GLDrawer.ModelColor.B);
             for (int i = 0, j = 0; i < m.FaceCount; ++i, j += 3)
             {
                 int vidx1 = m.FaceVertexIndex[j];

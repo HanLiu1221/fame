@@ -772,7 +772,7 @@ namespace Geometry
                     _unitPoints[i++] = new Vector3d(
                         _x * Math.Cos(u) * Math.Sin(v),
                         _y * Math.Sin(u) * Math.Sin(v),
-                        _z * Math.Sin(v));
+                        _z * Math.Cos(v));
                 }
             }
         }// createPointClound
@@ -788,7 +788,7 @@ namespace Geometry
             Vector3d rotAxis = axis.Cross(dir).normalize();
             Matrix4d transMat = Matrix4d.TranslationMatrix(center);
             Matrix4d rotMat = Matrix4d.IdentityMatrix();
-            if (double.IsNaN(rotAxis.x) && double.IsNaN(rotAxis.y) && double.IsNaN(rotAxis.z))
+            if (!double.IsNaN(rotAxis.x) && !double.IsNaN(rotAxis.y) && !double.IsNaN(rotAxis.z))
             {
                 double acos = axis.Dot(dir);
                 if (acos < -1)
@@ -816,7 +816,11 @@ namespace Geometry
 
         public void TransformFromUnit(Matrix4d T)
         {
-            for (int i = 0; i < _points.Length; ++i)
+            if (_points == null)
+            {
+                _points = new Vector3d[_unitPoints.Length];
+            }
+            for (int i = 0; i < _unitPoints.Length; ++i)
             {
                 _points[i] = (T * new Vector4d(_unitPoints[i], 1)).ToVector3D();
             }
@@ -825,15 +829,19 @@ namespace Geometry
         public Vector3d[] getFaceVertices()
         {
             List<Vector3d> points = new List<Vector3d>();
-            for (int i = 0; i < _nh; ++i)
+            for (int i = 0; i < _nh - 1; ++i)
             {
-                for (int j = 0; j < _nv; ++j)
+                for (int j = 0; j < _nv - 1; ++j)
                 {
                     points.Add(_points[i * _nv + j]);
                     points.Add(_points[i * _nv + j + 1]);
                     points.Add(_points[(i + 1) * _nv + j + 1]);
                     points.Add(_points[(i + 1) * _nv + j]);
                 }
+                points.Add(_points[i * _nv + _nv - 1]);
+                points.Add(_points[i * _nv]);
+                points.Add(_points[(i + 1) * _nv]);
+                points.Add(_points[(i + 1) * _nv + _nv - 1]);
             }
             return points.ToArray();
         }// getFaceVertices
@@ -844,7 +852,6 @@ namespace Geometry
         double _radius;
         Vector3d _src;
         Vector3d _dst;
-        Mesh _mesh;
         int _nslice = 20;
 
         public Cylinder(Vector3d u, Vector3d v, double r)

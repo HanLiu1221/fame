@@ -152,7 +152,7 @@
     <Compile Include="GLView\GLViewer.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="GLView\ImageClass.cs" />
+    <Compile Include="GLView\GLDrawer.cs" />
     <Compile Include="GLView\MeshClass.cs" />
     <Compile Include="Interface.cs">
       <SubType>Form</SubType>

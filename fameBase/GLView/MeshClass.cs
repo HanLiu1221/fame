@@ -346,7 +346,7 @@ namespace FameBase
             Gl.glEnable(Gl.GL_NORMALIZE);
 
 
-            Gl.glColor3ub(GLViewer.ModelColor.R, GLViewer.ModelColor.G, GLViewer.ModelColor.B);
+            Gl.glColor3ub(GLDrawer.ModelColor.R, GLDrawer.ModelColor.G, GLDrawer.ModelColor.B);
 
             fixed (double* vp = this.mesh.VertexPos)
             fixed (double* vn = this.mesh.FaceNormal)
@@ -373,7 +373,7 @@ namespace FameBase
         public void renderWireFrame()
         {
             Gl.glEnable(Gl.GL_LINE_SMOOTH);
-            Gl.glColor3ub(GLViewer.ColorSet[1].R, GLViewer.ColorSet[1].G, GLViewer.ColorSet[1].B);
+            Gl.glColor3ub(GLDrawer.ColorSet[1].R, GLDrawer.ColorSet[1].G, GLDrawer.ColorSet[1].B);
             Gl.glBegin(Gl.GL_LINES);
             for (int i = 0; i < this.mesh.Edges.Length; ++i)
             {
@@ -394,7 +394,7 @@ namespace FameBase
         public void renderVertices()
         {
             Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glColor3ub(GLViewer.ColorSet[2].R, GLViewer.ColorSet[2].G, GLViewer.ColorSet[2].B);
+            Gl.glColor3ub(GLDrawer.ColorSet[2].R, GLDrawer.ColorSet[2].G, GLDrawer.ColorSet[2].B);
             Gl.glPointSize(2.0f);
             Gl.glBegin(Gl.GL_POINTS);
             for (int i = 0; i < this.mesh.VertexCount; ++i)

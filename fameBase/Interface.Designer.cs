@@ -64,21 +64,21 @@
             this.addSelectedParts = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
-            this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.statsLabel = new System.Windows.Forms.Label();
+            this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
-            this.glViewer = new FameBase.GLViewer();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.fileSystemWatcher1 = new System.IO.FileSystemWatcher();
+            this.loadHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.glViewer = new FameBase.GLViewer();
+            this.saveHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
             this.viewPanel.Panel2.SuspendLayout();
             this.viewPanel.SuspendLayout();
             this.partRelatedTools.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.fileSystemWatcher1)).BeginInit();
             this.SuspendLayout();
             // 
             // menu
@@ -113,21 +113,21 @@
             // loadAPartBasedModel
             // 
             this.loadAPartBasedModel.Name = "loadAPartBasedModel";
-            this.loadAPartBasedModel.Size = new System.Drawing.Size(152, 22);
+            this.loadAPartBasedModel.Size = new System.Drawing.Size(146, 22);
             this.loadAPartBasedModel.Text = "Load a model";
             this.loadAPartBasedModel.Click += new System.EventHandler(this.loadAPartBasedModel_Click);
             // 
             // saveAModelToolStripMenuItem
             // 
             this.saveAModelToolStripMenuItem.Name = "saveAModelToolStripMenuItem";
-            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.saveAModelToolStripMenuItem.Text = "Save a model";
             this.saveAModelToolStripMenuItem.Click += new System.EventHandler(this.saveAModelToolStripMenuItem_Click);
             // 
             // loadPartBasedModels
             // 
             this.loadPartBasedModels.Name = "loadPartBasedModels";
-            this.loadPartBasedModels.Size = new System.Drawing.Size(152, 22);
+            this.loadPartBasedModels.Size = new System.Drawing.Size(146, 22);
             this.loadPartBasedModels.Text = "Load models";
             this.loadPartBasedModels.Click += new System.EventHandler(this.loadPartBasedModels_Click);
             // 
@@ -137,7 +137,9 @@
             this.open3D,
             this.import3D,
             this.saveAs3D,
-            this.loadTriMeshToolStripMenuItem});
+            this.loadTriMeshToolStripMenuItem,
+            this.loadHumanPoseToolStripMenuItem,
+            this.saveHumanPoseToolStripMenuItem});
             this.file.Image = ((System.Drawing.Image)(resources.GetObject("file.Image")));
             this.file.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.file.Name = "file";
@@ -148,28 +150,28 @@
             // open3D
             // 
             this.open3D.Name = "open3D";
-            this.open3D.Size = new System.Drawing.Size(162, 22);
+            this.open3D.Size = new System.Drawing.Size(168, 22);
             this.open3D.Text = "Open 3D file";
             this.open3D.Click += new System.EventHandler(this.open3D_Click);
             // 
             // import3D
             // 
             this.import3D.Name = "import3D";
-            this.import3D.Size = new System.Drawing.Size(162, 22);
+            this.import3D.Size = new System.Drawing.Size(168, 22);
             this.import3D.Text = "Import 3D file";
             this.import3D.Click += new System.EventHandler(this.import3D_Click);
             // 
             // saveAs3D
             // 
             this.saveAs3D.Name = "saveAs3D";
-            this.saveAs3D.Size = new System.Drawing.Size(162, 22);
+            this.saveAs3D.Size = new System.Drawing.Size(168, 22);
             this.saveAs3D.Text = "Save as 3D file";
             this.saveAs3D.Click += new System.EventHandler(this.saveAs3D_Click);
             // 
             // loadTriMeshToolStripMenuItem
             // 
             this.loadTriMeshToolStripMenuItem.Name = "loadTriMeshToolStripMenuItem";
-            this.loadTriMeshToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
+            this.loadTriMeshToolStripMenuItem.Size = new System.Drawing.Size(168, 22);
             this.loadTriMeshToolStripMenuItem.Text = "Load As TriMesh";
             this.loadTriMeshToolStripMenuItem.Click += new System.EventHandler(this.loadTriMeshToolStripMenuItem_Click);
             // 
@@ -374,12 +376,12 @@
             // 
             // viewPanel.Panel2
             // 
-            this.viewPanel.Panel2.Controls.Add(this.partBasket);
             this.viewPanel.Panel2.Controls.Add(this.statsLabel);
-            this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
-            this.viewPanel.Size = new System.Drawing.Size(1099, 735);
-            this.viewPanel.SplitterDistance = 29;
+            this.viewPanel.Panel2.Controls.Add(this.partBasket);
+            this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
+            this.viewPanel.Size = new System.Drawing.Size(1099, 675);
+            this.viewPanel.SplitterDistance = 26;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -389,19 +391,8 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
+            this.fileNameTabs.Size = new System.Drawing.Size(1093, 28);
             this.fileNameTabs.TabIndex = 0;
-            // 
-            // partBasket
-            // 
-            this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.partBasket.AutoScroll = true;
-            this.partBasket.BackColor = System.Drawing.Color.White;
-            this.partBasket.Location = new System.Drawing.Point(896, 3);
-            this.partBasket.Name = "partBasket";
-            this.partBasket.Size = new System.Drawing.Size(203, 699);
-            this.partBasket.TabIndex = 15;
             // 
             // statsLabel
             // 
@@ -415,6 +406,17 @@
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
             // 
+            // partBasket
+            // 
+            this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.partBasket.AutoScroll = true;
+            this.partBasket.BackColor = System.Drawing.Color.White;
+            this.partBasket.Location = new System.Drawing.Point(896, 3);
+            this.partBasket.Name = "partBasket";
+            this.partBasket.Size = new System.Drawing.Size(203, 642);
+            this.partBasket.TabIndex = 15;
+            // 
             // modelViewLayoutPanel
             // 
             this.modelViewLayoutPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -423,28 +425,8 @@
             this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
             this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
-            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 699);
+            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 642);
             this.modelViewLayoutPanel.TabIndex = 13;
-            // 
-            // glViewer
-            // 
-            this.glViewer.AccumBits = ((byte)(0));
-            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.glViewer.AutoCheckErrors = false;
-            this.glViewer.AutoFinish = false;
-            this.glViewer.AutoMakeCurrent = true;
-            this.glViewer.AutoSwapBuffers = true;
-            this.glViewer.BackColor = System.Drawing.Color.Black;
-            this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(212, 3);
-            this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(681, 699);
-            this.glViewer.StencilBits = ((byte)(0));
-            this.glViewer.TabIndex = 12;
             // 
             // partRelatedTools
             // 
@@ -460,17 +442,46 @@
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
-            // fileSystemWatcher1
+            // loadHumanPoseToolStripMenuItem
             // 
-            this.fileSystemWatcher1.EnableRaisingEvents = true;
-            this.fileSystemWatcher1.SynchronizingObject = this;
+            this.loadHumanPoseToolStripMenuItem.Name = "loadHumanPoseToolStripMenuItem";
+            this.loadHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(168, 22);
+            this.loadHumanPoseToolStripMenuItem.Text = "Load HumanPose";
+            this.loadHumanPoseToolStripMenuItem.Click += new System.EventHandler(this.loadHumanPoseToolStripMenuItem_Click);
+            // 
+            // glViewer
+            // 
+            this.glViewer.AccumBits = ((byte)(0));
+            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.glViewer.AutoCheckErrors = false;
+            this.glViewer.AutoFinish = false;
+            this.glViewer.AutoMakeCurrent = true;
+            this.glViewer.AutoSwapBuffers = true;
+            this.glViewer.BackColor = System.Drawing.Color.Black;
+            this.glViewer.ColorBits = ((byte)(32));
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
+            this.glViewer.DepthBits = ((byte)(16));
+            this.glViewer.Location = new System.Drawing.Point(219, 3);
+            this.glViewer.Name = "glViewer";
+            this.glViewer.Size = new System.Drawing.Size(671, 639);
+            this.glViewer.StencilBits = ((byte)(0));
+            this.glViewer.TabIndex = 16;
+            // 
+            // saveHumanPoseToolStripMenuItem
+            // 
+            this.saveHumanPoseToolStripMenuItem.Name = "saveHumanPoseToolStripMenuItem";
+            this.saveHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(168, 22);
+            this.saveHumanPoseToolStripMenuItem.Text = "Save HumanPose";
+            this.saveHumanPoseToolStripMenuItem.Click += new System.EventHandler(this.saveHumanPoseToolStripMenuItem_Click);
             // 
             // Interface
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(1099, 774);
+            this.ClientSize = new System.Drawing.Size(1099, 714);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -484,7 +495,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).EndInit();
             this.viewPanel.ResumeLayout(false);
             this.partRelatedTools.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.fileSystemWatcher1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -533,9 +543,9 @@
         private System.Windows.Forms.FlowLayoutPanel modelViewLayoutPanel;
         private System.Windows.Forms.Label statsLabel;
         private System.Windows.Forms.FlowLayoutPanel partBasket;
-        private System.IO.FileSystemWatcher fileSystemWatcher1;
         private System.Windows.Forms.ToolStripButton addSelectedParts;
-
+        private System.Windows.Forms.ToolStripMenuItem loadHumanPoseToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem saveHumanPoseToolStripMenuItem;
 	}
 }
 
