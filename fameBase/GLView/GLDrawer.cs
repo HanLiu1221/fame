@@ -26,8 +26,8 @@ namespace FameBase
         public static Color MeshColor = Color.FromArgb(173, 210, 222);
         public static Color BodyNodeColor = Color.FromArgb(230, 97, 1);
         public static Color SelectedBodyNodeColor = Color.FromArgb(215, 25, 28);
-        public static Color BodeyBoneColor = Color.FromArgb(43, 131, 186);
-        public static Color BodyColor = Color.FromArgb(100, 171, 217, 233);
+        public static Color BodeyBoneColor = Color.FromArgb(64, 64, 64);//Color.FromArgb(244, 165, 130);
+        public static Color BodyColor = Color.FromArgb(60, 171, 217, 233);
         public static Color SelectionColor = Color.FromArgb(231, 138, 195);
 
         public static int _NSlices = 40;
@@ -94,11 +94,40 @@ namespace FameBase
 
             drawSphere(v, r, c);
 
-            Glu.gluDeleteQuadric(quad);
+            Glu.gluDeleteQuadric(quad); 
         }// drawCylinder
+
+        public static void drawCylinderTransparent(Vector3d u, Vector3d v, double r, Color c)
+        {
+            Gl.glEnable(Gl.GL_BLEND);
+            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+            Gl.glDisable(Gl.GL_CULL_FACE);
+
+            Glu.GLUquadric quad = Glu.gluNewQuadric();
+            double height = (u - v).Length();
+            Vector3d dir = (v - u).normalize();
+            double angle = Math.Acos(dir.z / dir.Length()) * 180 / Math.PI;
+
+            drawSphere(u, r, c);
+
+            Gl.glColor3ub(c.R, c.G, c.B);
+            Gl.glPushMatrix();
+            Gl.glTranslated(u.x, u.y, u.z);
+            Gl.glRotated(angle, -dir.y, dir.x, 0);
+            Glu.gluCylinder(quad, r, r, height, _NSlices, _NSlices);
+            Gl.glPopMatrix();
+
+            drawSphere(v, r, c);
+
+            Glu.gluDeleteQuadric(quad);
+
+            Gl.glDisable(Gl.GL_BLEND);
+            Gl.glDisable(Gl.GL_CULL_FACE);
+        }// drawCylinderTransparent
 
         public static void drawSphere(Vector3d o, double r, Color c)
         {
+            Gl.glShadeModel(Gl.GL_SMOOTH);
             Glu.GLUquadric quad = Glu.gluNewQuadric();
             Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glPushMatrix();
@@ -142,10 +171,8 @@ namespace FameBase
 
         public static void drawEllipsoidTransparent(Ellipsoid e, Color c)
         {
-            Gl.glDisable(Gl.GL_LIGHTING);
-            Gl.glEnable(Gl.GL_BLEND);
-            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
-            Gl.glDisable(Gl.GL_DEPTH_TEST);
+            
+
             Vector3d[] points = e.getFaceVertices();
             Vector3d[] quad = new Vector3d[4];
             for (int i = 0; i < points.Length; i += 4)
@@ -156,8 +183,6 @@ namespace FameBase
                 }
                 drawQuad3d(quad, c);
             }
-            Gl.glEnable(Gl.GL_LIGHTING);
-            Gl.glEnable(Gl.GL_DEPTH_TEST);
         }// drawEllipsoidTransparent
 
         public static void drawEllipsoidSolid(Ellipsoid e, Color c)
@@ -318,10 +343,6 @@ namespace FameBase
         public static void drawLines3D(Vector3d v1, Vector3d v2, Color c, float linewidth)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
-            Gl.glEnable(Gl.GL_BLEND);
-            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
-            Gl.glEnable(Gl.GL_LINE_SMOOTH);
-            Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
 
             Gl.glLineWidth(linewidth);
             Gl.glColor3ub(c.R, c.G, c.B);
@@ -329,9 +350,6 @@ namespace FameBase
             Gl.glVertex3dv(v1.ToArray());
             Gl.glVertex3dv(v2.ToArray());
             Gl.glEnd();
-
-            Gl.glDisable(Gl.GL_LINE_SMOOTH);
-            Gl.glDisable(Gl.GL_BLEND);
         }
 
         public static void drawDashedLines3D(Vector3d v1, Vector3d v2, Color c, float linewidth)
@@ -430,8 +448,6 @@ namespace FameBase
         public static void drawQuadTransparent3d(Vector3d v1, Vector3d v2, Vector3d v3, Vector3d v4, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
-            Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
-            Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
 
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -452,18 +468,13 @@ namespace FameBase
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
             Gl.glEnable(Gl.GL_CULL_FACE);
-            Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
-        }
+        }// drawQuadTransparent3d
 
         public static void drawQuadTransparent3d(Plane3D q, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
-            Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
-            Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
-
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
-
             Gl.glDisable(Gl.GL_CULL_FACE);
             // face
             Gl.glColor4ub(c.R, c.G, c.B, 100);
@@ -475,7 +486,6 @@ namespace FameBase
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
             Gl.glEnable(Gl.GL_CULL_FACE);
-            Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
         }
 
         public static void drawQuadEdge3d(Plane3D q, Color c)

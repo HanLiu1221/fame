@@ -164,7 +164,8 @@ namespace FameBase
         List<ModelViewer> _modelViewers = new List<ModelViewer>();
         List<ModelViewer> _partViewers = new List<ModelViewer>();
         HumanPose _humanPose;
-        BodyNode _selectedNode;       
+        BodyNode _selectedNode;
+        public bool _unitifyMesh = false;
         
 
         /******************** Functions ********************/
@@ -286,7 +287,7 @@ namespace FameBase
         {
             this.clearContext();
 
-            Mesh m = new Mesh(filename, true);
+            Mesh m = new Mesh(filename, _unitifyMesh);
             MeshClass mc = new MeshClass(m);
             this.meshClasses.Add(mc);
             this.currMeshClass = mc;
@@ -317,7 +318,7 @@ namespace FameBase
 
         public void importMesh(string filename)
         {
-            Mesh m = new Mesh(filename, true);
+            Mesh m = new Mesh(filename, _unitifyMesh);
             MeshClass mc = new MeshClass(m);
             this.meshClasses.Add(mc);
             this.currMeshClass = mc;
@@ -1508,10 +1509,8 @@ namespace FameBase
             {
                 this.drawParts();
             }
-            else
-            {
-                this.drawAllMeshes();
-            }
+
+            this.drawAllMeshes();
 
             this.drawHumanPose();
 
@@ -1589,6 +1588,42 @@ namespace FameBase
             {
                 return;
             }
+            Gl.glPushAttrib(Gl.GL_COLOR_BUFFER_BIT);
+            int iMultiSample = 0;
+            int iNumSamples = 0;
+            Gl.glGetIntegerv(Gl.GL_SAMPLE_BUFFERS, out iMultiSample);
+            Gl.glGetIntegerv(Gl.GL_SAMPLES, out iNumSamples);
+            if (iNumSamples == 0)
+            {
+                Gl.glEnable(Gl.GL_DEPTH_TEST);
+                Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
+
+                Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
+                Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
+                Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
+
+
+                Gl.glEnable(Gl.GL_BLEND);
+                Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+                Gl.glShadeModel(Gl.GL_SMOOTH);
+                Gl.glDepthMask(Gl.GL_FALSE);
+            }
+            else
+            {
+                Gl.glEnable(Gl.GL_MULTISAMPLE);
+                Gl.glHint(Gl.GL_MULTISAMPLE_FILTER_HINT_NV, Gl.GL_NICEST);
+                Gl.glEnable(Gl.GL_SAMPLE_ALPHA_TO_ONE);
+            }
+            foreach (BodyBone bb in _humanPose._bodyBones)
+            {
+                GLDrawer.drawCylinder(bb._SRC._POS, bb._DST._POS, bb._RADIUS, GLDrawer.BodeyBoneColor);
+                GLDrawer.drawCylinderTransparent(bb._SRC._POS, bb._DST._POS, Common._bodyNodeRadius/2, GLDrawer.BodyColor);
+                //for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                //{
+                //    GLDrawer.drawQuadTransparent3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
+                //        bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.BodyColor);
+                //}
+            }
             foreach (BodyNode bn in _humanPose._bodyNodes)
             {
                 if (bn != _selectedNode)
@@ -1596,15 +1631,18 @@ namespace FameBase
                     GLDrawer.drawSphere(bn._POS, bn._RADIUS, GLDrawer.BodyNodeColor);
                 }
             }
-            foreach (BodyBone bb in _humanPose._bodyBones)
+            if (iNumSamples == 0)
             {
-                GLDrawer.drawCylinder(bb._SRC._POS, bb._DST._POS, bb._RADIUS, GLDrawer.BodeyBoneColor);
-                for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
-                {
-                    GLDrawer.drawQuadTransparent3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
-                        bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.BodyColor);
-                }
+                Gl.glDisable(Gl.GL_BLEND);
+                Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
+                Gl.glDepthMask(Gl.GL_TRUE);
+                Gl.glDisable(Gl.GL_DEPTH_TEST);
             }
+            else
+            {
+                Gl.glDisable(Gl.GL_MULTISAMPLE);
+            }
+            Gl.glPopAttrib();
         }// drawHumanPose
 
         private void DrawHighlight2D()

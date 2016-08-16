@@ -160,7 +160,7 @@ namespace Component
         Vector3d _originPos;
         Vector3d _pos;
         bool _isRoot = false; // move all nodes together
-        double _radius = 0.08;
+        double _radius = Common._bodyNodeRadius;
         List<BodyNode> _adjNodes = new List<BodyNode>();
         List<BodyNode> _childrenNodes = new List<BodyNode>();
         List<BodyBone> _adjBones = new List<BodyBone>();
@@ -309,7 +309,7 @@ namespace Component
         BodyNode _src;
         BodyNode _dst;
         string _name;
-        double _radius = 0.02; // of the cyclinder
+        double _radius = 0.01; // of the cyclinder
         Ellipsoid _entity;
         double _len = 0.002;
         double _wid = 0.002;

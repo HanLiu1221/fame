@@ -331,7 +331,7 @@ namespace Geometry
 			List<HalfEdge> halfEdgeArray = new List<HalfEdge>();
             List<HalfEdge> edgeArray = new List<HalfEdge>();
 			Dictionary<int, int> edgeHashTable = new Dictionary<int, int>();
-			char[] separator = new char[]{' ', '\t'};
+			char[] separator = new char[]{' ', '\t', '\\'};
 			this.vertexCount = 0;
 			this.faceCount = 0;
 			int halfEdgeIdx = 0;
@@ -339,23 +339,33 @@ namespace Geometry
 			{
 				string line = sr.ReadLine();
                 line.Replace("  ", " ");
+                line.Replace("//", "/");
 				string[] array = line.Split(separator);
                 if (line == "" || line[0] == '#' || line[0] == 'g') 
                     continue;
-				if(line[0] == 'v')
+				if(array[0] == "v")
 				{
                     Vector3d v = new Vector3d();
-                    for (int i = 1; i < 4; ++i) 
+                    int i = 0;
+                    int j = 0;
+                    while (++i < array.Length)
                     {
-                        if (array[i] == "") continue;
-                        v[i - 1] = double.Parse(array[i]);
-                        vertexArray.Add(v[i - 1]);
+                        if (array[i] == "")
+                        {
+                            continue;
+                        }
+                        v[j] = double.Parse(array[i]);
+                        vertexArray.Add(v[j++]);
+                    }
+                    if (j > 3)
+                    {
+                        return;
                     }
 					++this.vertexCount;
                     this.minCoord = Vector3d.Min(this.minCoord, v);
                     this.maxCoord = Vector3d.Max(this.maxCoord, v);
 				}
-				else if(line[0] == 'f')
+				else if(array[0] == "f")
 				{
                     if (this.vertexFaceIndex == null)
                     {
@@ -370,7 +380,13 @@ namespace Geometry
                     for (int i = 1; i < array.Length; ++i)
                     {
                         if (array[i] == "") continue;
-						currFaceArray.Add(int.Parse(array[i]) - 1); // face index from 1
+                        string idStr = array[i];
+                        if (array[i].Contains('/'))
+                        {
+                            // extract only the vertex index
+                            idStr = array[i].Substring(0, array[i].IndexOf('/'));
+                        }
+						currFaceArray.Add(int.Parse(idStr) - 1); // face index from 1
 					}
 					faceArray.AddRange(currFaceArray);
 					// hash map here for opposite halfedge

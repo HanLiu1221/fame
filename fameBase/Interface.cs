@@ -52,12 +52,15 @@ namespace FameBase
             {
                 Title = "Import a 3D model",
                 Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*",
-                CheckFileExists = true
+                CheckFileExists = true,
+                Multiselect = true
             };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
-                string filename = dialog.FileName;
-                this.glViewer.importMesh(filename);
+                foreach (string filename in dialog.FileNames)
+                {
+                    this.glViewer.importMesh(filename);
+                }
             }
             this.glViewer.Refresh();
         }
@@ -140,7 +143,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\fameBase\models\test" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\Users\hla180\Desktop\HLiu\Fame\fameBase\data\test" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -199,7 +202,6 @@ namespace FameBase
         {
             SaveFileDialog dialog = new SaveFileDialog();
             dialog.Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*";
-            dialog.CheckFileExists = true;
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 this.glViewer.saveObj(null, dialog.FileName);
@@ -337,6 +339,12 @@ namespace FameBase
             {
                 this.glViewer.saveHumanPose(dialog.FileName);
             }
+        }
+
+        private void unitifyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.unitifyToolStripMenuItem.Checked = !this.unitifyToolStripMenuItem.Checked;
+            this.glViewer._unitifyMesh = this.unitifyToolStripMenuItem.Checked;
         }
 	}// Interface
 }// namespace
