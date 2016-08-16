@@ -325,26 +325,26 @@ namespace Geometry
         }// buildHalfEdge
 
         private void loadObjMesh(StreamReader sr, bool normalize)
-		{
-			List<double> vertexArray = new List<double>();
-			List<int> faceArray = new List<int>();
-			List<HalfEdge> halfEdgeArray = new List<HalfEdge>();
+        {
+            List<double> vertexArray = new List<double>();
+            List<int> faceArray = new List<int>();
+            List<HalfEdge> halfEdgeArray = new List<HalfEdge>();
             List<HalfEdge> edgeArray = new List<HalfEdge>();
-			Dictionary<int, int> edgeHashTable = new Dictionary<int, int>();
-			char[] separator = new char[]{' ', '\t', '\\'};
-			this.vertexCount = 0;
-			this.faceCount = 0;
-			int halfEdgeIdx = 0;
-			while(sr.Peek() > -1)
-			{
-				string line = sr.ReadLine();
+            Dictionary<int, int> edgeHashTable = new Dictionary<int, int>();
+            char[] separator = new char[] { ' ', '\t', '\\' };
+            this.vertexCount = 0;
+            this.faceCount = 0;
+            int halfEdgeIdx = 0;
+            while (sr.Peek() > -1)
+            {
+                string line = sr.ReadLine();
                 line.Replace("  ", " ");
                 line.Replace("//", "/");
-				string[] array = line.Split(separator);
-                if (line == "" || line[0] == '#' || line[0] == 'g') 
+                string[] array = line.Split(separator);
+                if (line == "" || line[0] == '#' || line[0] == 'g')
                     continue;
-				if(array[0] == "v")
-				{
+                if (array[0] == "v")
+                {
                     Vector3d v = new Vector3d();
                     int i = 0;
                     int j = 0;
@@ -361,12 +361,12 @@ namespace Geometry
                     {
                         return;
                     }
-					++this.vertexCount;
+                    ++this.vertexCount;
                     this.minCoord = Vector3d.Min(this.minCoord, v);
                     this.maxCoord = Vector3d.Max(this.maxCoord, v);
-				}
-				else if(array[0] == "f")
-				{
+                }
+                else if (array[0] == "f")
+                {
                     if (this.vertexFaceIndex == null)
                     {
                         this.vertexFaceIndex = new List<List<int>>();
@@ -375,8 +375,8 @@ namespace Geometry
                             this.vertexFaceIndex.Add(new List<int>());
                         }
                     }
-					List<int> currFaceArray = new List<int>();
-					List<HalfEdge> currHalfEdgeArray = new List<HalfEdge>();
+                    List<int> currFaceArray = new List<int>();
+                    List<HalfEdge> currHalfEdgeArray = new List<HalfEdge>();
                     for (int i = 1; i < array.Length; ++i)
                     {
                         if (array[i] == "") continue;
@@ -386,56 +386,71 @@ namespace Geometry
                             // extract only the vertex index
                             idStr = array[i].Substring(0, array[i].IndexOf('/'));
                         }
-						currFaceArray.Add(int.Parse(idStr) - 1); // face index from 1
-					}
-					faceArray.AddRange(currFaceArray);
-					// hash map here for opposite halfedge
-					for (int i = 0; i < 3; ++i)
-					{
-						int v1 = currFaceArray[i];
-						int v2 = currFaceArray[(i + 1) % 3];
+                        currFaceArray.Add(int.Parse(idStr) - 1); // face index from 1
+                    }
+                    faceArray.AddRange(currFaceArray);
+                    // hash map here for opposite halfedge
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        int v1 = currFaceArray[i];
+                        int v2 = currFaceArray[(i + 1) % 3];
                         this.vertexFaceIndex[v1].Add(faceCount);
-						HalfEdge halfedge = new HalfEdge(v1, v2, faceCount, halfEdgeIdx++);
-						int key = Math.Min(v1, v2) * vertexCount + Math.Max(v1, v2);
-						if (edgeHashTable.ContainsKey(key)) // find a halfedge
-						{
-							HalfEdge oppHalfEdge = halfEdgeArray[edgeHashTable[key]];
-							halfedge.invHalfEdge = oppHalfEdge;
-							oppHalfEdge.invHalfEdge = halfedge;
-						}
-						else
-						{
-							edgeHashTable.Add(key, halfEdgeArray.Count);
+                        HalfEdge halfedge = new HalfEdge(v1, v2, faceCount, halfEdgeIdx++);
+                        int key = Math.Min(v1, v2) * vertexCount + Math.Max(v1, v2);
+                        if (edgeHashTable.ContainsKey(key)) // find a halfedge
+                        {
+                            HalfEdge oppHalfEdge = halfEdgeArray[edgeHashTable[key]];
+                            halfedge.invHalfEdge = oppHalfEdge;
+                            oppHalfEdge.invHalfEdge = halfedge;
+                        }
+                        else
+                        {
+                            edgeHashTable.Add(key, halfEdgeArray.Count);
                             edgeArray.Add(halfedge);
-						}
-						halfEdgeArray.Add(halfedge);
-						currHalfEdgeArray.Add(halfedge);
-					}
-                    
-					for (int i = 0; i < 3;++i )
-					{
-						currHalfEdgeArray[i].nextHalfEdge = currHalfEdgeArray[(i + 1) % 3];
-						currHalfEdgeArray[(i + 1) % 3].prevHalfEdge = currHalfEdgeArray[i];
-						currHalfEdgeArray[i].prevHalfEdge = currHalfEdgeArray[(i - 1 + 3) % 3];
-						currHalfEdgeArray[(i - 1 + 3) % 3].nextHalfEdge = currHalfEdgeArray[i].prevHalfEdge;
-					}
-					++faceCount;
-				} 
-				else if(line.Length > 1 && line.Substring(0,2).Equals("vt"))
-				{
-				}
-			}//while
-			this.vertexPos = vertexArray.ToArray();
-			this.faceVertexIndex = faceArray.ToArray();
-			this.halfEdges = halfEdgeArray.ToArray();
+                        }
+                        halfEdgeArray.Add(halfedge);
+                        currHalfEdgeArray.Add(halfedge);
+                    }
+
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        currHalfEdgeArray[i].nextHalfEdge = currHalfEdgeArray[(i + 1) % 3];
+                        currHalfEdgeArray[(i + 1) % 3].prevHalfEdge = currHalfEdgeArray[i];
+                        currHalfEdgeArray[i].prevHalfEdge = currHalfEdgeArray[(i - 1 + 3) % 3];
+                        currHalfEdgeArray[(i - 1 + 3) % 3].nextHalfEdge = currHalfEdgeArray[i].prevHalfEdge;
+                    }
+                    ++faceCount;
+                }
+                else if (line.Length > 1 && line.Substring(0, 2).Equals("vt"))
+                {
+                }
+            }//while
+            this.vertexPos = vertexArray.ToArray();
+            this.faceVertexIndex = faceArray.ToArray();
+            this.halfEdges = halfEdgeArray.ToArray();
             this.singleHalfEdges = edgeArray.ToArray();
+
             this.edgeIter = this.halfEdges[0];
+            //// for messy .obj file
+            //this.vertexFaceIndex = new List<List<int>>();
+            //for (int i = 0; i < this.vertexCount; ++i)
+            //{
+            //    this.vertexFaceIndex.Add(new List<int>());
+            //}
+            //for (int i = 0; i < this.faceVertexIndex.Length; i += 3)
+            //{
+            //    int f = i / 3;
+            //    this.vertexFaceIndex[this.faceVertexIndex[i]].Add(f);
+            //    this.vertexFaceIndex[this.faceVertexIndex[i + 1]].Add(f);
+            //    this.vertexFaceIndex[this.faceVertexIndex[i + 2]].Add(f);
+            //}
+
             if (normalize)
             {
                 this.normalize();
             }
             this.initializeColor();
-		}//loadObjMesh
+        }//loadObjMesh
 
         private void loadOffMesh(StreamReader sr, bool normalize)
 		{

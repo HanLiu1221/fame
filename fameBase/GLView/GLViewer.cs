@@ -790,9 +790,9 @@ namespace FameBase
             this.Refresh();
         }//setRenderOption
 
-        public void displayAxes()
+        public void displayAxes(bool isShow)
         {
-            this.isDrawAxes = !this.isDrawAxes;
+            this.isDrawAxes = isShow;
         }
 
         public void resetView()
@@ -1338,8 +1338,16 @@ namespace FameBase
 
         private void EditBodyNode(Vector2d mousePos)
         {
-            if (_selectedNode == null || _selectedNode._PARENT == null)
+            if (_selectedNode == null)
             {
+                return;
+            }
+            if (_selectedNode._PARENT == null)
+            {
+                Matrix4d tt = Matrix4d.TranslationMatrix(new Vector3d(0.3, -0.2, -0.2));
+
+                DeformBodyNode(_selectedNode, tt);
+                DeformBodyNodePropagation(_selectedNode, tt);
                 return;
             }
             Vector3d originPos = _selectedNode._ORIGIN;
@@ -1568,7 +1576,8 @@ namespace FameBase
                 }
                 if (this.drawFace)
                 {
-                    GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    //GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
                 }
                 if (this.drawEdge)
                 {
@@ -1617,12 +1626,12 @@ namespace FameBase
             foreach (BodyBone bb in _humanPose._bodyBones)
             {
                 GLDrawer.drawCylinder(bb._SRC._POS, bb._DST._POS, bb._RADIUS, GLDrawer.BodeyBoneColor);
-                GLDrawer.drawCylinderTransparent(bb._SRC._POS, bb._DST._POS, Common._bodyNodeRadius/2, GLDrawer.BodyColor);
-                //for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
-                //{
-                //    GLDrawer.drawQuadTransparent3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
-                //        bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.BodyColor);
-                //}
+                //GLDrawer.drawCylinderTransparent(bb._SRC._POS, bb._DST._POS, Common._bodyNodeRadius/2, GLDrawer.BodyColor);
+                for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                {
+                    GLDrawer.drawQuadTransparent3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
+                        bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.BodyColor);
+                }
             }
             foreach (BodyNode bn in _humanPose._bodyNodes)
             {

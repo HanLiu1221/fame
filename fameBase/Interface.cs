@@ -346,5 +346,11 @@ namespace FameBase
             this.unitifyToolStripMenuItem.Checked = !this.unitifyToolStripMenuItem.Checked;
             this.glViewer._unitifyMesh = this.unitifyToolStripMenuItem.Checked;
         }
+
+        private void axesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.axesToolStripMenuItem.Checked = !this.axesToolStripMenuItem.Checked;
+            this.glViewer.displayAxes(this.axesToolStripMenuItem.Checked);
+        }
 	}// Interface
 }// namespace
