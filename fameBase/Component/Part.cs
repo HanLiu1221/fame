@@ -170,7 +170,7 @@ namespace Component
         {
             _mesh = mesh;
             this.initializeParts();
-            this.mergeNearbyParts();
+            //this.mergeNearbyParts();
         }
 
         private void calPartRelations()

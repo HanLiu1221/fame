@@ -23,7 +23,7 @@ namespace FameBase
                                          Color.FromArgb(188, 128, 189), Color.FromArgb(217, 217, 217)};
         public static Color ModelColor = Color.FromArgb(254, 224, 139);
         public static Color GuideLineColor = Color.FromArgb(116, 169, 207);
-        public static Color MeshColor = Color.FromArgb(173, 210, 222);
+        public static Color MeshColor = Color.FromArgb(136,86,167);
         public static Color BodyNodeColor = Color.FromArgb(230, 97, 1);
         public static Color SelectedBodyNodeColor = Color.FromArgb(215, 25, 28);
         public static Color BodeyBoneColor = Color.FromArgb(64, 64, 64);//Color.FromArgb(244, 165, 130);
@@ -496,7 +496,6 @@ namespace FameBase
             }
         }
 
-
         public static void DrawCircle2(Vector2d p, Color c, float radius)
         {
             Gl.glEnable(Gl.GL_BLEND);
@@ -533,46 +532,46 @@ namespace FameBase
             //	Gl.glDisable(Gl.GL_BLEND);
         }
 
-        // draw mesh
         public static void drawMeshFace(Mesh m, Color c, bool useMeshColor)
         {
             if (m == null) return;
 
+            Gl.glPushAttrib(Gl.GL_COLOR_BUFFER_BIT);
+            int iMultiSample = 0;
+            int iNumSamples = 0;
+            Gl.glGetIntegerv(Gl.GL_SAMPLE_BUFFERS, out iMultiSample);
+            Gl.glGetIntegerv(Gl.GL_SAMPLES, out iNumSamples);
+            if (iNumSamples == 0)
+            {
+                Gl.glEnable(Gl.GL_DEPTH_TEST);
+                Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
 
-            //Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            //Gl.glHint(Gl.GL_POINT_SMOOTH_HINT, Gl.GL_NICEST);
-            //Gl.glEnable(Gl.GL_LINE_SMOOTH);
-            //Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
-            //Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
-            //Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
-            Gl.glEnable(Gl.GL_BLEND);
-            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+                //Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
+                //Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
 
-            Gl.glDisable(Gl.GL_CULL_FACE);
+                //Gl.glDisable(Gl.GL_CULL_FACE);
 
-            Gl.glShadeModel(Gl.GL_SMOOTH);
-
-            float[] mat_a = new float[4] { c.R / 255.0f, c.G / 255.0f, c.B / 255.0f, 1.0f };
-
-            float[] ka = { 0.1f, 0.05f, 0.0f, 1.0f };
-            float[] kd = { .9f, .6f, .2f, 1.0f };
-            float[] ks = { 0, 0, 0, 0 };//{ .2f, .2f, .2f, 1.0f };
-            float[] shine = { 1.0f };
-            Gl.glColorMaterial(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE);
-            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT, mat_a);
-            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_DIFFUSE, mat_a);
-            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SPECULAR, ks);
-            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SHININESS, shine);
-
-            Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
+                //Gl.glEnable(Gl.GL_BLEND);
+                //Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+                Gl.glShadeModel(Gl.GL_SMOOTH);
+            }
+            else
+            {
+                Gl.glEnable(Gl.GL_MULTISAMPLE);
+                Gl.glHint(Gl.GL_MULTISAMPLE_FILTER_HINT_NV, Gl.GL_NICEST);
+                Gl.glEnable(Gl.GL_SAMPLE_ALPHA_TO_ONE);
+            }
 
             Gl.glEnable(Gl.GL_LIGHTING);
             Gl.glEnable(Gl.GL_NORMALIZE);
 
+            float[] mat = new float[4] { c.R / 255f, c.G / 255f, c.B / 255f, 1.0f };
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT, mat);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_DIFFUSE, mat);
+            Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SPECULAR, mat);
 
             if (useMeshColor)
             {
-                Gl.glColor3ub(ModelColor.R, ModelColor.G, ModelColor.B);
                 for (int i = 0, j = 0; i < m.FaceCount; ++i, j += 3)
                 {
                     int vidx1 = m.FaceVertexIndex[j];
@@ -587,9 +586,9 @@ namespace FameBase
                     Color fc = Color.FromArgb(m.FaceColor[i * 4 + 3], m.FaceColor[i * 4], m.FaceColor[i * 4 + 1], m.FaceColor[i * 4 + 2]);
                     Gl.glColor4ub(fc.R, fc.G, fc.B, fc.A);
                     Gl.glBegin(Gl.GL_TRIANGLES);
-                    Vector3d centroid = (v1 + v2 + v3) / 3;
-                    Vector3d normal = new Vector3d(m.FaceNormal[i * 3], m.FaceNormal[i * 3 + 1], m.FaceNormal[i * 3 + 2]);
-                    //if ((centroid - newEye).Dot(normal) > 0)
+                    //Vector3d centroid = (v1 + v2 + v3) / 3;
+                    //Vector3d normal = new Vector3d(m.FaceNormal[i * 3], m.FaceNormal[i * 3 + 1], m.FaceNormal[i * 3 + 2]);
+                    //if ((centroid - new Vector3d(0, 0, 1.5)).Dot(normal) > 0)
                     //{
                     //    normal *= -1.0;
                     //}
@@ -635,17 +634,22 @@ namespace FameBase
                 Gl.glEnd();
             }
 
-            //Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
-            //Gl.glDisable(Gl.GL_LINE_SMOOTH);
-            //Gl.glDisable(Gl.GL_POINT_SMOOTH);
-            Gl.glDisable(Gl.GL_BLEND);
-            Gl.glDepthMask(Gl.GL_TRUE);
+            if (iNumSamples == 0)
+            {
+                //Gl.glDisable(Gl.GL_BLEND);
+                //Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
+                //Gl.glDepthMask(Gl.GL_TRUE);
+                Gl.glDisable(Gl.GL_DEPTH_TEST);
+                Gl.glEnable(Gl.GL_CULL_FACE);
+            }
+            else
+            {
+                Gl.glDisable(Gl.GL_MULTISAMPLE);
+            }
 
-            Gl.glDisable(Gl.GL_NORMALIZE);
             Gl.glDisable(Gl.GL_LIGHTING);
-            Gl.glDisable(Gl.GL_LIGHT0);
-            Gl.glDisable(Gl.GL_CULL_FACE);
-            Gl.glDisable(Gl.GL_COLOR_MATERIAL);
+            Gl.glDisable(Gl.GL_NORMALIZE);
+            Gl.glPopAttrib();
         }
 
         public static void drawMeshEdge(Mesh m)

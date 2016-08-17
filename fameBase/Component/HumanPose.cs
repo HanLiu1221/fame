@@ -22,6 +22,14 @@ namespace Component
             BuildTree();
         }
 
+        public BodyNode _ROOT
+        {
+            get
+            {
+                return _root;
+            }
+        }
+
         public void BuildTree()
         {
             if (_root == null)
@@ -300,6 +308,11 @@ namespace Component
         public void TransformFromOrigin(Matrix4d T)
         {
             _pos = (T * new Vector4d(_originPos, 1)).ToVector3D();
+        }
+
+        public void TransformOrigin(Matrix4d T)
+        {
+            _originPos = (T * new Vector4d(_originPos, 1)).ToVector3D();
         }
     }// BodyNode
 

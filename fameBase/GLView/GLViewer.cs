@@ -24,6 +24,8 @@ namespace FameBase
         {
             this.InitializeComponent();
             this.InitializeContexts();
+
+            this.initScene();
         }
 
         public void Init()
@@ -375,6 +377,63 @@ namespace FameBase
                 }
             }
         }// saveObj
+
+        public void saveMergedObj(string filename)
+        {
+            if (!Directory.Exists(Path.GetDirectoryName(filename)))
+            {
+                MessageBox.Show("Directory does not exist!");
+                return;
+            }
+            if (this.meshClasses == null)
+            {
+                return;
+            }
+
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int start = 0;
+                foreach (MeshClass mc in this.meshClasses)
+                {
+                    Mesh mesh = mc.Mesh;
+
+                    // vertex
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                    {
+                        s = "v";
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        sw.WriteLine(s);
+                    }
+                    // face
+                    for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                    {
+                        s = "f";
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        sw.WriteLine(s);
+                    }
+                    start += mesh.VertexCount;
+                }
+            }
+        }// saveMergedObj
+
+        public void swithcYZ()
+        {
+            if (_currModel == null || _currModel._MESH == null) return;
+            Mesh m = _currModel._MESH;
+            for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
+            {
+                double z = m.VertexPos[j + 2];
+                double y = m.VertexPos[j + 1];
+                m.VertexPos[j + 2] = y;
+                m.VertexPos[j + 1] = z;
+            }
+            this.Refresh();
+        }
 
         public void saveAPartBasedModel(string filename)
         {
@@ -1228,7 +1287,9 @@ namespace FameBase
         protected override void OnPaint(System.Windows.Forms.PaintEventArgs e)
         {
             this.MakeCurrent();
-            this.clearScene();
+
+            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+            Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
 
             this.Draw3D();
             this.Draw2D();
@@ -1308,6 +1369,17 @@ namespace FameBase
         {
             _humanPose = new HumanPose();
             _humanPose.loadPose(filename);
+            // test
+            Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d(0, -0.2, -0.4));
+            foreach (BodyNode bn in _humanPose._bodyNodes)
+            {
+                bn.TransformOrigin(T);
+                bn.Transform(T);
+            }
+            foreach (BodyBone bb in _humanPose._bodyBones)
+            {
+                bb.updateEntity();
+            }
         }// loadHuamPose
 
         public void saveHumanPose(string name)
@@ -1338,16 +1410,8 @@ namespace FameBase
 
         private void EditBodyNode(Vector2d mousePos)
         {
-            if (_selectedNode == null)
+            if (_selectedNode == null || _selectedNode._PARENT == null)
             {
-                return;
-            }
-            if (_selectedNode._PARENT == null)
-            {
-                Matrix4d tt = Matrix4d.TranslationMatrix(new Vector3d(0.3, -0.2, -0.2));
-
-                DeformBodyNode(_selectedNode, tt);
-                DeformBodyNodePropagation(_selectedNode, tt);
                 return;
             }
             Vector3d originPos = _selectedNode._ORIGIN;
@@ -1444,13 +1508,10 @@ namespace FameBase
 
         private int startWid = 0, startHeig = 0;
 
-        private void clearScene()
+        private void initScene()
         {
             Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
             Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
-
-            Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glEnable(Gl.GL_LINE_SMOOTH);
 
             SetDefaultMaterial();
 
@@ -1537,7 +1598,7 @@ namespace FameBase
 
         private void drawAllMeshes()
         {
-            if (this.meshClasses == null)
+            if (this.meshClasses == null || _currModel != null)
             {
                 return;
             }
@@ -1576,8 +1637,7 @@ namespace FameBase
                 }
                 if (this.drawFace)
                 {
-                    //GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
-                    GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
+                    GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
                 }
                 if (this.drawEdge)
                 {
@@ -1700,64 +1760,38 @@ namespace FameBase
 
         // Lights & Materials
         public static float[] matAmbient = { 0.1f, 0.1f, 0.1f, 1.0f };
-        public static float[] matDiffuse = { 0.4f, 0.4f, 0.4f, 1.0f };
-        public static float[] matSpecular = { 0.5f, 0.5f, 0.5f, 1.0f };
-        public static float[] shine = { 7.0f };
+        public static float[] matDiffuse = { 0.7f, 0.7f, 0.5f, 1.0f };
+        public static float[] matSpecular = { 1.0f, 1.0f, 1.0f, 1.0f };
+        public static float[] shine = { 120.0f };
 
         private static void SetDefaultLight()
         {
-
+            float[] pos1 = new float[4] { 0.1f, 0.1f, -0.02f, 0.0f };
+            float[] pos2 = new float[4] { -0.1f, 0.1f, -0.02f, 0.0f };
+            float[] pos3 = new float[4] { 0.0f, 0.0f, 0.1f, 0.0f };
             float[] col1 = new float[4] { 0.7f, 0.7f, 0.7f, 1.0f };
             float[] col2 = new float[4] { 0.8f, 0.7f, 0.7f, 1.0f };
-            float[] col3 = new float[4] { 0, 0, 0, 1 };//{ 1.0f, 1.0f, 1.0f, 1.0f };
+            float[] col3 = new float[4] { 1.0f, 1.0f, 1.0f, 1.0f };
 
-            float[] pos_1 = { 10, 0, 0 };// { 0, -5, 10.0f };
-            float[] pos_2 = { 0, 10, 0 };// { 0, 5, -10.0f };
-            float[] pos_3 = { 0, 0, 10 };//{ -5, 5, -10.0f };
-            float[] pos_4 = { -10, 0, 0 };// { 0, -5, 10.0f };
-            float[] pos_5 = { 0, -10, 0 };// { 0, 5, -10.0f };
-            float[] pos_6 = { 0, 0, -10 };//{ -5, 5, -10.0f };
 
-            float[] intensity = { 0.5f, 0.5f, 0.5f };
-            //Gl.glLightModeli(Gl.GL_LIGHT_MODEL_TWO_SIDE, Gl.GL_TRUE);
             Gl.glEnable(Gl.GL_LIGHT0);
-            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_POSITION, pos_1);
+            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_POSITION, pos1);
             Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_DIFFUSE, col1);
-            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_INTENSITY, intensity);
             Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_SPECULAR, col1);
 
+
             Gl.glEnable(Gl.GL_LIGHT1);
-            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_POSITION, pos_2);
-            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_DIFFUSE, col1);
-            Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_INTENSITY, intensity);
-            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_SPECULAR, col1);
+            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_POSITION, pos2);
+            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_DIFFUSE, col2);
+            Gl.glLightfv(Gl.GL_LIGHT1, Gl.GL_SPECULAR, col2);
+
 
             Gl.glEnable(Gl.GL_LIGHT2);
-            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_POSITION, pos_3);
-            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_DIFFUSE, col1);
-            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_SPECULAR, col1);
-            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_INTENSITY, intensity);
-
-            //Gl.glEnable(Gl.GL_LIGHT3);
-            //Gl.glLightfv(Gl.GL_LIGHT3, Gl.GL_POSITION, pos_4);
-            //Gl.glLightfv(Gl.GL_LIGHT3, Gl.GL_DIFFUSE, col1);
-            //Gl.glLightfv(Gl.GL_LIGHT3, Gl.GL_SPECULAR, col1);
-            //Gl.glLightfv(Gl.GL_LIGHT3, Gl.GL_INTENSITY, intensity);
-
-
-            Gl.glEnable(Gl.GL_LIGHT4);
-            Gl.glLightfv(Gl.GL_LIGHT4, Gl.GL_POSITION, pos_5);
-            Gl.glLightfv(Gl.GL_LIGHT4, Gl.GL_DIFFUSE, col1);
-            Gl.glLightfv(Gl.GL_LIGHT4, Gl.GL_SPECULAR, col1);
-            Gl.glLightfv(Gl.GL_LIGHT4, Gl.GL_INTENSITY, intensity);
-
-            Gl.glEnable(Gl.GL_LIGHT5);
-            Gl.glLightfv(Gl.GL_LIGHT5, Gl.GL_POSITION, pos_6);
-            Gl.glLightfv(Gl.GL_LIGHT5, Gl.GL_DIFFUSE, col1);
-            Gl.glLightfv(Gl.GL_LIGHT5, Gl.GL_SPECULAR, col1);
-            Gl.glLightfv(Gl.GL_LIGHT5, Gl.GL_INTENSITY, intensity);
-
+            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_POSITION, pos3);
+            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_DIFFUSE, col3);
+            Gl.glLightfv(Gl.GL_LIGHT2, Gl.GL_SPECULAR, col3);
         }
+
         public void AddLight(Vector3d pos, Color col)
         {
             int lightID = lightPositions.Count + 16387;
@@ -1774,6 +1808,7 @@ namespace FameBase
             Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SPECULAR, matSpecular);
             Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_SHININESS, shine);
         }
+
         public static List<float[]> lightPositions = new List<float[]>();
         public static List<float[]> lightcolors = new List<float[]>();
         public static List<int> lightIDs = new List<int>();

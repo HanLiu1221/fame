@@ -352,5 +352,20 @@ namespace FameBase
             this.axesToolStripMenuItem.Checked = !this.axesToolStripMenuItem.Checked;
             this.glViewer.displayAxes(this.axesToolStripMenuItem.Checked);
         }
+
+        private void saveMergedMeshToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog dialog = new SaveFileDialog();
+            dialog.Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*";
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                this.glViewer.saveMergedObj(dialog.FileName);
+            }
+        }
+
+        private void swtichYZToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.swithcYZ();
+        }
 	}// Interface
 }// namespace
