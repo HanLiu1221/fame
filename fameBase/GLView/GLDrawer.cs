@@ -23,7 +23,7 @@ namespace FameBase
                                          Color.FromArgb(188, 128, 189), Color.FromArgb(217, 217, 217)};
         public static Color ModelColor = Color.FromArgb(254, 224, 139);
         public static Color GuideLineColor = Color.FromArgb(116, 169, 207);
-        public static Color MeshColor = Color.FromArgb(136,86,167);
+        public static Color MeshColor = Color.FromArgb(116, 169, 207);
         public static Color BodyNodeColor = Color.FromArgb(230, 97, 1);
         public static Color SelectedBodyNodeColor = Color.FromArgb(215, 25, 28);
         public static Color BodeyBoneColor = Color.FromArgb(64, 64, 64);//Color.FromArgb(244, 165, 130);

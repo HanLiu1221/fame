@@ -1637,7 +1637,8 @@ namespace FameBase
                 }
                 if (this.drawFace)
                 {
-                    GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    //GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
                 }
                 if (this.drawEdge)
                 {
