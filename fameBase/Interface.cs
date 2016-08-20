@@ -363,6 +363,16 @@ namespace FameBase
             }
         }
 
+        private void switchXYToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.swithcXY();
+        }
+
+        private void switchXZToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.swithcXZ();
+        }
+
         private void swtichYZToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.swithcYZ();

@@ -161,7 +161,7 @@ namespace FameBase
 
         /******************** Vars ********************/
         Model _currModel;
-        List<Model> _models;
+        List<Model> _models = new List<Model>();
         List<Part> _selectedParts = new List<Part>();
         List<ModelViewer> _modelViewers = new List<ModelViewer>();
         List<ModelViewer> _partViewers = new List<ModelViewer>();
@@ -293,7 +293,9 @@ namespace FameBase
             MeshClass mc = new MeshClass(m);
             this.meshClasses.Add(mc);
             this.currMeshClass = mc;
-            this._currModel = new Model(m);
+            _currModel = new Model(m);
+            _models = new List<Model>();
+            _models.Add(_currModel);
         }
 
         public string getStats()
@@ -421,19 +423,67 @@ namespace FameBase
             }
         }// saveMergedObj
 
-        public void swithcYZ()
+        public void swithcXY()
         {
-            if (_currModel == null || _currModel._MESH == null) return;
-            Mesh m = _currModel._MESH;
-            for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
+            foreach (Model md in _models)
             {
-                double z = m.VertexPos[j + 2];
-                double y = m.VertexPos[j + 1];
-                m.VertexPos[j + 2] = y;
-                m.VertexPos[j + 1] = z;
+                Mesh m = md._MESH;
+                for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
+                {
+                    double x = m.VertexPos[j];
+                    double y = m.VertexPos[j + 1];
+                    double z = m.VertexPos[j + 2];
+                    m.setVertextPos(i, new Vector3d(y, x, z));
+                }
             }
             this.Refresh();
-        }
+        }// swithcXY
+
+        public void swithcXZ()
+        {
+            foreach (Model md in _models)
+            {
+                Mesh m = md._MESH;
+                for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
+                {
+                    double x = m.VertexPos[j];
+                    double y = m.VertexPos[j + 1];
+                    double z = m.VertexPos[j + 2];
+                    m.setVertextPos(i, new Vector3d(z, y, x));
+                }
+            }
+            this.Refresh();
+        }// swithcXZ
+
+        public void swithcYZ()
+        {
+            foreach (Model md in _models)
+            {
+                Mesh m = md._MESH;
+                for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
+                {
+                    double x = m.VertexPos[j];
+                    double y = m.VertexPos[j + 1];
+                    double z = m.VertexPos[j + 2];
+                    m.setVertextPos(i, new Vector3d(x, -z, y));
+                }
+                m.calculateFaceVertexNormal();
+                foreach (Part p in md._PARTS)
+                {
+                    Mesh pm = p._MESH;
+                    for (int i = 0, j = 0; i < pm.VertexCount; i++, j += 3)
+                    {
+                        double x = pm.VertexPos[j];
+                        double y = pm.VertexPos[j + 1];
+                        double z = pm.VertexPos[j + 2];
+                        pm.setVertextPos(i, new Vector3d(x, -z, y));
+                    }
+                    pm.calculateFaceVertexNormal();
+                }                
+                md.setMesh(m);
+            }
+            this.Refresh();
+        }// swithcYZ
 
         public void saveAPartBasedModel(string filename)
         {
@@ -546,6 +596,7 @@ namespace FameBase
                     parts.Add(part);
                 }
                 _currModel = new Model(parts);
+                _models.Add(_currModel);
             }
             this.Refresh();
         }// loadAPartBasedModel
@@ -562,7 +613,6 @@ namespace FameBase
             foreach (string file in files)
             {
                 loadAPartBasedModel(file);
-                _models.Add(_currModel);
                 ModelViewer modelViewer = new ModelViewer(_currModel, this);
                 _modelViewers.Add(modelViewer);
             }
@@ -1637,7 +1687,8 @@ namespace FameBase
                 }
                 if (this.drawFace)
                 {
-                    GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    //GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
                 }
                 if (this.drawEdge)
                 {
