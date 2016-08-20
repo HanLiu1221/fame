@@ -622,7 +622,7 @@ namespace Geometry
             }
         }
 
-		private void calculateFaceVertexNormal()
+		public void calculateFaceVertexNormal()
 		{
 			if(this.faceVertexIndex == null || this.faceVertexIndex.Length == 0)
 			{
@@ -737,6 +737,12 @@ namespace Geometry
             return new Vector3d(this.vertexPos[vidx * 3], this.vertexPos[vidx * 3 + 1], this.vertexPos[vidx * 3 + 2]);
         }
 
+        public void setVertextPos(int i, Vector3d v)
+        {
+            this.vertexPos[3 * i] = v.x;
+            this.vertexPos[3 * i + 1] = v.y;
+            this.vertexPos[3 * i + 2] = v.z;
+        }
         // to avoid changing the count of vertex/face
         public int VertexCount
         {

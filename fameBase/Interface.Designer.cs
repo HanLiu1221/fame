@@ -43,6 +43,7 @@
             this.loadHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.unitifyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveMergedMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tools = new System.Windows.Forms.ToolStripDropDownButton();
             this.viewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.resetViewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -54,6 +55,7 @@
             this.extractStrokesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.renderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.clearAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.swtichYZToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.renderOption = new System.Windows.Forms.ToolStripDropDownButton();
             this.vertexToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.wireFrameToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -74,8 +76,8 @@
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.saveMergedMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.swtichYZToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.switchXYToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.switchXZToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.glViewer = new FameBase.GLViewer();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
@@ -202,6 +204,13 @@
             this.unitifyToolStripMenuItem.Text = "Unitify";
             this.unitifyToolStripMenuItem.Click += new System.EventHandler(this.unitifyToolStripMenuItem_Click);
             // 
+            // saveMergedMeshToolStripMenuItem
+            // 
+            this.saveMergedMeshToolStripMenuItem.Name = "saveMergedMeshToolStripMenuItem";
+            this.saveMergedMeshToolStripMenuItem.Size = new System.Drawing.Size(174, 22);
+            this.saveMergedMeshToolStripMenuItem.Text = "Save merged mesh";
+            this.saveMergedMeshToolStripMenuItem.Click += new System.EventHandler(this.saveMergedMeshToolStripMenuItem_Click);
+            // 
             // tools
             // 
             this.tools.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -215,6 +224,8 @@
             this.extractStrokesToolStripMenuItem,
             this.renderToolStripMenuItem,
             this.clearAllToolStripMenuItem,
+            this.switchXYToolStripMenuItem,
+            this.switchXZToolStripMenuItem,
             this.swtichYZToolStripMenuItem});
             this.tools.Image = ((System.Drawing.Image)(resources.GetObject("tools.Image")));
             this.tools.ImageTransparentColor = System.Drawing.Color.Magenta;
@@ -291,6 +302,13 @@
             this.clearAllToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
             this.clearAllToolStripMenuItem.Text = "clear all";
             this.clearAllToolStripMenuItem.Click += new System.EventHandler(this.clearAllToolStripMenuItem_Click);
+            // 
+            // swtichYZToolStripMenuItem
+            // 
+            this.swtichYZToolStripMenuItem.Name = "swtichYZToolStripMenuItem";
+            this.swtichYZToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.swtichYZToolStripMenuItem.Text = "Swtich YZ";
+            this.swtichYZToolStripMenuItem.Click += new System.EventHandler(this.swtichYZToolStripMenuItem_Click);
             // 
             // renderOption
             // 
@@ -478,19 +496,19 @@
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
-            // saveMergedMeshToolStripMenuItem
+            // switchXYToolStripMenuItem
             // 
-            this.saveMergedMeshToolStripMenuItem.Name = "saveMergedMeshToolStripMenuItem";
-            this.saveMergedMeshToolStripMenuItem.Size = new System.Drawing.Size(174, 22);
-            this.saveMergedMeshToolStripMenuItem.Text = "Save merged mesh";
-            this.saveMergedMeshToolStripMenuItem.Click += new System.EventHandler(this.saveMergedMeshToolStripMenuItem_Click);
+            this.switchXYToolStripMenuItem.Name = "switchXYToolStripMenuItem";
+            this.switchXYToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.switchXYToolStripMenuItem.Text = "Switch XY";
+            this.switchXYToolStripMenuItem.Click += new System.EventHandler(this.switchXYToolStripMenuItem_Click);
             // 
-            // swtichYZToolStripMenuItem
+            // switchXZToolStripMenuItem
             // 
-            this.swtichYZToolStripMenuItem.Name = "swtichYZToolStripMenuItem";
-            this.swtichYZToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
-            this.swtichYZToolStripMenuItem.Text = "Swtich YZ";
-            this.swtichYZToolStripMenuItem.Click += new System.EventHandler(this.swtichYZToolStripMenuItem_Click);
+            this.switchXZToolStripMenuItem.Name = "switchXZToolStripMenuItem";
+            this.switchXZToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.switchXZToolStripMenuItem.Text = "Switch XZ";
+            this.switchXZToolStripMenuItem.Click += new System.EventHandler(this.switchXZToolStripMenuItem_Click);
             // 
             // glViewer
             // 
@@ -586,6 +604,8 @@
         private System.Windows.Forms.ToolStripMenuItem axesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveMergedMeshToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem swtichYZToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem switchXYToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem switchXZToolStripMenuItem;
 	}
 }
 

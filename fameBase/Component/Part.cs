@@ -356,6 +356,10 @@ namespace Component
             {
                 return null;
             }
+            if (parts[0]._VERTEXINDEX == null)
+            {
+                return groupPartsSeparately(parts);
+            }
             List<int> vIndex = new List<int>();
             List<double> vPos = new List<double>();
             List<int> fIndex = new List<int>();
@@ -370,6 +374,36 @@ namespace Component
             _parts.Add(newPart);
             return newPart;
         }// group parts
+
+        public Part groupPartsSeparately(List<Part> parts)
+        {
+            List<double> vPos = new List<double>();
+            List<int> fIndex = new List<int>();
+            // merge meshes
+            int start = 0;
+            foreach (Part part in parts)
+            {
+                Mesh m = part._MESH;
+                vPos.AddRange(m.VertexPos.ToList());
+                for (int i = 0, j = 0; i < m.FaceCount; ++i, j += 3)
+                {
+                    fIndex.Add(start + m.FaceVertexIndex[j]);
+                    fIndex.Add(start + m.FaceVertexIndex[j + 1]);
+                    fIndex.Add(start + m.FaceVertexIndex[j + 2]);
+                }
+                start += m.VertexCount;
+                _parts.Remove(part);
+            }
+            Mesh merged = new Mesh(vPos.ToArray(), fIndex.ToArray());
+            Part newPart = new Part(merged);
+            _parts.Add(newPart);
+            return newPart;
+        }// group parts
+
+        public void setMesh(Mesh m)
+        {
+            _mesh = m;
+        }
 
         // Global get
         public int _NPARTS
