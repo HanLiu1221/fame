@@ -380,6 +380,12 @@ namespace Geometry
         static public Vector3d MaxCoord = new Vector3d(double.MaxValue, double.MaxValue, double.MaxValue);
 
         static public Vector3d MinCoord = new Vector3d(double.MinValue, double.MinValue, double.MinValue);
+
+        static public Vector3d XCoord = new Vector3d(1, 0, 0);
+
+        static public Vector3d YCoord = new Vector3d(0, 1, 0);
+
+        static public Vector3d ZCoord = new Vector3d(0, 0, 1);
     }//class-Vector3d
 
 	public class Vector4d

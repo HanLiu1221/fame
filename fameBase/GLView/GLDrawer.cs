@@ -236,6 +236,18 @@ namespace FameBase
             Gl.glDisable(Gl.GL_POINT_SMOOTH);
         }
 
+        public static void drawPlane(Plane3D plane, Color c)
+        {
+            if (plane.points3d == null) return;
+            Gl.glColor3ub(c.R, c.G, c.B);
+            Gl.glBegin(Gl.GL_POLYGON);
+            foreach (Vector3d p in plane.points3d)
+            {
+                Gl.glVertex3dv(p.ToArray());
+            }
+            Gl.glEnd();
+        }
+
         public static void drawPlane2D(Plane3D plane)
         {
             if (plane.points2d == null) return;

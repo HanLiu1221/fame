@@ -66,6 +66,11 @@ namespace Component
             _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
         }
 
+        public void Transform(Matrix4d T)
+        {
+            
+        }
+
         public Object Clone()
         {
             Mesh m = _mesh.Clone() as Mesh;

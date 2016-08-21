@@ -57,9 +57,10 @@ namespace FameBase
             };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
+                bool multiple = dialog.FileNames.Length > 1;
                 foreach (string filename in dialog.FileNames)
                 {
-                    this.glViewer.importMesh(filename);
+                    this.glViewer.importMesh(filename, multiple);
                 }
             }
             this.glViewer.Refresh();
@@ -377,5 +378,38 @@ namespace FameBase
         {
             this.glViewer.swithcYZ();
         }
+
+        private void translateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.setUIMode(6);
+        }
+
+        private void rotateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.setUIMode(7);
+        }
+
+        private void scaleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.setUIMode(8);
+        }
+
+        private void deleteToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void replicateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void groundToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.groundToolStripMenuItem.Checked = !this.groundToolStripMenuItem.Checked;
+            this.glViewer.drawGround = this.groundToolStripMenuItem.Checked;
+            this.glViewer.Refresh();
+        }
+
 	}// Interface
 }// namespace

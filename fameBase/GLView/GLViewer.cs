@@ -56,7 +56,7 @@ namespace FameBase
             this.arcBall = new ArcBall(this.Width, this.Height);
             this.camera = new Camera();
 
-            axes = new Vector3d[18] { new Vector3d(-1.2, 0, 0), new Vector3d(1.2, 0, 0),
+            _axes = new Vector3d[18] { new Vector3d(-1.2, 0, 0), new Vector3d(1.2, 0, 0),
                                       new Vector3d(1, 0.2, 0), new Vector3d(1.2, 0, 0), 
                                       new Vector3d(1, -0.2, 0), new Vector3d(1.2, 0, 0), 
                                       new Vector3d(0, -1.2, 0), new Vector3d(0, 1.2, 0), 
@@ -67,13 +67,17 @@ namespace FameBase
                                       new Vector3d(0.2, 0, 1), new Vector3d(0, 0, 1.2)};
             this.startWid = this.Width;
             this.startHeig = this.Height;
+            Vector3d[] groundPoints = new Vector3d[4] {
+                new Vector3d(-1, -0.5, -1), new Vector3d(-1, -0.5, 1),
+                new Vector3d(1, -0.5, 1), new Vector3d(1, -0.5, -1)};
+            _groundPlane = new Plane3D(groundPoints);
         }
 
         // modes
         public enum UIMode 
         {
             // !Do not change the order of the modes --- used in the current program to retrieve the index (Integer)
-            Viewing, VertexSelection, EdgeSelection, FaceSelection, BoxSelection, BodyNodeEdit, NONE
+            Viewing, VertexSelection, EdgeSelection, FaceSelection, BoxSelection, BodyNodeEdit, Translate, Scale, Rotate, NONE
         }
 
         private bool drawVertex = false;
@@ -132,7 +136,6 @@ namespace FameBase
         private bool isMouseDown = false;
         private List<MeshClass> meshClasses;
         private MeshClass currMeshClass;
-        private Vector3d[] axes;
         private Quad2d highlightQuad;
         private Camera camera;
         private Shader shader;
@@ -167,8 +170,12 @@ namespace FameBase
         List<ModelViewer> _partViewers = new List<ModelViewer>();
         HumanPose _humanPose;
         BodyNode _selectedNode;
-        public bool _unitifyMesh = false;
-        
+        public bool _unitifyMesh = true;
+        bool _showEditAxes = false;
+        public bool drawGround = false;
+        private Vector3d[] _axes;
+        private Vector3d[] _editAxes;
+        private Plane3D _groundPlane;
 
         /******************** Functions ********************/
 
@@ -296,7 +303,16 @@ namespace FameBase
             _currModel = new Model(m);
             _models = new List<Model>();
             _models.Add(_currModel);
-        }
+        }// loadMesh
+
+        public void importMesh(string filename, bool multiple)
+        {
+            // if import multiple meshes, do not unify each mesh
+            Mesh m = new Mesh(filename, multiple ? false : _unitifyMesh); 
+            MeshClass mc = new MeshClass(m);
+            this.meshClasses.Add(mc);
+            this.currMeshClass = mc;
+        }// importMesh
 
         public string getStats()
         {
@@ -319,14 +335,6 @@ namespace FameBase
             }
             return sb.ToString();
         }// getStats
-
-        public void importMesh(string filename)
-        {
-            Mesh m = new Mesh(filename, _unitifyMesh);
-            MeshClass mc = new MeshClass(m);
-            this.meshClasses.Add(mc);
-            this.currMeshClass = mc;
-        }
 
         public void loadTriMesh(string filename)
         {
@@ -871,12 +879,27 @@ namespace FameBase
                 case 4:
                     this.currUIMode = UIMode.BoxSelection;
                     break;
+                case 6:
+                    this.currUIMode = UIMode.Translate;
+                    break;
+                case 7:
+                    this.currUIMode = UIMode.Scale;
+                    break;
+                case 8:
+                    this.currUIMode = UIMode.Rotate;
+                    break;
                 case 0:
                 default:
                     this.currUIMode = UIMode.Viewing;
                     break;
             }
-        }
+            if (i >= 6 && i <= 8)
+            {
+                this.calEditAxesLoc();
+                _showEditAxes = true;
+                this.Refresh();
+            }
+        }// setUIMode
 
         public void setRenderOption(int i)
         {
@@ -902,7 +925,48 @@ namespace FameBase
         public void displayAxes(bool isShow)
         {
             this.isDrawAxes = isShow;
+            this.Refresh();
         }
+
+        private void calEditAxesLoc()
+        {
+            Vector3d center = new Vector3d();
+            double ad = 0;
+            foreach (Part p in _selectedParts)
+            {
+                center += p._BOUNDINGBOX.CENTER;
+                double d = (p._BOUNDINGBOX.MaxCoord - p._BOUNDINGBOX.MinCoord).Length();
+                ad = ad > d ? ad : d;
+            }
+            center /= _selectedParts.Count;
+            ad /= 2;
+            if (ad == 0)
+            {
+                ad = 0.5;
+            }
+            double arrow_d = ad / 6;
+            _editAxes = new Vector3d[18];
+            _editAxes[0] = center - ad * Vector3d.XCoord;
+            _editAxes[1] = center + ad * Vector3d.XCoord;
+            _editAxes[2] = _editAxes[1] - arrow_d * Vector3d.XCoord + arrow_d * Vector3d.YCoord;
+            _editAxes[3] = new Vector3d(_editAxes[1]);
+            _editAxes[4] = _editAxes[1] - arrow_d * Vector3d.XCoord - arrow_d * Vector3d.YCoord;
+            _editAxes[5] = new Vector3d(_editAxes[1]);
+
+            _editAxes[6] = center - ad * Vector3d.YCoord;
+            _editAxes[7] = center + ad * Vector3d.YCoord;
+            _editAxes[8] = _editAxes[7] - arrow_d * Vector3d.YCoord + arrow_d * Vector3d.XCoord;
+            _editAxes[9] = new Vector3d(_editAxes[7]);
+            _editAxes[10] = _editAxes[7] - arrow_d * Vector3d.YCoord - arrow_d * Vector3d.XCoord;
+            _editAxes[11] = new Vector3d(_editAxes[7]);
+
+            _editAxes[12] = center - ad * Vector3d.ZCoord;
+            _editAxes[13] = center + ad * Vector3d.ZCoord;
+            _editAxes[14] = _editAxes[13] - arrow_d * Vector3d.ZCoord + arrow_d * Vector3d.XCoord;
+            _editAxes[15] = new Vector3d(_editAxes[13]);
+            _editAxes[16] = _editAxes[13] - arrow_d * Vector3d.ZCoord - arrow_d * Vector3d.XCoord;
+            _editAxes[17] = new Vector3d(_editAxes[13]);
+        }// calEditAxesLoc
 
         public void resetView()
         {
@@ -1081,6 +1145,13 @@ namespace FameBase
                 case UIMode.BodyNodeEdit:
                     {
                         this.cal2D();
+                    }
+                    break;
+                case UIMode.Translate:
+                case UIMode.Scale:
+                case UIMode.Rotate:
+                    {
+
                     }
                     break;
                 case UIMode.Viewing:
@@ -1415,6 +1486,69 @@ namespace FameBase
             return mv;
         }// addSelectedPartsToBasket
 
+        private void translateParts()
+        {
+            foreach (Part p in _selectedParts)
+            {
+                
+            }
+        }// translateParts
+
+        private void scaleParts()
+        {
+
+        }// scaleParts
+
+        private void rotateParts()
+        {
+
+        }// rotateParts
+
+        private Matrix4d calTranslation(Vector2d prev, Vector2d curr)
+        {
+            // along a axis each time
+            Vector2d vx1 = this.camera.Project(_editAxes[0]).ToVector2d();
+            Vector2d vx2 = this.camera.Project(_editAxes[1]).ToVector2d();
+            Vector2d vx = (vx2 - vx1).normalize();
+
+            Vector2d vy1 = this.camera.Project(_editAxes[6]).ToVector2d();
+            Vector2d vy2 = this.camera.Project(_editAxes[7]).ToVector2d();
+            Vector2d vy = (vy2 - vy1).normalize();
+
+            Vector2d vz1 = this.camera.Project(_editAxes[12]).ToVector2d();
+            Vector2d vz2 = this.camera.Project(_editAxes[13]).ToVector2d();
+            Vector2d vz = (vz2 - vz1).normalize();
+
+            Vector2d dir = (curr - prev).normalize();
+            double ax = Math.Acos(Math.Abs(dir.Dot(vx)));
+            double ay = Math.Acos(Math.Abs(dir.Dot(vy)));
+            double az = Math.Acos(Math.Abs(dir.Dot(vz)));
+
+            int axis = 0;
+            if (ay < ax && ay < az)
+            {
+                axis = 1;
+            }
+            if (az < ax && az < ay)
+            {
+                axis = 2;
+            }
+            Vector3d moveDir = new Vector3d();
+            moveDir[axis] = 1;
+
+            // distance
+            Vector3d u = this.camera.ProjectPointToPlane(prev, _groundPlane.center, _groundPlane.normal);
+            Vector3d v = this.camera.ProjectPointToPlane(prev, _groundPlane.center, _groundPlane.normal);
+            Vector3d move = (v - u).Length() * moveDir;
+
+            return Matrix4d.TranslationMatrix(move);
+        }// calTranslation
+
+        private void calRotation()
+        {
+
+        }
+
         public void loadHuamPose(string filename)
         {
             _humanPose = new HumanPose();
@@ -1613,7 +1747,12 @@ namespace FameBase
 
             if (this.isDrawAxes)
             {
-                this.drawAxes();
+                this.drawAxes(_axes, 3.0f);
+            }
+
+            if (this.drawGround)
+            {
+                GLDrawer.drawPlane(_groundPlane, Color.LightGray);
             }
 
             //Gl.glEnable(Gl.GL_POLYGON_OFFSET_FILL);
@@ -1634,6 +1773,8 @@ namespace FameBase
             this.drawHumanPose();
 
             this.DrawHighlight3D();
+
+            
 
             if (this.enableDepthTest)
             {
@@ -1787,27 +1928,31 @@ namespace FameBase
             {
                 GLDrawer.drawSphere(_selectedNode._POS, _selectedNode._RADIUS, GLDrawer.SelectedBodyNodeColor);
             }
+
+            if (_showEditAxes)
+            {
+                this.drawAxes(_editAxes, 4.0f);
+            }
         }// DrawHighlight3D
 
-        private void drawAxes()
+        private void drawAxes(Vector3d[] axes, float wid)
         {
             // draw axes with arrows
             for (int i = 0; i < 6; i += 2)
             {
-                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Red, 2.0f);
+                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Red, wid);
             }
 
             for (int i = 6; i < 12; i += 2)
             {
-                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Green, 2.0f);
+                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Green, wid);
             }
 
             for (int i = 12; i < 18; i += 2)
             {
-                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Blue, 2.0f);
+                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Blue, wid);
             }
-            Gl.glEnd();
-        }
+        }// drawAxes
 
         // Lights & Materials
         public static float[] matAmbient = { 0.1f, 0.1f, 0.1f, 1.0f };

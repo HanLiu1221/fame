@@ -628,6 +628,7 @@ namespace Geometry
         Vector2d[] _points2d = null;
         Vector3d _maxCoord = Vector3d.MinCoord;
         Vector3d _minCoord = Vector3d.MaxCoord;
+        Vector3d _center = new Vector3d();
         Plane3D[] _planes = null;
 
         public Prim(Vector3d a, Vector3d b)
@@ -646,6 +647,7 @@ namespace Geometry
             _points3d[7] = new Vector3d(b.x, b.y, a.z);
             _minCoord = new Vector3d(a);
             _maxCoord = new Vector3d(b);
+            _center = (_maxCoord + _minCoord) / 2;
             _points2d = new Vector2d[Common._nPrimPoint];
             createPlanes();
         }
@@ -661,6 +663,7 @@ namespace Geometry
                 _maxCoord = Vector3d.Max(_maxCoord, arr[i]);
                 _minCoord = Vector3d.Min(_minCoord, arr[i]);
             }
+            _center = (_maxCoord + _minCoord) / 2;
             _points2d = new Vector2d[Common._nPrimPoint];
             createPlanes();
         }
@@ -705,6 +708,14 @@ namespace Geometry
             get
             {
                 return _minCoord;
+            }
+        }
+
+        public Vector3d CENTER
+        {
+            get
+            {
+                return _center;
             }
         }
 
