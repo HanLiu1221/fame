@@ -87,6 +87,7 @@ namespace Component
         {
             Mesh m = _mesh.Clone() as Mesh;
             Part p = new Part(m);
+            p._COLOR = this._COLOR;
             return p;
         }
 

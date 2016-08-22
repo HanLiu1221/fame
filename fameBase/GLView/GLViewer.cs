@@ -294,6 +294,13 @@ namespace FameBase
             this.meshClasses.Clear();
         }
 
+        private void clearHighlights()
+        {
+            _selectedParts.Clear();
+            _selectedNode = null;
+            _hightlightAxis = -1;
+        }// clearHighlights
+
         public void loadMesh(string filename)
         {
             this.clearContext();
@@ -549,6 +556,7 @@ namespace FameBase
                 MessageBox.Show("File does not exist!");
                 return;
             }
+            this.clearHighlights();
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separator = { ' ', '\t' };
@@ -606,7 +614,7 @@ namespace FameBase
                     parts.Add(part);
                 }
                 _currModel = new Model(parts);
-                _models.Add(_currModel);
+                this.setCurrentModel(_currModel);
             }
             this.Refresh();
         }// loadAPartBasedModel
@@ -646,6 +654,8 @@ namespace FameBase
         {
             _currModel = m;
             _selectedParts.Clear();
+            _models.Clear();
+            _models.Add(_currModel);
             this.cal2D();
             this.Refresh();
         }
@@ -1055,7 +1065,7 @@ namespace FameBase
                     }
             }
             this._showEditAxes = false;
-            _selectedParts.Clear();
+            this.clearHighlights();
         }// viewMouseDown
 
         private void viewMouseMove(int x, int y)
@@ -1224,32 +1234,16 @@ namespace FameBase
                     this.Refresh();
                     break;
                 case UIMode.Translate:
-                    {
-                        if (this.isMouseDown)
-                        {
-                            this.translateParts(this.mouseDownPos, this.currMousePos);
-                        }
-                        else
-                        {
-                            this.selectAxisWhileMouseMoving(this.currMousePos);
-                        }
-                        this.Refresh();
-                    }
-                    break;
                 case UIMode.Scale:
-                    {
-                        if (this.isMouseDown)
-                        {
-                            this.scaleParts(this.currMousePos);
-                        }
-                        this.Refresh();
-                    }
-                    break;
                 case UIMode.Rotate:
                     {
                         if (this.isMouseDown)
                         {
-                            this.rotateParts(this.currMousePos);
+                            this.transformSelectedParts(this.currMousePos);
+                        }
+                        else
+                        {
+                            this.selectAxisWhileMouseMoving(this.currMousePos);
                         }
                         this.Refresh();
                     }
@@ -1562,34 +1556,6 @@ namespace FameBase
             return T;
         }// editMouseMove
 
-        private void translateParts(Vector2d prevMousePos, Vector2d mousePos)
-        {
-            //Matrix4d T = calTranslation(prevMousePos, mousePos);
-            Matrix4d T = editMouseMove((int)mousePos.x, (int)mousePos.y);
-            foreach (Part p in _selectedParts)
-            {
-                p.TransformFromOrigin(T);
-            }
-        }// translateParts
-
-        private void scaleParts(Vector2d mousePos)
-        {
-            Matrix4d T = editMouseMove((int)mousePos.x, (int)mousePos.y);
-            foreach (Part p in _selectedParts)
-            {
-                p.TransformFromOrigin(T);
-            }
-        }// scaleParts
-
-        private void rotateParts(Vector2d mousePos)
-        {
-            Matrix4d T = editMouseMove((int)mousePos.x, (int)mousePos.y);
-            foreach (Part p in _selectedParts)
-            {
-                p.TransformFromOrigin(T);
-            }
-        }// rotateParts
-
         private void editMouseUp()
         {
             _hightlightAxis = -1;
@@ -1598,6 +1564,84 @@ namespace FameBase
                 p.updateOriginPos();
             }
         }// editMouseUp
+
+        private void transformSelectedParts(Vector2d mousePos)
+        {
+            if (_selectedParts.Count == 0)
+            {
+                return;
+            }
+            Matrix4d T = editMouseMove((int)mousePos.x, (int)mousePos.y);
+            // use a fixed axis
+            switch (this.currUIMode)
+            {
+                case UIMode.Translate:
+                    {
+                        for (int i = 0; i < 3; ++i)
+                        {
+                            if (_hightlightAxis != -1 && i != _hightlightAxis)
+                            {
+                                T[i, 3] = 0;
+                            }
+                        }
+                        break;
+                    }
+                case UIMode.Scale:
+                    {
+                        for (int i = 0; i < 3; ++i)
+                        {
+                            if (_hightlightAxis != -1 && i != _hightlightAxis)
+                            {
+                                T[i, i] = 1;
+                            }
+                        }
+                        break;
+                    }
+                case UIMode.Rotate:
+                    {
+                        if (_hightlightAxis != -1)
+                        {
+                            T = _editArcball.getRotationMatrixAlongAxis(_hightlightAxis);
+                        }
+                        break;
+                    }
+                default:
+                    {
+                        T = Matrix4d.IdentityMatrix();
+                        break;
+                    }
+            }
+            // original center
+            Vector3d ori = getCenter(_selectedParts);
+            foreach (Part p in _selectedParts)
+            {
+                p.TransformFromOrigin(T);
+            }
+            if (this.currUIMode != UIMode.Translate)
+            {
+                Vector3d after = getCenter(_selectedParts);
+                Matrix4d TtoCenter = Matrix4d.TranslationMatrix(ori - after);
+                foreach (Part p in _selectedParts)
+                {
+                    p.Transform(TtoCenter);
+                }
+            }
+        }// transformSelectedParts
+
+        private Vector3d getCenter(List<Part> parts)
+        {
+            if (parts == null || parts.Count == 0)
+            {
+                return new Vector3d();
+            }
+            Vector3d center = new Vector3d();
+            foreach (Part p in parts)
+            {
+                center += p._BOUNDINGBOX.CENTER;
+            }
+            center /= parts.Count;
+            return center;
+        }// parts
 
         public void deleteParts()
         {
@@ -1623,6 +1667,28 @@ namespace FameBase
             }
             this.Refresh();
         }// deleteParts
+
+        public void composeSelectedParts()
+        {
+            if (_partViewers == null || _partViewers.Count == 0)
+            {
+                return;
+            }
+            _selectedParts.Clear();
+            List<Part> parts = new List<Part>();
+            foreach (ModelViewer mv in _partViewers)
+            {
+                List<Part> mv_parts = mv.getParts();
+                foreach (Part p in mv_parts)
+                {
+                    Part pclone = p.Clone() as Part;
+                    parts.Add(pclone);
+                }
+            }            
+            _currModel = new Model(parts);
+            this.cal2D();
+            this.Refresh();
+        }// composeSelectedParts
 
         private void selectAxisWhileMouseMoving(Vector2d mousePos)
         {
@@ -1956,8 +2022,8 @@ namespace FameBase
                 }
                 if (this.drawFace)
                 {
-                    //GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
-                    GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
+                    GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    //GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
                 }
                 if (this.drawEdge)
                 {

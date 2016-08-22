@@ -300,19 +300,6 @@ namespace FameBase
             this.updateStats();
         }
 
-        private void addSelectedParts_Click(object sender, EventArgs e)
-        {
-            ModelViewer mv = this.glViewer.addSelectedPartsToBasket();
-            if (mv != null)
-            {
-                mv.Width = 200;
-                mv.Height = 200;
-                mv.BorderStyle = BorderStyle.FixedSingle;
-                mv.BackColor = Color.White;
-                this.partBasket.Controls.Add(mv);
-            }
-        }
-
         private void loadHumanPoseToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var dialog = new OpenFileDialog()
@@ -409,6 +396,24 @@ namespace FameBase
             this.groundToolStripMenuItem.Checked = !this.groundToolStripMenuItem.Checked;
             this.glViewer.drawGround = this.groundToolStripMenuItem.Checked;
             this.glViewer.Refresh();
+        }
+
+        private void addSelectedParts_Click(object sender, EventArgs e)
+        {
+            ModelViewer mv = this.glViewer.addSelectedPartsToBasket();
+            if (mv != null)
+            {
+                mv.Width = 200;
+                mv.Height = 200;
+                mv.BorderStyle = BorderStyle.FixedSingle;
+                mv.BackColor = Color.White;
+                this.partBasket.Controls.Add(mv);
+            }
+        }
+
+        private void composeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.composeSelectedParts();
         }
 
 	}// Interface

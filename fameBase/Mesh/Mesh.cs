@@ -577,9 +577,22 @@ namespace Geometry
             _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
             _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
             this.originVertextPos = this.vertexPos.Clone() as double[];
+            this.getBoundary();
             this.calculateFaceVertexNormal();
             this.flags = new bool[this.vertexCount];
         }
+
+        private void getBoundary()
+        {
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            for (int i = 0, j = 0; i < this.vertexCount; ++i, j += 3)
+            {
+                Vector3d v = new Vector3d(this.vertexPos[j], this.vertexPos[j + 1], this.vertexPos[j + 2]);
+                _maxCoord = Vector3d.Max(v, _maxCoord);
+                _minCoord = Vector3d.Min(v, _minCoord);
+            }
+        }// getBoundary
 
         private SparseMatrix buildVertexToVertexAdjancenyMatrix()
         {

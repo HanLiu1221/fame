@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Collections.Generic;
 
 using Tao.OpenGl;
 using Tao.Platform.Windows;
@@ -37,6 +38,11 @@ namespace FameBase
         public void setModelViewMatrix(Matrix4d m)
         {
             _modelViewMat = new Matrix4d(m);
+        }
+
+        public List<Part> getParts()
+        {
+            return _model._PARTS;
         }
 
         protected override void OnMouseDoubleClick(System.Windows.Forms.MouseEventArgs e)
