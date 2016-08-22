@@ -386,22 +386,22 @@ namespace FameBase
 
         private void rotateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.glViewer.setUIMode(7);
+            this.glViewer.setUIMode(8);
         }
 
         private void scaleToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.glViewer.setUIMode(8);
+            this.glViewer.setUIMode(7);
         }
 
         private void deleteToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            
+            this.glViewer.deleteParts();
         }
 
         private void replicateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
+            this.glViewer.duplicateParts();
         }
 
         private void groundToolStripMenuItem_Click(object sender, EventArgs e)

@@ -53,6 +53,7 @@ namespace Geometry
 	public class Mesh
 	{
 		double[] vertexPos = null;
+        double[] originVertextPos = null;
 		int[] faceVertexIndex = null;
 		HalfEdge[] halfEdges = null;
         HalfEdge[] singleHalfEdges = null;
@@ -63,8 +64,8 @@ namespace Geometry
         List<List<int>> vertexFaceIndex = null;
 		int vertexCount = 0;
 		int faceCount = 0;
-        Vector3d minCoord = Vector3d.MaxCoord;
-        Vector3d maxCoord = Vector3d.MinCoord;
+        Vector3d _minCoord = Vector3d.MaxCoord;
+        Vector3d _maxCoord = Vector3d.MinCoord;
         bool[] flags;
         string sourceFile;
         int[][] _vv; // vertex-vertex adjancency
@@ -176,6 +177,49 @@ namespace Geometry
             return m;
         }
 
+        public void Transform(Matrix4d T) 
+        {
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            for (int i = 0, j = 0; i < this.VertexCount; ++i, j += 3)
+            {
+                Vector3d ori = new Vector3d(this.vertexPos[j], this.vertexPos[j + 1], this.vertexPos[j + 2]);
+                Vector3d transformed = (T * new Vector4d(ori, 1)).ToVector3D();
+                for (int k = 0; k < 3; ++k)
+                {
+                    this.vertexPos[j + k] = transformed[k];
+                }
+                _maxCoord = Vector3d.Max(_maxCoord, transformed);
+                _minCoord = Vector3d.Min(_minCoord, transformed);
+            }
+            this.calculateFaceVertexNormal();
+            this.calculateFaceNormal();
+        }// Transform
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            for (int i = 0, j = 0; i < this.VertexCount; ++i, j += 3)
+            {
+                Vector3d ori = new Vector3d(this.originVertextPos[j], this.originVertextPos[j + 1], this.originVertextPos[j + 2]);
+                Vector3d transformed = (T * new Vector4d(ori, 1)).ToVector3D();
+                for (int k = 0; k < 3; ++k)
+                {
+                    this.vertexPos[j + k] = transformed[k];
+                }
+                _maxCoord = Vector3d.Max(_maxCoord, transformed);
+                _minCoord = Vector3d.Min(_minCoord, transformed);
+            }
+            this.calculateFaceVertexNormal();
+            this.calculateFaceNormal();
+        }// Transform
+
+        public void updateOriginPos()
+        {
+            this.originVertextPos = this.vertexPos.Clone() as double[];
+        }
+
         private void LoadPlyfile(StreamReader sr, bool normalize)
         {
             List<double> vertexArray = new List<double>();
@@ -227,8 +271,8 @@ namespace Geometry
                     v[j] = double.Parse(array[j]);
                     vertexArray.Add(v[j]);
                 }
-                this.minCoord = Vector3d.Min(this.minCoord, v);
-                this.maxCoord = Vector3d.Max(this.maxCoord, v);
+                this._minCoord = Vector3d.Min(this._minCoord, v);
+                this._maxCoord = Vector3d.Max(this._maxCoord, v);
                 if (nproperty >= 20)
                 {
                     Vector3d normal = new Vector3d();
@@ -363,8 +407,8 @@ namespace Geometry
                         return;
                     }
                     ++this.vertexCount;
-                    this.minCoord = Vector3d.Min(this.minCoord, v);
-                    this.maxCoord = Vector3d.Max(this.maxCoord, v);
+                    this._minCoord = Vector3d.Min(this._minCoord, v);
+                    this._maxCoord = Vector3d.Max(this._maxCoord, v);
                 }
                 else if (array[0] == "f")
                 {
@@ -447,8 +491,8 @@ namespace Geometry
                         return;
                     }
                     ++this.vertexCount;
-                    this.minCoord = Vector3d.Min(this.minCoord, v);
-                    this.maxCoord = Vector3d.Max(this.maxCoord, v);
+                    this._minCoord = Vector3d.Min(this._minCoord, v);
+                    this._maxCoord = Vector3d.Max(this._maxCoord, v);
                 }
                 else if (array[0] == "f")
                 {
@@ -532,6 +576,7 @@ namespace Geometry
         {
             _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
             _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
+            this.originVertextPos = this.vertexPos.Clone() as double[];
             this.calculateFaceVertexNormal();
             this.flags = new bool[this.vertexCount];
         }
@@ -687,8 +732,8 @@ namespace Geometry
 
         private void normalize()
         {
-            Vector3d c = (this.maxCoord + this.minCoord) / 2;
-            Vector3d d = this.maxCoord - this.minCoord;
+            Vector3d c = (this._maxCoord + this._minCoord) / 2;
+            Vector3d d = this._maxCoord - this._minCoord;
             double scale = d.x > d.y ? d.x : d.y;
             scale = d.z > scale ? d.z : scale;
             scale /= 2; // [-1, 1]
@@ -820,7 +865,7 @@ namespace Geometry
         {
             get
             {
-                return this.maxCoord;
+                return this._maxCoord;
             }
         }
 
@@ -828,7 +873,7 @@ namespace Geometry
         {
             get
             {
-                return this.minCoord;
+                return this._minCoord;
             }
         }
 

@@ -68,7 +68,19 @@ namespace Component
 
         public void Transform(Matrix4d T)
         {
-            
+            _mesh.Transform(T);
+            this.calculateBbox();
+        }
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            _mesh.TransformFromOrigin(T);
+            this.calculateBbox();
+        }
+
+        public void updateOriginPos()
+        {
+            _mesh.updateOriginPos();
         }
 
         public Object Clone()
@@ -140,14 +152,8 @@ namespace Component
             {
                 return;
             }
-            Vector3d maxv = Vector3d.MinCoord;
-            Vector3d minv = Vector3d.MaxCoord;
-            for (int i = 0, j = 0; i < _mesh.VertexCount; ++i)
-            {
-                Vector3d v = new Vector3d(_mesh.VertexPos[j++], _mesh.VertexPos[j++], _mesh.VertexPos[j++]);
-                maxv = Vector3d.Max(v, maxv);
-                minv = Vector3d.Min(v, minv);
-            }
+            Vector3d maxv = _mesh.MaxCoord;
+            Vector3d minv = _mesh.MinCoord;
             _boundingbox = new Prim(minv, maxv);
         }
 
@@ -404,6 +410,16 @@ namespace Component
             _parts.Add(newPart);
             return newPart;
         }// group parts
+
+        public void addAPart(Part p)
+        {
+            _parts.Add(p);
+        }
+
+        public void removeAPart(Part p)
+        {
+            _parts.Remove(p);
+        }
 
         public void setMesh(Mesh m)
         {

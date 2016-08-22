@@ -176,6 +176,8 @@ namespace FameBase
         private Vector3d[] _axes;
         private Vector3d[] _editAxes;
         private Plane3D _groundPlane;
+        int _hightlightAxis = -1;
+        ArcBall _editArcball;
 
         /******************** Functions ********************/
 
@@ -1052,6 +1054,8 @@ namespace FameBase
                         break;
                     }
             }
+            this._showEditAxes = false;
+            _selectedParts.Clear();
         }// viewMouseDown
 
         private void viewMouseMove(int x, int y)
@@ -1148,10 +1152,18 @@ namespace FameBase
                     }
                     break;
                 case UIMode.Translate:
+                    {
+                        this.editMouseDown(1, this.mouseDownPos);
+                    }
+                    break;
                 case UIMode.Scale:
+                    {
+                        this.editMouseDown(2, this.mouseDownPos);
+                    }
+                    break;
                 case UIMode.Rotate:
                     {
-
+                        this.editMouseDown(3, this.mouseDownPos);
                     }
                     break;
                 case UIMode.Viewing:
@@ -1211,6 +1223,37 @@ namespace FameBase
                     }
                     this.Refresh();
                     break;
+                case UIMode.Translate:
+                    {
+                        if (this.isMouseDown)
+                        {
+                            this.translateParts(this.mouseDownPos, this.currMousePos);
+                        }
+                        else
+                        {
+                            this.selectAxisWhileMouseMoving(this.currMousePos);
+                        }
+                        this.Refresh();
+                    }
+                    break;
+                case UIMode.Scale:
+                    {
+                        if (this.isMouseDown)
+                        {
+                            this.scaleParts(this.currMousePos);
+                        }
+                        this.Refresh();
+                    }
+                    break;
+                case UIMode.Rotate:
+                    {
+                        if (this.isMouseDown)
+                        {
+                            this.rotateParts(this.currMousePos);
+                        }
+                        this.Refresh();
+                    }
+                    break;
                 case UIMode.Viewing:
                     //default:
                     {
@@ -1261,6 +1304,14 @@ namespace FameBase
                 case UIMode.BodyNodeEdit:
                     {
                         this.updateBodyBones();
+                        this.Refresh();
+                    }
+                    break;
+                case UIMode.Translate:
+                case UIMode.Scale:
+                case UIMode.Rotate:
+                    {
+                        this.editMouseUp();
                         this.Refresh();
                     }
                     break;
@@ -1486,63 +1537,140 @@ namespace FameBase
             return mv;
         }// addSelectedPartsToBasket
 
-        private void translateParts()
+        private void editMouseDown(int mode, Vector2d mousePos)
         {
+            _editArcball = new ArcBall(this.Width, this.Height);
+            switch (mode)
+            {
+                case 1: // Translate
+                    _editArcball.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Pan);
+                    break;
+                case 2: // Scaling
+                    _editArcball.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Scale);
+                    break;
+                case 3: // Rotate
+                    _editArcball.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Rotate);
+                    break;
+            }
+        }// editMouseDown
+
+        private Matrix4d editMouseMove(int x, int y)
+        {
+            if (!this.isMouseDown) return Matrix4d.IdentityMatrix();
+            _editArcball.mouseMove(x, y);
+            Matrix4d T = _editArcball.getTransformMatrix(3);
+            return T;
+        }// editMouseMove
+
+        private void translateParts(Vector2d prevMousePos, Vector2d mousePos)
+        {
+            //Matrix4d T = calTranslation(prevMousePos, mousePos);
+            Matrix4d T = editMouseMove((int)mousePos.x, (int)mousePos.y);
             foreach (Part p in _selectedParts)
             {
-                
+                p.TransformFromOrigin(T);
             }
         }// translateParts
 
-        private void scaleParts()
+        private void scaleParts(Vector2d mousePos)
         {
-
+            Matrix4d T = editMouseMove((int)mousePos.x, (int)mousePos.y);
+            foreach (Part p in _selectedParts)
+            {
+                p.TransformFromOrigin(T);
+            }
         }// scaleParts
 
-        private void rotateParts()
+        private void rotateParts(Vector2d mousePos)
         {
-
+            Matrix4d T = editMouseMove((int)mousePos.x, (int)mousePos.y);
+            foreach (Part p in _selectedParts)
+            {
+                p.TransformFromOrigin(T);
+            }
         }// rotateParts
+
+        private void editMouseUp()
+        {
+            _hightlightAxis = -1;
+            foreach (Part p in _selectedParts)
+            {
+                p.updateOriginPos();
+            }
+        }// editMouseUp
+
+        public void deleteParts()
+        {
+            foreach (Part p in _selectedParts)
+            {
+                _currModel.removeAPart(p);
+            }
+            _selectedParts.Clear();
+            this.Refresh();
+        }// deleteParts
+
+        public void duplicateParts()
+        {
+            int n = _selectedParts.Count;
+            Matrix4d shift = Matrix4d.TranslationMatrix(new Vector3d(0.2, 0, 0));
+            for (int i = 0; i < n; ++i)
+            {
+                Part p = _selectedParts[i];
+                Part pclone = p.Clone() as Part;
+                pclone.TransformFromOrigin(shift);
+                _currModel.addAPart(pclone);
+                _selectedParts.Add(pclone);
+            }
+            this.Refresh();
+        }// deleteParts
+
+        private void selectAxisWhileMouseMoving(Vector2d mousePos)
+        {
+            Vector2d s = this.camera.Project(_editAxes[0]).ToVector2d();
+            Vector2d e = this.camera.Project(_editAxes[1]).ToVector2d();
+            Line2d xline = new Line2d(s, e);
+            double xd = Polygon2D.PointDistToLine(mousePos, xline);
+
+            s = this.camera.Project(_editAxes[6]).ToVector2d();
+            e = this.camera.Project(_editAxes[7]).ToVector2d();
+            Line2d yline = new Line2d(s, e);
+            double yd = Polygon2D.PointDistToLine(mousePos, yline);
+
+            s = this.camera.Project(_editAxes[12]).ToVector2d();
+            e = this.camera.Project(_editAxes[13]).ToVector2d();
+            Line2d zline = new Line2d(s, e);
+            double zd = Polygon2D.PointDistToLine(mousePos, zline);
+
+            _hightlightAxis = 0;
+            if (yd < xd && yd < zd)
+            {
+                _hightlightAxis = 1;
+            }
+            if (zd < xd && zd < yd)
+            {
+                _hightlightAxis = 2;
+            }
+        }// selectAxisWhileMouseMoving
 
         private Matrix4d calTranslation(Vector2d prev, Vector2d curr)
         {
-            // along a axis each time
-            Vector2d vx1 = this.camera.Project(_editAxes[0]).ToVector2d();
-            Vector2d vx2 = this.camera.Project(_editAxes[1]).ToVector2d();
-            Vector2d vx = (vx2 - vx1).normalize();
-
-            Vector2d vy1 = this.camera.Project(_editAxes[6]).ToVector2d();
-            Vector2d vy2 = this.camera.Project(_editAxes[7]).ToVector2d();
-            Vector2d vy = (vy2 - vy1).normalize();
-
-            Vector2d vz1 = this.camera.Project(_editAxes[12]).ToVector2d();
-            Vector2d vz2 = this.camera.Project(_editAxes[13]).ToVector2d();
-            Vector2d vz = (vz2 - vz1).normalize();
-
-            Vector2d dir = (curr - prev).normalize();
-            double ax = Math.Acos(Math.Abs(dir.Dot(vx)));
-            double ay = Math.Acos(Math.Abs(dir.Dot(vy)));
-            double az = Math.Acos(Math.Abs(dir.Dot(vz)));
-
-            int axis = 0;
-            if (ay < ax && ay < az)
-            {
-                axis = 1;
-            }
-            if (az < ax && az < ay)
-            {
-                axis = 2;
-            }
             Vector3d moveDir = new Vector3d();
-            moveDir[axis] = 1;
+            moveDir[_hightlightAxis] = 1;
 
             // distance
             Vector3d u = this.camera.ProjectPointToPlane(prev, _groundPlane.center, _groundPlane.normal);
-            Vector3d v = this.camera.ProjectPointToPlane(prev, _groundPlane.center, _groundPlane.normal);
+            Vector3d v = this.camera.ProjectPointToPlane(curr, _groundPlane.center, _groundPlane.normal);
             Vector3d move = (v - u).Length() * moveDir;
 
             return Matrix4d.TranslationMatrix(move);
         }// calTranslation
+
+        private void calScaling(Vector2d prev, Vector2d curr)
+        {
+            double sideLen = this.Width > this.Height ? this.Width : this.Height;
+            double ratio = (curr - prev).Length() / this.Width;
+
+        }// calScaling
 
         private void calRotation()
         {
@@ -1940,17 +2068,17 @@ namespace FameBase
             // draw axes with arrows
             for (int i = 0; i < 6; i += 2)
             {
-                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Red, wid);
+                GLDrawer.drawLines3D(axes[i], axes[i + 1], _hightlightAxis == 0 ? Color.Yellow : Color.Red, wid);
             }
 
             for (int i = 6; i < 12; i += 2)
             {
-                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Green, wid);
+                GLDrawer.drawLines3D(axes[i], axes[i + 1], _hightlightAxis == 1 ? Color.Yellow : Color.Green, wid);
             }
 
             for (int i = 12; i < 18; i += 2)
             {
-                GLDrawer.drawLines3D(axes[i], axes[i + 1], Color.Blue, wid);
+                GLDrawer.drawLines3D(axes[i], axes[i + 1], _hightlightAxis == 2 ? Color.Yellow : Color.Blue, wid);
             }
         }// drawAxes
 
