@@ -192,8 +192,7 @@ namespace Geometry
                 _maxCoord = Vector3d.Max(_maxCoord, transformed);
                 _minCoord = Vector3d.Min(_minCoord, transformed);
             }
-            this.calculateFaceVertexNormal();
-            this.calculateFaceNormal();
+            this.afterUpdatePos();
         }// Transform
 
         public void TransformFromOrigin(Matrix4d T)
@@ -211,8 +210,7 @@ namespace Geometry
                 _maxCoord = Vector3d.Max(_maxCoord, transformed);
                 _minCoord = Vector3d.Min(_minCoord, transformed);
             }
-            this.calculateFaceVertexNormal();
-            this.calculateFaceNormal();
+            this.afterUpdatePos();
         }// Transform
 
         public void updateOriginPos()
@@ -577,11 +575,16 @@ namespace Geometry
             _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
             _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
             this.originVertextPos = this.vertexPos.Clone() as double[];
-            this.getBoundary();
-            this.calculateFaceVertexNormal();
+            this.afterUpdatePos();
             this.flags = new bool[this.vertexCount];
         }
 
+        public void afterUpdatePos()
+        {
+            this.getBoundary();
+            this.calculateFaceVertexNormal();
+            this.calculateFaceNormal();
+        }
         private void getBoundary()
         {
             _maxCoord = Vector3d.MinCoord;
@@ -771,7 +774,7 @@ namespace Geometry
                     this.vertexPos[j + k] -= center[k];
                 }
             }
-            this.calculateFaceVertexNormal();
+            this.afterUpdatePos();
         }
 
         public Vector3d getFaceCenter(int fidx)

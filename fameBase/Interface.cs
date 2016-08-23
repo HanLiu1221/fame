@@ -353,17 +353,17 @@ namespace FameBase
 
         private void switchXYToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.glViewer.swithcXY();
+            this.glViewer.switchXYZ(1);
         }
 
         private void switchXZToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.glViewer.swithcXZ();
+            this.glViewer.switchXYZ(2);
         }
 
         private void swtichYZToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.glViewer.swithcYZ();
+            this.glViewer.switchXYZ(3);
         }
 
         private void translateToolStripMenuItem_Click(object sender, EventArgs e)

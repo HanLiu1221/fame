@@ -25,72 +25,6 @@ namespace Component
 
         public Color _COLOR = Color.LightBlue;
 
-        public Part(Mesh m)
-        {
-            _mesh = m;
-            this.calculateBbox();
-        }
-
-        public Part(Mesh m, int[] vIndex, double[] vPos, int[] fIndex)
-        {
-            // create a mesh part from a large mesh
-            // re-order the index of vertex, face
-            Dictionary<int, int> d = new Dictionary<int, int>();
-            _vertexIndexInParentMesh = vIndex;
-            _faceVIndexInParentMesh = fIndex;
-            _vertexPosInParentMesh = vPos;
-            int k = 0;
-            foreach (int idx in vIndex)
-            {
-                d.Add(idx, k++);
-            }
-            int[] faceVertexIndex = new int[fIndex.Length * 3];
-            for (int i = 0, j= 0; i < fIndex.Length; ++i)
-            {
-                int fv1 = m.FaceVertexIndex[fIndex[i] * 3];
-                int fv2 = m.FaceVertexIndex[fIndex[i] * 3 + 1];
-                int fv3 = m.FaceVertexIndex[fIndex[i] * 3 + 2];
-                faceVertexIndex[j++] = d[fv1];
-                faceVertexIndex[j++] = d[fv2];
-                faceVertexIndex[j++] = d[fv3];
-            }
-            _mesh = new Mesh(vPos, faceVertexIndex);
-            _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
-            this.calculateBbox();
-        }
-
-        public Part(Mesh m, Prim bbox)
-        {
-            _mesh = m;
-            _boundingbox = bbox;
-            _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
-        }
-
-        public void Transform(Matrix4d T)
-        {
-            _mesh.Transform(T);
-            this.calculateBbox();
-        }
-
-        public void TransformFromOrigin(Matrix4d T)
-        {
-            _mesh.TransformFromOrigin(T);
-            this.calculateBbox();
-        }
-
-        public void updateOriginPos()
-        {
-            _mesh.updateOriginPos();
-        }
-
-        public Object Clone()
-        {
-            Mesh m = _mesh.Clone() as Mesh;
-            Part p = new Part(m);
-            p._COLOR = this._COLOR;
-            return p;
-        }
-
         public Mesh _MESH
         {
             get
@@ -147,7 +81,74 @@ namespace Component
             }
         }
 
-        private void calculateBbox()
+        public Part(Mesh m)
+        {
+            _mesh = m;
+            this.calculateBbox();
+        }
+
+        public Part(Mesh m, int[] vIndex, double[] vPos, int[] fIndex)
+        {
+            // create a mesh part from a large mesh
+            // re-order the index of vertex, face
+            Dictionary<int, int> d = new Dictionary<int, int>();
+            _vertexIndexInParentMesh = vIndex;
+            _faceVIndexInParentMesh = fIndex;
+            _vertexPosInParentMesh = vPos;
+            int k = 0;
+            foreach (int idx in vIndex)
+            {
+                d.Add(idx, k++);
+            }
+            int[] faceVertexIndex = new int[fIndex.Length * 3];
+            for (int i = 0, j= 0; i < fIndex.Length; ++i)
+            {
+                int fv1 = m.FaceVertexIndex[fIndex[i] * 3];
+                int fv2 = m.FaceVertexIndex[fIndex[i] * 3 + 1];
+                int fv3 = m.FaceVertexIndex[fIndex[i] * 3 + 2];
+                faceVertexIndex[j++] = d[fv1];
+                faceVertexIndex[j++] = d[fv2];
+                faceVertexIndex[j++] = d[fv3];
+            }
+            _mesh = new Mesh(vPos, faceVertexIndex);
+            _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
+            this.calculateBbox();
+        }
+
+        public Part(Mesh m, Prim bbox)
+        {
+            _mesh = m;
+            _boundingbox = bbox;
+            _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
+        }
+
+
+        public void Transform(Matrix4d T)
+        {
+            _mesh.Transform(T);
+            this.calculateBbox();
+        }
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            _mesh.TransformFromOrigin(T);
+            this.calculateBbox();
+        }
+
+        public void updateOriginPos()
+        {
+            _mesh.updateOriginPos();
+        }
+
+        public Object Clone()
+        {
+            Mesh m = _mesh.Clone() as Mesh;
+            Part p = new Part(m);
+            p._COLOR = this._COLOR;
+            return p;
+        }
+
+        public void calculateBbox()
         {
             if (_mesh == null)
             {

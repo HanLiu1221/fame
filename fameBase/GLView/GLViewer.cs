@@ -289,6 +289,7 @@ namespace FameBase
         public void clearContext()
         {
             this.currMeshClass = null;
+            _currModel = null;
             _selectedParts = new List<Part>();
             _models = new List<Model>();
             _modelViewers = new List<ModelViewer>();
@@ -442,7 +443,7 @@ namespace FameBase
             }
         }// saveMergedObj
 
-        public void swithcXY()
+        public void switchXYZ(int mode)
         {
             foreach (Model md in _models)
             {
@@ -452,41 +453,20 @@ namespace FameBase
                     double x = m.VertexPos[j];
                     double y = m.VertexPos[j + 1];
                     double z = m.VertexPos[j + 2];
-                    m.setVertextPos(i, new Vector3d(y, x, z));
+                    if (mode == 1)
+                    {
+                        m.setVertextPos(i, new Vector3d(-y, x, z));
+                    }
+                    else if (mode == 2)
+                    {
+                        m.setVertextPos(i, new Vector3d(-z, y, x));
+                    }
+                    else
+                    {
+                        m.setVertextPos(i, new Vector3d(x, -z, y));
+                    }
                 }
-            }
-            this.Refresh();
-        }// swithcXY
-
-        public void swithcXZ()
-        {
-            foreach (Model md in _models)
-            {
-                Mesh m = md._MESH;
-                for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
-                {
-                    double x = m.VertexPos[j];
-                    double y = m.VertexPos[j + 1];
-                    double z = m.VertexPos[j + 2];
-                    m.setVertextPos(i, new Vector3d(z, y, x));
-                }
-            }
-            this.Refresh();
-        }// swithcXZ
-
-        public void swithcYZ()
-        {
-            foreach (Model md in _models)
-            {
-                Mesh m = md._MESH;
-                for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
-                {
-                    double x = m.VertexPos[j];
-                    double y = m.VertexPos[j + 1];
-                    double z = m.VertexPos[j + 2];
-                    m.setVertextPos(i, new Vector3d(x, -z, y));
-                }
-                m.calculateFaceVertexNormal();
+                m.afterUpdatePos();
                 foreach (Part p in md._PARTS)
                 {
                     Mesh pm = p._MESH;
@@ -495,14 +475,26 @@ namespace FameBase
                         double x = pm.VertexPos[j];
                         double y = pm.VertexPos[j + 1];
                         double z = pm.VertexPos[j + 2];
-                        pm.setVertextPos(i, new Vector3d(x, -z, y));
+                        if (mode == 1)
+                        {
+                            pm.setVertextPos(i, new Vector3d(-y, x, z));
+                        }
+                        else if (mode == 2)
+                        {
+                            pm.setVertextPos(i, new Vector3d(-z, y, x));
+                        }
+                        else
+                        {
+                            pm.setVertextPos(i, new Vector3d(x, -z, y));
+                        }
                     }
-                    pm.calculateFaceVertexNormal();
-                }                
+                    pm.afterUpdatePos();
+                    p.calculateBbox();
+                }// each part
                 md.setMesh(m);
-            }
+            }// each model
             this.Refresh();
-        }// swithcYZ
+        }// switchXYZ
 
         public void saveAPartBasedModel(string filename)
         {
@@ -1779,18 +1771,6 @@ namespace FameBase
 
             return Matrix4d.TranslationMatrix(move);
         }// calTranslation
-
-        private void calScaling(Vector2d prev, Vector2d curr)
-        {
-            double sideLen = this.Width > this.Height ? this.Width : this.Height;
-            double ratio = (curr - prev).Length() / this.Width;
-
-        }// calScaling
-
-        private void calRotation()
-        {
-
-        }
 
         public void loadHuamPose(string filename)
         {
