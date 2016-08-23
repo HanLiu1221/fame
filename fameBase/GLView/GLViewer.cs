@@ -177,7 +177,9 @@ namespace FameBase
         private Vector3d[] _editAxes;
         private Plane3D _groundPlane;
         int _hightlightAxis = -1;
-        ArcBall _editArcball;
+        ArcBall _editArcBall;
+        ArcBall _bodyArcBall;
+        bool _isRightClick = false;
 
         /******************** Functions ********************/
 
@@ -668,8 +670,8 @@ namespace FameBase
             // reset the current 3d transformation again to check in the camera info, projection/modelview
             Gl.glViewport(0, 0, this.Width, this.Height);
             Gl.glMatrixMode(Gl.GL_PROJECTION);
+            Gl.glPushMatrix();
             Gl.glLoadIdentity();
-
 
             double aspect = (double)this.Width / this.Height;
             if (this.nPointPerspective == 3)
@@ -681,6 +683,7 @@ namespace FameBase
                 Glu.gluPerspective(45, aspect, 0.1, 1000);
             }
             Gl.glMatrixMode(Gl.GL_MODELVIEW);
+            Gl.glPushMatrix();
             Gl.glLoadIdentity();
 
             Glu.gluLookAt(this.eye.x, this.eye.y, this.eye.z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
@@ -693,10 +696,14 @@ namespace FameBase
 
             this.calculatePoint2DInfo();
 
-            Gl.glMatrixMode(Gl.GL_MODELVIEW);
+            //Gl.glMatrixMode(Gl.GL_MODELVIEW);
+            //Gl.glPushMatrix();
+            //Gl.glMultMatrixd(m.Transpose().ToArray());
 
-            Gl.glPushMatrix();
-            Gl.glMultMatrixd(m.Transpose().ToArray());
+            Gl.glMatrixMode(Gl.GL_MODELVIEW);
+            Gl.glPopMatrix();
+            Gl.glMatrixMode(Gl.GL_PROJECTION);
+            Gl.glPopMatrix();
         }//cal2D
 
         private void calculatePoint2DInfo()
@@ -944,13 +951,20 @@ namespace FameBase
         {
             Vector3d center = new Vector3d();
             double ad = 0;
-            foreach (Part p in _selectedParts)
+            if (_selectedParts.Count > 0)
             {
-                center += p._BOUNDINGBOX.CENTER;
-                double d = (p._BOUNDINGBOX.MaxCoord - p._BOUNDINGBOX.MinCoord).Length();
-                ad = ad > d ? ad : d;
+                foreach (Part p in _selectedParts)
+                {
+                    center += p._BOUNDINGBOX.CENTER;
+                    double d = (p._BOUNDINGBOX.MaxCoord - p._BOUNDINGBOX.MinCoord).Length();
+                    ad = ad > d ? ad : d;
+                }
+                center /= _selectedParts.Count;
             }
-            center /= _selectedParts.Count;
+            else if (_humanPose != null)
+            {
+                center = _humanPose._ROOT._POS;
+            }
             ad /= 2;
             if (ad == 0)
             {
@@ -1094,7 +1108,6 @@ namespace FameBase
             //this._modelTransformMatrix = this.transMat * this.rotMat * this.scaleMat;
 
             this._modelTransformMatrix = this._currModelTransformMatrix.Transpose();
-            this.cal2D();
         }// viewMouseUp
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -1104,6 +1117,7 @@ namespace FameBase
             this.currMousePos = new Vector2d(e.X, e.Y);
             this.isMouseDown = true;
             this.highlightQuad = null;
+            _isRightClick = e.Button == System.Windows.Forms.MouseButtons.Right;
 
             switch (this.currUIMode)
             {
@@ -1239,7 +1253,7 @@ namespace FameBase
                     {
                         if (this.isMouseDown)
                         {
-                            this.transformSelectedParts(this.currMousePos);
+                            this.transformSelections(this.currMousePos);
                         }
                         else
                         {
@@ -1468,6 +1482,7 @@ namespace FameBase
         public void selectBbox(Quad2d q, bool isCtrl)
         {
             if (this._currModel == null || q == null) return;
+            this.cal2D();
             foreach (Part p in this._currModel._PARTS)
             {
                 if (p._BOUNDINGBOX == null) continue;
@@ -1533,17 +1548,17 @@ namespace FameBase
 
         private void editMouseDown(int mode, Vector2d mousePos)
         {
-            _editArcball = new ArcBall(this.Width, this.Height);
+            _editArcBall = new ArcBall(this.Width, this.Height);
             switch (mode)
             {
                 case 1: // Translate
-                    _editArcball.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Pan);
+                    _editArcBall.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Pan);
                     break;
                 case 2: // Scaling
-                    _editArcball.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Scale);
+                    _editArcBall.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Scale);
                     break;
                 case 3: // Rotate
-                    _editArcball.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Rotate);
+                    _editArcBall.mouseDown((int)mousePos.x, (int)mousePos.y, ArcBall.MotionType.Rotate);
                     break;
             }
         }// editMouseDown
@@ -1551,8 +1566,8 @@ namespace FameBase
         private Matrix4d editMouseMove(int x, int y)
         {
             if (!this.isMouseDown) return Matrix4d.IdentityMatrix();
-            _editArcball.mouseMove(x, y);
-            Matrix4d T = _editArcball.getTransformMatrix(3);
+            _editArcBall.mouseMove(x, y);
+            Matrix4d T = _editArcBall.getTransformMatrix(3);
             return T;
         }// editMouseMove
 
@@ -1563,11 +1578,17 @@ namespace FameBase
             {
                 p.updateOriginPos();
             }
+            if (_humanPose != null)
+            {
+                _humanPose.updateOriginPos();
+                this.updateBodyBones();
+            }
+            _editArcBall.mouseUp();
         }// editMouseUp
 
-        private void transformSelectedParts(Vector2d mousePos)
+        private void transformSelections(Vector2d mousePos)
         {
-            if (_selectedParts.Count == 0)
+            if (_selectedParts.Count == 0 && _humanPose == null)
             {
                 return;
             }
@@ -1588,11 +1609,14 @@ namespace FameBase
                     }
                 case UIMode.Scale:
                     {
-                        for (int i = 0; i < 3; ++i)
+                        if (!_isRightClick) // right click == uniform scale
                         {
-                            if (_hightlightAxis != -1 && i != _hightlightAxis)
+                            for (int i = 0; i < 3; ++i)
                             {
-                                T[i, i] = 1;
+                                if (_hightlightAxis != -1 && i != _hightlightAxis)
+                                {
+                                    T[i, i] = 1;
+                                }
                             }
                         }
                         break;
@@ -1601,7 +1625,7 @@ namespace FameBase
                     {
                         if (_hightlightAxis != -1)
                         {
-                            T = _editArcball.getRotationMatrixAlongAxis(_hightlightAxis);
+                            T = _editArcBall.getRotationMatrixAlongAxis(_hightlightAxis);
                         }
                         break;
                     }
@@ -1612,21 +1636,46 @@ namespace FameBase
                     }
             }
             // original center
-            Vector3d ori = getCenter(_selectedParts);
-            foreach (Part p in _selectedParts)
+            Vector3d ori = new Vector3d();
+            if (_selectedParts.Count > 0)
             {
-                p.TransformFromOrigin(T);
-            }
-            if (this.currUIMode != UIMode.Translate)
-            {
-                Vector3d after = getCenter(_selectedParts);
-                Matrix4d TtoCenter = Matrix4d.TranslationMatrix(ori - after);
+                ori = getCenter(_selectedParts);
                 foreach (Part p in _selectedParts)
                 {
-                    p.Transform(TtoCenter);
+                    p.TransformFromOrigin(T);
+                }
+            } else if (_humanPose != null) // NOTE!! else relation
+            {
+                ori = _humanPose._ROOT._ORIGIN;
+                _humanPose.TransformFromOrigin(T);
+            }
+            
+            if (this.currUIMode != UIMode.Translate)
+            {
+                Vector3d after = new Vector3d();
+                if (_selectedParts.Count > 0)
+                {
+                    after = getCenter(_selectedParts);
+                    Matrix4d TtoCenter = Matrix4d.TranslationMatrix(ori - after);
+                    foreach (Part p in _selectedParts)
+                    {
+                        p.Transform(TtoCenter);
+                    }
+                }
+                else
+                {
+                    after = _humanPose._ROOT._POS;
+                    Matrix4d TtoCenter = Matrix4d.TranslationMatrix(ori - after);
+                    if (_humanPose != null)
+                    {
+                        foreach (BodyNode bn in _humanPose._bodyNodes)
+                        {
+                            bn.Transform(TtoCenter);
+                        }
+                    }
                 }
             }
-        }// transformSelectedParts
+        }// transformSelections
 
         private Vector3d getCenter(List<Part> parts)
         {
@@ -1812,8 +1861,7 @@ namespace FameBase
         private void DeformBodyNode(BodyNode node, Matrix4d T)
         {
             if (node == null) return;
-            Vector3d pos = node._ORIGIN;
-            node._POS = (T * new Vector4d(pos, 1)).ToVector3D();
+            node.TransformFromOrigin(T);
         }// DeformBodyNode
 
         private void DeformBodyNodePropagation(BodyNode node, Matrix4d T)
@@ -1822,14 +1870,13 @@ namespace FameBase
             List<BodyNode> children = node.getDescendents();
             foreach (BodyNode bn in children)
             {
-                Vector3d pos = bn._ORIGIN;
-                bn._POS = (T * new Vector4d(pos, 1)).ToVector3D();
+                bn.TransformFromOrigin(T);
             }
         }// DeformBodyNodePropagation
 
         private void updateBodyBones()
         {
-            if (_selectedNode == null) return;
+            if (_humanPose == null) return;
             foreach (BodyBone bn in _humanPose._bodyBones)
             {
                 bn.updateEntity();
@@ -1966,9 +2013,7 @@ namespace FameBase
 
             this.drawHumanPose();
 
-            this.DrawHighlight3D();
-
-            
+            this.DrawHighlight3D();            
 
             if (this.enableDepthTest)
             {

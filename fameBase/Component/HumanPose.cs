@@ -159,6 +159,30 @@ namespace Component
                 BuildTree();
             }// read
         }// loadHuamPose
+
+        public void Transform(Matrix4d T)
+        {
+            foreach (BodyNode bn in _bodyNodes)
+            {
+                bn.Transform(T);
+            }
+        }// Transform
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            foreach (BodyNode bn in _bodyNodes)
+            {
+                bn.TransformFromOrigin(T);
+            }
+        }// Transform
+
+        public void updateOriginPos()
+        {
+            foreach (BodyNode bn in _bodyNodes)
+            {
+                bn.updateOriginPos();
+            }
+        }// updateOriginPos
     }// HumanPose
 
     public class BodyNode
@@ -313,6 +337,11 @@ namespace Component
         public void TransformOrigin(Matrix4d T)
         {
             _originPos = (T * new Vector4d(_originPos, 1)).ToVector3D();
+        }
+
+        public void updateOriginPos()
+        {
+            _originPos = new Vector3d(_pos);
         }
     }// BodyNode
 
