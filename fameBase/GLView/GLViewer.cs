@@ -1576,6 +1576,7 @@ namespace FameBase
                 this.updateBodyBones();
             }
             _editArcBall.mouseUp();
+            this.cal2D();
         }// editMouseUp
 
         private void transformSelections(Vector2d mousePos)
@@ -1590,6 +1591,10 @@ namespace FameBase
             {
                 case UIMode.Translate:
                     {
+                        if (_hightlightAxis == 2)
+                        {
+                            T[2, 3] = T[0, 3];
+                        }
                         for (int i = 0; i < 3; ++i)
                         {
                             if (_hightlightAxis != -1 && i != _hightlightAxis)
@@ -1733,6 +1738,7 @@ namespace FameBase
 
         private void selectAxisWhileMouseMoving(Vector2d mousePos)
         {
+            this.updateCamera();
             Vector2d s = this.camera.Project(_editAxes[0]).ToVector2d();
             Vector2d e = this.camera.Project(_editAxes[1]).ToVector2d();
             Line2d xline = new Line2d(s, e);
@@ -1821,6 +1827,7 @@ namespace FameBase
             {
                 return;
             }
+            this.updateCamera();
             Vector3d originPos = _selectedNode._ORIGIN;
             Vector3d projPos = this.camera.Project(originPos);
             Vector3d p1 = this.camera.UnProject(new Vector3d(mousePos.x, this.Height - mousePos.y, projPos.z));
