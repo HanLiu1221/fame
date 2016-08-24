@@ -370,10 +370,7 @@ namespace FameBase
             if (mesh == null)
             {
                 // save a mesh for the current model
-                if (_currModel != null)
-                {
-                    this.saveObj(_currModel._MESH, filename);
-                }
+                this.saveModelObj(filename);
                 return;
             }
             using (StreamWriter sw = new StreamWriter(filename))
@@ -399,6 +396,39 @@ namespace FameBase
                 }
             }
         }// saveObj
+
+        private void saveModelObj(string filename)
+        {
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int start = 0;
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+
+                    // vertex
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                    {
+                        s = "v";
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        sw.WriteLine(s);
+                    }
+                    // face
+                    for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                    {
+                        s = "f";
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        sw.WriteLine(s);
+                    }
+                    start += mesh.VertexCount;
+                }
+            }
+        }// saveModelObj
 
         public void saveMergedObj(string filename)
         {
