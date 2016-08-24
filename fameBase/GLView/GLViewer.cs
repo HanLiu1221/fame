@@ -478,25 +478,29 @@ namespace FameBase
             foreach (Model md in _models)
             {
                 Mesh m = md._MESH;
-                for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
+                if (m != null)
                 {
-                    double x = m.VertexPos[j];
-                    double y = m.VertexPos[j + 1];
-                    double z = m.VertexPos[j + 2];
-                    if (mode == 1)
+                    for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
                     {
-                        m.setVertextPos(i, new Vector3d(-y, x, z));
+                        double x = m.VertexPos[j];
+                        double y = m.VertexPos[j + 1];
+                        double z = m.VertexPos[j + 2];
+                        if (mode == 1)
+                        {
+                            m.setVertextPos(i, new Vector3d(-y, x, z));
+                        }
+                        else if (mode == 2)
+                        {
+                            m.setVertextPos(i, new Vector3d(-z, y, x));
+                        }
+                        else
+                        {
+                            m.setVertextPos(i, new Vector3d(x, -z, y));
+                        }
                     }
-                    else if (mode == 2)
-                    {
-                        m.setVertextPos(i, new Vector3d(-z, y, x));
-                    }
-                    else
-                    {
-                        m.setVertextPos(i, new Vector3d(x, -z, y));
-                    }
+                    m.afterUpdatePos();
+                    md.setMesh(m);
                 }
-                m.afterUpdatePos();
                 foreach (Part p in md._PARTS)
                 {
                     Mesh pm = p._MESH;
@@ -521,7 +525,6 @@ namespace FameBase
                     pm.afterUpdatePos();
                     p.calculateBbox();
                 }// each part
-                md.setMesh(m);
             }// each model
             this.Refresh();
         }// switchXYZ
@@ -1535,6 +1538,11 @@ namespace FameBase
 
         public void setMeshColor(Color c)
         {
+            foreach (Part p in _selectedParts)
+            {
+                p._COLOR = c;
+            }
+            this.Refresh();
         }
 
         public void groupParts()
