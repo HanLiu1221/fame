@@ -180,6 +180,7 @@ namespace FameBase
         ArcBall _editArcBall;
         ArcBall _bodyArcBall;
         bool _isRightClick = false;
+        bool _isDrawTranslucentHumanPose = false;
 
         /******************** Functions ********************/
 
@@ -299,7 +300,6 @@ namespace FameBase
 
         private void clearHighlights()
         {
-            _selectedParts.Clear();
             _selectedNode = null;
             _hightlightAxis = -1;
         }// clearHighlights
@@ -936,7 +936,13 @@ namespace FameBase
             this.Refresh();
         }//setRenderOption
 
-        public void displayAxes(bool isShow)
+        public void setShowHumanPoseOption(bool isTranlucent)
+        {
+            _isDrawTranslucentHumanPose = isTranlucent;
+            this.Refresh();
+        }
+
+        public void setShowAxesOption(bool isShow)
         {
             this.isDrawAxes = isShow;
             this.Refresh();
@@ -1305,11 +1311,6 @@ namespace FameBase
                         break;
                     }
                 case UIMode.BodyNodeEdit:
-                    {
-                        this.updateBodyBones();
-                        this.Refresh();
-                    }
-                    break;
                 case UIMode.Translate:
                 case UIMode.Scale:
                 case UIMode.Rotate:
@@ -1583,7 +1584,10 @@ namespace FameBase
                 _humanPose.updateOriginPos();
                 this.updateBodyBones();
             }
-            _editArcBall.mouseUp();
+            if (_editArcBall != null)
+            {
+                _editArcBall.mouseUp();
+            }
             this.cal2D();
         }// editMouseUp
 
@@ -1964,7 +1968,7 @@ namespace FameBase
 
             if (this.isDrawQuad && this.highlightQuad != null)
             {
-                GLDrawer.drawQuadTransparent2d(this.highlightQuad, GLDrawer.SelectionColor);
+                GLDrawer.drawQuadTranslucent2d(this.highlightQuad, GLDrawer.SelectionColor);
             }
 
             //this.DrawHighlight2D();
@@ -2088,16 +2092,15 @@ namespace FameBase
             int iNumSamples = 0;
             Gl.glGetIntegerv(Gl.GL_SAMPLE_BUFFERS, out iMultiSample);
             Gl.glGetIntegerv(Gl.GL_SAMPLES, out iNumSamples);
-            if (iNumSamples == 0)
+
+            Gl.glEnable(Gl.GL_DEPTH_TEST);
+            Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
+            Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
+            Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
+            Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
+
+            if (iNumSamples == 0 && _isDrawTranslucentHumanPose)
             {
-                Gl.glEnable(Gl.GL_DEPTH_TEST);
-                Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
-
-                Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
-                Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
-                Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
-
-
                 Gl.glEnable(Gl.GL_BLEND);
                 Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
                 Gl.glShadeModel(Gl.GL_SMOOTH);
@@ -2111,13 +2114,24 @@ namespace FameBase
             }
             foreach (BodyBone bb in _humanPose._bodyBones)
             {
-                GLDrawer.drawCylinder(bb._SRC._POS, bb._DST._POS, bb._RADIUS, GLDrawer.BodeyBoneColor);
-                //GLDrawer.drawCylinderTransparent(bb._SRC._POS, bb._DST._POS, Common._bodyNodeRadius/2, GLDrawer.BodyColor);
-                for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                if (_isDrawTranslucentHumanPose)
                 {
-                    GLDrawer.drawQuadTransparent3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
-                        bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.BodyColor);
+                    GLDrawer.drawCylinderTranslucent(bb._SRC._POS, bb._DST._POS, Common._bodyNodeRadius / 2, GLDrawer.BodeyBoneColor);
+                    for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                    {
+                        GLDrawer.drawQuadTranslucent3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
+                            bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.TranslucentBodyColor);
+                    }
                 }
+                else
+                {
+                    for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                    {
+                        GLDrawer.drawQuadSolid3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
+                            bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.BodyColor);
+                    }
+                }
+                
             }
             foreach (BodyNode bn in _humanPose._bodyNodes)
             {
@@ -2126,17 +2140,17 @@ namespace FameBase
                     GLDrawer.drawSphere(bn._POS, bn._RADIUS, GLDrawer.BodyNodeColor);
                 }
             }
-            if (iNumSamples == 0)
+            if (iNumSamples == 0 && _isDrawTranslucentHumanPose)
             {
                 Gl.glDisable(Gl.GL_BLEND);
                 Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
                 Gl.glDepthMask(Gl.GL_TRUE);
-                Gl.glDisable(Gl.GL_DEPTH_TEST);
             }
             else
             {
                 Gl.glDisable(Gl.GL_MULTISAMPLE);
             }
+            Gl.glDisable(Gl.GL_DEPTH_TEST);
             Gl.glPopAttrib();
         }// drawHumanPose
 

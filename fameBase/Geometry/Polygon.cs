@@ -788,15 +788,18 @@ namespace Geometry
         {
             double t = Math.PI;
             double r = t * 2;
-            double tstep = t / _nh;
+            double tstep = t / (_nh - 1);
             double rstep = r / _nv;
             int i = 0;
+            int j = 0;
+            double v = 0;
+            double u = 0;
             _unitPoints = new Vector3d[_nh * _nv];
-            for (double v = 0; v < t; v += tstep)
+            for (v = 0.0, i = 0; i < _nh; v += tstep, ++i)
             {
-                for (double u = 0; u < r; u += rstep)
+                for (u = 0.0, j = 0; j < _nv; u += rstep, ++j)
                 {
-                    _unitPoints[i++] = new Vector3d(
+                    _unitPoints[i * _nv + j] = new Vector3d(
                         _x * Math.Cos(u) * Math.Sin(v),
                         _y * Math.Sin(u) * Math.Sin(v),
                         _z * Math.Cos(v));
@@ -861,14 +864,14 @@ namespace Geometry
                 for (int j = 0; j < _nv - 1; ++j)
                 {
                     points.Add(_points[i * _nv + j]);
-                    points.Add(_points[i * _nv + j + 1]);
-                    points.Add(_points[(i + 1) * _nv + j + 1]);
-                    points.Add(_points[(i + 1) * _nv + j]);
+                    points.Add(_points[i * _nv + (j + 1) % _nv]);
+                    points.Add(_points[(i + 1) % _nh * _nv + (j + 1) % _nv]);
+                    points.Add(_points[(i + 1) % _nh * _nv + j]);
                 }
                 points.Add(_points[i * _nv + _nv - 1]);
                 points.Add(_points[i * _nv]);
-                points.Add(_points[(i + 1) * _nv]);
-                points.Add(_points[(i + 1) * _nv + _nv - 1]);
+                points.Add(_points[(i + 1) % _nh * _nv]);
+                points.Add(_points[(i + 1) % _nh * _nv + _nv - 1]);
             }
             return points.ToArray();
         }// getFaceVertices

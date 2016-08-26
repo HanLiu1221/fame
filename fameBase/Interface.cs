@@ -338,7 +338,7 @@ namespace FameBase
         private void axesToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.axesToolStripMenuItem.Checked = !this.axesToolStripMenuItem.Checked;
-            this.glViewer.displayAxes(this.axesToolStripMenuItem.Checked);
+            this.glViewer.setShowAxesOption(this.axesToolStripMenuItem.Checked);
         }
 
         private void saveMergedMeshToolStripMenuItem_Click(object sender, EventArgs e)
@@ -415,6 +415,13 @@ namespace FameBase
         {
             this.glViewer.composeSelectedParts();
         }
+
+        private void translucentPoseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.translucentPoseToolStripMenuItem.Checked = !this.translucentPoseToolStripMenuItem.Checked;
+            this.glViewer.setShowHumanPoseOption(this.translucentPoseToolStripMenuItem.Checked);
+        }
+
 
 	}// Interface
 }// namespace

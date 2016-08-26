@@ -258,7 +258,7 @@ namespace FameBase
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
             {
-                this.drawQuadTransparent3d(box._PLANES[i], c);
+                this.drawQuadTranslucent3d(box._PLANES[i], c);
             }
         }// drawBoundingbox
 
@@ -277,7 +277,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_BLEND);
         }
 
-        private void drawQuadTransparent3d(Plane3D q, Color c)
+        private void drawQuadTranslucent3d(Plane3D q, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
 
