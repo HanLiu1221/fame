@@ -342,8 +342,10 @@ namespace FameBase
                 sb.Append(_currModel._MESH.VertexCount.ToString());
                 sb.Append("\n#edge:     ");
                 sb.Append(_currModel._MESH.Edges.Length.ToString());
-                sb.Append("\n#facee:    ");
+                sb.Append("\n#face:    ");
                 sb.Append(_currModel._MESH.FaceCount.ToString());
+                sb.Append("\n#selected parts: ");
+                sb.Append(_selectedParts.Count.ToString());
             }
             return sb.ToString();
         }// getStats
@@ -1363,6 +1365,7 @@ namespace FameBase
                             _selectedParts = new List<Part>();
                         }
                         this.selectBbox(q, isCtrl);
+                        Program.GetFormMain().updateStats();
                         break;
                     }
                 default:

@@ -252,6 +252,7 @@ namespace FameBase
 		private void clearAllToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			this.glViewer.clearContext();
+            this.updateStats();
 			this.glViewer.Refresh();
 		}
 
