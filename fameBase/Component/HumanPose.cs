@@ -82,7 +82,7 @@ namespace Component
                     sb.Append(" " + bn._POS.z.ToString());
                     sw.WriteLine(sb.ToString());
                 }
-                sw.WriteLine(_bodyBones.Count.ToString() + "body bones.");
+                sw.WriteLine(_bodyBones.Count.ToString() + " body bones.");
                 foreach (BodyBone bb in _bodyBones)
                 {
                     StringBuilder sb = new StringBuilder();
@@ -93,6 +93,7 @@ namespace Component
                     sb.Append(" " + id2.ToString());
                     sb.Append(" " + bb._WIDTH.ToString());
                     sb.Append(" " + bb._THICKNESS.ToString());
+                    sw.WriteLine(sb.ToString());
                 }
             }// write
         }// saveHumanPose

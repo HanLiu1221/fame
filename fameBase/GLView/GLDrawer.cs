@@ -24,10 +24,11 @@ namespace FameBase
         public static Color ModelColor = Color.FromArgb(254, 224, 139);
         public static Color GuideLineColor = Color.FromArgb(116, 169, 207);
         public static Color MeshColor = Color.FromArgb(116, 169, 207);
-        public static Color BodyNodeColor = Color.FromArgb(230, 97, 1);
+        public static Color BodyNodeColor = Color.FromArgb(43, 140, 190);
         public static Color SelectedBodyNodeColor = Color.FromArgb(215, 25, 28);
         public static Color BodeyBoneColor = Color.FromArgb(64, 64, 64);//Color.FromArgb(244, 165, 130);
-        public static Color BodyColor = Color.FromArgb(244, 165, 130);//(60, 171, 217, 233);
+        public static Color TranslucentBodyColor = Color.FromArgb(244, 165, 130);//(60, 171, 217, 233);
+        public static Color BodyColor = Color.FromArgb(204, 204, 204);
         public static Color SelectionColor = Color.FromArgb(231, 138, 195);
 
         public static int _NSlices = 40;
@@ -97,7 +98,7 @@ namespace FameBase
             Glu.gluDeleteQuadric(quad); 
         }// drawCylinder
 
-        public static void drawCylinderTransparent(Vector3d u, Vector3d v, double r, Color c)
+        public static void drawCylinderTranslucent(Vector3d u, Vector3d v, double r, Color c)
         {
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -123,7 +124,7 @@ namespace FameBase
 
             Gl.glDisable(Gl.GL_BLEND);
             Gl.glDisable(Gl.GL_CULL_FACE);
-        }// drawCylinderTransparent
+        }// drawCylinderTranslucent
 
         public static void drawSphere(Vector3d o, double r, Color c)
         {
@@ -169,7 +170,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_LINE_SMOOTH);
         }// drawEllipse3D
 
-        public static void drawEllipsoidTransparent(Ellipsoid e, Color c)
+        public static void drawEllipsoidTranslucent(Ellipsoid e, Color c)
         {
             
 
@@ -183,7 +184,7 @@ namespace FameBase
                 }
                 drawQuad3d(quad, c);
             }
-        }// drawEllipsoidTransparent
+        }// drawEllipsoidTranslucent
 
         public static void drawEllipsoidSolid(Ellipsoid e, Color c)
         {
@@ -387,7 +388,7 @@ namespace FameBase
             Gl.glLineWidth(1.0f);
         }
 
-        public static void drawQuadTransparent2d(Quad2d q, Color c)
+        public static void drawQuadTranslucent2d(Quad2d q, Color c)
         {
             Gl.glDisable(Gl.GL_CULL_FACE);
             Gl.glDisable(Gl.GL_LIGHTING);
@@ -457,7 +458,32 @@ namespace FameBase
             Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
         }
 
-        public static void drawQuadTransparent3d(Vector3d v1, Vector3d v2, Vector3d v3, Vector3d v4, Color c)
+        public static void drawQuadSolid3d(Vector3d v1, Vector3d v2, Vector3d v3, Vector3d v4, Color c)
+        {
+            Gl.glDisable(Gl.GL_LIGHTING);
+
+            Gl.glEnable(Gl.GL_BLEND);
+            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+
+            Gl.glDisable(Gl.GL_CULL_FACE);
+
+            Gl.glColor3ub(c.R, c.G, c.B);
+            Gl.glBegin(Gl.GL_TRIANGLES);
+
+            Gl.glVertex3d(v1.x, v1.y, v1.z);
+            Gl.glVertex3d(v2.x, v2.y, v2.z);
+            Gl.glVertex3d(v3.x, v3.y, v3.z);
+
+            Gl.glVertex3d(v3.x, v3.y, v3.z);
+            Gl.glVertex3d(v1.x, v1.y, v1.z);
+            Gl.glVertex3d(v4.x, v4.y, v4.z);
+
+            Gl.glEnd();
+            Gl.glDisable(Gl.GL_BLEND);
+            Gl.glEnable(Gl.GL_CULL_FACE);
+        }// drawQuadTranslucent3d
+
+        public static void drawQuadTranslucent3d(Vector3d v1, Vector3d v2, Vector3d v3, Vector3d v4, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
 
@@ -480,9 +506,9 @@ namespace FameBase
             Gl.glEnd();
             Gl.glDisable(Gl.GL_BLEND);
             Gl.glEnable(Gl.GL_CULL_FACE);
-        }// drawQuadTransparent3d
+        }// drawQuadTranslucent3d
 
-        public static void drawQuadTransparent3d(Plane3D q, Color c)
+        public static void drawQuadTranslucent3d(Plane3D q, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
             Gl.glEnable(Gl.GL_BLEND);
@@ -711,7 +737,7 @@ namespace FameBase
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
             {
-                drawQuadTransparent3d(box._PLANES[i], c);
+                drawQuadTranslucent3d(box._PLANES[i], c);
             }
         }// drawBoundingboxPlanes
 

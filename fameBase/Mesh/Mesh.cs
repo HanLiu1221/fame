@@ -364,7 +364,10 @@ namespace Geometry
 
             this.halfEdges = halfEdgeArray.ToArray();
             this.singleHalfEdges = edgeArray.ToArray();
-            this.edgeIter = this.halfEdges[0];
+            if (this.halfEdges != null && this.halfEdges.Length > 0)
+            {
+                this.edgeIter = this.halfEdges[0];
+            }
         }// buildHalfEdge
 
         private void loadObjMesh_withoutHalfEdge(StreamReader sr, bool normalize)
