@@ -302,6 +302,7 @@ namespace FameBase
         {
             _selectedNode = null;
             _hightlightAxis = -1;
+            _selectedParts.Clear();
         }// clearHighlights
 
         public void loadMesh(string filename)
@@ -344,9 +345,9 @@ namespace FameBase
                 sb.Append(_currModel._MESH.Edges.Length.ToString());
                 sb.Append("\n#face:    ");
                 sb.Append(_currModel._MESH.FaceCount.ToString());
-                sb.Append("\n#selected parts: ");
-                sb.Append(_selectedParts.Count.ToString());
             }
+            sb.Append("\n#selected parts: ");
+            sb.Append(_selectedParts.Count.ToString());
             return sb.ToString();
         }// getStats
 
@@ -477,57 +478,83 @@ namespace FameBase
 
         public void switchXYZ(int mode)
         {
-            foreach (Model md in _models)
+            foreach (Part p in _selectedParts)
             {
-                Mesh m = md._MESH;
-                if (m != null)
+                Mesh pm = p._MESH;
+                for (int i = 0, j = 0; i < pm.VertexCount; i++, j += 3)
                 {
-                    for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
+                    double x = pm.VertexPos[j];
+                    double y = pm.VertexPos[j + 1];
+                    double z = pm.VertexPos[j + 2];
+                    if (mode == 1)
                     {
-                        double x = m.VertexPos[j];
-                        double y = m.VertexPos[j + 1];
-                        double z = m.VertexPos[j + 2];
-                        if (mode == 1)
-                        {
-                            m.setVertextPos(i, new Vector3d(-y, x, z));
-                        }
-                        else if (mode == 2)
-                        {
-                            m.setVertextPos(i, new Vector3d(-z, y, x));
-                        }
-                        else
-                        {
-                            m.setVertextPos(i, new Vector3d(x, -z, y));
-                        }
+                        pm.setVertextPos(i, new Vector3d(-y, x, z));
                     }
-                    m.afterUpdatePos();
-                    md.setMesh(m);
+                    else if (mode == 2)
+                    {
+                        pm.setVertextPos(i, new Vector3d(-z, y, x));
+                    }
+                    else
+                    {
+                        pm.setVertextPos(i, new Vector3d(x, -z, y));
+                    }
                 }
-                foreach (Part p in md._PARTS)
-                {
-                    Mesh pm = p._MESH;
-                    for (int i = 0, j = 0; i < pm.VertexCount; i++, j += 3)
-                    {
-                        double x = pm.VertexPos[j];
-                        double y = pm.VertexPos[j + 1];
-                        double z = pm.VertexPos[j + 2];
-                        if (mode == 1)
-                        {
-                            pm.setVertextPos(i, new Vector3d(-y, x, z));
-                        }
-                        else if (mode == 2)
-                        {
-                            pm.setVertextPos(i, new Vector3d(-z, y, x));
-                        }
-                        else
-                        {
-                            pm.setVertextPos(i, new Vector3d(x, -z, y));
-                        }
-                    }
-                    pm.afterUpdatePos();
-                    p.calculateBbox();
-                }// each part
-            }// each model
+                pm.afterUpdatePos();
+                p.calculateBbox();
+                p.updateOriginPos();
+            }
+
+            //foreach (Model md in _models)
+            //{
+            //    Mesh m = md._MESH;
+            //    if (m != null)
+            //    {
+            //        for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
+            //        {
+            //            double x = m.VertexPos[j];
+            //            double y = m.VertexPos[j + 1];
+            //            double z = m.VertexPos[j + 2];
+            //            if (mode == 1)
+            //            {
+            //                m.setVertextPos(i, new Vector3d(-y, x, z));
+            //            }
+            //            else if (mode == 2)
+            //            {
+            //                m.setVertextPos(i, new Vector3d(-z, y, x));
+            //            }
+            //            else
+            //            {
+            //                m.setVertextPos(i, new Vector3d(x, -z, y));
+            //            }
+            //        }
+            //        m.afterUpdatePos();
+            //        md.setMesh(m);
+            //    }
+            //    foreach (Part p in md._PARTS)
+            //    {
+            //        Mesh pm = p._MESH;
+            //        for (int i = 0, j = 0; i < pm.VertexCount; i++, j += 3)
+            //        {
+            //            double x = pm.VertexPos[j];
+            //            double y = pm.VertexPos[j + 1];
+            //            double z = pm.VertexPos[j + 2];
+            //            if (mode == 1)
+            //            {
+            //                pm.setVertextPos(i, new Vector3d(-y, x, z));
+            //            }
+            //            else if (mode == 2)
+            //            {
+            //                pm.setVertextPos(i, new Vector3d(-z, y, x));
+            //            }
+            //            else
+            //            {
+            //                pm.setVertextPos(i, new Vector3d(x, -z, y));
+            //            }
+            //        }
+            //        pm.afterUpdatePos();
+            //        p.calculateBbox();
+            //    }// each part
+            //}// each model
             this.Refresh();
         }// switchXYZ
 
@@ -578,14 +605,8 @@ namespace FameBase
             }
         }// saveAPartBasedModel
 
-        public void loadAPartBasedModel(string filename)
+        private Model loadOnePartBasedModel(string filename)
         {
-            if (!File.Exists(filename))
-            {
-                MessageBox.Show("File does not exist!");
-                return;
-            }
-            this.clearHighlights();
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separator = { ' ', '\t' };
@@ -596,13 +617,14 @@ namespace FameBase
                 }
                 string[] strs = s.Split(separator);
                 int n = 0;
-                try {
+                try
+                {
                     n = Int16.Parse(strs[0]);
                 }
                 catch (System.FormatException)
                 {
                     MessageBox.Show("Wrong data format - need to know #n parts.");
-                    return;
+                    return null;
                 }
                 List<Part> parts = new List<Part>();
                 string folder = filename.Substring(0, filename.LastIndexOf('\\'));
@@ -619,12 +641,12 @@ namespace FameBase
                     if (strs.Length != Common._nPrimPoint * 3)
                     {
                         MessageBox.Show("Need " + Common._nPrimPoint.ToString() + " vertices for bounding box #" + i.ToString() + ".");
-                        return;
+                        return null;
                     }
                     Vector3d[] pnts = new Vector3d[Common._nPrimPoint];
                     for (int j = 0, k = 0; j < Common._nPrimPoint; ++j)
                     {
-                        pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++])); 
+                        pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
                     }
                     Prim prim = new Prim(pnts);
                     // mesh loc:
@@ -642,11 +664,44 @@ namespace FameBase
                     Part part = new Part(mesh, prim);
                     parts.Add(part);
                 }
-                _currModel = new Model(parts);
-                this.setCurrentModel(_currModel);
+                return (new Model(parts));
             }
+        }// loadOnePartBasedModel
+
+        public void loadAPartBasedModel(string filename)
+        {
+            if (!File.Exists(filename))
+            {
+                MessageBox.Show("File does not exist!");
+                return;
+            }
+            this.clearHighlights();
+            _currModel = this.loadOnePartBasedModel(filename);
             this.Refresh();
         }// loadAPartBasedModel
+
+        public void importPartBasedModel(string[] filenames)
+        {
+            if (filenames == null || filenames.Length == 0)
+            {
+                MessageBox.Show("No model loaded!");
+                return;
+            }
+            this.clearHighlights();
+            if (_currModel == null)
+            {
+                _currModel = new Model();
+            }
+            foreach (string file in filenames)
+            {
+                Model m = loadOnePartBasedModel(file);
+                foreach (Part p in m._PARTS)
+                {
+                    _currModel.addAPart(p);
+                }
+            }
+            this.Refresh();
+        }// importPartBasedModel
 
         public List<ModelViewer> loadPartBasedModels(string segfolder)
         {
@@ -656,12 +711,21 @@ namespace FameBase
                 return null;
             }
             this.clearContext();
+            this.clearHighlights();
             string[] files = Directory.GetFiles(segfolder);
             foreach (string file in files)
             {
-                loadAPartBasedModel(file);
-                ModelViewer modelViewer = new ModelViewer(_currModel, this);
-                _modelViewers.Add(modelViewer);
+                Model m = loadOnePartBasedModel(file);
+                if (m != null)
+                {
+                    _models.Add(m);
+                    ModelViewer modelViewer = new ModelViewer(_currModel, this);
+                    _modelViewers.Add(modelViewer);
+                }
+            }
+            if (_models.Count > 0)
+            {
+                this.setCurrentModel(_models[_models.Count - 1]);
             }
             return _modelViewers;
         }// loadPartBasedModels
@@ -1704,7 +1768,7 @@ namespace FameBase
                         p.Transform(TtoCenter);
                     }
                 }
-                else
+                else if (_humanPose != null)
                 {
                     after = _humanPose._ROOT._POS;
                     Matrix4d TtoCenter = Matrix4d.TranslationMatrix(ori - after);
@@ -1828,16 +1892,16 @@ namespace FameBase
             _humanPose = new HumanPose();
             _humanPose.loadPose(filename);
             // test
-            Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d(0, -0.2, -0.4));
-            foreach (BodyNode bn in _humanPose._bodyNodes)
-            {
-                bn.TransformOrigin(T);
-                bn.Transform(T);
-            }
-            foreach (BodyBone bb in _humanPose._bodyBones)
-            {
-                bb.updateEntity();
-            }
+            //Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d(0, -0.2, -0.4));
+            //foreach (BodyNode bn in _humanPose._bodyNodes)
+            //{
+            //    bn.TransformOrigin(T);
+            //    bn.Transform(T);
+            //}
+            //foreach (BodyBone bb in _humanPose._bodyBones)
+            //{
+            //    bb.updateEntity();
+            //}
         }// loadHuamPose
 
         public void saveHumanPose(string name)

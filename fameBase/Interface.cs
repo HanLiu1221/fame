@@ -139,19 +139,34 @@ namespace FameBase
                 this.glViewer.loadAPartBasedModel(dialog.FileName);
                 this.updateStats();
             }
-            this.glViewer.Refresh();
+        }
+
+        private void importModelsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // preserve the existing models
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Import part-based model(s)",
+                Filter = "Part-based model (*.pam)|*.pam",
+                CheckFileExists = true,
+                Multiselect = true
+            };
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                this.glViewer.importPartBasedModel(dialog.FileNames);
+                this.updateStats();
+            }
         }
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\Users\hla180\Desktop\HLiu\Fame\fameBase\data\test" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\fameBase\data\modelAndInteractions" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
                 List<ModelViewer> modelViewers = this.glViewer.loadPartBasedModels(folderName);
                 layoutModelSet(modelViewers);
             }
-            this.glViewer.Refresh();
         }
 
         private void saveAModelToolStripMenuItem_Click(object sender, EventArgs e)
@@ -423,6 +438,20 @@ namespace FameBase
             this.glViewer.setShowHumanPoseOption(this.translucentPoseToolStripMenuItem.Checked);
         }
 
+        private void XYbutton_Click(object sender, EventArgs e)
+        {
+            this.glViewer.switchXYZ(1);
+        }
+
+        private void YZbutton_Click(object sender, EventArgs e)
+        {
+            this.glViewer.switchXYZ(2);
+        }
+
+        private void XZbutton_Click(object sender, EventArgs e)
+        {
+            this.glViewer.switchXYZ(3);
+        }
 
 	}// Interface
 }// namespace

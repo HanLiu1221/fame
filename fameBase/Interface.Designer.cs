@@ -35,6 +35,7 @@
             this.loadAPartBasedModel = new System.Windows.Forms.ToolStripMenuItem();
             this.saveAModelToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadPartBasedModels = new System.Windows.Forms.ToolStripMenuItem();
+            this.importModelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.file = new System.Windows.Forms.ToolStripDropDownButton();
             this.open3D = new System.Windows.Forms.ToolStripMenuItem();
             this.import3D = new System.Windows.Forms.ToolStripMenuItem();
@@ -79,6 +80,8 @@
             this.composeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.renderOptions = new System.Windows.Forms.ToolStripDropDownButton();
             this.translucentPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.XYbutton = new System.Windows.Forms.ToolStripButton();
+            this.YZbutton = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.statsLabel = new System.Windows.Forms.Label();
@@ -88,6 +91,7 @@
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.XZbutton = new System.Windows.Forms.ToolStripButton();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -106,7 +110,10 @@
             this.renderOption,
             this.selectElement,
             this.modelEdit,
-            this.renderOptions});
+            this.renderOptions,
+            this.XYbutton,
+            this.YZbutton,
+            this.XZbutton});
             this.menu.Location = new System.Drawing.Point(0, 0);
             this.menu.Name = "menu";
             this.menu.Size = new System.Drawing.Size(1099, 39);
@@ -118,7 +125,8 @@
             this.model.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.loadAPartBasedModel,
             this.saveAModelToolStripMenuItem,
-            this.loadPartBasedModels});
+            this.loadPartBasedModels,
+            this.importModelsToolStripMenuItem});
             this.model.Image = ((System.Drawing.Image)(resources.GetObject("model.Image")));
             this.model.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.model.Name = "model";
@@ -129,23 +137,30 @@
             // loadAPartBasedModel
             // 
             this.loadAPartBasedModel.Name = "loadAPartBasedModel";
-            this.loadAPartBasedModel.Size = new System.Drawing.Size(146, 22);
+            this.loadAPartBasedModel.Size = new System.Drawing.Size(152, 22);
             this.loadAPartBasedModel.Text = "Load a model";
             this.loadAPartBasedModel.Click += new System.EventHandler(this.loadAPartBasedModel_Click);
             // 
             // saveAModelToolStripMenuItem
             // 
             this.saveAModelToolStripMenuItem.Name = "saveAModelToolStripMenuItem";
-            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
+            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.saveAModelToolStripMenuItem.Text = "Save a model";
             this.saveAModelToolStripMenuItem.Click += new System.EventHandler(this.saveAModelToolStripMenuItem_Click);
             // 
             // loadPartBasedModels
             // 
             this.loadPartBasedModels.Name = "loadPartBasedModels";
-            this.loadPartBasedModels.Size = new System.Drawing.Size(146, 22);
+            this.loadPartBasedModels.Size = new System.Drawing.Size(152, 22);
             this.loadPartBasedModels.Text = "Load models";
             this.loadPartBasedModels.Click += new System.EventHandler(this.loadPartBasedModels_Click);
+            // 
+            // importModelsToolStripMenuItem
+            // 
+            this.importModelsToolStripMenuItem.Name = "importModelsToolStripMenuItem";
+            this.importModelsToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.importModelsToolStripMenuItem.Text = "Import models";
+            this.importModelsToolStripMenuItem.Click += new System.EventHandler(this.importModelsToolStripMenuItem_Click);
             // 
             // file
             // 
@@ -454,49 +469,49 @@
             // addSelectedParts
             // 
             this.addSelectedParts.Name = "addSelectedParts";
-            this.addSelectedParts.Size = new System.Drawing.Size(142, 22);
+            this.addSelectedParts.Size = new System.Drawing.Size(152, 22);
             this.addSelectedParts.Text = "Add selected";
             this.addSelectedParts.Click += new System.EventHandler(this.addSelectedParts_Click);
             // 
             // translateToolStripMenuItem
             // 
             this.translateToolStripMenuItem.Name = "translateToolStripMenuItem";
-            this.translateToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.translateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.translateToolStripMenuItem.Text = "Translate";
             this.translateToolStripMenuItem.Click += new System.EventHandler(this.translateToolStripMenuItem_Click);
             // 
             // scaleToolStripMenuItem
             // 
             this.scaleToolStripMenuItem.Name = "scaleToolStripMenuItem";
-            this.scaleToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.scaleToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.scaleToolStripMenuItem.Text = "Scale";
             this.scaleToolStripMenuItem.Click += new System.EventHandler(this.scaleToolStripMenuItem_Click);
             // 
             // rotateToolStripMenuItem
             // 
             this.rotateToolStripMenuItem.Name = "rotateToolStripMenuItem";
-            this.rotateToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.rotateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.rotateToolStripMenuItem.Text = "Rotate";
             this.rotateToolStripMenuItem.Click += new System.EventHandler(this.rotateToolStripMenuItem_Click);
             // 
             // deleteToolStripMenuItem
             // 
             this.deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
-            this.deleteToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.deleteToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.deleteToolStripMenuItem.Text = "Delete";
             this.deleteToolStripMenuItem.Click += new System.EventHandler(this.deleteToolStripMenuItem_Click);
             // 
             // replicateToolStripMenuItem
             // 
             this.replicateToolStripMenuItem.Name = "replicateToolStripMenuItem";
-            this.replicateToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.replicateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.replicateToolStripMenuItem.Text = "Replicate";
             this.replicateToolStripMenuItem.Click += new System.EventHandler(this.replicateToolStripMenuItem_Click);
             // 
             // composeToolStripMenuItem
             // 
             this.composeToolStripMenuItem.Name = "composeToolStripMenuItem";
-            this.composeToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
+            this.composeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.composeToolStripMenuItem.Text = "Compose";
             this.composeToolStripMenuItem.Click += new System.EventHandler(this.composeToolStripMenuItem_Click);
             // 
@@ -518,6 +533,26 @@
             this.translucentPoseToolStripMenuItem.Text = "Translucent pose";
             this.translucentPoseToolStripMenuItem.Click += new System.EventHandler(this.translucentPoseToolStripMenuItem_Click);
             // 
+            // XYbutton
+            // 
+            this.XYbutton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.XYbutton.Image = ((System.Drawing.Image)(resources.GetObject("XYbutton.Image")));
+            this.XYbutton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.XYbutton.Name = "XYbutton";
+            this.XYbutton.Size = new System.Drawing.Size(25, 36);
+            this.XYbutton.Text = "XY";
+            this.XYbutton.Click += new System.EventHandler(this.XYbutton_Click);
+            // 
+            // YZbutton
+            // 
+            this.YZbutton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.YZbutton.Image = ((System.Drawing.Image)(resources.GetObject("YZbutton.Image")));
+            this.YZbutton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.YZbutton.Name = "YZbutton";
+            this.YZbutton.Size = new System.Drawing.Size(25, 36);
+            this.YZbutton.Text = "YZ";
+            this.YZbutton.Click += new System.EventHandler(this.YZbutton_Click);
+            // 
             // viewPanel
             // 
             this.viewPanel.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -535,8 +570,8 @@
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
             this.viewPanel.Panel2.Controls.Add(this.partBasket);
             this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
-            this.viewPanel.Size = new System.Drawing.Size(1099, 735);
-            this.viewPanel.SplitterDistance = 27;
+            this.viewPanel.Size = new System.Drawing.Size(1099, 675);
+            this.viewPanel.SplitterDistance = 25;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -546,7 +581,7 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
+            this.fileNameTabs.Size = new System.Drawing.Size(1093, 28);
             this.fileNameTabs.TabIndex = 0;
             // 
             // statsLabel
@@ -577,7 +612,7 @@
             this.glViewer.DepthBits = ((byte)(16));
             this.glViewer.Location = new System.Drawing.Point(219, 3);
             this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(671, 695);
+            this.glViewer.Size = new System.Drawing.Size(671, 638);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
@@ -589,7 +624,7 @@
             this.partBasket.BackColor = System.Drawing.Color.White;
             this.partBasket.Location = new System.Drawing.Point(896, 3);
             this.partBasket.Name = "partBasket";
-            this.partBasket.Size = new System.Drawing.Size(203, 701);
+            this.partBasket.Size = new System.Drawing.Size(203, 643);
             this.partBasket.TabIndex = 15;
             // 
             // modelViewLayoutPanel
@@ -600,7 +635,7 @@
             this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
             this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
-            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 701);
+            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 643);
             this.modelViewLayoutPanel.TabIndex = 13;
             // 
             // partRelatedTools
@@ -617,12 +652,22 @@
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
+            // XZbutton
+            // 
+            this.XZbutton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.XZbutton.Image = ((System.Drawing.Image)(resources.GetObject("XZbutton.Image")));
+            this.XZbutton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.XZbutton.Name = "XZbutton";
+            this.XZbutton.Size = new System.Drawing.Size(25, 36);
+            this.XZbutton.Text = "XZ";
+            this.XZbutton.Click += new System.EventHandler(this.XZbutton_Click);
+            // 
             // Interface
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(1099, 774);
+            this.ClientSize = new System.Drawing.Size(1099, 714);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -702,6 +747,10 @@
         private System.Windows.Forms.ToolStripMenuItem composeToolStripMenuItem;
         private System.Windows.Forms.ToolStripDropDownButton renderOptions;
         private System.Windows.Forms.ToolStripMenuItem translucentPoseToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem importModelsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripButton YZbutton;
+        private System.Windows.Forms.ToolStripButton XYbutton;
+        private System.Windows.Forms.ToolStripButton XZbutton;
 	}
 }
 

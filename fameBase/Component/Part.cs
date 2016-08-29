@@ -174,6 +174,11 @@ namespace Component
         List<Part> _parts;
         Mesh _mesh; // the whole mesh
 
+        public Model()
+        {
+            _parts = new List<Part>();
+        }
+
         public Model(List<Part> parts)
         {
             _parts = parts;
