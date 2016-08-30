@@ -680,6 +680,7 @@ namespace FameBase
                 MessageBox.Show("File does not exist!");
                 return;
             }
+            this.foldername = Path.GetDirectoryName(filename);
             this.clearHighlights();
             _currModel = this.loadOnePartBasedModel(filename);
             this.Refresh();
@@ -863,11 +864,11 @@ namespace FameBase
 
         public void captureScreen(int idx)
         {
-            Size newSize = new System.Drawing.Size(0,0); 
+            Size newSize = new System.Drawing.Size(this.Width, this.Height); 
             var bmp = new Bitmap(newSize.Width, newSize.Height);
             var gfx = Graphics.FromImage(bmp);
-            gfx.CopyFromScreen((int)(this.Location.X - 60),
-                Screen.PrimaryScreen.Bounds.Y + 110, 0, 0, newSize, CopyPixelOperation.SourceCopy);
+            gfx.CopyFromScreen((int)(this.Location.X), (int)(this.Location.Y) + 90,
+                0, 0, newSize, CopyPixelOperation.SourceCopy);
             string imageFolder = foldername + "\\screenCapture";
             
             if (!Directory.Exists(imageFolder))
