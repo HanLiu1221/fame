@@ -82,16 +82,17 @@
             this.translucentPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.XYbutton = new System.Windows.Forms.ToolStripButton();
             this.YZbutton = new System.Windows.Forms.ToolStripButton();
+            this.XZbutton = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.statsLabel = new System.Windows.Forms.Label();
-            this.glViewer = new FameBase.GLViewer();
             this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.XZbutton = new System.Windows.Forms.ToolStripButton();
+            this.glViewer = new FameBase.GLViewer();
+            this.importHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -171,6 +172,7 @@
             this.loadTriMeshToolStripMenuItem,
             this.loadHumanPoseToolStripMenuItem,
             this.saveHumanPoseToolStripMenuItem,
+            this.importHumanPoseToolStripMenuItem,
             this.saveMergedMeshToolStripMenuItem,
             this.unitifyToolStripMenuItem});
             this.file.Image = ((System.Drawing.Image)(resources.GetObject("file.Image")));
@@ -183,49 +185,49 @@
             // open3D
             // 
             this.open3D.Name = "open3D";
-            this.open3D.Size = new System.Drawing.Size(174, 22);
+            this.open3D.Size = new System.Drawing.Size(178, 22);
             this.open3D.Text = "Open 3D file";
             this.open3D.Click += new System.EventHandler(this.open3D_Click);
             // 
             // import3D
             // 
             this.import3D.Name = "import3D";
-            this.import3D.Size = new System.Drawing.Size(174, 22);
+            this.import3D.Size = new System.Drawing.Size(178, 22);
             this.import3D.Text = "Import 3D file";
             this.import3D.Click += new System.EventHandler(this.import3D_Click);
             // 
             // saveAs3D
             // 
             this.saveAs3D.Name = "saveAs3D";
-            this.saveAs3D.Size = new System.Drawing.Size(174, 22);
+            this.saveAs3D.Size = new System.Drawing.Size(178, 22);
             this.saveAs3D.Text = "Save as 3D file";
             this.saveAs3D.Click += new System.EventHandler(this.saveAs3D_Click);
             // 
             // loadTriMeshToolStripMenuItem
             // 
             this.loadTriMeshToolStripMenuItem.Name = "loadTriMeshToolStripMenuItem";
-            this.loadTriMeshToolStripMenuItem.Size = new System.Drawing.Size(174, 22);
+            this.loadTriMeshToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
             this.loadTriMeshToolStripMenuItem.Text = "Load As TriMesh";
             this.loadTriMeshToolStripMenuItem.Click += new System.EventHandler(this.loadTriMeshToolStripMenuItem_Click);
             // 
             // loadHumanPoseToolStripMenuItem
             // 
             this.loadHumanPoseToolStripMenuItem.Name = "loadHumanPoseToolStripMenuItem";
-            this.loadHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(174, 22);
+            this.loadHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
             this.loadHumanPoseToolStripMenuItem.Text = "Load HumanPose";
             this.loadHumanPoseToolStripMenuItem.Click += new System.EventHandler(this.loadHumanPoseToolStripMenuItem_Click);
             // 
             // saveHumanPoseToolStripMenuItem
             // 
             this.saveHumanPoseToolStripMenuItem.Name = "saveHumanPoseToolStripMenuItem";
-            this.saveHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(174, 22);
+            this.saveHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
             this.saveHumanPoseToolStripMenuItem.Text = "Save HumanPose";
             this.saveHumanPoseToolStripMenuItem.Click += new System.EventHandler(this.saveHumanPoseToolStripMenuItem_Click);
             // 
             // saveMergedMeshToolStripMenuItem
             // 
             this.saveMergedMeshToolStripMenuItem.Name = "saveMergedMeshToolStripMenuItem";
-            this.saveMergedMeshToolStripMenuItem.Size = new System.Drawing.Size(174, 22);
+            this.saveMergedMeshToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
             this.saveMergedMeshToolStripMenuItem.Text = "Save merged mesh";
             this.saveMergedMeshToolStripMenuItem.Click += new System.EventHandler(this.saveMergedMeshToolStripMenuItem_Click);
             // 
@@ -234,7 +236,7 @@
             this.unitifyToolStripMenuItem.Checked = true;
             this.unitifyToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.unitifyToolStripMenuItem.Name = "unitifyToolStripMenuItem";
-            this.unitifyToolStripMenuItem.Size = new System.Drawing.Size(174, 22);
+            this.unitifyToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
             this.unitifyToolStripMenuItem.Text = "Unitify";
             this.unitifyToolStripMenuItem.Click += new System.EventHandler(this.unitifyToolStripMenuItem_Click);
             // 
@@ -469,49 +471,49 @@
             // addSelectedParts
             // 
             this.addSelectedParts.Name = "addSelectedParts";
-            this.addSelectedParts.Size = new System.Drawing.Size(152, 22);
+            this.addSelectedParts.Size = new System.Drawing.Size(142, 22);
             this.addSelectedParts.Text = "Add selected";
             this.addSelectedParts.Click += new System.EventHandler(this.addSelectedParts_Click);
             // 
             // translateToolStripMenuItem
             // 
             this.translateToolStripMenuItem.Name = "translateToolStripMenuItem";
-            this.translateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.translateToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.translateToolStripMenuItem.Text = "Translate";
             this.translateToolStripMenuItem.Click += new System.EventHandler(this.translateToolStripMenuItem_Click);
             // 
             // scaleToolStripMenuItem
             // 
             this.scaleToolStripMenuItem.Name = "scaleToolStripMenuItem";
-            this.scaleToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.scaleToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.scaleToolStripMenuItem.Text = "Scale";
             this.scaleToolStripMenuItem.Click += new System.EventHandler(this.scaleToolStripMenuItem_Click);
             // 
             // rotateToolStripMenuItem
             // 
             this.rotateToolStripMenuItem.Name = "rotateToolStripMenuItem";
-            this.rotateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.rotateToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.rotateToolStripMenuItem.Text = "Rotate";
             this.rotateToolStripMenuItem.Click += new System.EventHandler(this.rotateToolStripMenuItem_Click);
             // 
             // deleteToolStripMenuItem
             // 
             this.deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
-            this.deleteToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.deleteToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.deleteToolStripMenuItem.Text = "Delete";
             this.deleteToolStripMenuItem.Click += new System.EventHandler(this.deleteToolStripMenuItem_Click);
             // 
             // replicateToolStripMenuItem
             // 
             this.replicateToolStripMenuItem.Name = "replicateToolStripMenuItem";
-            this.replicateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.replicateToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.replicateToolStripMenuItem.Text = "Replicate";
             this.replicateToolStripMenuItem.Click += new System.EventHandler(this.replicateToolStripMenuItem_Click);
             // 
             // composeToolStripMenuItem
             // 
             this.composeToolStripMenuItem.Name = "composeToolStripMenuItem";
-            this.composeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.composeToolStripMenuItem.Size = new System.Drawing.Size(142, 22);
             this.composeToolStripMenuItem.Text = "Compose";
             this.composeToolStripMenuItem.Click += new System.EventHandler(this.composeToolStripMenuItem_Click);
             // 
@@ -528,6 +530,8 @@
             // 
             // translucentPoseToolStripMenuItem
             // 
+            this.translucentPoseToolStripMenuItem.Checked = true;
+            this.translucentPoseToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.translucentPoseToolStripMenuItem.Name = "translucentPoseToolStripMenuItem";
             this.translucentPoseToolStripMenuItem.Size = new System.Drawing.Size(164, 22);
             this.translucentPoseToolStripMenuItem.Text = "Translucent pose";
@@ -553,6 +557,16 @@
             this.YZbutton.Text = "YZ";
             this.YZbutton.Click += new System.EventHandler(this.YZbutton_Click);
             // 
+            // XZbutton
+            // 
+            this.XZbutton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.XZbutton.Image = ((System.Drawing.Image)(resources.GetObject("XZbutton.Image")));
+            this.XZbutton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.XZbutton.Name = "XZbutton";
+            this.XZbutton.Size = new System.Drawing.Size(25, 36);
+            this.XZbutton.Text = "XZ";
+            this.XZbutton.Click += new System.EventHandler(this.XZbutton_Click);
+            // 
             // viewPanel
             // 
             this.viewPanel.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -570,8 +584,8 @@
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
             this.viewPanel.Panel2.Controls.Add(this.partBasket);
             this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
-            this.viewPanel.Size = new System.Drawing.Size(1099, 675);
-            this.viewPanel.SplitterDistance = 25;
+            this.viewPanel.Size = new System.Drawing.Size(1099, 735);
+            this.viewPanel.SplitterDistance = 27;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -581,7 +595,7 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(1093, 28);
+            this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
             this.fileNameTabs.TabIndex = 0;
             // 
             // statsLabel
@@ -595,6 +609,42 @@
             this.statsLabel.Size = new System.Drawing.Size(41, 16);
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
+            // 
+            // partBasket
+            // 
+            this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.partBasket.AutoScroll = true;
+            this.partBasket.BackColor = System.Drawing.Color.White;
+            this.partBasket.Location = new System.Drawing.Point(896, 3);
+            this.partBasket.Name = "partBasket";
+            this.partBasket.Size = new System.Drawing.Size(203, 701);
+            this.partBasket.TabIndex = 15;
+            // 
+            // modelViewLayoutPanel
+            // 
+            this.modelViewLayoutPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.modelViewLayoutPanel.AutoScroll = true;
+            this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
+            this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
+            this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
+            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 701);
+            this.modelViewLayoutPanel.TabIndex = 13;
+            // 
+            // partRelatedTools
+            // 
+            this.partRelatedTools.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.groupToolStripMenuItem});
+            this.partRelatedTools.Name = "partRelatedTools";
+            this.partRelatedTools.Size = new System.Drawing.Size(108, 26);
+            // 
+            // groupToolStripMenuItem
+            // 
+            this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.groupToolStripMenuItem.Text = "Group";
+            this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
             // glViewer
             // 
@@ -612,62 +662,23 @@
             this.glViewer.DepthBits = ((byte)(16));
             this.glViewer.Location = new System.Drawing.Point(219, 3);
             this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(671, 638);
+            this.glViewer.Size = new System.Drawing.Size(671, 695);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
-            // partBasket
+            // importHumanPoseToolStripMenuItem
             // 
-            this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.partBasket.AutoScroll = true;
-            this.partBasket.BackColor = System.Drawing.Color.White;
-            this.partBasket.Location = new System.Drawing.Point(896, 3);
-            this.partBasket.Name = "partBasket";
-            this.partBasket.Size = new System.Drawing.Size(203, 643);
-            this.partBasket.TabIndex = 15;
-            // 
-            // modelViewLayoutPanel
-            // 
-            this.modelViewLayoutPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left)));
-            this.modelViewLayoutPanel.AutoScroll = true;
-            this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
-            this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
-            this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
-            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 643);
-            this.modelViewLayoutPanel.TabIndex = 13;
-            // 
-            // partRelatedTools
-            // 
-            this.partRelatedTools.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.groupToolStripMenuItem});
-            this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(108, 26);
-            // 
-            // groupToolStripMenuItem
-            // 
-            this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
-            this.groupToolStripMenuItem.Text = "Group";
-            this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
-            // 
-            // XZbutton
-            // 
-            this.XZbutton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.XZbutton.Image = ((System.Drawing.Image)(resources.GetObject("XZbutton.Image")));
-            this.XZbutton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.XZbutton.Name = "XZbutton";
-            this.XZbutton.Size = new System.Drawing.Size(25, 36);
-            this.XZbutton.Text = "XZ";
-            this.XZbutton.Click += new System.EventHandler(this.XZbutton_Click);
+            this.importHumanPoseToolStripMenuItem.Name = "importHumanPoseToolStripMenuItem";
+            this.importHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
+            this.importHumanPoseToolStripMenuItem.Text = "Import HumanPose";
+            this.importHumanPoseToolStripMenuItem.Click += new System.EventHandler(this.importHumanPoseToolStripMenuItem_Click);
             // 
             // Interface
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(1099, 714);
+            this.ClientSize = new System.Drawing.Size(1099, 774);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -751,6 +762,7 @@
         private System.Windows.Forms.ToolStripButton YZbutton;
         private System.Windows.Forms.ToolStripButton XYbutton;
         private System.Windows.Forms.ToolStripButton XZbutton;
+        private System.Windows.Forms.ToolStripMenuItem importHumanPoseToolStripMenuItem;
 	}
 }
 

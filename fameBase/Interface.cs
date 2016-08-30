@@ -328,7 +328,6 @@ namespace FameBase
                 this.glViewer.loadHuamPose(dialog.FileName);
                 this.updateStats();
             }
-            this.glViewer.Refresh();
         }
 
         private void saveHumanPoseToolStripMenuItem_Click(object sender, EventArgs e)
@@ -451,6 +450,20 @@ namespace FameBase
         private void XZbutton_Click(object sender, EventArgs e)
         {
             this.glViewer.switchXYZ(3);
+        }
+
+        private void importHumanPoseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Load a human pose",
+                DefaultExt = ".pos"
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                this.glViewer.importHumanPose(dialog.FileName);
+                this.updateStats();
+            }
         }
 
 	}// Interface

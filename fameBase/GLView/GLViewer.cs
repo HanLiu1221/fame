@@ -168,7 +168,8 @@ namespace FameBase
         List<Part> _selectedParts = new List<Part>();
         List<ModelViewer> _modelViewers = new List<ModelViewer>();
         List<ModelViewer> _partViewers = new List<ModelViewer>();
-        HumanPose _humanPose;
+        HumanPose _currHumanPose;
+        List<HumanPose> _humanposes = new List<HumanPose>();
         BodyNode _selectedNode;
         public bool _unitifyMesh = true;
         bool _showEditAxes = false;
@@ -180,7 +181,7 @@ namespace FameBase
         ArcBall _editArcBall;
         ArcBall _bodyArcBall;
         bool _isRightClick = false;
-        bool _isDrawTranslucentHumanPose = false;
+        bool _isDrawTranslucentHumanPose = true;
 
         /******************** Functions ********************/
 
@@ -295,14 +296,16 @@ namespace FameBase
             _models = new List<Model>();
             _modelViewers = new List<ModelViewer>();
             _partViewers = new List<ModelViewer>();
+            _currHumanPose = null;
             this.meshClasses.Clear();
+            _humanposes.Clear();
         }
 
         private void clearHighlights()
         {
             _selectedNode = null;
             _hightlightAxis = -1;
-            _selectedParts.Clear();
+            //_selectedParts.Clear();
         }// clearHighlights
 
         public void loadMesh(string filename)
@@ -348,6 +351,8 @@ namespace FameBase
             }
             sb.Append("\n#selected parts: ");
             sb.Append(_selectedParts.Count.ToString());
+            sb.Append("\n#human poses: ");
+            sb.Append(_humanposes.Count.ToString());
             return sb.ToString();
         }// getStats
 
@@ -800,9 +805,9 @@ namespace FameBase
         private void calculatePoint2DInfo()
         {
             this.updateCamera();
-            if (_humanPose != null)
+            if (_currHumanPose != null)
             {
-                foreach (BodyNode bn in _humanPose._bodyNodes)
+                foreach (BodyNode bn in _currHumanPose._bodyNodes)
                 {
                     Vector2d v2 = this.camera.Project(bn._POS).ToVector2d();
                     bn._pos2 = new Vector2d(v2.x, this.Height - v2.y);
@@ -1058,9 +1063,9 @@ namespace FameBase
                 }
                 center /= _selectedParts.Count;
             }
-            else if (_humanPose != null)
+            else if (_currHumanPose != null)
             {
-                center = _humanPose._ROOT._POS;
+                center = _currHumanPose._ROOT._POS;
             }
             ad /= 2;
             if (ad == 0)
@@ -1546,6 +1551,11 @@ namespace FameBase
                     {
                         break;
                     }
+                case Keys.Delete:
+                    {
+                        this.deleteParts();
+                        break;
+                    }
                 default:
                     break;
             }
@@ -1676,9 +1686,9 @@ namespace FameBase
             {
                 p.updateOriginPos();
             }
-            if (_humanPose != null)
+            if (_currHumanPose != null)
             {
-                _humanPose.updateOriginPos();
+                _currHumanPose.updateOriginPos();
                 this.updateBodyBones();
             }
             if (_editArcBall != null)
@@ -1690,7 +1700,7 @@ namespace FameBase
 
         private void transformSelections(Vector2d mousePos)
         {
-            if (_selectedParts.Count == 0 && _humanPose == null)
+            if (_selectedParts.Count == 0 && _currHumanPose == null)
             {
                 return;
             }
@@ -1750,10 +1760,10 @@ namespace FameBase
                 {
                     p.TransformFromOrigin(T);
                 }
-            } else if (_humanPose != null) // NOTE!! else relation
+            } else if (_currHumanPose != null) // NOTE!! else relation
             {
-                ori = _humanPose._ROOT._ORIGIN;
-                _humanPose.TransformFromOrigin(T);
+                ori = _currHumanPose._ROOT._ORIGIN;
+                _currHumanPose.TransformFromOrigin(T);
             }
             
             if (this.currUIMode != UIMode.Translate)
@@ -1768,13 +1778,13 @@ namespace FameBase
                         p.Transform(TtoCenter);
                     }
                 }
-                else if (_humanPose != null)
+                else if (_currHumanPose != null)
                 {
-                    after = _humanPose._ROOT._POS;
+                    after = _currHumanPose._ROOT._POS;
                     Matrix4d TtoCenter = Matrix4d.TranslationMatrix(ori - after);
-                    if (_humanPose != null)
+                    if (_currHumanPose != null)
                     {
-                        foreach (BodyNode bn in _humanPose._bodyNodes)
+                        foreach (BodyNode bn in _currHumanPose._bodyNodes)
                         {
                             bn.Transform(TtoCenter);
                         }
@@ -1889,37 +1899,52 @@ namespace FameBase
 
         public void loadHuamPose(string filename)
         {
-            _humanPose = new HumanPose();
-            _humanPose.loadPose(filename);
+            _currHumanPose = this.loadAHumanPose(filename);
+            _humanposes = new List<HumanPose>();
+            _humanposes.Add(_currHumanPose);
             // test
             //Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d(0, -0.2, -0.4));
-            //foreach (BodyNode bn in _humanPose._bodyNodes)
+            //foreach (BodyNode bn in _currHumanPose._bodyNodes)
             //{
             //    bn.TransformOrigin(T);
             //    bn.Transform(T);
             //}
-            //foreach (BodyBone bb in _humanPose._bodyBones)
+            //foreach (BodyBone bb in _currHumanPose._bodyBones)
             //{
             //    bb.updateEntity();
             //}
         }// loadHuamPose
 
+        public void importHumanPose(string filename)
+        {
+            HumanPose hp = this.loadAHumanPose(filename);
+            _humanposes.Add(hp);
+            this.Refresh();
+        }
+
+        private HumanPose loadAHumanPose(string filename)
+        {
+            HumanPose hp = new HumanPose();
+            hp.loadPose(filename);
+            return hp;
+        }
+
         public void saveHumanPose(string name)
         {
-            if (_humanPose != null)
+            if (_currHumanPose != null)
             {
-                _humanPose.savePose(name);
+                _currHumanPose.savePose(name);
             }
         }// saveHumanPose
 
         private void SelectBodyNode(Vector2d mousePos)
         {
-            if (_humanPose == null)
+            if (_currHumanPose == null)
             {
                 return;
             }
             _selectedNode = null;
-            foreach (BodyNode bn in _humanPose._bodyNodes)
+            foreach (BodyNode bn in _currHumanPose._bodyNodes)
             {
                 double d = (bn._pos2 - mousePos).Length();
                 if (d < Common._thresh2d)
@@ -1972,8 +1997,8 @@ namespace FameBase
 
         private void updateBodyBones()
         {
-            if (_humanPose == null) return;
-            foreach (BodyBone bn in _humanPose._bodyBones)
+            if (_currHumanPose == null) return;
+            foreach (BodyBone bn in _currHumanPose._bodyBones)
             {
                 bn.updateEntity();
             }
@@ -2180,7 +2205,7 @@ namespace FameBase
 
         private void drawHumanPose()
         {
-            if (_humanPose == null)
+            if (_humanposes.Count == 0)
             {
                 return;
             }
@@ -2209,32 +2234,34 @@ namespace FameBase
                 Gl.glHint(Gl.GL_MULTISAMPLE_FILTER_HINT_NV, Gl.GL_NICEST);
                 Gl.glEnable(Gl.GL_SAMPLE_ALPHA_TO_ONE);
             }
-            foreach (BodyBone bb in _humanPose._bodyBones)
+            foreach (HumanPose hp in _humanposes)
             {
-                if (_isDrawTranslucentHumanPose)
+                foreach (BodyBone bb in hp._bodyBones)
                 {
-                    GLDrawer.drawCylinderTranslucent(bb._SRC._POS, bb._DST._POS, Common._bodyNodeRadius / 2, GLDrawer.BodeyBoneColor);
-                    for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                    if (_isDrawTranslucentHumanPose)
                     {
-                        GLDrawer.drawQuadTranslucent3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
-                            bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.TranslucentBodyColor);
+                        GLDrawer.drawCylinderTranslucent(bb._SRC._POS, bb._DST._POS, Common._bodyNodeRadius / 2, GLDrawer.BodeyBoneColor);
+                        for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                        {
+                            GLDrawer.drawQuadTranslucent3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
+                                bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.TranslucentBodyColor);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                        {
+                            GLDrawer.drawQuadSolid3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
+                                bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.BodyColor);
+                        }
                     }
                 }
-                else
+                foreach (BodyNode bn in hp._bodyNodes)
                 {
-                    for (int i = 0; i < bb._FACEVERTICES.Length; i += 4)
+                    if (bn != _selectedNode)
                     {
-                        GLDrawer.drawQuadSolid3d(bb._FACEVERTICES[i], bb._FACEVERTICES[i + 1],
-                            bb._FACEVERTICES[i + 2], bb._FACEVERTICES[i + 3], GLDrawer.BodyColor);
+                        GLDrawer.drawSphere(bn._POS, bn._RADIUS, GLDrawer.BodyNodeColor);
                     }
-                }
-                
-            }
-            foreach (BodyNode bn in _humanPose._bodyNodes)
-            {
-                if (bn != _selectedNode)
-                {
-                    GLDrawer.drawSphere(bn._POS, bn._RADIUS, GLDrawer.BodyNodeColor);
                 }
             }
             if (iNumSamples == 0 && _isDrawTranslucentHumanPose)
