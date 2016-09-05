@@ -11,10 +11,13 @@ namespace Component
         List<Node> _nodes = new List<Node>();
         List<Edge> _edges = new List<Edge>();
 
-        public Graph(Model m)
+        public Graph(Model m, bool auto)
         {
             _model = m;
-            buildGraph();
+            if (auto)
+            {
+                buildGraph();
+            }
         }// Graph
 
         public Graph(List<Node> nodes, List<Edge> edges)
@@ -22,6 +25,11 @@ namespace Component
             _nodes = nodes;
             _edges = edges;
         }// Graph
+
+        public void setModel(Model m)
+        {
+            _model = m;
+        }
 
         public Object Clone()
         {
@@ -41,7 +49,7 @@ namespace Component
             _nodes = new List<Node>();
             for (int i = 0; i < _model._NPARTS; ++i)
             {
-                _nodes.Add(new Node(_model._PARTS[i]));
+                _nodes.Add(new Node(_model._PARTS[i], i));
             }
             double thr = 0.1;
             for (int i = 0; i < _model._NPARTS - 1; ++i)
@@ -61,6 +69,11 @@ namespace Component
                 }
             }
         }// buildGraph
+
+        public void addANode(Node node)
+        {
+            _nodes.Add(node);
+        }
 
         private double getDistBetweenMeshes(Mesh m1, Mesh m2, out Vector3d contact)
         {
@@ -158,6 +171,17 @@ namespace Component
             e._end._edges.Remove(e);
         }// deleteEdge
 
+        public List<Node> findReplaceableNodes(List<Node> nodes)
+        {
+            // nodes: from another graph
+            // return: nodes that match the structure
+            List<Node> res = new List<Node>();
+
+            return res;
+        }// findReplaceableNodes
+
+
+
         public List<Node> _NODES
         {
             get
@@ -178,13 +202,15 @@ namespace Component
     public class Node
     {
         Part _part;
+        private int _index = -1;
         public List<Edge> _edges;
         public List<Node> _adjNodes;
         public Vector3d _pos;
 
-        public Node(Part p)
+        public Node(Part p, int idx)
         {
             _part = p;
+            _index = idx;
             _edges = new List<Edge>();
             _adjNodes = new List<Node>();
             _pos = p._BOUNDINGBOX.CENTER;
@@ -201,7 +227,7 @@ namespace Component
         public Object Clone()
         {
             Part clonePart = _part.Clone() as Part;
-            Node cloned = new Node(clonePart);
+            Node cloned = new Node(clonePart, _index);
             return cloned;
         }// Clone
 
@@ -210,6 +236,18 @@ namespace Component
             get
             {
                 return _part;
+            }
+        }
+
+        public int _INDEX
+        {
+            get
+            {
+                return _index;
+            }
+            set
+            {
+                _index = value;
             }
         }
     }// Node

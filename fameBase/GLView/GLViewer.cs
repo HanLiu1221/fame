@@ -581,6 +581,9 @@ namespace FameBase
             // Part #i:
             // bbox vertices
             // mesh file loc
+            // m edges (for graph)
+            // id1, id2
+            // ..., ...
             // comments start with "%"
             string meshDir = filename.Substring(0, filename.LastIndexOf('.')) + "\\";
             int loc = filename.LastIndexOf('\\');
@@ -608,6 +611,11 @@ namespace FameBase
                     string meshName = "part_" + i.ToString() + ".obj";
                     this.saveObj(ipart._MESH, meshDir + meshName);
                     sw.WriteLine(meshFolder + "\\" + meshName);
+                }
+                if (_currGraph != null)
+                {
+                    string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
+                    saveAGrapph(graphName);
                 }
             }
         }// saveAPartBasedModel
@@ -645,13 +653,9 @@ namespace FameBase
                         s = sr.ReadLine().Trim();
                     }
                     strs = s.Split(separator);
-                    if (strs.Length != Common._nPrimPoint * 3)
-                    {
-                        MessageBox.Show("Need " + Common._nPrimPoint.ToString() + " vertices for bounding box #" + i.ToString() + ".");
-                        return null;
-                    }
-                    Vector3d[] pnts = new Vector3d[Common._nPrimPoint];
-                    for (int j = 0, k = 0; j < Common._nPrimPoint; ++j)
+                    int nVertices = strs.Length / 3;
+                    Vector3d[] pnts = new Vector3d[nVertices];
+                    for (int j = 0, k = 0; j < nVertices; ++j)
                     {
                         pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
                     }
@@ -685,7 +689,12 @@ namespace FameBase
             this.foldername = Path.GetDirectoryName(filename);
             this.clearHighlights();
             _currModel = this.loadOnePartBasedModel(filename);
-            _currGraph = new Graph(_currModel);
+            string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
+            _currGraph = loadAGrapph(graphName);
+            if (_currGraph == null)
+            {
+                _currGraph = new Graph(_currModel, true);
+            }
             this.Refresh();
         }// loadAPartBasedModel
 
@@ -738,6 +747,51 @@ namespace FameBase
             }
             return _modelViewers;
         }// loadPartBasedModels
+
+        public Graph loadAGrapph(string filename)
+        {
+            if (_currModel == null || !File.Exists(filename))
+            {
+                return null;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                string s = sr.ReadLine();
+                string[] strs = s.Split(separator);
+                int nEdges = int.Parse(strs[0]);
+                Graph g = new Graph(_currModel, false);
+                for (int i = 0; i < _currModel._NPARTS; ++i)
+                {
+                    g.addANode(new Node(_currModel._PARTS[i], i));
+                }
+                for (int i = 0; i < nEdges; ++i)
+                {
+                    s = sr.ReadLine();
+                    strs = s.Split(separator);
+                    int j = int.Parse(strs[0]);
+                    int k = int.Parse(strs[1]);
+                    g.addAnEdge(_currModel._PARTS[j], _currModel._PARTS[k]);
+                }
+                return g;
+            }
+        }// loadAGrapph
+
+        public void saveAGrapph(string filename)
+        {
+            if (_currGraph == null)
+            {
+                return;
+            }
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine(_currGraph._EDGES.Count.ToString() + " edges.");
+                foreach(Edge e in _currGraph._EDGES)
+                {
+                    sw.WriteLine(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString());
+                }
+            }
+        }// saveAGrapph
 
         private void refreshModelViewers()
         {
