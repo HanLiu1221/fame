@@ -43,6 +43,7 @@
             this.loadTriMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.importHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveMergedMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.unitifyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tools = new System.Windows.Forms.ToolStripDropDownButton();
@@ -91,8 +92,11 @@
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.graphToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripDropDownButton1 = new System.Windows.Forms.ToolStripDropDownButton();
+            this.addEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.delEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.glViewer = new FameBase.GLViewer();
-            this.importHumanPoseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -114,7 +118,8 @@
             this.renderOptions,
             this.XYbutton,
             this.YZbutton,
-            this.XZbutton});
+            this.XZbutton,
+            this.toolStripDropDownButton1});
             this.menu.Location = new System.Drawing.Point(0, 0);
             this.menu.Name = "menu";
             this.menu.Size = new System.Drawing.Size(1099, 39);
@@ -223,6 +228,13 @@
             this.saveHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
             this.saveHumanPoseToolStripMenuItem.Text = "Save HumanPose";
             this.saveHumanPoseToolStripMenuItem.Click += new System.EventHandler(this.saveHumanPoseToolStripMenuItem_Click);
+            // 
+            // importHumanPoseToolStripMenuItem
+            // 
+            this.importHumanPoseToolStripMenuItem.Name = "importHumanPoseToolStripMenuItem";
+            this.importHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
+            this.importHumanPoseToolStripMenuItem.Text = "Import HumanPose";
+            this.importHumanPoseToolStripMenuItem.Click += new System.EventHandler(this.importHumanPoseToolStripMenuItem_Click);
             // 
             // saveMergedMeshToolStripMenuItem
             // 
@@ -353,6 +365,7 @@
             this.wireFrameToolStripMenuItem,
             this.faceToolStripMenuItem,
             this.boundingBoxToolStripMenuItem,
+            this.graphToolStripMenuItem,
             this.axesToolStripMenuItem,
             this.groundToolStripMenuItem});
             this.renderOption.Image = ((System.Drawing.Image)(resources.GetObject("renderOption.Image")));
@@ -584,8 +597,8 @@
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
             this.viewPanel.Panel2.Controls.Add(this.partBasket);
             this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
-            this.viewPanel.Size = new System.Drawing.Size(1099, 735);
-            this.viewPanel.SplitterDistance = 27;
+            this.viewPanel.Size = new System.Drawing.Size(1099, 675);
+            this.viewPanel.SplitterDistance = 25;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -595,7 +608,7 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
+            this.fileNameTabs.Size = new System.Drawing.Size(1093, 28);
             this.fileNameTabs.TabIndex = 0;
             // 
             // statsLabel
@@ -618,7 +631,7 @@
             this.partBasket.BackColor = System.Drawing.Color.White;
             this.partBasket.Location = new System.Drawing.Point(896, 3);
             this.partBasket.Name = "partBasket";
-            this.partBasket.Size = new System.Drawing.Size(203, 701);
+            this.partBasket.Size = new System.Drawing.Size(203, 643);
             this.partBasket.TabIndex = 15;
             // 
             // modelViewLayoutPanel
@@ -629,7 +642,7 @@
             this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
             this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
-            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 701);
+            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 643);
             this.modelViewLayoutPanel.TabIndex = 13;
             // 
             // partRelatedTools
@@ -645,6 +658,41 @@
             this.groupToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
+            // 
+            // graphToolStripMenuItem
+            // 
+            this.graphToolStripMenuItem.Checked = true;
+            this.graphToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.graphToolStripMenuItem.Name = "graphToolStripMenuItem";
+            this.graphToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
+            this.graphToolStripMenuItem.Text = "Graph";
+            this.graphToolStripMenuItem.Click += new System.EventHandler(this.graphToolStripMenuItem_Click);
+            // 
+            // toolStripDropDownButton1
+            // 
+            this.toolStripDropDownButton1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.addEdgeToolStripMenuItem,
+            this.delEdgeToolStripMenuItem});
+            this.toolStripDropDownButton1.Image = ((System.Drawing.Image)(resources.GetObject("toolStripDropDownButton1.Image")));
+            this.toolStripDropDownButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripDropDownButton1.Name = "toolStripDropDownButton1";
+            this.toolStripDropDownButton1.Size = new System.Drawing.Size(52, 36);
+            this.toolStripDropDownButton1.Text = "Graph";
+            this.toolStripDropDownButton1.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
+            // 
+            // addEdgeToolStripMenuItem
+            // 
+            this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.addEdgeToolStripMenuItem.Text = "Add Edge";
+            this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
+            // 
+            // delEdgeToolStripMenuItem
+            // 
+            this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.delEdgeToolStripMenuItem.Text = "Del Edge";
+            this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // glViewer
             // 
@@ -662,23 +710,16 @@
             this.glViewer.DepthBits = ((byte)(16));
             this.glViewer.Location = new System.Drawing.Point(219, 3);
             this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(671, 695);
+            this.glViewer.Size = new System.Drawing.Size(671, 638);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
-            // importHumanPoseToolStripMenuItem
-            // 
-            this.importHumanPoseToolStripMenuItem.Name = "importHumanPoseToolStripMenuItem";
-            this.importHumanPoseToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
-            this.importHumanPoseToolStripMenuItem.Text = "Import HumanPose";
-            this.importHumanPoseToolStripMenuItem.Click += new System.EventHandler(this.importHumanPoseToolStripMenuItem_Click);
-            // 
             // Interface
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(1099, 774);
+            this.ClientSize = new System.Drawing.Size(1099, 714);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -763,6 +804,10 @@
         private System.Windows.Forms.ToolStripButton XYbutton;
         private System.Windows.Forms.ToolStripButton XZbutton;
         private System.Windows.Forms.ToolStripMenuItem importHumanPoseToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem graphToolStripMenuItem;
+        private System.Windows.Forms.ToolStripDropDownButton toolStripDropDownButton1;
+        private System.Windows.Forms.ToolStripMenuItem addEdgeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem delEdgeToolStripMenuItem;
 	}
 }
 

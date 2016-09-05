@@ -476,6 +476,11 @@ namespace Geometry
 			return new Vector3d(x / w, y / w, z / w);
 		}
 
+        public Vector3d XYZ()
+        {
+            return new Vector3d(x, y, z);
+        }
+
 		public double Length()
 		{
 			return Math.Sqrt(x * x + y * y + z * z + w * w);

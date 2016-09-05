@@ -161,8 +161,8 @@ namespace Geometry
                 }
                 else // default ".obj"
                 {
-                    loadObjMesh_withoutHalfEdge(sr, normalize);
-                    //loadObjMesh(sr, normalize);
+                    //loadObjMesh_withoutHalfEdge(sr, normalize);
+                    loadObjMesh(sr, normalize);
                 }
                 sr.Close();
             }
@@ -829,6 +829,34 @@ namespace Geometry
             get
             {
                 return this.vertexPos;
+            }
+        }
+
+        public double[,] VertexArray
+        {
+            get
+            {
+                double[,] array = new double[this.vertexCount, 3];
+                for (int i = 0, j = 0; i < this.vertexCount; ++i, j += 3)
+                {
+                    array[i, 0] = this.vertexPos[j];
+                    array[i, 1] = this.vertexPos[j + 1];
+                    array[i, 2] = this.vertexPos[j + 2];
+                }
+                return array;
+            }
+        }
+
+        public Vector3d[] VertexVectorArray
+        {
+            get
+            {
+                Vector3d[] array = new Vector3d[this.vertexCount];
+                for (int i = 0, j = 0; i < this.vertexCount; ++i, j += 3)
+                {
+                    array[i] = new Vector3d(this.vertexPos[j], this.vertexPos[j + 1], this.vertexPos[j + 2]);
+                }
+                return array;
             }
         }
 

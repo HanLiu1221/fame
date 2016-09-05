@@ -229,8 +229,9 @@ namespace Geometry
         }
     }// Quad2d
 
-    public class Plane3D
+    public class Polygon3D
     {
+        public Vector3d[] originPoints3d = null;
         public Vector3d[] points3d = null;
         public Vector2d[] points2d = null;
         public Vector3d normal;
@@ -238,33 +239,25 @@ namespace Geometry
         private int Npoints = 0;
         public double depth = 0;
 
-        public Plane3D() { }
+        public Polygon3D() { }
 
-        public Plane3D(Vector3d[] vs)
+        public Polygon3D(Vector3d[] vs)
         {
             if (vs == null) return;
             // newly created
             this.Npoints = vs.Length;
-            this.points3d = new Vector3d[Npoints];
-            for (int i = 0; i < Npoints; ++i)
-            {
-                this.points3d[i] = new Vector3d(vs[i]);
-            }
+            this.points3d = vs.Clone() as Vector3d[];
+            this.originPoints3d = vs.Clone() as Vector3d[];
             this.calclulateCenterNormal();
         }
 
-        public Plane3D(List<Vector3d> vs)
+        public Polygon3D(List<Vector3d> vs)
         {
             // copy points3d
             this.points3d = vs.ToArray();
             this.Npoints = this.points3d.Length;
+            this.originPoints3d = this.points3d.Clone() as Vector3d[];
             this.calclulateCenterNormal();
-        }
-
-        public Plane3D(Vector3d center, Vector3d normal)
-        {
-            this.center = center;
-            this.normal = normal;
         }
 
         private void calclulateCenterNormal()
@@ -281,30 +274,48 @@ namespace Geometry
             this.normal = (v1.Cross(v2)).normalize();
         }
 
+        public static Polygon3D CreateCircle(int nslices, double zcoord)
+        {
+            double delta_theta = Math.PI * 2 / nslices;
+            List<Vector3d> points3 = new List<Vector3d>();
+            for (int i = 0; i < nslices; ++i)
+            {
+                double t = delta_theta * i;
+                double x = 1.0 * Math.Cos(t);
+                double y = 1.0 * Math.Sin(t);
+                points3.Add(new Vector3d(x, y, zcoord));
+            }
+            return new Polygon3D(points3.ToArray());
+        }
+
         public void Transform(Matrix4d T)
         {
             for (int i = 0; i < this.Npoints; ++i )
             {
                 Vector3d v = this.points3d[i];
-                Vector4d v4 = (T * new Vector4d(v, 1));
-                double t = T[0, 3];
                 this.points3d[i] = (T * new Vector4d(v, 1)).ToVector3D();
             }
-            if (this.Npoints > 0)
+            calclulateCenterNormal();
+        }
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            for (int i = 0; i < this.Npoints; ++i)
             {
-                this.calclulateCenterNormal();
+                Vector3d v = this.originPoints3d[i];
+                this.points3d[i] = (T * new Vector4d(v, 1)).ToVector3D();
             }
-            else
-            {
-                this.center = (T * new Vector4d(this.center, 1)).ToVector3D();
-                this.normal = (T * new Vector4d(this.normal, 1)).ToVector3D();
-                this.normal.normalize();
-            }
+            calclulateCenterNormal();
+        }
+
+        public void updateOrigin()
+        {
+            this.originPoints3d = this.points3d.Clone() as Vector3d[];
         }
 
         public Object clone()
         {
-            Plane3D cloned = new Plane3D(this.points3d);
+            Polygon3D cloned = new Polygon3D(this.points3d);
             return cloned;
         }
     }
@@ -638,16 +649,24 @@ namespace Geometry
     }
 
     /* Primitive of a part*/
-    public class Prim
+    public class Primitive
     {
+        Vector3d[] _originPoints3d = null;
         Vector3d[] _points3d = null;
         Vector2d[] _points2d = null;
         Vector3d _maxCoord = Vector3d.MinCoord;
         Vector3d _minCoord = Vector3d.MaxCoord;
         Vector3d _center = new Vector3d();
-        Plane3D[] _planes = null;
+        Polygon3D[] _planes = null;
+        int _nSideFaces = 20; // for cylinder
+        public CoordinateSystem coordSys;
+        public CoordinateSystem originCoordSys;
+        public double fittingError;
+        public Vector3d scale;
+        public Vector3d originScale;
+        public Common.PrimType type;
 
-        public Prim(Vector3d a, Vector3d b)
+        public Primitive(Vector3d a, Vector3d b)
         {
             // axis-aligned cuboid
             // a: minimal vector
@@ -661,17 +680,13 @@ namespace Geometry
             _points3d[5] = new Vector3d(a.x, b.y, b.z);
             _points3d[6] = new Vector3d(b);
             _points3d[7] = new Vector3d(b.x, b.y, a.z);
-            _minCoord = new Vector3d(a);
-            _maxCoord = new Vector3d(b);
-            _center = (_maxCoord + _minCoord) / 2;
-            _points2d = new Vector2d[Common._nPrimPoint];
-            createPlanes();
+            initInfo();
         }
 
-        public Prim(Vector3d[] arr)
+        public Primitive(Vector3d[] arr)
         {
             if (arr == null) return;
-            Debug.Assert(arr.Length == Common._nPrimPoint);
+            //Debug.Assert(arr.Length == Common._nPrimPoint);
             _points3d = new Vector3d[arr.Length];
             for(int i = 0; i < arr.Length; ++i)
             {
@@ -679,36 +694,129 @@ namespace Geometry
                 _maxCoord = Vector3d.Max(_maxCoord, arr[i]);
                 _minCoord = Vector3d.Min(_minCoord, arr[i]);
             }
+            initInfo();
+        }
+
+        public Primitive(Polygon3D top, Polygon3D bot)
+        {
+            _points3d = new Vector3d[top.points3d.Length + bot.points3d.Length];
+            int i = 0;
+            foreach (Vector3d v in top.points3d)
+            {
+                _points3d[i++] = new Vector3d(v);
+            }
+            foreach (Vector3d v in bot.points3d)
+            {
+                _points3d[i++] = new Vector3d(v);
+            }
+            initInfo();
+        }
+
+        private void initInfo()
+        {
+            _originPoints3d = _points3d.Clone() as Vector3d[];
+            _nSideFaces = _points3d.Length / 2;
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            foreach (Vector3d v in _originPoints3d)
+            {
+                _maxCoord = Vector3d.Max(_maxCoord, v);
+                _minCoord = Vector3d.Min(_minCoord, v);
+            }
             _center = (_maxCoord + _minCoord) / 2;
-            _points2d = new Vector2d[Common._nPrimPoint];
+            _points2d = new Vector2d[_points3d.Length];
             createPlanes();
         }
 
         private void createPlanes()
         {
-            // faces
-            this._planes = new Plane3D[6];
+            this._planes = new Polygon3D[_nSideFaces + 2];
             List<Vector3d> vslist = new List<Vector3d>();
-            for (int i = 0; i < 4; ++i)
+            for (int i = 0; i < _nSideFaces; ++i)
             {
                 vslist.Add(this._points3d[i]);
             }
-            this._planes[0] = new Plane3D(vslist);
+            this._planes[0] = new Polygon3D(vslist);
             vslist = new List<Vector3d>();
-            for (int i = 4; i < 8; ++i)
+            for (int i = _nSideFaces; i < _points3d.Length; ++i)
             {
                 vslist.Add(this._points3d[i]);
             }
-            this._planes[1] = new Plane3D(vslist);
+            this._planes[1] = new Polygon3D(vslist);
             int r = 2;
-            for (int i = 0; i < 4; ++i)
+            int n = _points3d.Length;
+            for (int i = 0; i < _nSideFaces; ++i)
             {
                 vslist = new List<Vector3d>();
                 vslist.Add(this._points3d[i]);
-                vslist.Add(this._points3d[(i + 4) % 8]);
-                vslist.Add(this._points3d[((i + 1) % 4 + 4) % 8]);
-                vslist.Add(this._points3d[(i + 1) % 4]);
-                this._planes[r++] = new Plane3D(vslist);
+                vslist.Add(this._points3d[(i + _nSideFaces) % n]);
+                vslist.Add(this._points3d[((i + 1) % _nSideFaces + _nSideFaces) % n]);
+                vslist.Add(this._points3d[(i + 1) % _nSideFaces]);
+                this._planes[r++] = new Polygon3D(vslist);
+            }
+        }// createPlanes
+
+        public static Primitive CreateCuboid(Vector3d center, Vector3d scale)
+        {
+            Vector3d off = scale;
+            Vector3d[] top = new Vector3d[4] {
+				new Vector3d(center + new Vector3d(-off.x, -off.y, off.z)),
+				new Vector3d(center + new Vector3d(off.x, -off.y, off.z)),
+				new Vector3d(center + new Vector3d(off.x, off.y, off.z)),
+				new Vector3d(center + new Vector3d(-off.x, off.y, off.z))};
+            Vector3d[] bot = new Vector3d[4] {
+				new Vector3d(center - off),
+				new Vector3d(center + new Vector3d(off.x, -off.y, -off.z)),
+				new Vector3d(center + new Vector3d(off.x, off.y, -off.z)),
+				new Vector3d(center + new Vector3d(-off.x, off.y, -off.z))};
+            Polygon3D p1 = new Polygon3D(top);
+            Polygon3D p2 = new Polygon3D(bot);
+            return new Primitive(p1, p2);
+        }// CreateCuboid
+
+        public static Primitive CreateCylinder(int nslices)
+        {
+            Polygon3D bot = Polygon3D.CreateCircle(nslices, -1);
+            Polygon3D top = Polygon3D.CreateCircle(nslices, 1);
+            return new Primitive(top, bot);
+        }// CreateCylinder
+
+        public void Transform(Matrix4d T)
+        {
+            _center = new Vector3d();
+            for (int i = 0; i < _points3d.Length; ++i)
+            {
+                _points3d[i] = (T * new Vector4d(_points3d[i], 1)).ToVector3D();
+                _center += _points3d[i];
+            }
+            _center /= _points3d.Length;
+            foreach (Polygon3D p in _planes)
+            {
+                p.Transform(T);
+            }
+        }
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            _center = new Vector3d();
+            for (int i = 0; i < _points3d.Length; ++i)
+            {
+                _points3d[i] = (T * new Vector4d(_originPoints3d[i], 1)).ToVector3D();
+                _center += _points3d[i];
+            }
+            _center /= _points3d.Length;
+            foreach (Polygon3D p in _planes)
+            {
+                p.TransformFromOrigin(T);
+            }
+        }
+
+        public void updateOrigin()
+        {
+            _originPoints3d = _points3d.Clone() as Vector3d[];
+            foreach (Polygon3D p in _planes)
+            {
+                p.updateOrigin();
             }
         }
 
@@ -755,14 +863,14 @@ namespace Geometry
             }
         }
 
-        public Plane3D[] _PLANES
+        public Polygon3D[] _PLANES
         {
             get
             {
                 return _planes;
             }
         }
-    }// Prim
+    }// Primitive
 
     public class Ellipsoid
     {

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using Geometry;
+using Accord.Statistics.Analysis;
 
 namespace Component
 {
@@ -16,12 +17,13 @@ namespace Component
     public class Part
     {
         Mesh _mesh = null;
-        Prim _boundingbox = null;
+        Primitive _boundingbox = null;
         List<Part> _jointParts = new List<Part>();
         List<Joint> _joints = new List<Joint>();
         int[] _vertexIndexInParentMesh;
         int[] _faceVIndexInParentMesh;
         double[] _vertexPosInParentMesh;
+        Vector3d[] axes;
 
         public Color _COLOR = Color.LightBlue;
 
@@ -33,7 +35,7 @@ namespace Component
             }
         }
 
-        public Prim _BOUNDINGBOX
+        public Primitive _BOUNDINGBOX
         {
             get
             {
@@ -84,7 +86,7 @@ namespace Component
         public Part(Mesh m)
         {
             _mesh = m;
-            this.calculateBbox();
+            this.fitProxy();
         }
 
         public Part(Mesh m, int[] vIndex, double[] vPos, int[] fIndex)
@@ -112,32 +114,179 @@ namespace Component
             }
             _mesh = new Mesh(vPos, faceVertexIndex);
             _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
-            this.calculateBbox();
+            this.fitProxy();
         }
 
-        public Part(Mesh m, Prim bbox)
+        public Part(Mesh m, Primitive bbox)
         {
             _mesh = m;
             _boundingbox = bbox;
             _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
+            this.fitProxy();
         }
 
+        public void fitProxy()
+        {
+            int n = this._mesh.VertexCount;
+            double[,] vArray = new double[n, 3];
+            Vector3d center = new Vector3d();
+            for (int i = 0, j = 0; i < n; ++i, j += 3)
+            {
+                vArray[i, 0] = this._mesh.VertexPos[j];
+                vArray[i, 1] = this._mesh.VertexPos[j + 1];
+                vArray[i, 2] = this._mesh.VertexPos[j + 2];
+                center += new Vector3d(vArray[i, 0], vArray[i, 1], vArray[i, 2]);
+            }
+            center /= n;
+            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
+            pca.Compute();
+            axes = new Vector3d[3];
+            if (pca.Components.Count < 3)
+            {
+                // using axis aligned axes
+                axes[0] = Vector3d.XCoord;
+                axes[1] = Vector3d.YCoord;
+                axes[2] = Vector3d.ZCoord;
+                this.calculateAxisAlignedBbox();
+            }
+            else
+            {
+                axes[0] = new Vector3d(pca.Components[0].Eigenvector).normalize();
+                axes[1] = new Vector3d(pca.Components[1].Eigenvector).normalize();
+                axes[2] = new Vector3d(pca.Components[2].Eigenvector).normalize();
+                double[,] trans = pca.Transform(this._mesh.VertexArray, 3);
+                double max_x = double.MinValue;
+                double max_y = double.MinValue;
+                double max_z = double.MinValue;
+                double min_x = double.MaxValue;
+                double min_y = double.MaxValue;
+                double min_z = double.MaxValue;
+                for (int i = 0, j = 0; i < n; ++i, j += 3)
+                {
+                    // compute the min max x,y,z
+                    if (max_x < trans[i, 0]) max_x = trans[i, 0];
+                    if (min_x > trans[i, 0]) min_x = trans[i, 0];
+                    if (max_y < trans[i, 1]) max_y = trans[i, 1];
+                    if (min_y > trans[i, 1]) min_y = trans[i, 1];
+                    if (max_z < trans[i, 2]) max_z = trans[i, 2];
+                    if (min_z > trans[i, 2]) min_z = trans[i, 2];
+                }
+
+                // shift the center point
+                double shiftX = (max_x + min_x) / 2;
+                double scaleX = (max_x - min_x) / 2;
+                double shiftY = (max_y + min_y) / 2;
+                double scaleY = (max_y - min_y) / 2;
+                double shiftZ = (max_z + min_z) / 2;
+                double scaleZ = (max_z - min_z) / 2;
+
+                center += (axes[0] * shiftX + axes[1] * shiftY + axes[2] * shiftZ);
+                Vector3d scale = new Vector3d(scaleX, scaleY, scaleZ);
+
+                Primitive cuboid = fitCuboid(center, scale, axes);
+                Primitive cylinder = fitCylinder(center, scale, axes);
+                if (cuboid.fittingError <= cylinder.fittingError)
+                {
+                    _boundingbox = cuboid;
+                }
+                else
+                {
+                    _boundingbox = cylinder;
+                }
+            }
+        }// calPrincipalAxes
+
+        public Primitive fitCuboid(Vector3d center, Vector3d scale, Vector3d[] axes)
+        {
+            ConvexHull hull = new ConvexHull(this._mesh);
+            // compute box fitting error
+            double boxVolume = scale.x * scale.y * scale.z * 8; // scale.x * 2, etc.
+            double boxFitError = 1 - hull.Volume / boxVolume;
+
+            if (axes[2].Dot(axes[0].Cross(axes[1])) < 0)
+                axes[2] = (new Vector3d() - axes[2]).normalize();
+
+            Primitive proxy = Primitive.CreateCuboid(new Vector3d(), new Vector3d(1, 1, 1));
+
+            Matrix4d T = Matrix4d.TranslationMatrix(center);
+            Matrix4d S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
+
+            Matrix3d r = new Matrix3d(axes[0], axes[1], axes[2]);
+            Matrix4d R = new Matrix4d(r);
+            R[3, 3] = 1.0;
+
+            proxy.Transform(T * R * S);
+            proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
+            proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
+            proxy.originScale = proxy.scale = scale;
+            proxy.fittingError = boxFitError;
+            proxy.type = Common.PrimType.Cuboid;
+            proxy.updateOrigin();
+            return proxy;
+        }// FitCuboid
+
+        public Primitive fitCylinder(Vector3d center, Vector3d scale, Vector3d[] axes)
+        {
+            ConvexHull hull = new ConvexHull(this._mesh);
+            // compute cylinder fitting error, iterate through each axis
+            int whichaxis = 0;
+            double minCylFitError = 1e8;
+            double idealClyRadius = 0, clyAxisLen = 0;
+            for (int ax = 0; ax < 3; ++ax)
+            {
+                int i = (ax + 1) % 3;
+                int j = (ax + 2) % 3;
+                double cylRadius = Math.Max(scale[i], scale[j]);
+
+                // volume
+                double cylVolume = cylRadius * cylRadius * Math.PI * scale[ax] * 2;
+                double cylFitError = 1 - hull.Volume / cylVolume;
+                if (minCylFitError > cylFitError)
+                {
+                    minCylFitError = cylFitError;
+                    whichaxis = ax;
+                    idealClyRadius = cylRadius;
+                    clyAxisLen = scale[ax];
+                }
+            }
+            Primitive proxy = Primitive.CreateCylinder(20); // upright unit-scale cylinder
+            Matrix4d T = Matrix4d.TranslationMatrix(center);
+            Matrix4d S = Matrix4d.ScalingMatrix(idealClyRadius, idealClyRadius, clyAxisLen);
+            Matrix4d R = Matrix4d.IdentityMatrix();
+            Vector3d zaxis = new Vector3d(0, 0, 1);
+            Vector3d rot_axis = zaxis.Cross(axes[whichaxis]).normalize();
+            if (!double.IsNaN(rot_axis.x))
+            {
+                double angle = Math.Acos(zaxis.Dot(axes[whichaxis]));
+                R = Matrix4d.RotationMatrix(rot_axis, angle);
+            }
+
+            proxy.Transform(T * R * S);
+            proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
+            proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
+            proxy.originScale = proxy.scale = scale;
+            proxy.fittingError = minCylFitError;
+            proxy.type = Common.PrimType.Cylinder;
+            proxy.updateOrigin();
+            return proxy;
+        }// FitCylinder
 
         public void Transform(Matrix4d T)
         {
             _mesh.Transform(T);
-            this.calculateBbox();
+            _boundingbox.Transform(T);
         }
 
         public void TransformFromOrigin(Matrix4d T)
         {
             _mesh.TransformFromOrigin(T);
-            this.calculateBbox();
+            _boundingbox.TransformFromOrigin(T);
         }
 
         public void updateOriginPos()
         {
             _mesh.updateOriginPos();
+            _boundingbox.updateOrigin();
         }
 
         public Object Clone()
@@ -148,7 +297,7 @@ namespace Component
             return p;
         }
 
-        public void calculateBbox()
+        public void calculateAxisAlignedBbox()
         {
             if (_mesh == null)
             {
@@ -156,7 +305,7 @@ namespace Component
             }
             Vector3d maxv = _mesh.MaxCoord;
             Vector3d minv = _mesh.MinCoord;
-            _boundingbox = new Prim(minv, maxv);
+            _boundingbox = new Primitive(minv, maxv);
         }
 
         public void addAJoint(Part p, Joint j)

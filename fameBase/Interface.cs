@@ -466,5 +466,23 @@ namespace FameBase
             }
         }
 
+        private void graphToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.graphToolStripMenuItem.Checked = !this.graphToolStripMenuItem.Checked;
+            this.glViewer.setRenderOption(5);
+        }
+
+        private void addEdgeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.addAnEdge();
+            this.glViewer.Refresh();
+        }
+
+        private void delEdgeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.deleteAnEdge();
+            this.glViewer.Refresh();
+        }
+
 	}// Interface
 }// namespace

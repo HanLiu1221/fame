@@ -70,7 +70,7 @@ namespace FameBase
             Vector3d[] groundPoints = new Vector3d[4] {
                 new Vector3d(-1, -0.5, -1), new Vector3d(-1, -0.5, 1),
                 new Vector3d(1, -0.5, 1), new Vector3d(1, -0.5, -1)};
-            _groundPlane = new Plane3D(groundPoints);
+            _groundPlane = new Polygon3D(groundPoints);
         }
 
         // modes
@@ -84,6 +84,7 @@ namespace FameBase
         private bool drawEdge = false;
         private bool drawFace = true;
         private bool drawBbox = true;
+        private bool isDrawGraph = true;
         private bool isDrawAxes = false;
         private bool isDrawQuad = false;
 
@@ -176,12 +177,13 @@ namespace FameBase
         public bool drawGround = false;
         private Vector3d[] _axes;
         private Vector3d[] _editAxes;
-        private Plane3D _groundPlane;
+        private Polygon3D _groundPlane;
         int _hightlightAxis = -1;
         ArcBall _editArcBall;
         ArcBall _bodyArcBall;
         bool _isRightClick = false;
         bool _isDrawTranslucentHumanPose = true;
+        Graph _currGraph;
 
         /******************** Functions ********************/
 
@@ -505,7 +507,7 @@ namespace FameBase
                     }
                 }
                 pm.afterUpdatePos();
-                p.calculateBbox();
+                p.fitProxy();
                 p.updateOriginPos();
             }
 
@@ -653,7 +655,7 @@ namespace FameBase
                     {
                         pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
                     }
-                    Prim prim = new Prim(pnts);
+                    Primitive prim = new Primitive(pnts);
                     // mesh loc:
                     s = sr.ReadLine().Trim();
                     while (s.Length > 0 && s[0] == '%')
@@ -683,6 +685,7 @@ namespace FameBase
             this.foldername = Path.GetDirectoryName(filename);
             this.clearHighlights();
             _currModel = this.loadOnePartBasedModel(filename);
+            _currGraph = new Graph(_currModel);
             this.Refresh();
         }// loadAPartBasedModel
 
@@ -820,7 +823,7 @@ namespace FameBase
             Vector2d min_coord = Vector2d.MaxCoord();
             foreach (Part p in this._currModel._PARTS)
             {
-                Prim box = p._BOUNDINGBOX;
+                Primitive box = p._BOUNDINGBOX;
                 for (int i = 0; i < box._POINTS3D.Length; ++i)
                 {
                     Vector2d v2 = this.camera.Project(box._POINTS3D[i]).ToVector2d();
@@ -1029,6 +1032,9 @@ namespace FameBase
                     break;
                 case 4:
                     this.drawBbox = !this.drawBbox;
+                    break;
+                case 5:
+                    this.isDrawGraph = !this.isDrawGraph;
                     break;
                 case 3:
                 default:
@@ -1898,6 +1904,34 @@ namespace FameBase
             return Matrix4d.TranslationMatrix(move);
         }// calTranslation
 
+        public void addAnEdge()
+        {
+            if (_selectedParts.Count != 2)
+            {
+                return;
+            }
+            int i = _currModel._PARTS.IndexOf(_selectedParts[0]);
+            int j = _currModel._PARTS.IndexOf(_selectedParts[1]);
+            if (i != -1 && j != -1)
+            {
+                _currGraph.addAnEdge(_currModel._PARTS[i], _currModel._PARTS[j]);
+            }
+        }// addAnEdge
+
+        public void deleteAnEdge()
+        {
+            if (_selectedParts.Count != 2)
+            {
+                return;
+            }
+            int i = _currModel._PARTS.IndexOf(_selectedParts[0]);
+            int j = _currModel._PARTS.IndexOf(_selectedParts[1]);
+            if (i != -1 && j != -1)
+            {
+                _currGraph.deleteAnEdge(_currModel._PARTS[i], _currModel._PARTS[j]);
+            }
+        }// deleteAnEdge
+
         public void loadHuamPose(string filename)
         {
             _currHumanPose = this.loadAHumanPose(filename);
@@ -2131,6 +2165,11 @@ namespace FameBase
                 this.drawParts();
             }
 
+            if (_currGraph != null && this.isDrawGraph)
+            {
+                this.drawGraph(_currGraph);
+            }
+
             this.drawAllMeshes();
 
             this.drawHumanPose();
@@ -2147,6 +2186,18 @@ namespace FameBase
             Gl.glPopMatrix();
             
         }// Draw3D   
+
+        private void drawGraph(Graph g)
+        {
+            foreach (Node node in g._NODES)
+            {
+                GLDrawer.drawSphere(node._pos, 0.1, node._PART._COLOR);
+            }
+            foreach (Edge e in g._EDGES)
+            {
+                GLDrawer.drawLines3D(e._start._pos, e._end._pos, Color.Gray, 4.0f);
+            }
+        }// drawGraph
 
         private void drawAllMeshes()
         {
@@ -2199,7 +2250,10 @@ namespace FameBase
                 if (this.drawBbox)
                 {
                     GLDrawer.drawBoundingboxPlanes(part._BOUNDINGBOX, part._COLOR);
-                    GLDrawer.drawBoundingboxEdges(part._BOUNDINGBOX, part._COLOR);
+                    if (part._BOUNDINGBOX.type == Common.PrimType.Cuboid)
+                    {
+                        GLDrawer.drawBoundingboxEdges(part._BOUNDINGBOX, part._COLOR);
+                    }
                 }
             }
         }//drawParts

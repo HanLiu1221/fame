@@ -237,7 +237,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_POINT_SMOOTH);
         }
 
-        public static void drawPlane(Plane3D plane, Color c)
+        public static void drawPlane(Polygon3D plane, Color c)
         {
             if (plane.points3d == null) return;
             Gl.glColor3ub(c.R, c.G, c.B);
@@ -249,7 +249,7 @@ namespace FameBase
             Gl.glEnd();
         }
 
-        public static void drawPlane2D(Plane3D plane)
+        public static void drawPlane2D(Polygon3D plane)
         {
             if (plane.points2d == null) return;
             Gl.glColor3ub(0, 0, 255);
@@ -420,7 +420,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
         }
 
-        public static void drawQuad3d(Plane3D q, Color c)
+        public static void drawQuad3d(Polygon3D q, Color c)
         {
             Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
             Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
@@ -508,7 +508,7 @@ namespace FameBase
             Gl.glEnable(Gl.GL_CULL_FACE);
         }// drawQuadTranslucent3d
 
-        public static void drawQuadTranslucent3d(Plane3D q, Color c)
+        public static void drawQuadTranslucent3d(Polygon3D q, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
             Gl.glEnable(Gl.GL_BLEND);
@@ -517,7 +517,7 @@ namespace FameBase
             // face
             Gl.glColor4ub(c.R, c.G, c.B, 100);
             Gl.glBegin(Gl.GL_POLYGON);
-            for (int i = 0; i < 4; ++i)
+            for (int i = 0; i < q.points3d.Length; ++i)
             {
                 Gl.glVertex3dv(q.points3d[i].ToArray());
             }
@@ -526,7 +526,7 @@ namespace FameBase
             Gl.glEnable(Gl.GL_CULL_FACE);
         }
 
-        public static void drawQuadEdge3d(Plane3D q, Color c)
+        public static void drawQuadEdge3d(Polygon3D q, Color c)
         {
             for (int i = 0; i < 4; ++i)
             {
@@ -715,7 +715,7 @@ namespace FameBase
             //Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         }
 
-        public static void drawBoundingboxWithEdges(Prim box, Color planeColor, Color lineColor)
+        public static void drawBoundingboxWithEdges(Primitive box, Color planeColor, Color lineColor)
         {
             if (box == null) return;
             if (box._PLANES != null)
@@ -732,7 +732,7 @@ namespace FameBase
             }
         }// drawBoundingboxWithEdges
 
-        public static void drawBoundingboxPlanes(Prim box, Color c)
+        public static void drawBoundingboxPlanes(Primitive box, Color c)
         {
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
@@ -741,7 +741,7 @@ namespace FameBase
             }
         }// drawBoundingboxPlanes
 
-        public static void drawBoundingboxEdges(Prim box, Color c)
+        public static void drawBoundingboxEdges(Primitive box, Color c)
         {
             if (box == null) return;
             if (box._PLANES != null)
@@ -757,7 +757,7 @@ namespace FameBase
             }
         }// drawBoundingboxWithEdges
 
-        public static void drawBoundingboxWithoutBlend(Prim box, Color c)
+        public static void drawBoundingboxWithoutBlend(Primitive box, Color c)
         {
             if (box == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)

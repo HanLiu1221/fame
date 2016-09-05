@@ -253,7 +253,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_COLOR_MATERIAL);
         }
 
-        private void drawBoundingbox(Prim box, Color c)
+        private void drawBoundingbox(Primitive box, Color c)
         {
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
@@ -262,7 +262,7 @@ namespace FameBase
             }
         }// drawBoundingbox
 
-        private void drawQuad3d(Plane3D q, Color c)
+        private void drawQuad3d(Polygon3D q, Color c)
         {
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -277,7 +277,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_BLEND);
         }
 
-        private void drawQuadTranslucent3d(Plane3D q, Color c)
+        private void drawQuadTranslucent3d(Polygon3D q, Color c)
         {
             Gl.glDisable(Gl.GL_LIGHTING);
 

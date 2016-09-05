@@ -95,6 +95,9 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Accord.Statistics">
+      <HintPath>bin\Dlls\Accord.Statistics.dll</HintPath>
+    </Reference>
     <Reference Include="alglibnet2, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>bin\Dlls\alglibnet2.dll</HintPath>
@@ -137,9 +140,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Component\Graph.cs" />
     <Compile Include="Component\HumanPose.cs" />
     <Compile Include="Component\Part.cs" />
     <Compile Include="Geometry\Common.cs" />
+    <Compile Include="Geometry\ConvexHull.cs" />
     <Compile Include="Geometry\JsonFile.cs" />
     <Compile Include="Geometry\Polygon.cs" />
     <Compile Include="Geometry\SparseMatrix.cs" />
