@@ -100,7 +100,6 @@ namespace Component
             {
                 _nodes.Add(new Node(_model._PARTS[i], i));
             }
-            double thr = 0.1;
             for (int i = 0; i < _model._NPARTS - 1; ++i)
             {
                 Part ip = _model._PARTS[i];
@@ -110,7 +109,7 @@ namespace Component
                     // measure the relation between ip and jp
                     Vector3d contact;
                     double mind = getDistBetweenMeshes(ip._MESH, jp._MESH, out contact);
-                    if (mind < thr)
+                    if (mind < Common._thresh)
                     {
                         Edge e = new Edge(_nodes[i], _nodes[j], contact);
                         _edges.Add(e);
@@ -251,6 +250,19 @@ namespace Component
             return edges;
         }// collectOutgoingEdges
 
+        public void resetUpdateStatus()
+        {
+            foreach (Node node in _nodes)
+            {
+                node.updated = false;
+                node._allNeigborUpdated = false;
+            }
+            foreach (Edge e in _edges)
+            {
+                e._contactUpdated = false;
+            }
+        }// resetEdgeContactStatus
+
         public Model _MODEL
         {
             get
@@ -283,6 +295,8 @@ namespace Component
         public List<Node> _adjNodes;
         public Vector3d _pos;
         public bool _isGroundTouching = false;
+        public bool updated = false;
+        public bool _allNeigborUpdated = false;
 
         public Node(Part p, int idx)
         {
@@ -321,6 +335,23 @@ namespace Component
             _pos = p._BOUNDINGBOX.CENTER;
         }
 
+        public bool isAllNeighborsUpdated()
+        {
+            if (_allNeigborUpdated)
+            {
+                return true;
+            }
+            foreach (Node node in _adjNodes)
+            {
+                if (!node.updated)
+                {
+                    return false;
+                }
+            }
+            _allNeigborUpdated = true;
+            return true;
+        }// isAllNeighborsUpdated
+
         public Part _PART
         {
             get
@@ -346,13 +377,16 @@ namespace Component
     {
         public Node _start;
         public Node _end;
+        public Vector3d _originContact;
         public Vector3d _contact;
+        public bool _contactUpdated = false;
         public Common.NodeRelationType _type;
         
         public Edge(Node a, Node b, Vector3d contact)
         {
             _start = a;
             _end = b;
+            _originContact = new Vector3d(contact);
             _contact = contact;
         }
 
@@ -368,5 +402,14 @@ namespace Component
                 this._type = Common.NodeRelationType.Orthogonal;
             }
         }// analyzeEdgeType
+
+        public void TransformContact(Matrix4d T)
+        {
+            _originContact = new Vector3d(_contact);
+            _contact = (T * new Vector4d(_contact, 1)).ToVector3D();
+            _contactUpdated = true;
+        }
+
+
     }// Edge
 }// namespace

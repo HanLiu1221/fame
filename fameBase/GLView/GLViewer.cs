@@ -170,6 +170,7 @@ namespace FameBase
         List<Node> _selectedNodes = new List<Node>();
         List<ModelViewer> _modelViewers = new List<ModelViewer>();
         List<ModelViewer> _partViewers = new List<ModelViewer>();
+        List<ModelViewer> _resViewers = new List<ModelViewer>();
         HumanPose _currHumanPose;
         List<HumanPose> _humanposes = new List<HumanPose>();
         BodyNode _selectedNode;
@@ -611,11 +612,13 @@ namespace FameBase
                     Part ipart = _currModel._PARTS[i];
                     foreach (Vector3d v in ipart._BOUNDINGBOX._POINTS3D)
                     {
-                        sw.Write(string.Format("{0:0.###}", v.x) + " " +
-                            string.Format("{0:0.###}", v.y) + " " +
-                            string.Format("{0:0.###}", v.z) + " ");
+                        sw.Write(vector3dToString(v) + " ");
                     }
                     sw.WriteLine();
+                    // principal axes
+                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.x) + " ");
+                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.y) + " ");
+                    sw.WriteLine(vector3dToString(ipart._BOUNDINGBOX.coordSys.z));
                     // save mesh
                     string meshName = "part_" + i.ToString() + ".obj";
                     this.saveObj(ipart._MESH, meshDir + meshName);
@@ -629,7 +632,16 @@ namespace FameBase
             }
         }// saveAPartBasedModel
 
-        private Model loadOnePartBasedModel(string filename)
+        private string vector3dToString(Vector3d v)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append(string.Format("{0:0.###}", v.x) + " " +
+                            string.Format("{0:0.###}", v.y) + " " +
+                            string.Format("{0:0.###}", v.z));
+            return sb.ToString();
+        }// vector3dToString
+
+        private Model loadOnePartBasedModel(string filename, bool fit)
         {
             using (StreamReader sr = new StreamReader(filename))
             {
@@ -669,8 +681,20 @@ namespace FameBase
                         pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
                     }
                     Primitive prim = new Primitive(pnts);
-                    // mesh loc:
+                    // coord system
                     s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    if (strs.Length == 9)
+                    {
+                        pnts = new Vector3d[3];
+                        for (int j = 0, k = 0; j < 3; ++j)
+                        {
+                            pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
+                        }
+                        prim.coordSys = new CoordinateSystem(prim.CENTER, pnts[0], pnts[1], pnts[2]);
+                        s = sr.ReadLine().Trim();
+                    }
+                    // mesh loc:                    
                     while (s.Length > 0 && s[0] == '%')
                     {
                         s = sr.ReadLine().Trim();
@@ -682,10 +706,10 @@ namespace FameBase
                         return null;
                     }
                     Mesh mesh = new Mesh(meshFile, false);
-                    Part part = new Part(mesh, prim);
+                    Part part = new Part(mesh, prim, fit);
                     parts.Add(part);
                 }
-                return (new Model(parts));
+                return (new Model(parts, fit));
             }
         }// loadOnePartBasedModel
 
@@ -698,7 +722,7 @@ namespace FameBase
             }
             this.foldername = Path.GetDirectoryName(filename);
             this.clearHighlights();
-            _currModel = this.loadOnePartBasedModel(filename);
+            _currModel = this.loadOnePartBasedModel(filename, true);
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
             _currGraph = loadAGrapph(_currModel, graphName);
             if (_currGraph == null)
@@ -722,7 +746,7 @@ namespace FameBase
             }
             foreach (string file in filenames)
             {
-                Model m = loadOnePartBasedModel(file);
+                Model m = loadOnePartBasedModel(file, true);
                 foreach (Part p in m._PARTS)
                 {
                     _currModel.addAPart(p);
@@ -747,7 +771,7 @@ namespace FameBase
                 {
                     continue;
                 }
-                Model m = loadOnePartBasedModel(file);
+                Model m = loadOnePartBasedModel(file, false);
                 if (m != null)
                 {
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
@@ -834,7 +858,7 @@ namespace FameBase
             }
         }// saveAGrapph
 
-        private void refreshModelViewers()
+        public void refreshModelViewers()
         {
             // view the same as the main view
             foreach (ModelViewer mv in _modelViewers)
@@ -842,6 +866,10 @@ namespace FameBase
                 mv.Refresh();
             }
             foreach (ModelViewer mv in _partViewers)
+            {
+                mv.Refresh();
+            }
+            foreach (ModelViewer mv in _resViewers)
             {
                 mv.Refresh();
             }
@@ -1101,13 +1129,151 @@ namespace FameBase
             }
         }
 
-        public List<ModelViewer> generate()
+        public List<ModelViewer> mutate(int ntimes)
+        {
+            if (_currGraph == null)
+            {
+                return null;
+            }
+            _resViewers = new List<ModelViewer>();
+            int n = _currGraph._NODES.Count < ntimes ? _currGraph._NODES.Count : ntimes;
+            bool[] mutated = new bool[_currGraph._NODES.Count];
+            Random rand = new Random();
+            double s1 = 0.5;
+            double s2 = 2.0;
+            for (int i = 0; i < n; ++i)
+            {
+                int j = rand.Next(_currGraph._NODES.Count);
+                while (mutated[j])
+                {
+                    j = rand.Next(_currGraph._NODES.Count);
+                }
+                Graph graph = _currGraph.Clone() as Graph;
+                Node updateNode = graph._NODES[j];
+                int axis = rand.Next(3);
+                double scale = s1 + rand.NextDouble() * (s2 - s1);
+                Vector3d sv = new Vector3d(1, 1, 1);
+                sv[axis] = scale;
+                Matrix4d S = Matrix4d.ScalingMatrix(sv);
+                
+                Vector3d center = graph._NODES[j]._pos;
+                Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+                updateNode.Transform(Q);
+                updateNode.updated = true;
+                foreach (Edge e in updateNode._edges)
+                {
+                    e.TransformContact(Q);
+                }
+                deformPropagation(graph, updateNode);
+                graph.resetUpdateStatus();
+                _resViewers.Add(new ModelViewer(graph, this));
+            }
+            return _resViewers;
+        }// mutate
+
+        private void deformPropagation(Graph graph, Node edited)
+        {
+            Node activeNode = edited;
+            while (activeNode != null)
+            {
+                int maxNumUpdatedContacts = -1;
+                activeNode = null;
+                foreach (Node node in graph._NODES)
+                {
+                    if (node.updated && !node.isAllNeighborsUpdated())
+                    {
+                        int nUpdatedContacts = 0;
+                        foreach (Edge e in node._edges)
+                        {
+                            if (e._contactUpdated)
+                            {
+                                ++nUpdatedContacts;
+                            }
+                        }
+                        if (nUpdatedContacts > maxNumUpdatedContacts)
+                        {
+                            maxNumUpdatedContacts = nUpdatedContacts;
+                            activeNode = node;
+                        }
+                    }
+                }// foreach
+                if (activeNode != null)
+                {
+                    // deform all neighbors
+                    activeNode._allNeigborUpdated = true;
+                    // deoform from the most updated one
+                    Node toUpdate = activeNode;
+                    while (toUpdate != null)
+                    {
+                        int nMatxUpdatedContacts = -1;
+                        toUpdate = null;
+                        foreach (Node node in activeNode._adjNodes)
+                        {
+                            int nUpdatedContacts = 0;
+                            if (node.updated)
+                            {
+                                continue;
+                            }
+                            foreach (Edge e in node._edges)
+                            {
+                                if (e._contactUpdated)
+                                {
+                                    ++nUpdatedContacts;
+                                }
+                            }
+                            if (nUpdatedContacts > nMatxUpdatedContacts)
+                            {
+                                nMatxUpdatedContacts = nUpdatedContacts;
+                                toUpdate = node;
+                            }
+                        }
+                        if (toUpdate != null)
+                        {
+                            deformNode(toUpdate);
+                        }
+                    }
+                }
+            }// while
+        }// deformPropagation
+
+        private void deformNode(Node node)
+        {
+            List<Vector3d> sources = new List<Vector3d>();
+            List<Vector3d> targets = new List<Vector3d>();
+            foreach (Edge e in node._edges)
+            {
+                if (e._contactUpdated)
+                {
+                    sources.Add(e._originContact);
+                    targets.Add(e._contact);
+                }
+            }
+            if (sources.Count == 1 && node._isGroundTouching)
+            {
+                sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
+                targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
+            }
+            Matrix4d T, S, Q;
+            getTransformation(sources, targets, out S, out T, out Q);
+            node.Transform(Q);
+            node.updated = true;
+            foreach (Edge e in node._edges)
+            {
+                if (e._contactUpdated)
+                {
+                    continue;
+                }
+                e.TransformContact(Q);
+            }
+        }// deformNode
+
+        public List<ModelViewer> crossOver()
         {
             if (_modelViewers.Count != 2)
             {
                 return null;
             }
-            List<ModelViewer> modelViews = new List<ModelViewer>();
+            _resViewers = new List<ModelViewer>();
             Graph g1 = _modelViewers[0]._GRAPH;
             Graph g2 = _modelViewers[1]._GRAPH;
             List<Node> nodes1 = new List<Node>();
@@ -1136,10 +1302,11 @@ namespace FameBase
             switchNodes(g1, g2, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
             
             newG1.replaceNodes(nodes1, updatedNodes2);
-            modelViews.Add(new ModelViewer(newG1, this));
+            _resViewers.Add(new ModelViewer(newG1, this));
             newG2.replaceNodes(nodes2, updatedNodes1);
-            modelViews.Add(new ModelViewer(newG2, this));
-            return modelViews;
+            _resViewers.Add(new ModelViewer(newG2, this));
+
+            return _resViewers;
         }// generate
 
         private void findOneToOneMatchingNodes(Graph g1, Graph g2, out List<Node> nodes1, out List<Node> nodes2)
@@ -1222,6 +1389,7 @@ namespace FameBase
                         }
                     }
                     trt.Add(right[j]);
+                    visited[j] = true;
                 }
                 if (startWithSrc)
                 {
@@ -1243,7 +1411,7 @@ namespace FameBase
 
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
-            if (ground1 != null && ground2 != null)
+            if (sources.Count == 1 && ground1 != null && ground2 != null)
             {
                 sources.Add(new Vector3d(center1.x, 0, center1.z));
                 targets.Add(new Vector3d(center2.x, 0, center2.z));
@@ -1421,10 +1589,6 @@ namespace FameBase
 
                 if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
 
-                //Program.OutputText("trans: " + trans.x + " " + trans.y + " " + trans.z, true);
-                //Program.OutputText("scale: " + scale.x + " " + scale.y + " " + scale.z, true);
-
-                //// check error
                 S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
                 Q = Matrix4d.TranslationMatrix(t2) * S * Matrix4d.TranslationMatrix(new Vector3d() - t1);
             }
@@ -1885,7 +2049,7 @@ namespace FameBase
                 default:
                     {
                         this.viewMouseUp();
-                        //this.Refresh();
+                        this.refreshModelViewers();
                         break;
                     }
             }
@@ -2532,6 +2696,10 @@ namespace FameBase
                 mv.setModelViewMatrix(m);
             }
             foreach (ModelViewer mv in _partViewers)
+            {
+                mv.setModelViewMatrix(m);
+            }
+            foreach (ModelViewer mv in _resViewers)
             {
                 mv.setModelViewMatrix(m);
             }

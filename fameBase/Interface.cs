@@ -161,7 +161,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\fameBase\data\modelAndInteractions\test" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\fameBase\data\modelAndInteractions\test_chiar_table" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -486,22 +486,44 @@ namespace FameBase
             this.glViewer.Refresh();
         }
 
-        private void generateToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            List<ModelViewer> modelViews = this.glViewer.generate();
-            if (modelViews != null)
-            {
-                foreach (ModelViewer mv in modelViews)
-                {
-                    this.partBasket.Controls.Add(mv);
-                }
-            }
-        }
-
         private void selectToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.setSelectedNodes();
         }
 
+        private void crossoverToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<ModelViewer> modelViews = this.glViewer.crossOver();
+            this.partBasket.Controls.Clear();
+            if (modelViews != null)
+            {
+                foreach (ModelViewer mv in modelViews)
+                {
+                    addModelViewerToRightPanel(mv);
+                }
+            }
+        }
+
+        private void mutateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<ModelViewer> modelViews = this.glViewer.mutate(10);
+            this.partBasket.Controls.Clear();
+            if (modelViews != null)
+            {
+                foreach (ModelViewer mv in modelViews)
+                {
+                    addModelViewerToRightPanel(mv);
+                }
+            }
+        }
+
+        private void addModelViewerToRightPanel(ModelViewer mv)
+        {
+            mv.Width = 200;
+            mv.Height = 200;
+            mv.BorderStyle = BorderStyle.FixedSingle;
+            mv.BackColor = Color.White;
+            this.partBasket.Controls.Add(mv);
+        }
 	}// Interface
 }// namespace

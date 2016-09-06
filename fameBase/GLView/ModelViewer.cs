@@ -203,7 +203,7 @@ namespace FameBase
             foreach (Part part in _model._PARTS)
             {
                 GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
-                this.drawBoundingbox(part._BOUNDINGBOX, part._COLOR);
+                //this.drawBoundingbox(part._BOUNDINGBOX, part._COLOR);
             }
         }//drawParts
 

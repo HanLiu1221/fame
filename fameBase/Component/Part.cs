@@ -117,12 +117,15 @@ namespace Component
             this.fitProxy();
         }
 
-        public Part(Mesh m, Primitive bbox)
+        public Part(Mesh m, Primitive bbox, bool fit)
         {
             _mesh = m;
             _boundingbox = bbox;
             _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
-            this.fitProxy();
+            if (fit)
+            {
+                this.fitProxy();
+            }
         }
 
         public void fitProxy()
@@ -332,6 +335,15 @@ namespace Component
         {
             _parts = parts;
             unify();
+        }
+
+        public Model(List<Part> parts, bool needsUnify)
+        {
+            _parts = parts;
+            if (needsUnify)
+            {
+                unify();
+            }
         }
 
         public Model(Mesh mesh)
