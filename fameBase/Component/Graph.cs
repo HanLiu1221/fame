@@ -10,6 +10,10 @@ namespace Component
         Model _model;
         List<Node> _nodes = new List<Node>();
         List<Edge> _edges = new List<Edge>();
+        // test
+        public List<Node> selectedNodes;
+
+        public Graph() { }
 
         public Graph(Model m, bool auto)
         {
@@ -18,12 +22,7 @@ namespace Component
             {
                 buildGraph();
             }
-        }// Graph
-
-        public Graph(List<Node> nodes, List<Edge> edges)
-        {
-            _nodes = nodes;
-            _edges = edges;
+            markGroundTouchingNodes();
         }// Graph
 
         public void setModel(Model m)
@@ -33,11 +32,61 @@ namespace Component
 
         public Object Clone()
         {
-            List<Node> nodes = new List<Node>();
-            List<Edge> edges = new List<Edge>();
-            Graph cloned = new Graph(nodes, edges);
+            List<Part> parts = new List<Part>();
+            Graph cloned = new Graph();
+            for (int i = 0; i < _model._NPARTS; ++i)
+            {
+                Node cn = _nodes[i].Clone() as Node;
+                cloned.addANode(cn);
+                parts.Add(cn._PART);
+            }
+            foreach (Edge e in _edges)
+            {
+                int i = e._start._INDEX;
+                int j = e._end._INDEX;
+                Edge ec = new Edge(cloned._nodes[i], cloned._nodes[j], new Vector3d(e._contact));
+                cloned.addEdge(ec);
+            }
+            Model m = new Model(parts);
+            cloned.setModel(m);
             return cloned;
         }
+
+        public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
+        {
+            foreach (Node old in oldNodes)
+            {
+                _nodes.Remove(old);
+                _model.removeAPart(old._PART);
+            }
+            foreach (Node node in newNodes)
+            {
+                _nodes.Add(node);
+                _model.addAPart(node._PART);
+            }
+        }// replaceNodes
+
+        private void markGroundTouchingNodes()
+        {
+            foreach (Node node in _nodes)
+            {
+                double ydist = node._PART._MESH.MinCoord.y;
+                if (Math.Abs(ydist) < Common._thresh)
+                {
+                    node._isGroundTouching = true;
+                }
+            }
+        }// markGroundTouchingNodes
+
+        public void updateANodeMesh(Part p, int idx)
+        {
+            if (idx < 0 || idx > _nodes.Count)
+            {
+                return;
+            }
+            _nodes[idx].setPart(p);
+            _model.setPart(p, idx);
+        }// updateANode
 
         private void buildGraph()
         {
@@ -180,8 +229,35 @@ namespace Component
             return res;
         }// findReplaceableNodes
 
+        public List<Edge> collectOutgoingEdges(List<Node> nodes)
+        {
+            // for the substructure, find out the edges that are to be connected
+            List<Edge> edges = new List<Edge>();
+            foreach (Node node in nodes)
+            {
+                foreach (Edge e in node._edges)
+                {
+                    if (edges.Contains(e))
+                    {
+                        continue;
+                    }
+                    Node other = e._start == node ? e._end : e._start;
+                    if (!nodes.Contains(other))
+                    {
+                        edges.Add(e);
+                    }
+                }
+            }
+            return edges;
+        }// collectOutgoingEdges
 
-
+        public Model _MODEL
+        {
+            get
+            {
+                return _model;
+            }
+        }
         public List<Node> _NODES
         {
             get
@@ -206,6 +282,7 @@ namespace Component
         public List<Edge> _edges;
         public List<Node> _adjNodes;
         public Vector3d _pos;
+        public bool _isGroundTouching = false;
 
         public Node(Part p, int idx)
         {
@@ -226,10 +303,23 @@ namespace Component
 
         public Object Clone()
         {
-            Part clonePart = _part.Clone() as Part;
-            Node cloned = new Node(clonePart, _index);
+            Part p = _part.Clone() as Part;
+            Node cloned = new Node(p, _index);
+            cloned._isGroundTouching = _isGroundTouching;
             return cloned;
         }// Clone
+
+        public void Transform(Matrix4d T)
+        {
+            _part.Transform(T);
+            _pos = _part._BOUNDINGBOX.CENTER;
+        }
+
+        public void setPart(Part p)
+        {
+            _part = p;
+            _pos = p._BOUNDINGBOX.CENTER;
+        }
 
         public Part _PART
         {

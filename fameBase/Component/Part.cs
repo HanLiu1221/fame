@@ -331,6 +331,7 @@ namespace Component
         public Model(List<Part> parts)
         {
             _parts = parts;
+            unify();
         }
 
         public Model(Mesh mesh)
@@ -338,6 +339,50 @@ namespace Component
             _mesh = mesh;
             this.initializeParts();
             //this.mergeNearbyParts();
+        }
+
+        private void unify()
+        {
+            Vector3d maxCoord = Vector3d.MinCoord;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            foreach (Part p in _parts)
+            {
+                maxCoord = Vector3d.Max(maxCoord, p._MESH.MaxCoord);
+                minCoord = Vector3d.Min(minCoord, p._MESH.MinCoord);
+            }
+            Vector3d scale = maxCoord - minCoord;
+            double maxS = scale.x > scale.y ? scale.x : scale.y;
+            maxS = maxS > scale.z ? maxS : scale.z;
+            maxS = 1.0 / maxS;
+            Vector3d center = (maxCoord + minCoord) / 2;
+            center.y = minCoord.y;
+            center = new Vector3d() - center;
+            Matrix4d T = Matrix4d.TranslationMatrix(center);
+            Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
+            Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            foreach (Part p in _parts)
+            {
+                p.Transform(Q);
+            }
+        }// unify
+
+        public void setPart(Part p, int idx)
+        {
+            if (idx < 0 || idx > _parts.Count)
+            {
+                return;
+            }
+            _parts[idx] = p;
+        }
+        public Object Clone()
+        {
+            List<Part> parts = new List<Part>();
+            foreach (Part p in _parts)
+            {
+                parts.Add(p.Clone() as Part);
+            }
+            Model m = new Model(parts);
+            return m;
         }
 
         private void calPartRelations()

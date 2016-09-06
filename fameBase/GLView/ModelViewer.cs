@@ -12,11 +12,21 @@ namespace FameBase
 {
     public class ModelViewer : SimpleOpenGlControl
     {
-        public ModelViewer(Model m, GLViewer glViewer) 
+        public ModelViewer(Model m, Graph g, GLViewer glViewer) 
         {
             this.InitializeComponent();
             this.InitializeContexts();
             _model = m;
+            _graph = g;
+            _mainView = glViewer;
+        }
+
+        public ModelViewer(Graph g, GLViewer glViewer)
+        {
+            this.InitializeComponent();
+            this.InitializeContexts();
+            _graph = g;
+            _model = g._MODEL;
             _mainView = glViewer;
         }
 
@@ -32,6 +42,7 @@ namespace FameBase
         // data read from GLViewer
         GLViewer _mainView;
         Model _model;
+        Graph _graph;
         Matrix4d _modelViewMat = Matrix4d.IdentityMatrix();
         Vector3d _eye = new Vector3d(0, 0, 1.5);
 
@@ -45,10 +56,26 @@ namespace FameBase
             return _model._PARTS;
         }
 
+        public Model _MODEL
+        {
+            get
+            {
+                return _model;
+            }
+        }
+
+        public Graph _GRAPH
+        {
+            get
+            {
+                return _graph;
+            }
+        }
+
         protected override void OnMouseDoubleClick(System.Windows.Forms.MouseEventArgs e)
         {
             base.OnMouseDoubleClick(e);
-            _mainView.setCurrentModel(_model);
+            _mainView.setCurrentModelGraph(_graph);
             Program.GetFormMain().updateStats();
         }
 

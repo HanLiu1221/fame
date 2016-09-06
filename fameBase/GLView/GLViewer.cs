@@ -68,8 +68,8 @@ namespace FameBase
             this.startWid = this.Width;
             this.startHeig = this.Height;
             Vector3d[] groundPoints = new Vector3d[4] {
-                new Vector3d(-1, -0.5, -1), new Vector3d(-1, -0.5, 1),
-                new Vector3d(1, -0.5, 1), new Vector3d(1, -0.5, -1)};
+                new Vector3d(-1, 0, -1), new Vector3d(-1, 0, 1),
+                new Vector3d(1, 0, 1), new Vector3d(1, 0, -1)};
             _groundPlane = new Polygon3D(groundPoints);
         }
 
@@ -165,8 +165,9 @@ namespace FameBase
 
         /******************** Vars ********************/
         Model _currModel;
-        List<Model> _models = new List<Model>();
+        List<Graph> _graphs = new List<Graph>();
         List<Part> _selectedParts = new List<Part>();
+        List<Node> _selectedNodes = new List<Node>();
         List<ModelViewer> _modelViewers = new List<ModelViewer>();
         List<ModelViewer> _partViewers = new List<ModelViewer>();
         HumanPose _currHumanPose;
@@ -295,7 +296,7 @@ namespace FameBase
             this.currMeshClass = null;
             _currModel = null;
             _selectedParts = new List<Part>();
-            _models = new List<Model>();
+            _graphs = new List<Graph>();
             _modelViewers = new List<ModelViewer>();
             _partViewers = new List<ModelViewer>();
             _currHumanPose = null;
@@ -319,8 +320,9 @@ namespace FameBase
             this.meshClasses.Add(mc);
             this.currMeshClass = mc;
             _currModel = new Model(m);
-            _models = new List<Model>();
-            _models.Add(_currModel);
+            _currGraph = new Graph(_currModel, true);
+            _graphs = new List<Graph>();
+            _graphs.Add(_currGraph);
         }// loadMesh
 
         public void importMesh(string filename, bool multiple)
@@ -355,6 +357,13 @@ namespace FameBase
             sb.Append(_selectedParts.Count.ToString());
             sb.Append("\n#human poses: ");
             sb.Append(_humanposes.Count.ToString());
+            if (_currGraph != null)
+            {
+                sb.Append("\n#nodes: ");
+                sb.Append(_currGraph._NODES.Count.ToString());
+                sb.Append("\n#edges: ");
+                sb.Append(_currGraph._EDGES.Count.ToString());
+            }
             return sb.ToString();
         }// getStats
 
@@ -670,6 +679,7 @@ namespace FameBase
                     if (!File.Exists(meshFile))
                     {
                         MessageBox.Show("Mesh does not exist at #" + i.ToString() + ".");
+                        return null;
                     }
                     Mesh mesh = new Mesh(meshFile, false);
                     Part part = new Part(mesh, prim);
@@ -690,7 +700,7 @@ namespace FameBase
             this.clearHighlights();
             _currModel = this.loadOnePartBasedModel(filename);
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
-            _currGraph = loadAGrapph(graphName);
+            _currGraph = loadAGrapph(_currModel, graphName);
             if (_currGraph == null)
             {
                 _currGraph = new Graph(_currModel, true);
@@ -733,24 +743,34 @@ namespace FameBase
             string[] files = Directory.GetFiles(segfolder);
             foreach (string file in files)
             {
+                if (!file.EndsWith("pam"))
+                {
+                    continue;
+                }
                 Model m = loadOnePartBasedModel(file);
                 if (m != null)
                 {
-                    _models.Add(m);
-                    ModelViewer modelViewer = new ModelViewer(_currModel, this);
+                    string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
+                    Graph graph = loadAGrapph(m, graphName);
+                    if (graph == null)
+                    {
+                        graph = new Graph(m, true);
+                    }
+                    _graphs.Add(graph);
+                    ModelViewer modelViewer = new ModelViewer(m, graph, this);
                     _modelViewers.Add(modelViewer);
                 }
             }
-            if (_models.Count > 0)
+            if (_graphs.Count > 0)
             {
-                this.setCurrentModel(_models[_models.Count - 1]);
+                this.setCurrentModelGraph(_graphs[_graphs.Count - 1]);
             }
             return _modelViewers;
         }// loadPartBasedModels
 
-        public Graph loadAGrapph(string filename)
+        public Graph loadAGrapph(Model m, string filename)
         {
-            if (_currModel == null || !File.Exists(filename))
+            if (m == null || !File.Exists(filename))
             {
                 return null;
             }
@@ -759,19 +779,33 @@ namespace FameBase
                 char[] separator = { ' ', '\t' };
                 string s = sr.ReadLine();
                 string[] strs = s.Split(separator);
-                int nEdges = int.Parse(strs[0]);
-                Graph g = new Graph(_currModel, false);
-                for (int i = 0; i < _currModel._NPARTS; ++i)
+                int nNodes = int.Parse(strs[0]);
+                if (nNodes != m._NPARTS)
                 {
-                    g.addANode(new Node(_currModel._PARTS[i], i));
+                    MessageBox.Show("Unmatched graph nodes and mesh parts.");
+                    return null;
                 }
+                Graph g = new Graph(m, false);
+                for (int i = 0; i < nNodes; ++i)
+                {
+                    s = sr.ReadLine();
+                    strs = s.Split(separator);
+                    int j = int.Parse(strs[0]);
+                    int k = int.Parse(strs[1]);
+                    Node node = new Node(m._PARTS[i], j);
+                    node._isGroundTouching = k == 1 ? true : false;
+                    g.addANode(node);
+                }
+                s = sr.ReadLine();
+                strs = s.Split(separator);
+                int nEdges = int.Parse(strs[0]);
                 for (int i = 0; i < nEdges; ++i)
                 {
                     s = sr.ReadLine();
                     strs = s.Split(separator);
                     int j = int.Parse(strs[0]);
                     int k = int.Parse(strs[1]);
-                    g.addAnEdge(_currModel._PARTS[j], _currModel._PARTS[k]);
+                    g.addAnEdge(m._PARTS[j], m._PARTS[k]);
                 }
                 return g;
             }
@@ -785,6 +819,13 @@ namespace FameBase
             }
             using (StreamWriter sw = new StreamWriter(filename))
             {
+                sw.WriteLine(_currGraph._NODES.Count.ToString() + " nodes.");
+                for (int i = 0; i < _currGraph._NODES.Count;++i)
+                {
+                    sw.Write(i.ToString() + " ");
+                    int isGround = _currGraph._NODES[i]._isGroundTouching ? 1 : 0;
+                    sw.WriteLine(isGround.ToString());
+                }
                 sw.WriteLine(_currGraph._EDGES.Count.ToString() + " edges.");
                 foreach(Edge e in _currGraph._EDGES)
                 {
@@ -806,12 +847,13 @@ namespace FameBase
             }
         }// refreshModelViewers
 
-        public void setCurrentModel(Model m)
+        public void setCurrentModelGraph(Graph g)
         {
-            _currModel = m;
+            _currGraph = g;
+            _currModel = g._MODEL;
             _selectedParts.Clear();
-            _models.Clear();
-            _models.Add(_currModel);
+            _graphs.Clear();
+            _graphs.Add(g);
             this.cal2D();
             this.Refresh();
         }
@@ -1029,6 +1071,364 @@ namespace FameBase
 						c[2].ToString() + " setrgbcolor fill");
 			sw.WriteLine("stroke");
 		}
+
+        public void switchParts(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2)
+        {
+            List<Edge> edgesToConnect_1 = g1.collectOutgoingEdges(nodes1);
+            List<Edge> edgesToConnect_2 = g2.collectOutgoingEdges(nodes2);
+            List<Vector3d> sources = collectPoints(edgesToConnect_1);
+            List<Vector3d> targets = collectPoints(edgesToConnect_2);
+
+            if (sources.Count == targets.Count && sources.Count == 2)
+            {
+                
+            }
+        }// switchParts
+
+        public void setSelectedNodes()
+        {
+            if (_currGraph == null)
+            {
+                return;
+            }
+            _currGraph.selectedNodes = new List<Node>();
+            foreach (Node node in _currGraph._NODES)
+            {
+                if (_selectedParts.Contains(node._PART))
+                {
+                    _currGraph.selectedNodes.Add(node);
+                }
+            }
+        }
+
+        public List<ModelViewer> generate()
+        {
+            if (_modelViewers.Count != 2)
+            {
+                return null;
+            }
+            List<ModelViewer> modelViews = new List<ModelViewer>();
+            Graph g1 = _modelViewers[0]._GRAPH;
+            Graph g2 = _modelViewers[1]._GRAPH;
+            List<Node> nodes1 = new List<Node>();
+            List<Node> nodes2 = new List<Node>();
+            //findOneToOneMatchingNodes(g1, g2, out nodes1, out nodes2);
+
+            Graph newG1 = g1.Clone() as Graph;
+            Graph newG2 = g2.Clone() as Graph;
+
+            foreach (Node node in g1.selectedNodes)
+            {
+                nodes1.Add(newG1._NODES[node._INDEX]);
+            }
+            foreach (Node node in g2.selectedNodes)
+            {
+                nodes2.Add(newG2._NODES[node._INDEX]);
+            }
+
+            if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
+            {
+                return null;
+            }
+
+            List<Node> updatedNodes1;
+            List<Node> updatedNodes2;
+            switchNodes(g1, g2, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
+            
+            newG1.replaceNodes(nodes1, updatedNodes2);
+            modelViews.Add(new ModelViewer(newG1, this));
+            newG2.replaceNodes(nodes2, updatedNodes1);
+            modelViews.Add(new ModelViewer(newG2, this));
+            return modelViews;
+        }// generate
+
+        private void findOneToOneMatchingNodes(Graph g1, Graph g2, out List<Node> nodes1, out List<Node> nodes2)
+        {
+            nodes1 = new List<Node>();
+            nodes2 = new List<Node>();
+            List<Node> matched = new List<Node>();
+            foreach (Node n1 in g1._NODES)
+            {
+                foreach (Node n2 in g2._NODES)
+                {
+                    if ((n1._isGroundTouching && n2._isGroundTouching) ||
+                        (n1._edges.Count == n2._edges.Count))
+                    {
+                        nodes1.Add(n1);
+                        nodes2.Add(n2);
+                    }
+                }
+            }
+        }// findOneToOneMatchingNodes
+
+        private void switchNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2, 
+            out List<Node> updateNodes1, out List<Node> updateNodes2)
+        {
+            List<Edge> edgesToConnect_1 = g1.collectOutgoingEdges(nodes1);
+            List<Edge> edgesToConnect_2 = g2.collectOutgoingEdges(nodes2);
+            List<Vector3d> sources = collectPoints(edgesToConnect_1);
+            List<Vector3d> targets = collectPoints(edgesToConnect_2);
+
+            updateNodes1 = new List<Node>();
+            updateNodes2 = new List<Node>();
+            Vector3d center1 = new Vector3d();
+            foreach (Node node in nodes1)
+            {
+                Node cloned = node.Clone() as Node;
+                updateNodes1.Add(cloned);
+                center1 += node._PART._BOUNDINGBOX.CENTER;
+            }
+            center1 /= nodes1.Count;
+            Vector3d center2 = new Vector3d();
+            foreach (Node node in nodes2)
+            {
+                Node cloned = node.Clone() as Node;
+                updateNodes2.Add(cloned);
+                center2 += node._PART._BOUNDINGBOX.CENTER;
+            }
+            center2 /= nodes2.Count;
+
+            Matrix4d S, T, Q;
+
+            {
+                // sort corresponding points
+                int nps = sources.Count;
+                bool startWithSrc = true;
+                List<Vector3d> left = sources;
+                List<Vector3d> right = targets;
+                if (targets.Count < nps)
+                {
+                    nps = targets.Count;
+                    startWithSrc = false;
+                    left = targets;
+                    right = sources;
+                }
+                List<Vector3d> src = new List<Vector3d>();
+                List<Vector3d> trt = new List<Vector3d>();
+                bool[] visited = new bool[right.Count];
+                foreach (Vector3d v in left)
+                {
+                    src.Add(v);
+                    int j = -1;
+                    double mind = double.MaxValue;
+                    for (int i = 0; i < right.Count; ++i)
+                    {
+                        if (visited[i]) continue;
+                        double d = (v - right[i]).Length();
+                        if (d < mind)
+                        {
+                            mind = d;
+                            j = i;
+                        }
+                    }
+                    trt.Add(right[j]);
+                }
+                if (startWithSrc)
+                {
+                    sources = src;
+                    targets = trt;
+                }
+                else
+                {
+                    sources = trt;
+                    targets = src;
+                }
+            }
+
+            if (sources.Count == 1)
+            {
+                sources.Add(center1);
+                targets.Add(center2);
+            }
+
+            Node ground1 = hasGroundTouchingNode(nodes1);
+            Node ground2 = hasGroundTouchingNode(nodes2);
+            if (ground1 != null && ground2 != null)
+            {
+                sources.Add(new Vector3d(center1.x, 0, center1.z));
+                targets.Add(new Vector3d(center2.x, 0, center2.z));
+            }
+            getTransformation(sources, targets, out S, out T, out Q);
+            foreach (Node node in updateNodes1)
+            {
+                node.Transform(Q);
+            }
+
+            getTransformation(targets, sources, out S, out T, out Q);
+            foreach (Node node in updateNodes2)
+            {
+                node.Transform(Q);
+            }
+        }// switchOneNode
+
+        private Node hasGroundTouchingNode(List<Node> nodes)
+        {
+            foreach (Node node in nodes)
+            {
+                if (node._isGroundTouching)
+                {
+                    return node;
+                }
+            }
+            return null;
+        }// hasGroundTouchingNode
+
+        private List<Vector3d> collectPoints(List<Edge> edges)
+        {
+            List<Vector3d> points = new List<Vector3d>();
+            foreach (Edge e in edges)
+            {
+                points.Add(e._contact);
+            }
+            return points;
+        }// collectPoints
+
+        public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, out Matrix4d S, out Matrix4d T, out Matrix4d Q)
+        {
+            int n = srcpts.Count;
+            if (n == 2)
+            {
+                Vector3d c1 = (srcpts[0] + srcpts[1]) / 2;
+                Vector3d c2 = (tarpts[0] + tarpts[1]) / 2;
+                Vector3d v1 = srcpts[1] - srcpts[0];
+                Vector3d v2 = tarpts[1] - tarpts[0];
+                if (v1.Dot(v2) < 0) v1 = new Vector3d() - v1;
+                double ss = v2.Length() / v1.Length();
+                S = Matrix4d.ScalingMatrix(ss, ss, ss);
+                Matrix4d R = Matrix4d.IdentityMatrix();
+                double cos = v1.normalize().Dot(v2.normalize());
+                if (cos < Math.Cos(1.0 / 18 * Math.PI))
+                {
+                    Vector3d axis = v1.Cross(v2).normalize();
+                    double theta = Math.Acos(cos);
+                    R = Matrix4d.RotationMatrix(axis, theta);
+                }
+                T = Matrix4d.TranslationMatrix(c2 - c1);
+                Q = Matrix4d.TranslationMatrix(c2) * R * S * Matrix4d.TranslationMatrix(new Vector3d() - c1);
+            }
+            else
+            {
+                Vector3d t1 = new Vector3d();
+                Vector3d t2 = new Vector3d();
+                foreach (Vector3d tt in srcpts)
+                    t1 += tt;
+                foreach (Vector3d tt in tarpts)
+                    t2 += tt;
+                t1 /= srcpts.Count;
+                t2 /= tarpts.Count;
+
+                Vector3d trans = t2 - t1;
+                T = Matrix4d.TranslationMatrix(trans);
+
+                // find the scales
+                int k = srcpts.Count;
+                double sx = 0, sy = 0, sz = 0;
+                for (int i = 0; i < k; ++i)
+                {
+                    Vector3d p1 = srcpts[i] - t1;
+                    Vector3d p2 = tarpts[i] - t2;
+                    sx += p2.x / p1.x;
+                    sy += p2.y / p1.y;
+                    sz += p2.z / p1.z;
+                }
+                sx /= k;
+                sy /= k;
+                sz /= k;
+
+                if (double.IsNaN(sx) || double.IsInfinity(sx))
+                {
+                    sx = 1.0;
+                }
+                if (double.IsNaN(sy) || double.IsInfinity(sy))
+                {
+                    sy = 1.0;
+                }
+                if (double.IsNaN(sz) || double.IsInfinity(sz))
+                {
+                    sz = 1.0;
+                }
+
+                // adjust scale 
+                if (n > 3)
+                {
+                    //// find the points plane
+                    //double[] points = new double[srcpts.Count * 3];
+                    //for (int i = 0, jj = 0; i < srcpts.Count; ++i, jj += 3)
+                    //{
+                    //    points[jj] = srcpts[i].x;
+                    //    points[jj + 1] = srcpts[i].y;
+                    //    points[jj + 2] = srcpts[i].z;
+                    //}
+                    //double[] plane = new double[4];
+                    //PlaneFitter.ZyyPlaneFitter _plfitter = new PlaneFitter.ZyyPlaneFitter();
+                    //fixed (double* _pts = points, _pl = plane)
+                    //    _plfitter.GetFittingPlane(_pts, srcpts.Count, _pl);
+                    //Vector3d normal = new Vector3d(plane, 0);
+                    //normal = normal.normalize();
+
+                    // 4 permutations, 012, 123, 023, 013
+                    Vector3d aa = tarpts[0];
+                    Vector3d bb = tarpts[1];
+                    Vector3d cc = tarpts[2];
+                    Vector3d dd = tarpts[3];
+                    Vector3d[] nn = new Vector3d[4] {
+						((aa - bb).Cross(bb - cc)).normalize(),
+						((bb - cc).Cross(cc - dd)).normalize(),
+						((aa - cc).Cross(cc - dd)).normalize(),
+						((aa - bb).Cross(bb - dd)).normalize()
+					};
+                    Vector3d nor = new Vector3d();
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        if (!double.IsNaN(nn[i].x))
+                        {
+                            nor = nn[i];
+                            break;
+                        }
+                    }
+                    Vector3d normal = new Vector3d();
+                    int count = 0;
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        if (!double.IsNaN(nn[i].x))
+                        {
+                            if (nn[i].Dot(nor) < 0)
+                            {
+                                nn[i] = new Vector3d() - nn[i];
+                            }
+                            normal += nn[i];
+                            count++;
+                        }
+                    }
+                    normal = normal.normalize();
+
+                    if (double.IsNaN(normal.x)) throw new Exception();
+                    {
+                        if (Math.Abs(normal.x) > 0.5)
+                        {
+                            sx = 1.0;
+                        }
+                        else if (Math.Abs(normal.y) > 0.5)
+                        {
+                            sy = 1.0;
+                        }
+                        else if (Math.Abs(normal.z) > 0.5)
+                            sz = 1.0;
+                    }
+                }
+
+                Vector3d scale = new Vector3d(sx, sy, sz);
+
+                if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
+
+                //Program.OutputText("trans: " + trans.x + " " + trans.y + " " + trans.z, true);
+                //Program.OutputText("scale: " + scale.x + " " + scale.y + " " + scale.z, true);
+
+                //// check error
+                S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
+                Q = Matrix4d.TranslationMatrix(t2) * S * Matrix4d.TranslationMatrix(new Vector3d() - t1);
+            }
+        }// getTransformation
 
         //########## set modes ##########//
         public void setTabIndex(int i)
@@ -1710,7 +2110,8 @@ namespace FameBase
                 cloneParts.Add(np);
             }
             Model m = new Model(cloneParts);
-            ModelViewer mv = new ModelViewer(m, this);
+            Graph g = new Graph(m, true);
+            ModelViewer mv = new ModelViewer(m, g, this);
             _partViewers.Add(mv);
             return mv;
         }// addSelectedPartsToBasket

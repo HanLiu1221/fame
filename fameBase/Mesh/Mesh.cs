@@ -497,16 +497,7 @@ namespace Geometry
                 }
                 else if (array[0] == "f")
                 {
-                    if (this.vertexFaceIndex == null)
-                    {
-                        this.vertexFaceIndex = new List<List<int>>();
-                        for (int i = 0; i < this.vertexCount; ++i)
-                        {
-                            this.vertexFaceIndex.Add(new List<int>());
-                        }
-                    }
                     List<int> currFaceArray = new List<int>();
-                    List<HalfEdge> currHalfEdgeArray = new List<HalfEdge>();
                     for (int i = 1; i < array.Length; ++i)
                     {
                         if (array[i] == "") continue;
@@ -519,42 +510,56 @@ namespace Geometry
                         currFaceArray.Add(int.Parse(idStr) - 1); // face index from 1
                     }
                     faceArray.AddRange(currFaceArray);
-                    // hash map here for opposite halfedge
-                    for (int i = 0; i < 3; ++i)
-                    {
-                        int v1 = currFaceArray[i];
-                        int v2 = currFaceArray[(i + 1) % 3];
-                        this.vertexFaceIndex[v1].Add(faceCount);
-                        HalfEdge halfedge = new HalfEdge(v1, v2, faceCount, halfEdgeIdx++);
-                        int key = Math.Min(v1, v2) * vertexCount + Math.Max(v1, v2);
-                        if (edgeHashTable.ContainsKey(key)) // find a halfedge
-                        {
-                            HalfEdge oppHalfEdge = halfEdgeArray[edgeHashTable[key]];
-                            halfedge.invHalfEdge = oppHalfEdge;
-                            oppHalfEdge.invHalfEdge = halfedge;
-                        }
-                        else
-                        {
-                            edgeHashTable.Add(key, halfEdgeArray.Count);
-                            edgeArray.Add(halfedge);
-                        }
-                        halfEdgeArray.Add(halfedge);
-                        currHalfEdgeArray.Add(halfedge);
-                    }
-
-                    for (int i = 0; i < 3; ++i)
-                    {
-                        currHalfEdgeArray[i].nextHalfEdge = currHalfEdgeArray[(i + 1) % 3];
-                        currHalfEdgeArray[(i + 1) % 3].prevHalfEdge = currHalfEdgeArray[i];
-                        currHalfEdgeArray[i].prevHalfEdge = currHalfEdgeArray[(i - 1 + 3) % 3];
-                        currHalfEdgeArray[(i - 1 + 3) % 3].nextHalfEdge = currHalfEdgeArray[i].prevHalfEdge;
-                    }
                     ++faceCount;
                 }
                 else if (line.Length > 1 && line.Substring(0, 2).Equals("vt"))
                 {
                 }
             }//while
+            this.vertexFaceIndex = new List<List<int>>();
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                this.vertexFaceIndex.Add(new List<int>());
+            }
+            // hash map here for opposite halfedge
+            for (int f = 0, k = 0; f < faceCount; ++f, k += 3)
+            {
+                List<int> currFaceArray = new List<int>();
+                for (int i = 0; i < 3; ++i)
+                {
+                    currFaceArray.Add(faceArray[k + i]);
+                }
+                List<HalfEdge> currHalfEdgeArray = new List<HalfEdge>();
+                for (int i = 0; i < 3; ++i)
+                {
+                    int v1 = currFaceArray[i];
+                    int v2 = currFaceArray[(i + 1) % 3];
+                    this.vertexFaceIndex[v1].Add(f);
+                    HalfEdge halfedge = new HalfEdge(v1, v2, faceCount, halfEdgeIdx++);
+                    int key = Math.Min(v1, v2) * vertexCount + Math.Max(v1, v2);
+                    if (edgeHashTable.ContainsKey(key)) // find a halfedge
+                    {
+                        HalfEdge oppHalfEdge = halfEdgeArray[edgeHashTable[key]];
+                        halfedge.invHalfEdge = oppHalfEdge;
+                        oppHalfEdge.invHalfEdge = halfedge;
+                    }
+                    else
+                    {
+                        edgeHashTable.Add(key, halfEdgeArray.Count);
+                        edgeArray.Add(halfedge);
+                    }
+                    halfEdgeArray.Add(halfedge);
+                    currHalfEdgeArray.Add(halfedge);
+                }
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    currHalfEdgeArray[i].nextHalfEdge = currHalfEdgeArray[(i + 1) % 3];
+                    currHalfEdgeArray[(i + 1) % 3].prevHalfEdge = currHalfEdgeArray[i];
+                    currHalfEdgeArray[i].prevHalfEdge = currHalfEdgeArray[(i - 1 + 3) % 3];
+                    currHalfEdgeArray[(i - 1 + 3) % 3].nextHalfEdge = currHalfEdgeArray[i].prevHalfEdge;
+                }
+            }
             this.vertexPos = vertexArray.ToArray();
             this.faceVertexIndex = faceArray.ToArray();
             this.halfEdges = halfEdgeArray.ToArray();

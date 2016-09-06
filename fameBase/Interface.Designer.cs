@@ -91,12 +91,14 @@
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.statsLabel = new System.Windows.Forms.Label();
-            this.glViewer = new FameBase.GLViewer();
             this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.generateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.glViewer = new FameBase.GLViewer();
+            this.selectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -593,7 +595,8 @@
             // 
             this.toolStripDropDownButton1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.addEdgeToolStripMenuItem,
-            this.delEdgeToolStripMenuItem});
+            this.delEdgeToolStripMenuItem,
+            this.generateToolStripMenuItem});
             this.toolStripDropDownButton1.Image = ((System.Drawing.Image)(resources.GetObject("toolStripDropDownButton1.Image")));
             this.toolStripDropDownButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripDropDownButton1.Name = "toolStripDropDownButton1";
@@ -658,26 +661,6 @@
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
             // 
-            // glViewer
-            // 
-            this.glViewer.AccumBits = ((byte)(0));
-            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.glViewer.AutoCheckErrors = false;
-            this.glViewer.AutoFinish = false;
-            this.glViewer.AutoMakeCurrent = true;
-            this.glViewer.AutoSwapBuffers = true;
-            this.glViewer.BackColor = System.Drawing.Color.Black;
-            this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(219, 3);
-            this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(671, 638);
-            this.glViewer.StencilBits = ((byte)(0));
-            this.glViewer.TabIndex = 16;
-            // 
             // partBasket
             // 
             this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -703,16 +686,51 @@
             // partRelatedTools
             // 
             this.partRelatedTools.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.groupToolStripMenuItem});
+            this.groupToolStripMenuItem,
+            this.selectToolStripMenuItem});
             this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(108, 26);
+            this.partRelatedTools.Size = new System.Drawing.Size(153, 70);
             // 
             // groupToolStripMenuItem
             // 
             this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
+            // 
+            // generateToolStripMenuItem
+            // 
+            this.generateToolStripMenuItem.Name = "generateToolStripMenuItem";
+            this.generateToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
+            this.generateToolStripMenuItem.Text = "Generate";
+            this.generateToolStripMenuItem.Click += new System.EventHandler(this.generateToolStripMenuItem_Click);
+            // 
+            // glViewer
+            // 
+            this.glViewer.AccumBits = ((byte)(0));
+            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.glViewer.AutoCheckErrors = false;
+            this.glViewer.AutoFinish = false;
+            this.glViewer.AutoMakeCurrent = true;
+            this.glViewer.AutoSwapBuffers = true;
+            this.glViewer.BackColor = System.Drawing.Color.Black;
+            this.glViewer.ColorBits = ((byte)(32));
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
+            this.glViewer.DepthBits = ((byte)(16));
+            this.glViewer.Location = new System.Drawing.Point(219, 3);
+            this.glViewer.Name = "glViewer";
+            this.glViewer.Size = new System.Drawing.Size(671, 638);
+            this.glViewer.StencilBits = ((byte)(0));
+            this.glViewer.TabIndex = 16;
+            // 
+            // selectToolStripMenuItem
+            // 
+            this.selectToolStripMenuItem.Name = "selectToolStripMenuItem";
+            this.selectToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.selectToolStripMenuItem.Text = "Select";
+            this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
             // Interface
             // 
@@ -808,6 +826,8 @@
         private System.Windows.Forms.ToolStripDropDownButton toolStripDropDownButton1;
         private System.Windows.Forms.ToolStripMenuItem addEdgeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem delEdgeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem generateToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem selectToolStripMenuItem;
 	}
 }
 

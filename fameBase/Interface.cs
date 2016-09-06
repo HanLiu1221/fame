@@ -132,7 +132,8 @@ namespace FameBase
             var dialog = new OpenFileDialog()
             {
                 Title = "Open a part-based model info",
-                DefaultExt = ".pam"
+                DefaultExt = ".pam",
+                Filter = "Part-based model (*.pam)|*.pam"
             };
             if (dialog.ShowDialog() == DialogResult.OK)
             {
@@ -160,7 +161,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\fameBase\data\modelAndInteractions" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\fameBase\data\modelAndInteractions\test" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -175,6 +176,7 @@ namespace FameBase
             {
                 Title = "Save a part-based model",
                 DefaultExt = ".pam",
+                Filter = "Part-based model (*.pam)|*.pam",
                 OverwritePrompt = true
             };
             if (dialog.ShowDialog() == DialogResult.OK)
@@ -482,6 +484,23 @@ namespace FameBase
         {
             this.glViewer.deleteAnEdge();
             this.glViewer.Refresh();
+        }
+
+        private void generateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<ModelViewer> modelViews = this.glViewer.generate();
+            if (modelViews != null)
+            {
+                foreach (ModelViewer mv in modelViews)
+                {
+                    this.partBasket.Controls.Add(mv);
+                }
+            }
+        }
+
+        private void selectToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.setSelectedNodes();
         }
 
 	}// Interface
