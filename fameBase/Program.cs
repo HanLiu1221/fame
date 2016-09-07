@@ -22,5 +22,10 @@ namespace FameBase
 		{
 			return Program.formMain;
 		}
+
+        public static void writeToConsole(string s)
+        {
+            Program.formMain.writeToConsole(s);
+        }
 	}
 }

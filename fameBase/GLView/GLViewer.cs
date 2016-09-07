@@ -142,6 +142,9 @@ namespace FameBase
         private Shader shader;
         public static uint pencilTextureId, crayonTextureId, inkTextureId, waterColorTextureId, charcoalTextureId,
             brushTextureId;
+
+        private List<Graph> _crossOverBasket = new List<Graph>();
+        private int _selectedModelIndex = -1;
         
         public string foldername;
         private Vector3d objectCenter = new Vector3d();
@@ -765,6 +768,7 @@ namespace FameBase
             this.clearContext();
             this.clearHighlights();
             string[] files = Directory.GetFiles(segfolder);
+            int idx = 0;
             foreach (string file in files)
             {
                 if (!file.EndsWith("pam"))
@@ -781,13 +785,13 @@ namespace FameBase
                         graph = new Graph(m, true);
                     }
                     _graphs.Add(graph);
-                    ModelViewer modelViewer = new ModelViewer(m, graph, this);
+                    ModelViewer modelViewer = new ModelViewer(m, graph, idx++, this);
                     _modelViewers.Add(modelViewer);
                 }
             }
             if (_graphs.Count > 0)
             {
-                this.setCurrentModelGraph(_graphs[_graphs.Count - 1]);
+                this.setCurrentModelGraph(_graphs[_graphs.Count - 1], _graphs.Count - 1);
             }
             return _modelViewers;
         }// loadPartBasedModels
@@ -818,6 +822,11 @@ namespace FameBase
                     int k = int.Parse(strs[1]);
                     Node node = new Node(m._PARTS[i], j);
                     node._isGroundTouching = k == 1 ? true : false;
+                    if (strs.Length >= 5)
+                    {
+                        Color c = Color.FromArgb(int.Parse(strs[2]), int.Parse(strs[3]), int.Parse(strs[4]));
+                        node._PART._COLOR = c;
+                    }
                     g.addANode(node);
                 }
                 s = sr.ReadLine();
@@ -846,9 +855,12 @@ namespace FameBase
                 sw.WriteLine(_currGraph._NODES.Count.ToString() + " nodes.");
                 for (int i = 0; i < _currGraph._NODES.Count;++i)
                 {
+                    Node iNode = _currGraph._NODES[i];
                     sw.Write(i.ToString() + " ");
-                    int isGround = _currGraph._NODES[i]._isGroundTouching ? 1 : 0;
-                    sw.WriteLine(isGround.ToString());
+                    int isGround = iNode._isGroundTouching ? 1 : 0;
+                    sw.Write(isGround.ToString() + " ");
+                    // color
+                    sw.WriteLine(iNode._PART._COLOR.R.ToString() + " " + iNode._PART._COLOR.G.ToString() + " " + iNode._PART._COLOR.B.ToString());
                 }
                 sw.WriteLine(_currGraph._EDGES.Count.ToString() + " edges.");
                 foreach(Edge e in _currGraph._EDGES)
@@ -875,13 +887,14 @@ namespace FameBase
             }
         }// refreshModelViewers
 
-        public void setCurrentModelGraph(Graph g)
+        public void setCurrentModelGraph(Graph g, int idx)
         {
             _currGraph = g;
             _currModel = g._MODEL;
             _selectedParts.Clear();
             _graphs.Clear();
             _graphs.Add(g);
+            _selectedModelIndex = idx;
             this.cal2D();
             this.Refresh();
         }
@@ -1113,6 +1126,7 @@ namespace FameBase
             }
         }// switchParts
 
+        
         public void setSelectedNodes()
         {
             if (_currGraph == null)
@@ -1127,7 +1141,36 @@ namespace FameBase
                     _currGraph.selectedNodes.Add(node);
                 }
             }
-        }
+            if (!_crossOverBasket.Contains(_currGraph))
+            {
+                _crossOverBasket.Add(_currGraph);
+            }
+            Program.writeToConsole(_currGraph.selectedNodes.Count.ToString() + " nodes in Graph #" + _selectedModelIndex.ToString() + " are selcted.");
+        }// setSelectedNodes
+
+        public void markSymmetry()
+        {
+            if (_selectedParts.Count != 2)
+            {
+                return;
+            }
+            Part p = _selectedParts[0];
+            Part q = _selectedParts[1];
+            Node pnode = null;
+            Node qnode = null;
+            foreach (Node node in _currGraph._NODES)
+            {
+                if (node._PART == p)
+                {
+                    pnode = node;
+                }
+                if (node._PART == q)
+                {
+                    qnode = node;
+                }
+            }
+            _currGraph.markSymmtry(pnode, qnode);
+        }// markSymmetry
 
         public List<ModelViewer> mutate(int ntimes)
         {
@@ -1158,18 +1201,49 @@ namespace FameBase
                 
                 Vector3d center = graph._NODES[j]._pos;
                 Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
-                updateNode.Transform(Q);
-                updateNode.updated = true;
-                foreach (Edge e in updateNode._edges)
-                {
-                    e.TransformContact(Q);
-                }
+                transformANodeAndEdges(updateNode, Q);
+                //deformSymmetryNode(updateNode);
                 deformPropagation(graph, updateNode);
                 graph.resetUpdateStatus();
                 _resViewers.Add(new ModelViewer(graph, this));
             }
             return _resViewers;
         }// mutate
+
+        private void transformANodeAndEdges(Node node, Matrix4d T)
+        {
+            node.Transform(T);
+            node.updated = true;
+            foreach (Edge e in node._edges)
+            {
+                e.TransformContact(T);
+            }
+        }// transformANodeAndEdges
+
+        private bool deformSymmetryNode(Node node)
+        {
+            if (node.symmetry == null || node.symmetry.updated)
+            {
+                return false;
+            }
+
+            Node other = node.symmetry;
+            Symmetry symm = node.symm;
+            // get scales
+            Vector3d s2 = node._PART._BOUNDINGBOX.scale;
+            Vector3d s1 = other._PART._BOUNDINGBOX.scale;
+
+            Vector3d cc = Matrix4d.GetMirrorSymmetryPoint(node._pos, symm._axis, symm._center);
+            Matrix4d T1 = Matrix4d.TranslationMatrix(new Vector3d() - other._pos);
+            Matrix4d T2 = Matrix4d.TranslationMatrix(cc);
+            Matrix4d S = Matrix4d.ScalingMatrix(s2.x / s1.x, s2.y / s1.y, s2.z / s1.z);
+
+            Matrix4d Q = T2 * S * T1;
+
+            transformANodeAndEdges(other, Q);
+
+            return true;
+        }// deformSymmetryNode
 
         private void deformPropagation(Graph graph, Node edited)
         {
@@ -1230,6 +1304,7 @@ namespace FameBase
                         if (toUpdate != null)
                         {
                             deformNode(toUpdate);
+                            //deformSymmetryNode(toUpdate);
                         }
                     }
                 }
@@ -1269,45 +1344,53 @@ namespace FameBase
 
         public List<ModelViewer> crossOver()
         {
-            if (_modelViewers.Count != 2)
+            if (_crossOverBasket.Count < 2)
             {
                 return null;
             }
             _resViewers = new List<ModelViewer>();
-            Graph g1 = _modelViewers[0]._GRAPH;
-            Graph g2 = _modelViewers[1]._GRAPH;
-            List<Node> nodes1 = new List<Node>();
-            List<Node> nodes2 = new List<Node>();
-            //findOneToOneMatchingNodes(g1, g2, out nodes1, out nodes2);
 
-            Graph newG1 = g1.Clone() as Graph;
-            Graph newG2 = g2.Clone() as Graph;
-
-            foreach (Node node in g1.selectedNodes)
+            for (int i = 0; i < _crossOverBasket.Count - 1; ++i)
             {
-                nodes1.Add(newG1._NODES[node._INDEX]);
-            }
-            foreach (Node node in g2.selectedNodes)
-            {
-                nodes2.Add(newG2._NODES[node._INDEX]);
-            }
+                Graph g1 = _crossOverBasket[i];
+                for (int j = 0; j < _crossOverBasket.Count; ++j)
+                {
+                    
+                    Graph g2 = _crossOverBasket[1];
+                    List<Node> nodes1 = new List<Node>();
+                    List<Node> nodes2 = new List<Node>();
+                    //findOneToOneMatchingNodes(g1, g2, out nodes1, out nodes2);
 
-            if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
-            {
-                return null;
+                    Graph newG1 = g1.Clone() as Graph;
+                    Graph newG2 = g2.Clone() as Graph;
+
+                    foreach (Node node in g1.selectedNodes)
+                    {
+                        nodes1.Add(newG1._NODES[node._INDEX]);
+                    }
+                    foreach (Node node in g2.selectedNodes)
+                    {
+                        nodes2.Add(newG2._NODES[node._INDEX]);
+                    }
+
+                    if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
+                    {
+                        return null;
+                    }
+
+                    List<Node> updatedNodes1;
+                    List<Node> updatedNodes2;
+                    switchNodes(g1, g2, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
+
+                    newG1.replaceNodes(nodes1, updatedNodes2);
+                    _resViewers.Add(new ModelViewer(newG1, this));
+                    newG2.replaceNodes(nodes2, updatedNodes1);
+                    _resViewers.Add(new ModelViewer(newG2, this));
+                }
             }
-
-            List<Node> updatedNodes1;
-            List<Node> updatedNodes2;
-            switchNodes(g1, g2, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
-            
-            newG1.replaceNodes(nodes1, updatedNodes2);
-            _resViewers.Add(new ModelViewer(newG1, this));
-            newG2.replaceNodes(nodes2, updatedNodes1);
-            _resViewers.Add(new ModelViewer(newG2, this));
-
+            _crossOverBasket.Clear();
             return _resViewers;
-        }// generate
+        }// crossover
 
         private void findOneToOneMatchingNodes(Graph g1, Graph g2, out List<Node> nodes1, out List<Node> nodes2)
         {
@@ -2275,7 +2358,7 @@ namespace FameBase
             }
             Model m = new Model(cloneParts);
             Graph g = new Graph(m, true);
-            ModelViewer mv = new ModelViewer(m, g, this);
+            ModelViewer mv = new ModelViewer(m, g, -1, this);
             _partViewers.Add(mv);
             return mv;
         }// addSelectedPartsToBasket

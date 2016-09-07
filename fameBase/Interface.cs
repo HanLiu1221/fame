@@ -525,5 +525,15 @@ namespace FameBase
             mv.BackColor = Color.White;
             this.partBasket.Controls.Add(mv);
         }
+
+        public void writeToConsole(string s)
+        {
+            Console.WriteLine(s);
+        }
+
+        private void symmetryToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markSymmetry();
+        }
 	}// Interface
 }// namespace

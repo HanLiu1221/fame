@@ -40,6 +40,17 @@ namespace Component
                 cloned.addANode(cn);
                 parts.Add(cn._PART);
             }
+            for (int i = 0; i < _nodes.Count; ++i)
+            {
+                if (_nodes[i].symmetry != null)
+                {
+                    int idx = _nodes[i].symmetry._INDEX;
+                    if (idx > i)
+                    {
+                        cloned.markSymmtry(cloned._nodes[i], cloned._nodes[idx]);
+                    }
+                }
+            }
             foreach (Edge e in _edges)
             {
                 int i = e._start._INDEX;
@@ -50,7 +61,7 @@ namespace Component
             Model m = new Model(parts);
             cloned.setModel(m);
             return cloned;
-        }
+        }// clone
 
         public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
         {
@@ -219,6 +230,19 @@ namespace Component
             e._end._edges.Remove(e);
         }// deleteEdge
 
+        public void markSymmtry(Node a, Node b)
+        {
+            a.symmetry = b;
+            b.symmetry = a;
+
+            Vector3d symm_center = (a._pos + b._pos) / 2;
+            Vector3d symm_axis = (a._pos - b._pos).normalize();
+            Symmetry symm = new Symmetry(symm_center, symm_axis);
+
+            a.symm = symm;
+            b.symm = symm;
+        }// markSymmtry
+
         public List<Node> findReplaceableNodes(List<Node> nodes)
         {
             // nodes: from another graph
@@ -297,6 +321,8 @@ namespace Component
         public bool _isGroundTouching = false;
         public bool updated = false;
         public bool _allNeigborUpdated = false;
+        public Node symmetry = null;
+        public Symmetry symm = null;
 
         public Node(Part p, int idx)
         {
@@ -409,7 +435,16 @@ namespace Component
             _contact = (T * new Vector4d(_contact, 1)).ToVector3D();
             _contactUpdated = true;
         }
-
-
     }// Edge
+
+    public class Symmetry
+    {
+        public Vector3d _center;
+        public Vector3d _axis;
+        public Symmetry(Vector3d c, Vector3d a)
+        {
+            _center = c;
+            _axis = a;
+        }
+    }// Symmetry
 }// namespace

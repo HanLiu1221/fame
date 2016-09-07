@@ -98,8 +98,9 @@
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.selectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer = new FameBase.GLViewer();
             this.mutateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.glViewer = new FameBase.GLViewer();
+            this.symmetryToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -597,6 +598,7 @@
             this.toolStripDropDownButton1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.addEdgeToolStripMenuItem,
             this.delEdgeToolStripMenuItem,
+            this.symmetryToolStripMenuItem,
             this.crossoverToolStripMenuItem,
             this.mutateToolStripMenuItem});
             this.toolStripDropDownButton1.Image = ((System.Drawing.Image)(resources.GetObject("toolStripDropDownButton1.Image")));
@@ -714,6 +716,13 @@
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
+            // mutateToolStripMenuItem
+            // 
+            this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
+            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.mutateToolStripMenuItem.Text = "Mutate";
+            this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
+            // 
             // glViewer
             // 
             this.glViewer.AccumBits = ((byte)(0));
@@ -734,12 +743,12 @@
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
-            // mutateToolStripMenuItem
+            // symmetryToolStripMenuItem
             // 
-            this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.mutateToolStripMenuItem.Text = "Mutate";
-            this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
+            this.symmetryToolStripMenuItem.Name = "symmetryToolStripMenuItem";
+            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.symmetryToolStripMenuItem.Text = "Symmetry";
+            this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
             // 
             // Interface
             // 
@@ -838,6 +847,7 @@
         private System.Windows.Forms.ToolStripMenuItem crossoverToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem selectToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem mutateToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem symmetryToolStripMenuItem;
 	}
 }
 
