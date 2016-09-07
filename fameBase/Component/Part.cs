@@ -17,7 +17,7 @@ namespace Component
     public class Part
     {
         Mesh _mesh = null;
-        Primitive _boundingbox = null;
+        Prism _boundingbox = null;
         List<Part> _jointParts = new List<Part>();
         List<Joint> _joints = new List<Joint>();
         int[] _vertexIndexInParentMesh;
@@ -35,7 +35,7 @@ namespace Component
             }
         }
 
-        public Primitive _BOUNDINGBOX
+        public Prism _BOUNDINGBOX
         {
             get
             {
@@ -89,6 +89,12 @@ namespace Component
             this.fitProxy();
         }
 
+        public Part(Mesh m, Prism p)
+        {
+            _mesh = m;
+            _boundingbox = p;
+        }
+
         public Part(Mesh m, int[] vIndex, double[] vPos, int[] fIndex)
         {
             // create a mesh part from a large mesh
@@ -117,7 +123,7 @@ namespace Component
             this.fitProxy();
         }
 
-        public Part(Mesh m, Primitive bbox, bool fit)
+        public Part(Mesh m, Prism bbox, bool fit)
         {
             _mesh = m;
             _boundingbox = bbox;
@@ -186,8 +192,8 @@ namespace Component
                 center += (axes[0] * shiftX + axes[1] * shiftY + axes[2] * shiftZ);
                 Vector3d scale = new Vector3d(scaleX, scaleY, scaleZ);
 
-                Primitive cuboid = fitCuboid(center, scale, axes);
-                Primitive cylinder = fitCylinder(center, scale, axes);
+                Prism cuboid = fitCuboid(center, scale, axes);
+                Prism cylinder = fitCylinder(center, scale, axes);
                 if (cuboid.fittingError <= cylinder.fittingError)
                 {
                     _boundingbox = cuboid;
@@ -199,7 +205,7 @@ namespace Component
             }
         }// calPrincipalAxes
 
-        public Primitive fitCuboid(Vector3d center, Vector3d scale, Vector3d[] axes)
+        public Prism fitCuboid(Vector3d center, Vector3d scale, Vector3d[] axes)
         {
             ConvexHull hull = new ConvexHull(this._mesh);
             // compute box fitting error
@@ -209,7 +215,7 @@ namespace Component
             if (axes[2].Dot(axes[0].Cross(axes[1])) < 0)
                 axes[2] = (new Vector3d() - axes[2]).normalize();
 
-            Primitive proxy = Primitive.CreateCuboid(new Vector3d(), new Vector3d(1, 1, 1));
+            Prism proxy = Prism.CreateCuboid(new Vector3d(), new Vector3d(1, 1, 1));
 
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
@@ -228,7 +234,7 @@ namespace Component
             return proxy;
         }// FitCuboid
 
-        public Primitive fitCylinder(Vector3d center, Vector3d scale, Vector3d[] axes)
+        public Prism fitCylinder(Vector3d center, Vector3d scale, Vector3d[] axes)
         {
             ConvexHull hull = new ConvexHull(this._mesh);
             // compute cylinder fitting error, iterate through each axis
@@ -252,7 +258,7 @@ namespace Component
                     clyAxisLen = scale[ax];
                 }
             }
-            Primitive proxy = Primitive.CreateCylinder(20); // upright unit-scale cylinder
+            Prism proxy = Prism.CreateCylinder(20); // upright unit-scale cylinder
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(idealClyRadius, idealClyRadius, clyAxisLen);
             Matrix4d R = Matrix4d.IdentityMatrix();
@@ -308,7 +314,7 @@ namespace Component
             }
             Vector3d maxv = _mesh.MaxCoord;
             Vector3d minv = _mesh.MinCoord;
-            _boundingbox = new Primitive(minv, maxv);
+            _boundingbox = new Prism(minv, maxv);
         }
 
         public void addAJoint(Part p, Joint j)
@@ -325,6 +331,7 @@ namespace Component
     {
         List<Part> _parts;
         Mesh _mesh; // the whole mesh
+        public Graph _GRAPH;
 
         public Model()
         {
@@ -334,23 +341,25 @@ namespace Component
         public Model(List<Part> parts)
         {
             _parts = parts;
-            unify();
-        }
-
-        public Model(List<Part> parts, bool needsUnify)
-        {
-            _parts = parts;
-            if (needsUnify)
-            {
-                unify();
-            }
         }
 
         public Model(Mesh mesh)
         {
             _mesh = mesh;
             this.initializeParts();
-            //this.mergeNearbyParts();
+            this.mergeNearbyParts();
+        }
+
+        public void initialize()
+        {
+            // process a new model without loaded graph info
+            unify();
+            _GRAPH = new Graph(_parts);
+        }
+
+        public void setGraph(Graph g)
+        {
+            _GRAPH = g;
         }
 
         private void unify()
@@ -386,6 +395,20 @@ namespace Component
             }
             _parts[idx] = p;
         }
+
+        public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
+        {
+            foreach (Node node in oldNodes)
+            {
+                _parts.Remove(node._PART);
+            }
+            foreach (Node node in newNodes)
+            {
+                _parts.Add(node._PART);
+            }
+            _GRAPH.replaceNodes(oldNodes, newNodes);
+        }// replaceNodes
+
         public Object Clone()
         {
             List<Part> parts = new List<Part>();
@@ -394,6 +417,7 @@ namespace Component
                 parts.Add(p.Clone() as Part);
             }
             Model m = new Model(parts);
+            m._GRAPH = _GRAPH.Clone(parts) as Graph;
             return m;
         }
 

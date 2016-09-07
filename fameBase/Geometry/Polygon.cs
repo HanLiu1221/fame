@@ -648,8 +648,8 @@ namespace Geometry
         }
     }
 
-    /* Primitive of a part*/
-    public class Primitive
+    /* Prism of a part*/
+    public class Prism
     {
         Vector3d[] _originPoints3d = null;
         Vector3d[] _points3d = null;
@@ -666,7 +666,7 @@ namespace Geometry
         public Vector3d originScale;
         public Common.PrimType type;
 
-        public Primitive(Vector3d a, Vector3d b)
+        public Prism(Vector3d a, Vector3d b)
         {
             // axis-aligned cuboid
             // a: minimal vector
@@ -683,7 +683,7 @@ namespace Geometry
             initInfo();
         }
 
-        public Primitive(Vector3d[] arr)
+        public Prism(Vector3d[] arr)
         {
             if (arr == null) return;
             //Debug.Assert(arr.Length == Common._nPrimPoint);
@@ -705,7 +705,7 @@ namespace Geometry
             initInfo();
         }
 
-        public Primitive(Polygon3D top, Polygon3D bot)
+        public Prism(Polygon3D top, Polygon3D bot)
         {
             _points3d = new Vector3d[top.points3d.Length + bot.points3d.Length];
             int i = 0;
@@ -764,7 +764,7 @@ namespace Geometry
             }
         }// createPlanes
 
-        public static Primitive CreateCuboid(Vector3d center, Vector3d scale)
+        public static Prism CreateCuboid(Vector3d center, Vector3d scale)
         {
             Vector3d off = scale;
             Vector3d[] top = new Vector3d[4] {
@@ -779,14 +779,14 @@ namespace Geometry
 				new Vector3d(center + new Vector3d(-off.x, off.y, -off.z))};
             Polygon3D p1 = new Polygon3D(top);
             Polygon3D p2 = new Polygon3D(bot);
-            return new Primitive(p1, p2);
+            return new Prism(p1, p2);
         }// CreateCuboid
 
-        public static Primitive CreateCylinder(int nslices)
+        public static Prism CreateCylinder(int nslices)
         {
             Polygon3D bot = Polygon3D.CreateCircle(nslices, -1);
             Polygon3D top = Polygon3D.CreateCircle(nslices, 1);
-            return new Primitive(top, bot);
+            return new Prism(top, bot);
         }// CreateCylinder
 
         public void Transform(Matrix4d T)
@@ -878,7 +878,7 @@ namespace Geometry
                 return _planes;
             }
         }
-    }// Primitive
+    }// Prism
 
     public class Ellipsoid
     {

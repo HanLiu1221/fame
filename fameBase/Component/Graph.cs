@@ -5,38 +5,35 @@ using Geometry;
 
 namespace Component
 {
+    /* topological information of a model */
     public class Graph
     {
-        Model _model;
         List<Node> _nodes = new List<Node>();
         List<Edge> _edges = new List<Edge>();
+        public int _NNodes = 0;
+        public int _NEdges = 0;
         // test
         public List<Node> selectedNodes;
 
         public Graph() { }
 
-        public Graph(Model m, bool auto)
+        public Graph(List<Part> parts)
         {
-            _model = m;
-            if (auto)
+            _nodes = new List<Node>();
+            _NNodes = parts.Count;
+            for (int i = 0; i < _NNodes; ++i)
             {
-                buildGraph();
+                _nodes.Add(new Node(parts[i], i));
             }
-            markGroundTouchingNodes();
-        }// Graph
-
-        public void setModel(Model m)
-        {
-            _model = m;
+            buildGraph();
         }
 
-        public Object Clone()
+        public Object Clone(List<Part> parts)
         {
-            List<Part> parts = new List<Part>();
             Graph cloned = new Graph();
-            for (int i = 0; i < _model._NPARTS; ++i)
+            for (int i = 0; i < _NNodes; ++i)
             {
-                Node cn = _nodes[i].Clone() as Node;
+                Node cn = _nodes[i].Clone(parts[i]) as Node;
                 cloned.addANode(cn);
                 parts.Add(cn._PART);
             }
@@ -58,8 +55,8 @@ namespace Component
                 Edge ec = new Edge(cloned._nodes[i], cloned._nodes[j], new Vector3d(e._contact));
                 cloned.addEdge(ec);
             }
-            Model m = new Model(parts);
-            cloned.setModel(m);
+            cloned._NNodes = cloned._nodes.Count;
+            cloned._NEdges = cloned._edges.Count;
             return cloned;
         }// clone
 
@@ -68,14 +65,21 @@ namespace Component
             foreach (Node old in oldNodes)
             {
                 _nodes.Remove(old);
-                _model.removeAPart(old._PART);
             }
             foreach (Node node in newNodes)
             {
                 _nodes.Add(node);
-                _model.addAPart(node._PART);
             }
         }// replaceNodes
+
+        private void updateNodeIndex()
+        {
+            int idx = 0;
+            foreach (Node node in _nodes)
+            {
+                node._INDEX = idx++;
+            }
+        }// updateNodeIndex
 
         private void markGroundTouchingNodes()
         {
@@ -89,34 +93,18 @@ namespace Component
             }
         }// markGroundTouchingNodes
 
-        public void updateANodeMesh(Part p, int idx)
-        {
-            if (idx < 0 || idx > _nodes.Count)
-            {
-                return;
-            }
-            _nodes[idx].setPart(p);
-            _model.setPart(p, idx);
-        }// updateANode
-
         private void buildGraph()
         {
-            // 
-            if (_model == null || _model._NPARTS == 0)
+            if (_NNodes == 0)
             {
                 return;
             }
-            _nodes = new List<Node>();
-            for (int i = 0; i < _model._NPARTS; ++i)
+            for (int i = 0; i < _NNodes - 1; ++i)
             {
-                _nodes.Add(new Node(_model._PARTS[i], i));
-            }
-            for (int i = 0; i < _model._NPARTS - 1; ++i)
-            {
-                Part ip = _model._PARTS[i];
-                for (int j = i + 1; j < _model._NPARTS; ++j)
+                Part ip = _nodes[i]._PART;
+                for (int j = i + 1; j < _NNodes; ++j)
                 {
-                    Part jp = _model._PARTS[j];
+                    Part jp = _nodes[j]._PART;
                     // measure the relation between ip and jp
                     Vector3d contact;
                     double mind = getDistBetweenMeshes(ip._MESH, jp._MESH, out contact);
@@ -155,36 +143,26 @@ namespace Component
             return mind;
         }// getDistBetweenMeshes
 
-        public void addAnEdge(Part p1, Part p2)
+        public void addAnEdge(Node n1, Node n2)
         {
-            int i = _model._PARTS.IndexOf(p1);
-            int j = _model._PARTS.IndexOf(p2);
-            if (i != -1 && j != -1)
+            Vector3d contact;
+            double mind = getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out contact);
+            Edge e = new Edge(n1, n2, contact);
+            if (!isEdgeExist(e))
             {
-                Vector3d contact;
-                double mind = getDistBetweenMeshes(p1._MESH, p2._MESH, out contact);
-                Edge e = new Edge(_nodes[i], _nodes[j], contact);
-                if (!isEdgeExist(e))
-                {
-                    addEdge(e);
-                }
+                addEdge(e);
             }
+            _NEdges = _edges.Count;
         }// addAnEdge
 
-        public void deleteAnEdge(Part p1, Part p2)
+        public void deleteAnEdge(Node n1, Node n2)
         {
-            int i = _model._PARTS.IndexOf(p1);
-            int j = _model._PARTS.IndexOf(p2);
-            if (i != -1 && j != -1)
+            Edge e = isEdgeExist(n1, n2);
+            if (e != null)
             {
-                Node inode = _nodes[i];
-                Node jnode = _nodes[j];
-                Edge e = isEdgeExist(inode, jnode);
-                if (e != null)
-                {
-                    deleteEdge(e);
-                }
+                deleteEdge(e);
             }
+            _NEdges = _edges.Count;
         }// deleteAnEdge
 
         private bool isEdgeExist(Edge edge)
@@ -287,13 +265,6 @@ namespace Component
             }
         }// resetEdgeContactStatus
 
-        public Model _MODEL
-        {
-            get
-            {
-                return _model;
-            }
-        }
         public List<Node> _NODES
         {
             get
@@ -340,6 +311,13 @@ namespace Component
                 _adjNodes.Add(adj);
             }
         }// addAdjNode        
+
+        public Object Clone(Part p)
+        {
+            Node cloned = new Node(p, _index);
+            cloned._isGroundTouching = _isGroundTouching;
+            return cloned;
+        }// Clone
 
         public Object Clone()
         {

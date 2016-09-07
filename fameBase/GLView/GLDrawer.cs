@@ -33,6 +33,12 @@ namespace FameBase
 
         public static int _NSlices = 40;
 
+        public static Color getRandomColor()
+        {
+            Random rand = new Random();
+            return Color.FromArgb(rand.Next(255), rand.Next(255), rand.Next(255));
+        }
+
         public static void drawTriangle(Triangle3D t)
         {
             Gl.glVertex3dv(t.u.ToArray());
@@ -715,7 +721,7 @@ namespace FameBase
             //Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         }
 
-        public static void drawBoundingboxWithEdges(Primitive box, Color planeColor, Color lineColor)
+        public static void drawBoundingboxWithEdges(Prism box, Color planeColor, Color lineColor)
         {
             if (box == null) return;
             if (box._PLANES != null)
@@ -732,7 +738,7 @@ namespace FameBase
             }
         }// drawBoundingboxWithEdges
 
-        public static void drawBoundingboxPlanes(Primitive box, Color c)
+        public static void drawBoundingboxPlanes(Prism box, Color c)
         {
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
@@ -741,7 +747,7 @@ namespace FameBase
             }
         }// drawBoundingboxPlanes
 
-        public static void drawBoundingboxEdges(Primitive box, Color c)
+        public static void drawBoundingboxEdges(Prism box, Color c)
         {
             if (box == null) return;
             if (box._PLANES != null)
@@ -757,7 +763,7 @@ namespace FameBase
             }
         }// drawBoundingboxWithEdges
 
-        public static void drawBoundingboxWithoutBlend(Primitive box, Color c)
+        public static void drawBoundingboxWithoutBlend(Prism box, Color c)
         {
             if (box == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)

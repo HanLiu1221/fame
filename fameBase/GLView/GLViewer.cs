@@ -143,7 +143,7 @@ namespace FameBase
         public static uint pencilTextureId, crayonTextureId, inkTextureId, waterColorTextureId, charcoalTextureId,
             brushTextureId;
 
-        private List<Graph> _crossOverBasket = new List<Graph>();
+        private List<Model> _crossOverBasket = new List<Model>();
         private int _selectedModelIndex = -1;
         
         public string foldername;
@@ -168,7 +168,7 @@ namespace FameBase
 
         /******************** Vars ********************/
         Model _currModel;
-        List<Graph> _graphs = new List<Graph>();
+        List<Model> _models = new List<Model>();
         List<Part> _selectedParts = new List<Part>();
         List<Node> _selectedNodes = new List<Node>();
         List<ModelViewer> _modelViewers = new List<ModelViewer>();
@@ -188,7 +188,6 @@ namespace FameBase
         ArcBall _bodyArcBall;
         bool _isRightClick = false;
         bool _isDrawTranslucentHumanPose = true;
-        Graph _currGraph;
 
         /******************** Functions ********************/
 
@@ -300,7 +299,7 @@ namespace FameBase
             this.currMeshClass = null;
             _currModel = null;
             _selectedParts = new List<Part>();
-            _graphs = new List<Graph>();
+            _models.Clear();
             _modelViewers = new List<ModelViewer>();
             _partViewers = new List<ModelViewer>();
             _currHumanPose = null;
@@ -324,9 +323,8 @@ namespace FameBase
             this.meshClasses.Add(mc);
             this.currMeshClass = mc;
             _currModel = new Model(m);
-            _currGraph = new Graph(_currModel, true);
-            _graphs = new List<Graph>();
-            _graphs.Add(_currGraph);
+            _models = new List<Model>();
+            _models.Add(_currModel);
         }// loadMesh
 
         public void importMesh(string filename, bool multiple)
@@ -361,12 +359,12 @@ namespace FameBase
             sb.Append(_selectedParts.Count.ToString());
             sb.Append("\n#human poses: ");
             sb.Append(_humanposes.Count.ToString());
-            if (_currGraph != null)
+            if (_currModel._GRAPH != null)
             {
                 sb.Append("\n#nodes: ");
-                sb.Append(_currGraph._NODES.Count.ToString());
+                sb.Append(_currModel._GRAPH._NNodes.ToString());
                 sb.Append("\n#edges: ");
-                sb.Append(_currGraph._EDGES.Count.ToString());
+                sb.Append(_currModel._GRAPH._NEdges.ToString());
             }
             return sb.ToString();
         }// getStats
@@ -627,7 +625,7 @@ namespace FameBase
                     this.saveObj(ipart._MESH, meshDir + meshName);
                     sw.WriteLine(meshFolder + "\\" + meshName);
                 }
-                if (_currGraph != null)
+                if (_currModel._GRAPH != null)
                 {
                     string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
                     saveAGrapph(graphName);
@@ -644,7 +642,7 @@ namespace FameBase
             return sb.ToString();
         }// vector3dToString
 
-        private Model loadOnePartBasedModel(string filename, bool fit)
+        private Model loadOnePartBasedModel(string filename)
         {
             using (StreamReader sr = new StreamReader(filename))
             {
@@ -683,12 +681,14 @@ namespace FameBase
                     {
                         pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
                     }
-                    Primitive prim = new Primitive(pnts);
+                    Prism prim = new Prism(pnts);
                     // coord system
                     s = sr.ReadLine().Trim();
                     strs = s.Split(separator);
+                    bool hasPrism = false;
                     if (strs.Length == 9)
                     {
+                        hasPrism = true;
                         pnts = new Vector3d[3];
                         for (int j = 0, k = 0; j < 3; ++j)
                         {
@@ -709,10 +709,11 @@ namespace FameBase
                         return null;
                     }
                     Mesh mesh = new Mesh(meshFile, false);
-                    Part part = new Part(mesh, prim, fit);
+                    Part part = hasPrism ? new Part(mesh, prim) : new Part(mesh);
+                    part._COLOR = GLDrawer.getRandomColor();
                     parts.Add(part);
                 }
-                return (new Model(parts, fit));
+                return (new Model(parts));
             }
         }// loadOnePartBasedModel
 
@@ -725,13 +726,9 @@ namespace FameBase
             }
             this.foldername = Path.GetDirectoryName(filename);
             this.clearHighlights();
-            _currModel = this.loadOnePartBasedModel(filename, true);
+            _currModel = this.loadOnePartBasedModel(filename);
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
-            _currGraph = loadAGrapph(_currModel, graphName);
-            if (_currGraph == null)
-            {
-                _currGraph = new Graph(_currModel, true);
-            }
+            loadAGrapph(_currModel, graphName);
             this.Refresh();
         }// loadAPartBasedModel
 
@@ -749,12 +746,14 @@ namespace FameBase
             }
             foreach (string file in filenames)
             {
-                Model m = loadOnePartBasedModel(file, true);
+                Model m = loadOnePartBasedModel(file);
                 foreach (Part p in m._PARTS)
                 {
                     _currModel.addAPart(p);
                 }
             }
+            // rebuild the graph
+            _currModel.initialize();
             this.Refresh();
         }// importPartBasedModel
 
@@ -775,32 +774,27 @@ namespace FameBase
                 {
                     continue;
                 }
-                Model m = loadOnePartBasedModel(file, false);
+                Model m = loadOnePartBasedModel(file);
                 if (m != null)
                 {
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
-                    Graph graph = loadAGrapph(m, graphName);
-                    if (graph == null)
-                    {
-                        graph = new Graph(m, true);
-                    }
-                    _graphs.Add(graph);
-                    ModelViewer modelViewer = new ModelViewer(m, graph, idx++, this);
+                    loadAGrapph(m, graphName);
+                    ModelViewer modelViewer = new ModelViewer(m, idx++, this);
                     _modelViewers.Add(modelViewer);
                 }
             }
-            if (_graphs.Count > 0)
+            if (_models.Count > 0)
             {
-                this.setCurrentModelGraph(_graphs[_graphs.Count - 1], _graphs.Count - 1);
+                this.setCurrentModel(_models[_models.Count - 1], _models.Count - 1);
             }
             return _modelViewers;
         }// loadPartBasedModels
 
-        public Graph loadAGrapph(Model m, string filename)
+        public void loadAGrapph(Model m, string filename)
         {
             if (m == null || !File.Exists(filename))
             {
-                return null;
+                return;
             }
             using (StreamReader sr = new StreamReader(filename))
             {
@@ -811,9 +805,9 @@ namespace FameBase
                 if (nNodes != m._NPARTS)
                 {
                     MessageBox.Show("Unmatched graph nodes and mesh parts.");
-                    return null;
+                    return;
                 }
-                Graph g = new Graph(m, false);
+                Graph g = new Graph();
                 for (int i = 0; i < nNodes; ++i)
                 {
                     s = sr.ReadLine();
@@ -838,32 +832,32 @@ namespace FameBase
                     strs = s.Split(separator);
                     int j = int.Parse(strs[0]);
                     int k = int.Parse(strs[1]);
-                    g.addAnEdge(m._PARTS[j], m._PARTS[k]);
+                    g.addAnEdge(g._NODES[j], g._NODES[k]);
                 }
-                return g;
+                m.setGraph(g);
             }
         }// loadAGrapph
 
         public void saveAGrapph(string filename)
         {
-            if (_currGraph == null)
+            if (_currModel._GRAPH == null)
             {
                 return;
             }
             using (StreamWriter sw = new StreamWriter(filename))
             {
-                sw.WriteLine(_currGraph._NODES.Count.ToString() + " nodes.");
-                for (int i = 0; i < _currGraph._NODES.Count;++i)
+                sw.WriteLine(_currModel._GRAPH._NNodes.ToString() + " nodes.");
+                for (int i = 0; i < _currModel._GRAPH._NNodes;++i)
                 {
-                    Node iNode = _currGraph._NODES[i];
-                    sw.Write(i.ToString() + " ");
+                    Node iNode = _currModel._GRAPH._NODES[i];
+                    sw.Write(iNode._INDEX.ToString() + " ");
                     int isGround = iNode._isGroundTouching ? 1 : 0;
                     sw.Write(isGround.ToString() + " ");
                     // color
                     sw.WriteLine(iNode._PART._COLOR.R.ToString() + " " + iNode._PART._COLOR.G.ToString() + " " + iNode._PART._COLOR.B.ToString());
                 }
-                sw.WriteLine(_currGraph._EDGES.Count.ToString() + " edges.");
-                foreach(Edge e in _currGraph._EDGES)
+                sw.WriteLine(_currModel._GRAPH._NEdges.ToString() + " edges.");
+                foreach(Edge e in _currModel._GRAPH._EDGES)
                 {
                     sw.WriteLine(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString());
                 }
@@ -887,13 +881,12 @@ namespace FameBase
             }
         }// refreshModelViewers
 
-        public void setCurrentModelGraph(Graph g, int idx)
+        public void setCurrentModel(Model m, int idx)
         {
-            _currGraph = g;
-            _currModel = g._MODEL;
+            _currModel = m;
             _selectedParts.Clear();
-            _graphs.Clear();
-            _graphs.Add(g);
+            _models.Clear();
+            _models.Add(m);
             _selectedModelIndex = idx;
             this.cal2D();
             this.Refresh();
@@ -960,7 +953,7 @@ namespace FameBase
             Vector2d min_coord = Vector2d.MaxCoord();
             foreach (Part p in this._currModel._PARTS)
             {
-                Primitive box = p._BOUNDINGBOX;
+                Prism box = p._BOUNDINGBOX;
                 for (int i = 0; i < box._POINTS3D.Length; ++i)
                 {
                     Vector2d v2 = this.camera.Project(box._POINTS3D[i]).ToVector2d();
@@ -1129,23 +1122,23 @@ namespace FameBase
         
         public void setSelectedNodes()
         {
-            if (_currGraph == null)
+            if (_currModel == null)
             {
                 return;
             }
-            _currGraph.selectedNodes = new List<Node>();
-            foreach (Node node in _currGraph._NODES)
+            _currModel._GRAPH.selectedNodes = new List<Node>();
+            foreach (Node node in _currModel._GRAPH._NODES)
             {
                 if (_selectedParts.Contains(node._PART))
                 {
-                    _currGraph.selectedNodes.Add(node);
+                    _currModel._GRAPH.selectedNodes.Add(node);
                 }
             }
-            if (!_crossOverBasket.Contains(_currGraph))
+            if (!_crossOverBasket.Contains(_currModel))
             {
-                _crossOverBasket.Add(_currGraph);
+                _crossOverBasket.Add(_currModel);
             }
-            Program.writeToConsole(_currGraph.selectedNodes.Count.ToString() + " nodes in Graph #" + _selectedModelIndex.ToString() + " are selcted.");
+            Program.writeToConsole(_currModel._GRAPH.selectedNodes.Count.ToString() + " nodes in Graph #" + _selectedModelIndex.ToString() + " are selcted.");
         }// setSelectedNodes
 
         public void markSymmetry()
@@ -1158,7 +1151,7 @@ namespace FameBase
             Part q = _selectedParts[1];
             Node pnode = null;
             Node qnode = null;
-            foreach (Node node in _currGraph._NODES)
+            foreach (Node node in _currModel._GRAPH._NODES)
             {
                 if (node._PART == p)
                 {
@@ -1169,43 +1162,43 @@ namespace FameBase
                     qnode = node;
                 }
             }
-            _currGraph.markSymmtry(pnode, qnode);
+            _currModel._GRAPH.markSymmtry(pnode, qnode);
         }// markSymmetry
 
         public List<ModelViewer> mutate(int ntimes)
         {
-            if (_currGraph == null)
+            if (_currModel == null)
             {
                 return null;
             }
             _resViewers = new List<ModelViewer>();
-            int n = _currGraph._NODES.Count < ntimes ? _currGraph._NODES.Count : ntimes;
-            bool[] mutated = new bool[_currGraph._NODES.Count];
+            int n = _currModel._NPARTS < ntimes ? _currModel._NPARTS : ntimes;
+            bool[] mutated = new bool[_currModel._NPARTS];
             Random rand = new Random();
             double s1 = 0.5;
             double s2 = 2.0;
             for (int i = 0; i < n; ++i)
             {
-                int j = rand.Next(_currGraph._NODES.Count);
+                int j = rand.Next(n);
                 while (mutated[j])
                 {
-                    j = rand.Next(_currGraph._NODES.Count);
+                    j = rand.Next(n);
                 }
-                Graph graph = _currGraph.Clone() as Graph;
-                Node updateNode = graph._NODES[j];
+                Model model = _currModel.Clone() as Model;
+                Node updateNode = model._GRAPH._NODES[j];
                 int axis = rand.Next(3);
                 double scale = s1 + rand.NextDouble() * (s2 - s1);
                 Vector3d sv = new Vector3d(1, 1, 1);
                 sv[axis] = scale;
                 Matrix4d S = Matrix4d.ScalingMatrix(sv);
-                
-                Vector3d center = graph._NODES[j]._pos;
+
+                Vector3d center = model._GRAPH._NODES[j]._pos;
                 Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
                 transformANodeAndEdges(updateNode, Q);
                 //deformSymmetryNode(updateNode);
-                deformPropagation(graph, updateNode);
-                graph.resetUpdateStatus();
-                _resViewers.Add(new ModelViewer(graph, this));
+                deformPropagation(model._GRAPH, updateNode);
+                model._GRAPH.resetUpdateStatus();
+                _resViewers.Add(new ModelViewer(model, i, this));
             }
             return _resViewers;
         }// mutate
@@ -1349,28 +1342,27 @@ namespace FameBase
                 return null;
             }
             _resViewers = new List<ModelViewer>();
-
+            int k = 0;
             for (int i = 0; i < _crossOverBasket.Count - 1; ++i)
             {
-                Graph g1 = _crossOverBasket[i];
+                Model m1 = _crossOverBasket[i];
                 for (int j = 0; j < _crossOverBasket.Count; ++j)
                 {
-                    
-                    Graph g2 = _crossOverBasket[1];
+                    Model m2 = _crossOverBasket[j];
                     List<Node> nodes1 = new List<Node>();
                     List<Node> nodes2 = new List<Node>();
                     //findOneToOneMatchingNodes(g1, g2, out nodes1, out nodes2);
 
-                    Graph newG1 = g1.Clone() as Graph;
-                    Graph newG2 = g2.Clone() as Graph;
+                    Model newM1 = m1.Clone() as Model;
+                    Model newM2 = m2.Clone() as Model;
 
-                    foreach (Node node in g1.selectedNodes)
+                    foreach (Node node in m1._GRAPH.selectedNodes)
                     {
-                        nodes1.Add(newG1._NODES[node._INDEX]);
+                        nodes1.Add(newM1._GRAPH._NODES[node._INDEX]);
                     }
-                    foreach (Node node in g2.selectedNodes)
+                    foreach (Node node in m2._GRAPH.selectedNodes)
                     {
-                        nodes2.Add(newG2._NODES[node._INDEX]);
+                        nodes2.Add(newM2._GRAPH._NODES[node._INDEX]);
                     }
 
                     if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
@@ -1380,12 +1372,12 @@ namespace FameBase
 
                     List<Node> updatedNodes1;
                     List<Node> updatedNodes2;
-                    switchNodes(g1, g2, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
+                    switchNodes(m1._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
 
-                    newG1.replaceNodes(nodes1, updatedNodes2);
-                    _resViewers.Add(new ModelViewer(newG1, this));
-                    newG2.replaceNodes(nodes2, updatedNodes1);
-                    _resViewers.Add(new ModelViewer(newG2, this));
+                    newM1.replaceNodes(nodes1, updatedNodes2);
+                    _resViewers.Add(new ModelViewer(newM1, k++, this));
+                    newM2.replaceNodes(nodes2, updatedNodes1);
+                    _resViewers.Add(new ModelViewer(newM2, k++, this));
                 }
             }
             _crossOverBasket.Clear();
@@ -2357,8 +2349,7 @@ namespace FameBase
                 cloneParts.Add(np);
             }
             Model m = new Model(cloneParts);
-            Graph g = new Graph(m, true);
-            ModelViewer mv = new ModelViewer(m, g, -1, this);
+            ModelViewer mv = new ModelViewer(m, -1, this);
             _partViewers.Add(mv);
             return mv;
         }// addSelectedPartsToBasket
@@ -2616,7 +2607,7 @@ namespace FameBase
             int j = _currModel._PARTS.IndexOf(_selectedParts[1]);
             if (i != -1 && j != -1)
             {
-                _currGraph.addAnEdge(_currModel._PARTS[i], _currModel._PARTS[j]);
+                _currModel._GRAPH.addAnEdge(_currModel._GRAPH._NODES[i], _currModel._GRAPH._NODES[j]);
             }
         }// addAnEdge
 
@@ -2630,7 +2621,7 @@ namespace FameBase
             int j = _currModel._PARTS.IndexOf(_selectedParts[1]);
             if (i != -1 && j != -1)
             {
-                _currGraph.deleteAnEdge(_currModel._PARTS[i], _currModel._PARTS[j]);
+                _currModel._GRAPH.deleteAnEdge(_currModel._GRAPH._NODES[i], _currModel._GRAPH._NODES[j]);
             }
         }// deleteAnEdge
 
@@ -2869,12 +2860,11 @@ namespace FameBase
             if (_currModel != null)
             {
                 this.drawParts();
-            }
-
-            if (_currGraph != null && this.isDrawGraph)
-            {
-                this.drawGraph(_currGraph);
-            }
+                if (_currModel._GRAPH != null && this.isDrawGraph)
+                {
+                    this.drawGraph(_currModel._GRAPH);
+                }
+            }            
 
             this.drawAllMeshes();
 
@@ -2897,11 +2887,11 @@ namespace FameBase
         {
             foreach (Node node in g._NODES)
             {
-                GLDrawer.drawSphere(node._pos, 0.1, node._PART._COLOR);
+                GLDrawer.drawSphere(node._pos, 0.05, node._PART._COLOR);
             }
             foreach (Edge e in g._EDGES)
             {
-                GLDrawer.drawLines3D(e._start._pos, e._end._pos, Color.Gray, 4.0f);
+                GLDrawer.drawLines3D(e._start._pos, e._end._pos, Color.Gray, 2.0f);
             }
         }// drawGraph
 

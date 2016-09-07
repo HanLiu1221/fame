@@ -12,23 +12,14 @@ namespace FameBase
 {
     public class ModelViewer : SimpleOpenGlControl
     {
-        public ModelViewer(Model m, Graph g, int idx, GLViewer glViewer) 
+        public ModelViewer(Model m, int idx, GLViewer glViewer) 
         {
             this.InitializeComponent();
             this.InitializeContexts();
             _model = m;
-            _graph = g;
+            _graph = m._GRAPH;
             _mainView = glViewer;
             _idx = idx;
-        }
-
-        public ModelViewer(Graph g, GLViewer glViewer)
-        {
-            this.InitializeComponent();
-            this.InitializeContexts();
-            _graph = g;
-            _model = g._MODEL;
-            _mainView = glViewer;
         }
 
         private void InitializeComponent()
@@ -77,7 +68,7 @@ namespace FameBase
         protected override void OnMouseDoubleClick(System.Windows.Forms.MouseEventArgs e)
         {
             base.OnMouseDoubleClick(e);
-            _mainView.setCurrentModelGraph(_graph, _idx);
+            _mainView.setCurrentModel(_model, _idx);
             Program.GetFormMain().updateStats();
         }
 
@@ -282,7 +273,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_COLOR_MATERIAL);
         }
 
-        private void drawBoundingbox(Primitive box, Color c)
+        private void drawBoundingbox(Prism box, Color c)
         {
             if (box == null || box._PLANES == null) return;
             for (int i = 0; i < box._PLANES.Length; ++i)
