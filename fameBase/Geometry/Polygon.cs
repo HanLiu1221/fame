@@ -662,8 +662,8 @@ namespace Geometry
         public CoordinateSystem coordSys;
         public CoordinateSystem originCoordSys;
         public double fittingError;
-        public Vector3d scale;
-        public Vector3d originScale;
+        public Vector3d _scale;
+        public Vector3d _originScale;
         public Common.PrimType type;
 
         public Prism(Vector3d a, Vector3d b)
@@ -691,8 +691,6 @@ namespace Geometry
             for(int i = 0; i < arr.Length; ++i)
             {
                 _points3d[i] = new Vector3d(arr[i]);
-                _maxCoord = Vector3d.Max(_maxCoord, arr[i]);
-                _minCoord = Vector3d.Min(_minCoord, arr[i]);
             }
             if (arr.Length == Common._nCuboidPoint)
             {
@@ -720,20 +718,20 @@ namespace Geometry
             initInfo();
         }
 
+        public Object Clone()
+        {
+            Vector3d[] pnts = _points3d.Clone() as Vector3d[];
+            Prism p = new Prism(pnts);
+            return p;
+        }
+
         private void initInfo()
         {
             _originPoints3d = _points3d.Clone() as Vector3d[];
             _nSideFaces = _points3d.Length / 2;
-            _maxCoord = Vector3d.MinCoord;
-            _minCoord = Vector3d.MaxCoord;
-            foreach (Vector3d v in _originPoints3d)
-            {
-                _maxCoord = Vector3d.Max(_maxCoord, v);
-                _minCoord = Vector3d.Min(_minCoord, v);
-            }
-            _center = (_maxCoord + _minCoord) / 2;
-            _points2d = new Vector2d[_points3d.Length];
+            updateScale();
             createPlanes();
+            _points2d = new Vector2d[_points3d.Length];
         }
 
         private void createPlanes()
@@ -790,33 +788,44 @@ namespace Geometry
         }// CreateCylinder
 
         public void Transform(Matrix4d T)
-        {
-            _center = new Vector3d();
+        {            
             for (int i = 0; i < _points3d.Length; ++i)
             {
                 _points3d[i] = (T * new Vector4d(_points3d[i], 1)).ToVector3D();
-                _center += _points3d[i];
             }
-            _center /= _points3d.Length;
             foreach (Polygon3D p in _planes)
             {
                 p.Transform(T);
             }
+            updateScale();
         }
 
         public void TransformFromOrigin(Matrix4d T)
         {
-            _center = new Vector3d();
             for (int i = 0; i < _points3d.Length; ++i)
             {
                 _points3d[i] = (T * new Vector4d(_originPoints3d[i], 1)).ToVector3D();
-                _center += _points3d[i];
             }
-            _center /= _points3d.Length;
             foreach (Polygon3D p in _planes)
             {
                 p.TransformFromOrigin(T);
             }
+            updateScale();
+        }
+
+        private void updateScale()
+        {
+            _center = new Vector3d();
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            for (int i = 0; i < _points3d.Length; ++i)
+            {
+                _center += _points3d[i];
+                _maxCoord = Vector3d.Max(_maxCoord, _points3d[i]);
+                _minCoord = Vector3d.Min(_minCoord, _points3d[i]);
+            }
+            _center /= _points3d.Length;
+            _scale = (_maxCoord - _minCoord) / 2;
         }
 
         public void updateOrigin()

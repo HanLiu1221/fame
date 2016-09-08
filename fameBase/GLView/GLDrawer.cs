@@ -33,12 +33,6 @@ namespace FameBase
 
         public static int _NSlices = 40;
 
-        public static Color getRandomColor()
-        {
-            Random rand = new Random();
-            return Color.FromArgb(rand.Next(255), rand.Next(255), rand.Next(255));
-        }
-
         public static void drawTriangle(Triangle3D t)
         {
             Gl.glVertex3dv(t.u.ToArray());

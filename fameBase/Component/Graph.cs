@@ -25,17 +25,18 @@ namespace Component
             {
                 _nodes.Add(new Node(parts[i], i));
             }
+            markGroundTouchingNodes();
             buildGraph();
         }
 
         public Object Clone(List<Part> parts)
         {
             Graph cloned = new Graph();
+            cloned._NNodes = parts.Count;
             for (int i = 0; i < _NNodes; ++i)
             {
                 Node cn = _nodes[i].Clone(parts[i]) as Node;
                 cloned.addANode(cn);
-                parts.Add(cn._PART);
             }
             for (int i = 0; i < _nodes.Count; ++i)
             {
@@ -81,7 +82,7 @@ namespace Component
             }
         }// updateNodeIndex
 
-        private void markGroundTouchingNodes()
+        public void markGroundTouchingNodes()
         {
             foreach (Node node in _nodes)
             {
@@ -120,6 +121,7 @@ namespace Component
         public void addANode(Node node)
         {
             _nodes.Add(node);
+            _NNodes = _nodes.Count;
         }
 
         private double getDistBetweenMeshes(Mesh m1, Mesh m2, out Vector3d contact)

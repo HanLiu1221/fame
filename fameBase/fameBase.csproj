@@ -6,10 +6,10 @@
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{51C09568-D884-4E07-9DA4-8E3993AD8911}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Famebase</RootNamespace>
-    <AssemblyName>Famebase</AssemblyName>
+    <RootNamespace>FameBase</RootNamespace>
+    <AssemblyName>FameBase</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -94,10 +94,13 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
-  <PropertyGroup>
-    <StartupObject />
-  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Accord">
+      <HintPath>bin\Dlls\Accord.dll</HintPath>
+    </Reference>
+    <Reference Include="Accord.Math">
+      <HintPath>bin\Dlls\Accord.Math.dll</HintPath>
+    </Reference>
     <Reference Include="Accord.Statistics">
       <HintPath>bin\Dlls\Accord.Statistics.dll</HintPath>
     </Reference>
@@ -153,6 +156,7 @@
     <Compile Include="Geometry\SparseMatrix.cs" />
     <Compile Include="Geometry\SVD.cs" />
     <Compile Include="GLView\Camera.cs" />
+    <Compile Include="GLView\GLDrawer.cs" />
     <Compile Include="GLView\ModelViewer.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -160,7 +164,6 @@
     <Compile Include="GLView\GLViewer.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="GLView\GLDrawer.cs" />
     <Compile Include="GLView\MeshClass.cs" />
     <Compile Include="Interface.cs">
       <SubType>Form</SubType>
@@ -217,6 +220,7 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -27,62 +27,7 @@ namespace Component
 
         public Color _COLOR = Color.LightBlue;
 
-        public Mesh _MESH
-        {
-            get
-            {
-                return _mesh;
-            }
-        }
-
-        public Prism _BOUNDINGBOX
-        {
-            get
-            {
-                return _boundingbox;
-            }
-        }
-
-        public List<Joint> _JOINTS
-        {
-            get
-            {
-                return _joints;
-            }
-        }
-
-        public List<Part> _JOINTPARTS
-        {
-            get
-            {
-                return _jointParts;
-            }
-        }
-
-        public int[] _VERTEXINDEX
-        {
-            get
-            {
-                return _vertexIndexInParentMesh;
-            }
-        }
-
-        public int[] _FACEVERTEXINDEX
-        {
-            get
-            {
-                return _faceVIndexInParentMesh;
-            }
-        }
-
-        public double[] _VERTEXPOS
-        {
-            get
-            {
-                return _vertexPosInParentMesh;
-            }
-        }
-
+        
         public Part(Mesh m)
         {
             _mesh = m;
@@ -93,6 +38,7 @@ namespace Component
         {
             _mesh = m;
             _boundingbox = p;
+            setRandomColor();
         }
 
         public Part(Mesh m, int[] vIndex, double[] vPos, int[] fIndex)
@@ -119,7 +65,7 @@ namespace Component
                 faceVertexIndex[j++] = d[fv3];
             }
             _mesh = new Mesh(vPos, faceVertexIndex);
-            _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
+            setRandomColor();
             this.fitProxy();
         }
 
@@ -132,6 +78,20 @@ namespace Component
             {
                 this.fitProxy();
             }
+        }
+
+        public Object Clone()
+        {
+            Mesh m = _mesh.Clone() as Mesh;
+            Prism prism = _boundingbox.Clone() as Prism;
+            Part p = new Part(m, prism);
+            p._COLOR = this._COLOR;
+            return p;
+        }
+
+        public void setRandomColor()
+        {
+            _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
         }
 
         public void fitProxy()
@@ -227,7 +187,7 @@ namespace Component
             proxy.Transform(T * R * S);
             proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
             proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
-            proxy.originScale = proxy.scale = scale;
+            proxy._originScale = proxy._scale = scale;
             proxy.fittingError = boxFitError;
             proxy.type = Common.PrimType.Cuboid;
             proxy.updateOrigin();
@@ -273,7 +233,7 @@ namespace Component
             proxy.Transform(T * R * S);
             proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
             proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
-            proxy.originScale = proxy.scale = scale;
+            proxy._originScale = proxy._scale = scale;
             proxy.fittingError = minCylFitError;
             proxy.type = Common.PrimType.Cylinder;
             proxy.updateOrigin();
@@ -298,14 +258,6 @@ namespace Component
             _boundingbox.updateOrigin();
         }
 
-        public Object Clone()
-        {
-            Mesh m = _mesh.Clone() as Mesh;
-            Part p = new Part(m);
-            p._COLOR = this._COLOR;
-            return p;
-        }
-
         public void calculateAxisAlignedBbox()
         {
             if (_mesh == null)
@@ -325,6 +277,63 @@ namespace Component
             }
             _joints.Add(j);
         }
+
+        public Mesh _MESH
+        {
+            get
+            {
+                return _mesh;
+            }
+        }
+
+        public Prism _BOUNDINGBOX
+        {
+            get
+            {
+                return _boundingbox;
+            }
+        }
+
+        public List<Joint> _JOINTS
+        {
+            get
+            {
+                return _joints;
+            }
+        }
+
+        public List<Part> _JOINTPARTS
+        {
+            get
+            {
+                return _jointParts;
+            }
+        }
+
+        public int[] _VERTEXINDEX
+        {
+            get
+            {
+                return _vertexIndexInParentMesh;
+            }
+        }
+
+        public int[] _FACEVERTEXINDEX
+        {
+            get
+            {
+                return _faceVIndexInParentMesh;
+            }
+        }
+
+        public double[] _VERTEXPOS
+        {
+            get
+            {
+                return _vertexPosInParentMesh;
+            }
+        }
+
     }// Part
 
     public class Model
@@ -354,6 +363,11 @@ namespace Component
         {
             // process a new model without loaded graph info
             unify();
+            initializeGraph();
+        }
+
+        public void initializeGraph()
+        {
             _GRAPH = new Graph(_parts);
         }
 
@@ -548,6 +562,10 @@ namespace Component
                 Part pa = null;
                 Part pb = null;
                 int k = 5;
+                if (_mesh.VertexCount < k)
+                {
+                    return;
+                }
                 double[,] x = new double[0,0];
                 int[] tag = new int[0];
                 foreach (Part p1 in _parts)

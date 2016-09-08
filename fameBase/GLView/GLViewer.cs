@@ -37,7 +37,7 @@ namespace FameBase
             //    @"shaders\fragmentshader.glsl");
             //this.shader.Link();
 
-            this.LoadTextures();
+            //this.LoadTextures();
         }
 
         private void InitializeComponent() 
@@ -710,7 +710,6 @@ namespace FameBase
                     }
                     Mesh mesh = new Mesh(meshFile, false);
                     Part part = hasPrism ? new Part(mesh, prim) : new Part(mesh);
-                    part._COLOR = GLDrawer.getRandomColor();
                     parts.Add(part);
                 }
                 return (new Model(parts));
@@ -728,7 +727,14 @@ namespace FameBase
             this.clearHighlights();
             _currModel = this.loadOnePartBasedModel(filename);
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
-            loadAGrapph(_currModel, graphName);
+            if (!File.Exists(graphName))
+            {
+                _currModel.initializeGraph();
+            }
+            else
+            {
+                loadAGrapph(_currModel, graphName);
+            }
             this.Refresh();
         }// loadAPartBasedModel
 
@@ -783,9 +789,9 @@ namespace FameBase
                     _modelViewers.Add(modelViewer);
                 }
             }
-            if (_models.Count > 0)
+            if (_modelViewers.Count > 0)
             {
-                this.setCurrentModel(_models[_models.Count - 1], _models.Count - 1);
+                this.setCurrentModel(_modelViewers[_modelViewers.Count - 1]._MODEL, _modelViewers.Count - 1);
             }
             return _modelViewers;
         }// loadPartBasedModels
@@ -808,6 +814,8 @@ namespace FameBase
                     return;
                 }
                 Graph g = new Graph();
+                List<int> symGroups = new List<int>();
+                bool hasGroundTouching = false;
                 for (int i = 0; i < nNodes; ++i)
                 {
                     s = sr.ReadLine();
@@ -816,12 +824,34 @@ namespace FameBase
                     int k = int.Parse(strs[1]);
                     Node node = new Node(m._PARTS[i], j);
                     node._isGroundTouching = k == 1 ? true : false;
-                    if (strs.Length >= 5)
+                    if (node._isGroundTouching)
+                    {
+                        hasGroundTouching = true;
+                    }
+                    if (strs.Length > 4)
                     {
                         Color c = Color.FromArgb(int.Parse(strs[2]), int.Parse(strs[3]), int.Parse(strs[4]));
                         node._PART._COLOR = c;
                     }
+                    if (strs.Length > 5)
+                    {
+                        int sym = int.Parse(strs[5]);
+                        if (sym > i) // sym != -1
+                        {
+                            symGroups.Add(i);
+                            symGroups.Add(sym);
+                        }
+                    }
                     g.addANode(node);
+                }
+                // add symmetry
+                for (int i = 0; i < symGroups.Count; i += 2)
+                {
+                    g.markSymmtry(g._NODES[symGroups[i]], g._NODES[symGroups[i + 1]]);
+                }
+                if (!hasGroundTouching)
+                {
+                    g.markGroundTouchingNodes();
                 }
                 s = sr.ReadLine();
                 strs = s.Split(separator);
@@ -844,17 +874,26 @@ namespace FameBase
             {
                 return;
             }
+            // node:
+            // idx, isGroundTouching, Color, Sym (-1: no sym, idx)
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 sw.WriteLine(_currModel._GRAPH._NNodes.ToString() + " nodes.");
-                for (int i = 0; i < _currModel._GRAPH._NNodes;++i)
+                for (int i = 0; i < _currModel._GRAPH._NNodes; ++i)
                 {
                     Node iNode = _currModel._GRAPH._NODES[i];
                     sw.Write(iNode._INDEX.ToString() + " ");
                     int isGround = iNode._isGroundTouching ? 1 : 0;
                     sw.Write(isGround.ToString() + " ");
                     // color
-                    sw.WriteLine(iNode._PART._COLOR.R.ToString() + " " + iNode._PART._COLOR.G.ToString() + " " + iNode._PART._COLOR.B.ToString());
+                    sw.Write(iNode._PART._COLOR.R.ToString() + " " + iNode._PART._COLOR.G.ToString() + " " + iNode._PART._COLOR.B.ToString() + " ");
+                    // sym
+                    int symIdx = -1;
+                    if (iNode.symmetry != null)
+                    {
+                        symIdx = iNode.symmetry._INDEX;
+                    }
+                    sw.WriteLine(symIdx.ToString());
                 }
                 sw.WriteLine(_currModel._GRAPH._NEdges.ToString() + " edges.");
                 foreach(Edge e in _currModel._GRAPH._EDGES)
@@ -1191,11 +1230,19 @@ namespace FameBase
                 Vector3d sv = new Vector3d(1, 1, 1);
                 sv[axis] = scale;
                 Matrix4d S = Matrix4d.ScalingMatrix(sv);
-
                 Vector3d center = model._GRAPH._NODES[j]._pos;
-                Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
-                transformANodeAndEdges(updateNode, Q);
-                //deformSymmetryNode(updateNode);
+                Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);                
+                if (updateNode._isGroundTouching)
+                {
+                    Node cNode = updateNode.Clone() as Node;
+                    deformANodeAndEdges(cNode, Q);
+                    Vector3d trans = new Vector3d();
+                    trans.y = -cNode._PART._BOUNDINGBOX.MinCoord.y;
+                    Matrix4d T = Matrix4d.TranslationMatrix(trans);
+                    Q = T * Q;
+                }
+                deformANodeAndEdges(updateNode, Q);
+                deformSymmetryNode(updateNode);
                 deformPropagation(model._GRAPH, updateNode);
                 model._GRAPH.resetUpdateStatus();
                 _resViewers.Add(new ModelViewer(model, i, this));
@@ -1203,7 +1250,7 @@ namespace FameBase
             return _resViewers;
         }// mutate
 
-        private void transformANodeAndEdges(Node node, Matrix4d T)
+        private void deformANodeAndEdges(Node node, Matrix4d T)
         {
             node.Transform(T);
             node.updated = true;
@@ -1211,7 +1258,7 @@ namespace FameBase
             {
                 e.TransformContact(T);
             }
-        }// transformANodeAndEdges
+        }// deformANodeAndEdges
 
         private bool deformSymmetryNode(Node node)
         {
@@ -1223,8 +1270,8 @@ namespace FameBase
             Node other = node.symmetry;
             Symmetry symm = node.symm;
             // get scales
-            Vector3d s2 = node._PART._BOUNDINGBOX.scale;
-            Vector3d s1 = other._PART._BOUNDINGBOX.scale;
+            Vector3d s2 = node._PART._BOUNDINGBOX._scale;
+            Vector3d s1 = other._PART._BOUNDINGBOX._scale;
 
             Vector3d cc = Matrix4d.GetMirrorSymmetryPoint(node._pos, symm._axis, symm._center);
             Matrix4d T1 = Matrix4d.TranslationMatrix(new Vector3d() - other._pos);
@@ -1233,7 +1280,7 @@ namespace FameBase
 
             Matrix4d Q = T2 * S * T1;
 
-            transformANodeAndEdges(other, Q);
+            deformANodeAndEdges(other, Q);
 
             return true;
         }// deformSymmetryNode
@@ -1297,7 +1344,7 @@ namespace FameBase
                         if (toUpdate != null)
                         {
                             deformNode(toUpdate);
-                            //deformSymmetryNode(toUpdate);
+                            deformSymmetryNode(toUpdate);
                         }
                     }
                 }
@@ -1668,6 +1715,17 @@ namespace FameBase
                 Q = Matrix4d.TranslationMatrix(t2) * S * Matrix4d.TranslationMatrix(new Vector3d() - t1);
             }
         }// getTransformation
+
+        public void setRandomColor()
+        {
+            if (_currModel != null && _currModel._GRAPH != null)
+            {
+                foreach (Node node in _currModel._GRAPH._NODES)
+                {
+                    node._PART.setRandomColor();
+                }
+            }
+        }
 
         //########## set modes ##########//
         public void setTabIndex(int i)

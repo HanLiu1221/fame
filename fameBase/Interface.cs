@@ -45,6 +45,31 @@ namespace FameBase
             this.glViewer.Refresh();
         }
 
+        private void open3DGroupedToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // clear existing models and load a new one
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Open a 3D model",
+                Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*",
+                CheckFileExists = true
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                string filename = dialog.FileName;
+                // load mesh
+                this.glViewer.loadMesh(filename);
+                // set tab page
+                TabPage tp = new TabPage(Path.GetFileName(filename));
+                this.fileNameTabs.TabPages.Clear();
+                this.fileNameTabs.TabPages.Add(tp);
+                this.fileNameTabs.SelectedTab = tp;
+                this.glViewer.setTabIndex(this.fileNameTabs.TabCount);
+                this.updateStats();
+            }
+            this.glViewer.Refresh();
+        }
+
         private void import3D_Click(object sender, EventArgs e)
         {
             // preserve the existing models
@@ -161,7 +186,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\fameBase\data\modelAndInteractions\test_chiar_table" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\fameBase\data\modelAndInteractions\test_chiar_table" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -534,6 +559,11 @@ namespace FameBase
         private void symmetryToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.markSymmetry();
+        }
+
+        private void randomColorToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.setRandomColor();
         }
 	}// Interface
 }// namespace
