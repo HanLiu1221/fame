@@ -83,7 +83,7 @@ namespace FameBase
         private bool drawVertex = false;
         private bool drawEdge = false;
         private bool drawFace = true;
-        private bool drawBbox = true;
+        private bool isDrawBbox = true;
         private bool isDrawGraph = true;
         private bool isDrawAxes = false;
         private bool isDrawQuad = false;
@@ -712,7 +712,11 @@ namespace FameBase
                     Part part = hasPrism ? new Part(mesh, prim) : new Part(mesh);
                     parts.Add(part);
                 }
-                return (new Model(parts));
+                Model model = new Model(parts);
+                model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
+                string name = filename.Substring(filename.LastIndexOf('\\') + 1);
+                model._model_name = name.Substring(0, name.LastIndexOf('.'));
+                return model;
             }
         }// loadOnePartBasedModel
 
@@ -770,6 +774,7 @@ namespace FameBase
                 MessageBox.Show("Directory does not exist!");
                 return null;
             }
+            this.foldername = segfolder;
             this.clearContext();
             this.clearHighlights();
             string[] files = Directory.GetFiles(segfolder);
@@ -793,6 +798,7 @@ namespace FameBase
             {
                 this.setCurrentModel(_modelViewers[_modelViewers.Count - 1]._MODEL, _modelViewers.Count - 1);
             }
+            this.readModelModelViewMatrix(foldername + "\\view.mat");
             return _modelViewers;
         }// loadPartBasedModels
 
@@ -1017,6 +1023,11 @@ namespace FameBase
 
         public void readModelModelViewMatrix(string filename)
         {
+            if (!File.Exists(filename))
+            {
+                MessageBox.Show("Default view matrix does not exist.");
+                return;
+            }
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separator = { ' ' };
@@ -1031,6 +1042,7 @@ namespace FameBase
                 }
                 this._currModelTransformMatrix = new Matrix4d(arr);
                 this._fixedModelView = new Matrix4d(arr);
+                this.Refresh();
             }
         }
 
@@ -1049,6 +1061,16 @@ namespace FameBase
             }
             string name = imageFolder + "\\seq_" + idx.ToString() + ".png";
             bmp.Save(name, System.Drawing.Imaging.ImageFormat.Png);
+        }
+
+        public void captureScreen(string filename)
+        {
+            Size newSize = new System.Drawing.Size(this.Width, this.Height);
+            var bmp = new Bitmap(newSize.Width, newSize.Height);
+            var gfx = Graphics.FromImage(bmp);
+            gfx.CopyFromScreen((int)(this.Location.X), (int)(this.Location.Y) + 90,
+                0, 0, newSize, CopyPixelOperation.SourceCopy);
+            bmp.Save(filename, System.Drawing.Imaging.ImageFormat.Png);
         }
 
         private Vector3d getCurPos(Vector3d v)
@@ -1158,7 +1180,125 @@ namespace FameBase
             }
         }// switchParts
 
-        
+        List<List<Model>> _mutateGenerations = new List<List<Model>>();
+        List<List<Model>> _crossoverGenerations = new List<List<Model>>();
+
+        public void autoGenerate()
+        {
+            this.isDrawBbox = false;
+            this.isDrawGraph = false;
+            Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
+            Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
+
+            this.reloadView();
+
+            List<Model> firstGen = new List<Model>();
+            foreach (ModelViewer mv in _modelViewers)
+            {
+                firstGen.Add(mv._MODEL);
+            }
+            _mutateGenerations.Clear();
+            _crossoverGenerations.Clear();
+
+            _mutateGenerations.Add(firstGen);
+            _crossoverGenerations.Add(firstGen);
+            string mutateFolder = this.foldername.Clone() as string;
+            string crossoverFolder = this.foldername.Clone() as string;
+            string imageFolder_m = mutateFolder + "\\screenCapture\\mutate\\";
+            string imageFolder_c = crossoverFolder + "\\screenCapture\\crossover\\";
+            if (!Directory.Exists(imageFolder_m))
+            {
+                Directory.CreateDirectory(imageFolder_m);
+            }
+            if (!Directory.Exists(imageFolder_c))
+            {
+                Directory.CreateDirectory(imageFolder_c);
+            }
+            // mutate
+            List<Model> secondGen = new List<Model>();
+            for (int i = 0; i < firstGen.Count; ++i)
+            {
+                Model m = firstGen[i];
+                this.setCurrentModel(m, i);
+                List<ModelViewer> res = this.mutate();
+                foreach (ModelViewer mv in res)
+                {
+                    Model model = mv._MODEL;
+                    secondGen.Add(model);
+                    saveAPartBasedModel(model._path + model._model_name + ".pam");
+                    // screenshot
+                    this.setCurrentModel(model, -1);
+                    this.captureScreen(imageFolder_m + model._model_name + ".png");
+                }
+            }
+            _mutateGenerations.Add(secondGen);
+            // crossover
+            // only for the same contact points, for rebuilding the graph
+            int maxIter = 1;
+            int iter = 0;
+            while (iter < maxIter)
+            {
+                List<Model> cross_results = this.crossOver(_crossoverGenerations[iter]);
+                List<Model> gen = new List<Model>();
+                foreach (Model model in cross_results)
+                { 
+                    gen.Add(model);
+                    saveAPartBasedModel(model._path + model._model_name + ".pam");
+                    // screenshot
+                    this.setCurrentModel(model, -1);
+                    this.captureScreen(imageFolder_c + model._model_name + ".png");
+                }
+                ++iter;
+                _crossoverGenerations.Add(gen);
+            }
+            // cossover + mutate
+
+        }// autoGenerate
+
+        private void selectReplaceableNodesPair(Graph g1, Graph g2, out List<List<Node>> nodeChoices1, out List<List<Node>> nodeChoices2)
+        {
+            nodeChoices1 = new List<List<Node>>();
+            nodeChoices2 = new List<List<Node>>();
+            // ground touching
+            List<Node> nodes1 = g1.getGroundTouchingNodes();
+            List<Node> nodes2 = g2.getGroundTouchingNodes();
+            nodeChoices1.Add(nodes1);
+            nodeChoices2.Add(nodes2);
+            
+            // Key nodes
+            List<List<Node>> splitNodes1 = g1.splitAlongKeyNode();
+            List<List<Node>> splitNodes2 = g2.splitAlongKeyNode();
+            nodeChoices1.AddRange(splitNodes1);
+            nodeChoices2.AddRange(splitNodes2);
+
+            // symmetry nodes
+            List<List<Node>> symPairs1 = g1.getSymmetryPairs();
+            List<List<Node>> symPairs2 = g2.getSymmetryPairs();
+            List<int> outEdgeNum1 = new List<int>();
+            List<int> outEdgeNum2 = new List<int>();
+            foreach (List<Node> nodes in symPairs1)
+            {
+                outEdgeNum1.Add(g1.collectOutgoingEdges(nodes).Count);
+            }
+            foreach (List<Node> nodes in symPairs2)
+            {
+                outEdgeNum2.Add(g2.collectOutgoingEdges(nodes).Count);
+            }
+            for (int i = 0; i < symPairs1.Count; ++i)
+            {
+                bool isGround1 = symPairs1[i][0]._isGroundTouching;
+                for (int j = 0; j < symPairs2.Count; ++j)
+                {
+                    bool isGround2 = symPairs2[j][0]._isGroundTouching;
+                    if ( (isGround1 && isGround2) || (!isGround1 && !isGround2 && outEdgeNum1[i] == outEdgeNum2[j]))
+                    {
+                        nodeChoices1.Add(symPairs1[i]);
+                        nodeChoices2.Add(symPairs2[j]);
+                    }
+                }
+            }
+        }// selectReplaceableNodesPair
+
         public void setSelectedNodes()
         {
             if (_currModel == null)
@@ -1204,48 +1344,63 @@ namespace FameBase
             _currModel._GRAPH.markSymmtry(pnode, qnode);
         }// markSymmetry
 
-        public List<ModelViewer> mutate(int ntimes)
+        public List<ModelViewer> mutate()
         {
             if (_currModel == null)
             {
                 return null;
             }
             _resViewers = new List<ModelViewer>();
-            int n = _currModel._NPARTS < ntimes ? _currModel._NPARTS : ntimes;
+            int n = _currModel._NPARTS;
             bool[] mutated = new bool[_currModel._NPARTS];
             Random rand = new Random();
             double s1 = 0.5;
             double s2 = 2.0;
+            int idx = 0;
+            string path = _currModel._path + _currModel._model_name + "_mutate\\";
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
             for (int i = 0; i < n; ++i)
             {
-                int j = rand.Next(n);
-                while (mutated[j])
+                //int j = rand.Next(n);
+                //while (mutated[j])
+                //{
+                //    j = rand.Next(n);
+                //}
+                //int axis = rand.Next(3);
+                // permute
+                int j = i;
+                for (int axis = 0; axis < 3; ++axis)
                 {
-                    j = rand.Next(n);
-                }
-                Model model = _currModel.Clone() as Model;
-                Node updateNode = model._GRAPH._NODES[j];
-                int axis = rand.Next(3);
-                double scale = s1 + rand.NextDouble() * (s2 - s1);
-                Vector3d sv = new Vector3d(1, 1, 1);
-                sv[axis] = scale;
-                Matrix4d S = Matrix4d.ScalingMatrix(sv);
-                Vector3d center = model._GRAPH._NODES[j]._pos;
-                Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);                
-                if (updateNode._isGroundTouching)
-                {
-                    Node cNode = updateNode.Clone() as Node;
-                    deformANodeAndEdges(cNode, Q);
-                    Vector3d trans = new Vector3d();
-                    trans.y = -cNode._PART._BOUNDINGBOX.MinCoord.y;
-                    Matrix4d T = Matrix4d.TranslationMatrix(trans);
-                    Q = T * Q;
-                }
-                deformANodeAndEdges(updateNode, Q);
-                deformSymmetryNode(updateNode);
-                deformPropagation(model._GRAPH, updateNode);
-                model._GRAPH.resetUpdateStatus();
-                _resViewers.Add(new ModelViewer(model, i, this));
+                    ++idx;
+                    Model model = _currModel.Clone() as Model;
+                    model._path = path.Clone() as string;
+                    model._model_name = _currModel._model_name + "_mutate_" + idx.ToString();
+                    Node updateNode = model._GRAPH._NODES[j];
+                    double scale = s1 + rand.NextDouble() * (s2 - s1);
+                    Vector3d sv = new Vector3d(1, 1, 1);
+                    sv[axis] = scale;
+                    Matrix4d S = Matrix4d.ScalingMatrix(sv);
+                    Vector3d center = model._GRAPH._NODES[j]._pos;
+                    Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+                    if (updateNode._isGroundTouching)
+                    {
+                        Node cNode = updateNode.Clone() as Node;
+                        deformANodeAndEdges(cNode, Q);
+                        Vector3d trans = new Vector3d();
+                        trans.y = -cNode._PART._BOUNDINGBOX.MinCoord.y;
+                        Matrix4d T = Matrix4d.TranslationMatrix(trans);
+                        Q = T * Q;
+                    }
+                    deformANodeAndEdges(updateNode, Q);
+                    deformSymmetryNode(updateNode);
+                    deformPropagation(model._GRAPH, updateNode);
+                    model._GRAPH.resetUpdateStatus();
+                    _resViewers.Add(new ModelViewer(model, i, this));
+                    ++idx;
+                }// each axis
             }
             return _resViewers;
         }// mutate
@@ -1431,6 +1586,90 @@ namespace FameBase
             return _resViewers;
         }// crossover
 
+        public List<Model> crossOver(List<Model> models)
+        {
+            if (models.Count < 2)
+            {
+                return null;
+            }
+            List<Model> crossedModels = new List<Model>();
+            int k = 0;
+            for (int i = 0; i < models.Count - 1; ++i)
+            {
+                Model m1 = models[i];
+                for (int j = i + 1; j < models.Count; ++j)
+                {
+                    Model m2 = models[j];
+                    // set selected nodes
+                    List<List<Node>> nodeChoices1;
+                    List<List<Node>> nodeChoices2;
+                    this.selectReplaceableNodesPair(m1._GRAPH, m2._GRAPH, out nodeChoices1, out nodeChoices2);
+                    for (int t = 0; t < nodeChoices1.Count; ++t)
+                    {
+                        m1._GRAPH.selectedNodes = nodeChoices1[t];
+                        m2._GRAPH.selectedNodes = nodeChoices2[t];
+                        List<Model> crossed = this.crossOverOp(m1, m2, t);
+                        crossedModels.AddRange(crossed);
+                    }
+                }
+            }
+            return crossedModels;
+        }// crossover
+
+        public List<Model> crossOverOp(Model m1, Model m2, int idx)
+        {
+            if (m1 == null || m2 == null)
+            {
+                return null;
+            }
+            List<Model> crossModels = new List<Model>();
+
+            List<Node> nodes1 = new List<Node>();
+            List<Node> nodes2 = new List<Node>();
+            //findOneToOneMatchingNodes(g1, g2, out nodes1, out nodes2);
+
+            Model newM1 = m1.Clone() as Model;
+            Model newM2 = m2.Clone() as Model;
+            newM1._path = m1._path + "crossOver\\";
+            newM2._path = m2._path + "crossOver\\";
+            if (!Directory.Exists(newM1._path))
+            {
+                Directory.CreateDirectory(newM1._path);
+            }
+            if (!Directory.Exists(newM2._path))
+            {
+                Directory.CreateDirectory(newM2._path);
+            }
+            newM1._model_name = m1._model_name + "_cross_" + m2._model_name + "_" + idx.ToString();
+            newM2._model_name = m2._model_name + "_cross_" + m1._model_name + "_" + idx.ToString();
+
+            foreach (Node node in m1._GRAPH.selectedNodes)
+            {
+                nodes1.Add(newM1._GRAPH._NODES[node._INDEX]);
+            }
+            foreach (Node node in m2._GRAPH.selectedNodes)
+            {
+                nodes2.Add(newM2._GRAPH._NODES[node._INDEX]);
+            }
+
+            if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
+            {
+                return null;
+            }
+
+            List<Node> updatedNodes1;
+            List<Node> updatedNodes2;
+            switchNodes(m1._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
+
+            newM1.replaceNodes(nodes1, updatedNodes2);
+            crossModels.Add(newM1);
+
+            newM2.replaceNodes(nodes2, updatedNodes1);
+            crossModels.Add(newM2);
+
+            return crossModels;
+        }// crossover
+
         private void findOneToOneMatchingNodes(Graph g1, Graph g2, out List<Node> nodes1, out List<Node> nodes2)
         {
             nodes1 = new List<Node>();
@@ -1533,10 +1772,12 @@ namespace FameBase
 
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
-            if (sources.Count == 1 && ground1 != null && ground2 != null)
+            if (ground1 != null && ground2 != null && sources.Count > 0)
             {
-                sources.Add(new Vector3d(center1.x, 0, center1.z));
-                targets.Add(new Vector3d(center2.x, 0, center2.z));
+                //sources.Add(new Vector3d(center1.x, 0, center1.z));
+                //targets.Add(new Vector3d(center2.x, 0, center2.z));
+                sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
+                targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
             }
             getTransformation(sources, targets, out S, out T, out Q);
             foreach (Node node in updateNodes1)
@@ -1782,7 +2023,7 @@ namespace FameBase
                     this.drawEdge = !this.drawEdge;
                     break;
                 case 4:
-                    this.drawBbox = !this.drawBbox;
+                    this.isDrawBbox = !this.isDrawBbox;
                     break;
                 case 5:
                     this.isDrawGraph = !this.isDrawGraph;
@@ -3001,7 +3242,7 @@ namespace FameBase
                 {
                     GLDrawer.drawMeshEdge(part._MESH);
                 }
-                if (this.drawBbox)
+                if (this.isDrawBbox)
                 {
                     GLDrawer.drawBoundingboxPlanes(part._BOUNDINGBOX, part._COLOR);
                     if (part._BOUNDINGBOX.type == Common.PrimType.Cuboid)

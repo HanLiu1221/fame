@@ -38,6 +38,7 @@
             this.importModelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.file = new System.Windows.Forms.ToolStripDropDownButton();
             this.open3D = new System.Windows.Forms.ToolStripMenuItem();
+            this.open3DGroupedToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.import3D = new System.Windows.Forms.ToolStripMenuItem();
             this.saveAs3D = new System.Windows.Forms.ToolStripMenuItem();
             this.loadTriMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -102,7 +103,7 @@
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.selectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.open3DGroupedToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.autoGenerateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -200,6 +201,13 @@
             this.open3D.Size = new System.Drawing.Size(178, 22);
             this.open3D.Text = "Open 3D file";
             this.open3D.Click += new System.EventHandler(this.open3D_Click);
+            // 
+            // open3DGroupedToolStripMenuItem
+            // 
+            this.open3DGroupedToolStripMenuItem.Name = "open3DGroupedToolStripMenuItem";
+            this.open3DGroupedToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
+            this.open3DGroupedToolStripMenuItem.Text = "Open 3D grouped";
+            this.open3DGroupedToolStripMenuItem.Click += new System.EventHandler(this.open3DGroupedToolStripMenuItem_Click);
             // 
             // import3D
             // 
@@ -611,7 +619,8 @@
             this.delEdgeToolStripMenuItem,
             this.symmetryToolStripMenuItem,
             this.crossoverToolStripMenuItem,
-            this.mutateToolStripMenuItem});
+            this.mutateToolStripMenuItem,
+            this.autoGenerateToolStripMenuItem});
             this.toolStripDropDownButton1.Image = ((System.Drawing.Image)(resources.GetObject("toolStripDropDownButton1.Image")));
             this.toolStripDropDownButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripDropDownButton1.Name = "toolStripDropDownButton1";
@@ -622,35 +631,35 @@
             // addEdgeToolStripMenuItem
             // 
             this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.addEdgeToolStripMenuItem.Text = "Add Edge";
             this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // delEdgeToolStripMenuItem
             // 
             this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.delEdgeToolStripMenuItem.Text = "Del Edge";
             this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // symmetryToolStripMenuItem
             // 
             this.symmetryToolStripMenuItem.Name = "symmetryToolStripMenuItem";
-            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.symmetryToolStripMenuItem.Text = "Symmetry";
             this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
             // 
             // crossoverToolStripMenuItem
             // 
             this.crossoverToolStripMenuItem.Name = "crossoverToolStripMenuItem";
-            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.crossoverToolStripMenuItem.Text = "Crossover";
             this.crossoverToolStripMenuItem.Click += new System.EventHandler(this.crossoverToolStripMenuItem_Click);
             // 
             // mutateToolStripMenuItem
             // 
             this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.mutateToolStripMenuItem.Text = "Mutate";
             this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
             // 
@@ -761,12 +770,12 @@
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
-            // open3DGroupedToolStripMenuItem
+            // autoGenerateToolStripMenuItem
             // 
-            this.open3DGroupedToolStripMenuItem.Name = "open3DGroupedToolStripMenuItem";
-            this.open3DGroupedToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
-            this.open3DGroupedToolStripMenuItem.Text = "Open 3D grouped";
-            this.open3DGroupedToolStripMenuItem.Click += new System.EventHandler(this.open3DGroupedToolStripMenuItem_Click);
+            this.autoGenerateToolStripMenuItem.Name = "autoGenerateToolStripMenuItem";
+            this.autoGenerateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.autoGenerateToolStripMenuItem.Text = "Auto generate";
+            this.autoGenerateToolStripMenuItem.Click += new System.EventHandler(this.autoGenerateToolStripMenuItem_Click);
             // 
             // Interface
             // 
@@ -868,6 +877,7 @@
         private System.Windows.Forms.ToolStripMenuItem symmetryToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem randomColorToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem open3DGroupedToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem autoGenerateToolStripMenuItem;
 	}
 }
 

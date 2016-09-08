@@ -722,6 +722,7 @@ namespace Geometry
         {
             Vector3d[] pnts = _points3d.Clone() as Vector3d[];
             Prism p = new Prism(pnts);
+            p.coordSys = coordSys.Clone() as CoordinateSystem;
             return p;
         }
 

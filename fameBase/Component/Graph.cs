@@ -71,6 +71,9 @@ namespace Component
             {
                 _nodes.Add(node);
             }
+            _NNodes = _nodes.Count;
+            // update edges
+
         }// replaceNodes
 
         private void updateNodeIndex()
@@ -253,6 +256,134 @@ namespace Component
             }
             return edges;
         }// collectOutgoingEdges
+
+        public List<Node> getGroundTouchingNodes()
+        {
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (node._isGroundTouching)
+                {
+                    nodes.Add(node);
+                }
+            }
+            return nodes;
+        }// getGroundTouchingNodes
+
+        private Node getKeyNodes()
+        {
+            int nMaxConn = 0;
+            Node key = null;
+            foreach (Node node in _nodes)
+            {
+                if (node._edges.Count > nMaxConn)
+                {
+                    nMaxConn = node._edges.Count;
+                    key = node;
+                }
+            }
+            return key;
+        }// getKeyNodes
+
+        public List<List<Node>> splitAlongKeyNode()
+        {
+            List<List<Node>> splitNodes = new List<List<Node>>();
+            // key node(s)
+            Node key = getKeyNodes();
+            List<Node> keyNodes = new List<Node>();
+            keyNodes.Add(key);
+            bool[] added = new bool[_NNodes];
+            added[key._INDEX] = true;
+            if (key.symmetry != null)
+            {
+                keyNodes.Add(key.symmetry);
+                added[key.symmetry._INDEX] = true;
+            }
+            splitNodes.Add(keyNodes);
+            // split 1
+            List<Node> split1 = new List<Node>();
+            // dfs
+            Queue<Node> queue = new Queue<Node>();
+            queue.Enqueue(key._adjNodes[0]);
+            added[key._adjNodes[0]._INDEX] = true;
+            bool containGround1 = false;
+            while (queue.Count > 0)
+            {
+                Node cur = queue.Dequeue();
+                split1.Add(cur);
+                if (!containGround1 && cur._isGroundTouching)
+                {
+                    containGround1 = true;
+                }
+                foreach (Node node in cur._adjNodes)
+                {
+                    if (!added[node._INDEX])
+                    {
+                        queue.Enqueue(node);
+                        added[node._INDEX] = true;
+                    }
+                }
+            }
+            
+            List<Node> split2 = new List<Node>();
+            bool containGround2 = false;
+            foreach (Node node in _nodes)
+            {
+                if (!added[node._INDEX])
+                {
+                    split2.Add(node);
+                    if (!containGround2 && node._isGroundTouching)
+                    {
+                        containGround2 = true;
+                    }
+                }
+            }
+            bool add_split1_first = true;
+            if (containGround1 && !containGround2) {
+                add_split1_first = true;
+            } else if (!containGround1 && containGround2)
+            {
+                add_split1_first = false;
+            }
+            else if (collectOutgoingEdges(split2).Count > collectOutgoingEdges(split1).Count)
+            {
+                add_split1_first = false;
+            }
+
+            if (add_split1_first)
+            {
+                splitNodes.Add(split1);
+                if (split2.Count > 0)
+                {
+                    splitNodes.Add(split2);
+                }
+            }
+            else
+            {
+                if (split2.Count > 0)
+                {
+                    splitNodes.Add(split2);
+                }
+                splitNodes.Add(split1);
+            }
+            return splitNodes;
+        }// splitAlongKeyNode
+
+        public List<List<Node>> getSymmetryPairs()
+        {
+            List<List<Node>> symPairs = new List<List<Node>>();
+            for (int i = 0; i < _NNodes; ++i)
+            {
+                if (_nodes[i].symmetry != null && _nodes[i]._INDEX < _nodes[i].symmetry._INDEX)
+                {
+                    List<Node> syms = new List<Node>();
+                    syms.Add(_nodes[i]);
+                    syms.Add(_nodes[i].symmetry);
+                    symPairs.Add(syms);
+                }
+            }
+            return symPairs;
+        }// getSymmetryPairs
 
         public void resetUpdateStatus()
         {

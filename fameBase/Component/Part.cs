@@ -342,6 +342,9 @@ namespace Component
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
 
+        public string _path = "";
+        public string _model_name = "";
+
         public Model()
         {
             _parts = new List<Part>();

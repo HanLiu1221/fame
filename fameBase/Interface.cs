@@ -115,6 +115,11 @@ namespace FameBase
             this.glViewer.setRenderOption(4);
         }
 
+        public void setCheckBox_drawBbox(bool isdraw)
+        {
+            this.boundingBoxToolStripMenuItem.Checked = isdraw;
+        }
+
         private void viewToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.setUIMode(1);
@@ -186,7 +191,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\fameBase\data\modelAndInteractions\test_chiar_table" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\test" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -237,7 +242,6 @@ namespace FameBase
             {
                 string filename = dialog.FileName;
                 this.glViewer.readModelModelViewMatrix(filename);
-                this.glViewer.Refresh();
             }
         }
 
@@ -499,6 +503,11 @@ namespace FameBase
             this.glViewer.setRenderOption(5);
         }
 
+        public void setCheckBox_drawGraph(bool isdraw)
+        {
+            this.graphToolStripMenuItem.Checked = isdraw;
+        }
+
         private void addEdgeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.addAnEdge();
@@ -531,7 +540,7 @@ namespace FameBase
 
         private void mutateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            List<ModelViewer> modelViews = this.glViewer.mutate(10);
+            List<ModelViewer> modelViews = this.glViewer.mutate();
             this.partBasket.Controls.Clear();
             if (modelViews != null)
             {
@@ -564,6 +573,11 @@ namespace FameBase
         private void randomColorToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.setRandomColor();
+        }
+
+        private void autoGenerateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.autoGenerate();
         }
 	}// Interface
 }// namespace
