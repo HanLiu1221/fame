@@ -12,6 +12,9 @@ namespace Component
         List<Edge> _edges = new List<Edge>();
         public int _NNodes = 0;
         public int _NEdges = 0;
+
+        double _minNodeBboxScale; // min scale of a box
+        double _maxAdjNodesDist; // max distance between two nodes
         // test
         public List<Node> selectedNodes;
 
@@ -58,8 +61,48 @@ namespace Component
             }
             cloned._NNodes = cloned._nodes.Count;
             cloned._NEdges = cloned._edges.Count;
+            cloned._maxAdjNodesDist = _maxAdjNodesDist;
+            cloned._minNodeBboxScale = _minNodeBboxScale;
             return cloned;
         }// clone
+
+        public void analyzeScale()
+        {
+            double[] vals = calScale();
+            _maxAdjNodesDist = vals[0];
+            _minNodeBboxScale = vals[1];
+        }
+
+        private double[] calScale()
+        {
+            double[] vals = new double[2];
+            double maxd = double.MinValue;
+            foreach (Edge e in _edges)
+            {
+                Node n1 = e._start;
+                Node n2 = e._end;
+                Vector3d contact;
+                double dist = getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out contact);
+                if (dist > maxd)
+                {
+                    maxd = dist;
+                }
+            }
+            double minScale = double.MaxValue;
+            foreach (Node node in _nodes)
+            {
+                for (int i = 0; i < 3; ++i)
+                {
+                    if (minScale > node._PART._BOUNDINGBOX._scale[i])
+                    {
+                        minScale = node._PART._BOUNDINGBOX._scale[i];
+                    }
+                }
+            }
+            vals[0] = maxd;
+            vals[1] = minScale;
+            return vals;
+        }// calScale
 
         public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
         {
@@ -71,6 +114,9 @@ namespace Component
             {
                 _nodes.Add(node);
             }
+            _NNodes = _nodes.Count;
+            // update edges
+
         }// replaceNodes
 
         private void updateNodeIndex()
@@ -199,6 +245,7 @@ namespace Component
             e._end.addAdjNode(e._start);
             e._start._edges.Add(e);
             e._end._edges.Add(e);
+            _NEdges = _edges.Count;
         }// addEdge
 
         private void deleteEdge(Edge e)
@@ -208,6 +255,7 @@ namespace Component
             e._end._adjNodes.Remove(e._start);
             e._start._edges.Remove(e);
             e._end._edges.Remove(e);
+            _NEdges = _edges.Count;
         }// deleteEdge
 
         public void markSymmtry(Node a, Node b)
@@ -253,6 +301,145 @@ namespace Component
             }
             return edges;
         }// collectOutgoingEdges
+
+        public List<Node> getGroundTouchingNodes()
+        {
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (node._isGroundTouching)
+                {
+                    nodes.Add(node);
+                }
+            }
+            return nodes;
+        }// getGroundTouchingNodes
+
+        private Node getKeyNodes()
+        {
+            int nMaxConn = 0;
+            Node key = null;
+            foreach (Node node in _nodes)
+            {
+                if (node._edges.Count > nMaxConn)
+                {
+                    nMaxConn = node._edges.Count;
+                    key = node;
+                }
+            }
+            return key;
+        }// getKeyNodes
+
+        public List<List<Node>> splitAlongKeyNode()
+        {
+            List<List<Node>> splitNodes = new List<List<Node>>();
+            // key node(s)
+            Node key = getKeyNodes();
+            List<Node> keyNodes = new List<Node>();
+            keyNodes.Add(key);
+            bool[] added = new bool[_NNodes];
+            added[key._INDEX] = true;
+            if (key.symmetry != null)
+            {
+                keyNodes.Add(key.symmetry);
+                added[key.symmetry._INDEX] = true;
+            }
+            splitNodes.Add(keyNodes);
+            // split 1
+            List<Node> split1 = new List<Node>();
+            // dfs
+            Queue<Node> queue = new Queue<Node>();
+            queue.Enqueue(key._adjNodes[0]);
+            added[key._adjNodes[0]._INDEX] = true;
+            bool containGround1 = false;
+            while (queue.Count > 0)
+            {
+                Node cur = queue.Dequeue();
+                split1.Add(cur);
+                if (!containGround1 && cur._isGroundTouching)
+                {
+                    containGround1 = true;
+                }
+                foreach (Node node in cur._adjNodes)
+                {
+                    if (!added[node._INDEX])
+                    {
+                        queue.Enqueue(node);
+                        added[node._INDEX] = true;
+                    }
+                }
+            }
+            
+            List<Node> split2 = new List<Node>();
+            bool containGround2 = false;
+            foreach (Node node in _nodes)
+            {
+                if (!added[node._INDEX])
+                {
+                    split2.Add(node);
+                    if (!containGround2 && node._isGroundTouching)
+                    {
+                        containGround2 = true;
+                    }
+                }
+            }
+            bool add_split1_first = true;
+            if (containGround1 && !containGround2) {
+                add_split1_first = true;
+            } else if (!containGround1 && containGround2)
+            {
+                add_split1_first = false;
+            }
+            else if (collectOutgoingEdges(split2).Count > collectOutgoingEdges(split1).Count)
+            {
+                add_split1_first = false;
+            }
+
+            if (add_split1_first)
+            {
+                splitNodes.Add(split1);
+                if (split2.Count > 0)
+                {
+                    splitNodes.Add(split2);
+                }
+            }
+            else
+            {
+                if (split2.Count > 0)
+                {
+                    splitNodes.Add(split2);
+                }
+                splitNodes.Add(split1);
+            }
+            return splitNodes;
+        }// splitAlongKeyNode
+
+        public List<List<Node>> getSymmetryPairs()
+        {
+            List<List<Node>> symPairs = new List<List<Node>>();
+            for (int i = 0; i < _NNodes; ++i)
+            {
+                if (_nodes[i].symmetry != null && _nodes[i]._INDEX < _nodes[i].symmetry._INDEX)
+                {
+                    List<Node> syms = new List<Node>();
+                    syms.Add(_nodes[i]);
+                    syms.Add(_nodes[i].symmetry);
+                    symPairs.Add(syms);
+                }
+            }
+            return symPairs;
+        }// getSymmetryPairs
+
+        public bool isGeometryViolated()
+        {
+            // geometry filter
+            double[] vals = calScale();
+            if (vals[0] > _maxAdjNodesDist * 2 || vals[0] < _minNodeBboxScale / 2)
+            {
+                return true;
+            }
+            return false;
+        }// isGeometryViolated
 
         public void resetUpdateStatus()
         {

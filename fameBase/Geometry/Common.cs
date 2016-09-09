@@ -134,5 +134,11 @@ namespace Geometry
             this.origin_z = this.z;
             this.originXYZFrame = new Matrix3d(this.XYZFrame);
         }
+
+        public Object Clone()
+        {
+            CoordinateSystem cs = new CoordinateSystem(new Vector3d(o), new Vector3d(x), new Vector3d(y), new Vector3d(z));
+            return cs;
+        }
     }// CoordinateSystem
 }// namespace
