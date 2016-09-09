@@ -735,7 +735,8 @@ namespace FameBase
             _currModel.unify();
             if (!File.Exists(graphName))
             {
-                _currModel.initializeGraph();
+                //_currModel.initializeGraph();
+                _currModel.initialize();
             }
             else
             {
@@ -1240,27 +1241,26 @@ namespace FameBase
             _mutateGenerations.Add(secondGen);
             // crossover
             // only for the same contact points, for rebuilding the graph
-            int maxIter = 1;
-            int iter = 0;
-            while (iter < maxIter)
-            {
-                List<Model> cross_results = this.crossOver(_crossoverGenerations[iter]);
-                List<Model> gen = new List<Model>();
-                foreach (Model model in cross_results)
-                {
-                    if (model._GRAPH.isGeometryViolated())
-                    {
-                        continue;
-                    }
-                    gen.Add(model);
-                    saveAPartBasedModel(model._path + model._model_name + ".pam");
-                    // screenshot
-                    this.setCurrentModel(model, -1);
-                    this.captureScreen(imageFolder_c + model._model_name + ".png");
-                }
-                ++iter;
-                _crossoverGenerations.Add(gen);
-            }
+            //this.crossOver(firstGen, imageFolder_c);
+            //int maxIter = 1;
+            //int iter = 0;
+            //while (iter < maxIter)
+            //{
+                //List<Model> gen = this.crossOver(_crossoverGenerations[iter]);
+                //foreach (Model model in gen)
+                //{
+                //    if (model._GRAPH.isGeometryViolated())
+                //    {
+                //        continue;
+                //    }
+                //    saveAPartBasedModel(model._path + model._model_name + ".pam");
+                //    // screenshot
+                //    this.setCurrentModel(model, -1);
+                //    this.captureScreen(imageFolder_c + model._model_name + ".png");
+                //}
+                //++iter;
+                //_crossoverGenerations.Add(gen);
+            //}
             // cossover + mutate
 
         }// autoGenerate
@@ -1639,16 +1639,22 @@ namespace FameBase
                     switchNodes(m1._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
 
                     newM1.replaceNodes(nodes1, updatedNodes2);
-                    _resViewers.Add(new ModelViewer(newM1, k++, this));
+                    if (!newM1._GRAPH.isGeometryViolated())
+                    {
+                        _resViewers.Add(new ModelViewer(newM1, k++, this));
+                    }
                     newM2.replaceNodes(nodes2, updatedNodes1);
-                    _resViewers.Add(new ModelViewer(newM2, k++, this));
+                    if (!newM2._GRAPH.isGeometryViolated())
+                    {
+                        _resViewers.Add(new ModelViewer(newM2, k++, this));
+                    }
                 }
             }
             _crossOverBasket.Clear();
             return _resViewers;
         }// crossover
 
-        public List<Model> crossOver(List<Model> models)
+        public List<Model> crossOver(List<Model> models, string imageFolder_c)
         {
             if (models.Count < 2)
             {
@@ -1671,7 +1677,18 @@ namespace FameBase
                         m1._GRAPH.selectedNodes = nodeChoices1[t];
                         m2._GRAPH.selectedNodes = nodeChoices2[t];
                         List<Model> crossed = this.crossOverOp(m1, m2, t);
-                        crossedModels.AddRange(crossed);
+                        foreach (Model model in crossed)
+                        {
+                            if (model._GRAPH.isGeometryViolated())
+                            {
+                                continue;
+                            }
+                            saveAPartBasedModel(model._path + model._model_name + ".pam");
+                            // screenshot
+                            this.setCurrentModel(model, -1);
+                            this.captureScreen(imageFolder_c + model._model_name + ".png");
+                        }
+                        //crossedModels.AddRange(crossed);
                     }
                 }
             }
@@ -1995,7 +2012,13 @@ namespace FameBase
                     }
                     normal = normal.normalize();
 
-                    if (double.IsNaN(normal.x)) throw new Exception();
+                    if (double.IsNaN(normal.x)) //throw new Exception();
+                    {
+                        sx = 1.0;
+                        sy = 1.0;
+                        sz = 1.0;
+                    }
+                    else
                     {
                         if (Math.Abs(normal.x) > 0.5)
                         {
@@ -2027,6 +2050,7 @@ namespace FameBase
                 {
                     node._PART.setRandomColor();
                 }
+                this.Refresh();
             }
         }
 

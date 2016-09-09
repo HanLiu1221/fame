@@ -64,6 +64,7 @@ namespace Component
             cloned._NEdges = cloned._edges.Count;
             cloned._maxAdjNodesDist = _maxAdjNodesDist;
             cloned._minNodeBboxScale = _minNodeBboxScale;
+            cloned._maxNodeBboxScale = _maxNodeBboxScale;
             return cloned;
         }// clone
 

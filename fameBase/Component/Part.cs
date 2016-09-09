@@ -401,7 +401,7 @@ namespace Component
             center = new Vector3d() - center;
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
-            Matrix4d Q = T * S; // *Matrix4d.TranslationMatrix(new Vector3d() - center);
+            Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
             foreach (Part p in _parts)
             {
                 p.Transform(Q);

@@ -196,7 +196,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\chair" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\shelf" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -323,6 +323,7 @@ namespace FameBase
         {
             this.glViewer.groupParts();
             this.updateStats();
+            this.Refresh();
         }
 
         public void updateStats()

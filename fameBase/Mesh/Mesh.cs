@@ -173,7 +173,27 @@ namespace Geometry
         {
             double[] vPos = vertexPos.Clone() as double[];
             int[] fIndex = faceVertexIndex.Clone() as int[];
-            Mesh m = new Mesh(vPos, fIndex);
+            Mesh m = new Mesh();
+            m.vertexCount = vPos.Length / 3;
+            m.faceCount = fIndex.Length / 3; // tri mesh
+            m.faceVertexIndex = fIndex;
+            m.vertexPos = vPos;
+            m.vertexFaceIndex = new List<List<int>>();
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                m.vertexFaceIndex.Add(new List<int>());
+            }
+            for (int i = 0, j = 0; i < this.faceCount; ++i)
+            {
+                m.vertexFaceIndex[fIndex[j++]].Add(i);
+                m.vertexFaceIndex[fIndex[j++]].Add(i);
+                m.vertexFaceIndex[fIndex[j++]].Add(i);
+            }
+            m.originVertextPos = this.vertexPos.Clone() as double[];
+            m._maxCoord = new Vector3d(_maxCoord);
+            m._minCoord = new Vector3d(_minCoord);
+            m.faceNormal = faceNormal.Clone() as double[];
+            m.vertexNormal = vertexNormal.Clone() as double[];
             return m;
         }
 
@@ -192,7 +212,8 @@ namespace Geometry
                 _maxCoord = Vector3d.Max(_maxCoord, transformed);
                 _minCoord = Vector3d.Min(_minCoord, transformed);
             }
-            this.afterUpdatePos();
+            //this.afterUpdatePos();
+            this.getBoundary();
         }// Transform
 
         public void TransformFromOrigin(Matrix4d T)
