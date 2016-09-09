@@ -359,7 +359,7 @@ namespace Component
         {
             _mesh = mesh;
             this.initializeParts();
-            this.mergeNearbyParts();
+            //this.mergeNearbyParts();
         }
 
         public void initialize()
@@ -371,7 +371,10 @@ namespace Component
 
         public void initializeGraph()
         {
-            _GRAPH = new Graph(_parts);
+            if (_GRAPH == null)
+            {
+                _GRAPH = new Graph(_parts);
+            }
         }
 
         public void setGraph(Graph g)
@@ -379,7 +382,7 @@ namespace Component
             _GRAPH = g;
         }
 
-        private void unify()
+        public void unify()
         {
             Vector3d maxCoord = Vector3d.MinCoord;
             Vector3d minCoord = Vector3d.MaxCoord;
@@ -397,7 +400,7 @@ namespace Component
             center = new Vector3d() - center;
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
-            Matrix4d Q = T *S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            Matrix4d Q = T * S; // *Matrix4d.TranslationMatrix(new Vector3d() - center);
             foreach (Part p in _parts)
             {
                 p.Transform(Q);

@@ -12,6 +12,9 @@ namespace Component
         List<Edge> _edges = new List<Edge>();
         public int _NNodes = 0;
         public int _NEdges = 0;
+
+        double _minNodeBboxScale; // min scale of a box
+        double _maxAdjNodesDist; // max distance between two nodes
         // test
         public List<Node> selectedNodes;
 
@@ -58,8 +61,48 @@ namespace Component
             }
             cloned._NNodes = cloned._nodes.Count;
             cloned._NEdges = cloned._edges.Count;
+            cloned._maxAdjNodesDist = _maxAdjNodesDist;
+            cloned._minNodeBboxScale = _minNodeBboxScale;
             return cloned;
         }// clone
+
+        public void analyzeScale()
+        {
+            double[] vals = calScale();
+            _maxAdjNodesDist = vals[0];
+            _minNodeBboxScale = vals[1];
+        }
+
+        private double[] calScale()
+        {
+            double[] vals = new double[2];
+            double maxd = double.MinValue;
+            foreach (Edge e in _edges)
+            {
+                Node n1 = e._start;
+                Node n2 = e._end;
+                Vector3d contact;
+                double dist = getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out contact);
+                if (dist > maxd)
+                {
+                    maxd = dist;
+                }
+            }
+            double minScale = double.MaxValue;
+            foreach (Node node in _nodes)
+            {
+                for (int i = 0; i < 3; ++i)
+                {
+                    if (minScale > node._PART._BOUNDINGBOX._scale[i])
+                    {
+                        minScale = node._PART._BOUNDINGBOX._scale[i];
+                    }
+                }
+            }
+            vals[0] = maxd;
+            vals[1] = minScale;
+            return vals;
+        }// calScale
 
         public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
         {
@@ -202,6 +245,7 @@ namespace Component
             e._end.addAdjNode(e._start);
             e._start._edges.Add(e);
             e._end._edges.Add(e);
+            _NEdges = _edges.Count;
         }// addEdge
 
         private void deleteEdge(Edge e)
@@ -211,6 +255,7 @@ namespace Component
             e._end._adjNodes.Remove(e._start);
             e._start._edges.Remove(e);
             e._end._edges.Remove(e);
+            _NEdges = _edges.Count;
         }// deleteEdge
 
         public void markSymmtry(Node a, Node b)
@@ -384,6 +429,17 @@ namespace Component
             }
             return symPairs;
         }// getSymmetryPairs
+
+        public bool isGeometryViolated()
+        {
+            // geometry filter
+            double[] vals = calScale();
+            if (vals[0] > _maxAdjNodesDist * 2 || vals[0] < _minNodeBboxScale / 2)
+            {
+                return true;
+            }
+            return false;
+        }// isGeometryViolated
 
         public void resetUpdateStatus()
         {

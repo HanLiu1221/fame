@@ -169,6 +169,11 @@ namespace FameBase
             {
                 this.glViewer.loadAPartBasedModel(dialog.FileName);
                 this.updateStats();
+                // set tab page
+                TabPage tp = new TabPage(Path.GetFileName(dialog.FileName));
+                this.fileNameTabs.TabPages.Clear();
+                this.fileNameTabs.TabPages.Add(tp);
+                this.fileNameTabs.SelectedTab = tp;
             }
         }
 
@@ -191,7 +196,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\test" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\chair" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;

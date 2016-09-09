@@ -731,6 +731,7 @@ namespace FameBase
             this.clearHighlights();
             _currModel = this.loadOnePartBasedModel(filename);
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
+            _currModel.unify();
             if (!File.Exists(graphName))
             {
                 _currModel.initializeGraph();
@@ -870,6 +871,7 @@ namespace FameBase
                     int k = int.Parse(strs[1]);
                     g.addAnEdge(g._NODES[j], g._NODES[k]);
                 }
+                g.analyzeScale();
                 m.setGraph(g);
             }
         }// loadAGrapph
@@ -1224,6 +1226,10 @@ namespace FameBase
                 foreach (ModelViewer mv in res)
                 {
                     Model model = mv._MODEL;
+                    if (model._GRAPH.isGeometryViolated())
+                    {
+                        continue;
+                    }
                     secondGen.Add(model);
                     saveAPartBasedModel(model._path + model._model_name + ".pam");
                     // screenshot
@@ -1241,7 +1247,11 @@ namespace FameBase
                 List<Model> cross_results = this.crossOver(_crossoverGenerations[iter]);
                 List<Model> gen = new List<Model>();
                 foreach (Model model in cross_results)
-                { 
+                {
+                    if (model._GRAPH.isGeometryViolated())
+                    {
+                        continue;
+                    }
                     gen.Add(model);
                     saveAPartBasedModel(model._path + model._model_name + ".pam");
                     // screenshot
@@ -1254,6 +1264,18 @@ namespace FameBase
             // cossover + mutate
 
         }// autoGenerate
+
+        private bool hasGroundTouching(List<Node> nodes)
+        {
+            foreach (Node node in nodes)
+            {
+                if (node._isGroundTouching)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// hasGroundTouching
 
         private void selectReplaceableNodesPair(Graph g1, Graph g2, out List<List<Node>> nodeChoices1, out List<List<Node>> nodeChoices2)
         {
@@ -1268,9 +1290,33 @@ namespace FameBase
             // Key nodes
             List<List<Node>> splitNodes1 = g1.splitAlongKeyNode();
             List<List<Node>> splitNodes2 = g2.splitAlongKeyNode();
-            nodeChoices1.AddRange(splitNodes1);
-            nodeChoices2.AddRange(splitNodes2);
-
+            if (splitNodes1.Count < splitNodes2.Count)
+            {
+                if (hasGroundTouching(splitNodes2[1]))
+                {
+                    splitNodes2.RemoveAt(2);
+                }
+                else
+                {
+                    splitNodes2.RemoveAt(1);
+                }
+            }
+            else if (splitNodes1.Count > splitNodes2.Count)
+            {
+                if (hasGroundTouching(splitNodes1[1]))
+                {
+                    splitNodes1.RemoveAt(2);
+                }
+                else
+                {
+                    splitNodes1.RemoveAt(1);
+                }
+            }
+            else
+            {
+                nodeChoices1.AddRange(splitNodes1);
+                nodeChoices2.AddRange(splitNodes2);
+            }
             // symmetry nodes
             List<List<Node>> symPairs1 = g1.getSymmetryPairs();
             List<List<Node>> symPairs2 = g2.getSymmetryPairs();
@@ -1372,6 +1418,10 @@ namespace FameBase
                 //int axis = rand.Next(3);
                 // permute
                 int j = i;
+                if (_currModel._GRAPH._NODES[j].symmetry != null && _currModel._GRAPH._NODES[j]._INDEX > _currModel._GRAPH._NODES[j].symmetry._INDEX)
+                {
+                    continue;
+                }
                 for (int axis = 0; axis < 3; ++axis)
                 {
                     ++idx;
