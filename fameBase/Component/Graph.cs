@@ -13,6 +13,7 @@ namespace Component
         public int _NNodes = 0;
         public int _NEdges = 0;
 
+        double _maxNodeBboxScale; // max scale of a box
         double _minNodeBboxScale; // min scale of a box
         double _maxAdjNodesDist; // max distance between two nodes
         // test
@@ -71,11 +72,12 @@ namespace Component
             double[] vals = calScale();
             _maxAdjNodesDist = vals[0];
             _minNodeBboxScale = vals[1];
+            _maxNodeBboxScale = vals[2];
         }
 
         private double[] calScale()
         {
-            double[] vals = new double[2];
+            double[] vals = new double[3];
             double maxd = double.MinValue;
             foreach (Edge e in _edges)
             {
@@ -89,6 +91,7 @@ namespace Component
                 }
             }
             double minScale = double.MaxValue;
+            double maxScale = double.MinValue;
             foreach (Node node in _nodes)
             {
                 for (int i = 0; i < 3; ++i)
@@ -97,10 +100,15 @@ namespace Component
                     {
                         minScale = node._PART._BOUNDINGBOX._scale[i];
                     }
+                    if (maxScale < node._PART._BOUNDINGBOX._scale[i])
+                    {
+                        maxScale = node._PART._BOUNDINGBOX._scale[i];
+                    }
                 }
             }
             vals[0] = maxd;
             vals[1] = minScale;
+            vals[2] = maxScale;
             return vals;
         }// calScale
 
@@ -434,7 +442,8 @@ namespace Component
         {
             // geometry filter
             double[] vals = calScale();
-            if (vals[0] > _maxAdjNodesDist * 2 || vals[0] < _minNodeBboxScale / 2)
+            double thr = 2.2;
+            if (vals[0] > _maxAdjNodesDist * thr || vals[1] < _minNodeBboxScale / thr || vals[2] > _maxNodeBboxScale * thr)
             {
                 return true;
             }

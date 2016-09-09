@@ -709,7 +709,8 @@ namespace FameBase
                         return null;
                     }
                     Mesh mesh = new Mesh(meshFile, false);
-                    Part part = hasPrism ? new Part(mesh, prim) : new Part(mesh);
+                    Part part = new Part(mesh);
+                    //Part part = hasPrism ? new Part(mesh, prim) : new Part(mesh);
                     parts.Add(part);
                 }
                 Model model = new Model(parts);
@@ -1222,10 +1223,9 @@ namespace FameBase
             {
                 Model m = firstGen[i];
                 this.setCurrentModel(m, i);
-                List<ModelViewer> res = this.mutate();
-                foreach (ModelViewer mv in res)
+                List<Model> res = this.mutate();
+                foreach (Model model in res)
                 {
-                    Model model = mv._MODEL;
                     if (model._GRAPH.isGeometryViolated())
                     {
                         continue;
@@ -1390,13 +1390,25 @@ namespace FameBase
             _currModel._GRAPH.markSymmtry(pnode, qnode);
         }// markSymmetry
 
-        public List<ModelViewer> mutate()
+        public List<ModelViewer> getMutateViewers()
+        {
+            List<Model> models = mutate();
+            _resViewers = new List<ModelViewer>();
+            int i = 0;
+            foreach (Model m in models)
+            {
+                _resViewers.Add(new ModelViewer(m, i++, this));
+            }
+            return _resViewers;
+        }// getMutateViewers
+
+        private List<Model> mutate()
         {
             if (_currModel == null)
             {
                 return null;
             }
-            _resViewers = new List<ModelViewer>();
+            List<Model> mutatedModels = new List<Model>();
             int n = _currModel._NPARTS;
             bool[] mutated = new bool[_currModel._NPARTS];
             Random rand = new Random();
@@ -1448,11 +1460,11 @@ namespace FameBase
                     deformSymmetryNode(updateNode);
                     deformPropagation(model._GRAPH, updateNode);
                     model._GRAPH.resetUpdateStatus();
-                    _resViewers.Add(new ModelViewer(model, i, this));
+                    mutatedModels.Add(model);
                     ++idx;
                 }// each axis
             }
-            return _resViewers;
+            return mutatedModels;
         }// mutate
 
         private void deformANodeAndEdges(Node node, Matrix4d T)
