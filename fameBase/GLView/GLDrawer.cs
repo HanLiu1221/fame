@@ -32,7 +32,8 @@ namespace FameBase
         public static Color SelectionColor = Color.FromArgb(231, 138, 195);
         public static Color ContactColor = Color.FromArgb(240, 59, 32);
         public static Color HightLightContactColor = Color.FromArgb(189, 0, 38);
-        public static Color HightLightMeshColor = Color.FromArgb(84, 39, 143);
+        public static Color DimMeshColor = Color.FromArgb(222, 235, 247);
+        public static Color HighlightBboxColor = Color.FromArgb(252, 146, 114);
 
         public static int _NSlices = 40;
 

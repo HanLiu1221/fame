@@ -446,7 +446,7 @@ namespace FameBase
         private void groundToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.groundToolStripMenuItem.Checked = !this.groundToolStripMenuItem.Checked;
-            this.glViewer.drawGround = this.groundToolStripMenuItem.Checked;
+            this.glViewer.showGround = this.groundToolStripMenuItem.Checked;
             this.glViewer.Refresh();
         }
 

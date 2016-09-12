@@ -486,6 +486,10 @@ namespace Component
             foreach (Edge e in _edges)
             {
                 e._contactUpdated = false;
+                foreach (Contact c in e._contacts)
+                {
+                    c.updateOrigin();
+                }
             }
         }// resetEdgeContactStatus
 
@@ -642,7 +646,7 @@ namespace Component
             foreach (Contact p in _contacts)
             {
                 p.TransformFromOrigin(T);
-                p.updateOrigin();
+                //p.updateOrigin();
             }            
             _contactUpdated = true;
         }

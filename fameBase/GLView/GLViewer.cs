@@ -67,10 +67,36 @@ namespace FameBase
                                       new Vector3d(0.2, 0, 1), new Vector3d(0, 0, 1.2)};
             this.startWid = this.Width;
             this.startHeig = this.Height;
+            initializeGround();
+        }
+
+        private void initializeGround()
+        {
             Vector3d[] groundPoints = new Vector3d[4] {
                 new Vector3d(-1, 0, -1), new Vector3d(-1, 0, 1),
                 new Vector3d(1, 0, 1), new Vector3d(1, 0, -1)};
             _groundPlane = new Polygon3D(groundPoints);
+            int n = 10;
+            _groundGrids = new Vector3d[(n + 1) * 2 * 2];
+            Vector3d xf = groundPoints[0];
+            Vector3d xt = groundPoints[1];
+            Vector3d yf = groundPoints[0];
+            Vector3d yt = groundPoints[3];
+            double xstep = (xt - xf).Length() / n;
+            Vector3d xdir = (xt - xf).normalize();
+            int k = 0;
+            for (int i = 0; i <= n; ++i)
+            {
+                _groundGrids[k++] = xf + xdir * xstep * i;
+                _groundGrids[k++] = yt + xdir * xstep * i;
+            }
+            double ystep = (yt - yf).Length() / n;
+            Vector3d ydir = (yt - yf).normalize();
+            for (int i = 0; i <= n; ++i)
+            {
+                _groundGrids[k++] = xf + ydir * ystep * i;
+                _groundGrids[k++] = xt + ydir * ystep * i;
+            }
         }
 
         // modes
@@ -116,9 +142,9 @@ namespace FameBase
 
         private bool _showContactPoint = false;
 
-        private static Vector3d eyePosition3D = new Vector3d(0, 0, 1.5);
+        private static Vector3d eyePosition3D = new Vector3d(0, 0.5, 1.5);
         private static Vector3d eyePosition2D = new Vector3d(0, 1, 1.5);
-        Vector3d eye = new Vector3d(0, 0, 1.5);
+        Vector3d eye = new Vector3d(0, 0.5, 1.5);
         private float[] _material = { 0.62f, 0.74f, 0.85f, 1.0f };
         private float[] _ambient = { 0.2f, 0.2f, 0.2f, 1.0f };
         private float[] _diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -182,7 +208,7 @@ namespace FameBase
         BodyNode _selectedNode;
         public bool _unitifyMesh = true;
         bool _showEditAxes = false;
-        public bool drawGround = false;
+        public bool showGround = false;
         private Vector3d[] _axes;
         private Contact[] _editAxes;
         private Polygon3D _groundPlane;
@@ -192,6 +218,7 @@ namespace FameBase
         bool _isRightClick = false;
         bool _isDrawTranslucentHumanPose = true;
 
+        private Vector3d[] _groundGrids;
         Edge _selectedEdge = null;
         Contact _selectedContact = null;
 
@@ -885,7 +912,7 @@ namespace FameBase
                         List<Contact> contacts = new List<Contact>();
                         while (t + 2 < strs.Length)
                         {
-                            Vector3d v = new Vector3d(double.Parse(strs[t]), double.Parse(strs[t++]), double.Parse(strs[t++]));
+                            Vector3d v = new Vector3d(double.Parse(strs[t++]), double.Parse(strs[t++]), double.Parse(strs[t++]));
                             Contact c = new Contact(v);
                             contacts.Add(c);
                         }
@@ -1271,7 +1298,7 @@ namespace FameBase
                 Directory.CreateDirectory(imageFolder_c);
             }
             // mutate
-            List<Model> secondGen = new List<Model>();
+            //List<Model> secondGen = new List<Model>();
             for (int i = 0; i < firstGen.Count; ++i)
             {
                 Model m = firstGen[i];
@@ -1283,14 +1310,14 @@ namespace FameBase
                     {
                         continue;
                     }
-                    secondGen.Add(model);
+                    //secondGen.Add(model);
                     saveAPartBasedModel(model._path + model._model_name + ".pam");
                     // screenshot
                     this.setCurrentModel(model, -1);
                     this.captureScreen(imageFolder_m + model._model_name + ".png");
                 }
             }
-            _mutateGenerations.Add(secondGen);
+            //_mutateGenerations.Add(secondGen);
             // crossover
             // only for the same contact points, for rebuilding the graph
             int maxIter = 1;
@@ -1468,7 +1495,7 @@ namespace FameBase
             double s1 = 0.5;
             double s2 = 2.0;
             int idx = 0;
-            string path = _currModel._path + _currModel._model_name + "_mutate\\";
+            string path = _currModel._path + "mutate\\";
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
@@ -1633,7 +1660,7 @@ namespace FameBase
                     targets.AddRange(e.getContactPoints());
                 }
             }
-            if (sources.Count == 1 && node._isGroundTouching)
+            if (sources.Count > 0 && node._isGroundTouching)
             {
                 sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
                 targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
@@ -2775,6 +2802,8 @@ namespace FameBase
             if (this._currModel == null || _currModel._GRAPH == null) return;
             this.cal2D();
             double mind = double.MaxValue;
+            _selectedEdge = null;
+            _selectedContact = null;
             Edge nearestEdge = null;
             Contact nearestContact = null;
             foreach (Edge e in this._currModel._GRAPH._EDGES)
@@ -2791,6 +2820,7 @@ namespace FameBase
                     }
                 }
             }
+
             if (mind < Common._thresh2d)
             {
                 _selectedEdge = nearestEdge;
@@ -3382,9 +3412,9 @@ namespace FameBase
                 this.drawAxes(_axes, 3.0f);
             }
 
-            if (this.drawGround)
+            if (this.showGround)
             {
-                GLDrawer.drawPlane(_groundPlane, Color.LightGray);
+                drawGround();
             }
 
             //Gl.glEnable(Gl.GL_POLYGON_OFFSET_FILL);
@@ -3420,6 +3450,19 @@ namespace FameBase
             Gl.glPopMatrix();
             
         }// Draw3D   
+
+        private void drawGround()
+        {
+            //GLDrawer.drawPlane(_groundPlane, Color.LightGray);
+            // draw grids
+            if (_groundGrids != null)
+            {
+                for (int i = 0; i < _groundGrids.Length; i += 2)
+                {
+                    GLDrawer.drawLines3D(_groundGrids[i], _groundGrids[i + 1], Color.Gray, 2.0f);
+                }
+            }
+        }// showGround
 
         private void drawGraph(Graph g)
         {
@@ -3619,8 +3662,8 @@ namespace FameBase
             if (_selectedEdge != null)
             {
                 // hightlight the nodes
-                GLDrawer.drawBoundingboxPlanes(_selectedEdge._start._PART._BOUNDINGBOX, GLDrawer.HightLightMeshColor);
-                GLDrawer.drawBoundingboxPlanes(_selectedEdge._end._PART._BOUNDINGBOX, GLDrawer.HightLightMeshColor);
+                GLDrawer.drawBoundingboxPlanes(_selectedEdge._start._PART._BOUNDINGBOX, GLDrawer.HighlightBboxColor);
+                GLDrawer.drawBoundingboxPlanes(_selectedEdge._end._PART._BOUNDINGBOX, GLDrawer.HighlightBboxColor);
             }
         }// DrawHighlight3D
 

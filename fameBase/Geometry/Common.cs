@@ -14,7 +14,7 @@ namespace Geometry
         public static double _thresh2d = 20;
         public static double _bodyNodeRadius = 0.06;
         public static double _contactPointsize = 0.03;
-        public static double _hightlightContactPointsize = 0.06;
+        public static double _hightlightContactPointsize = 0.04;
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
@@ -74,8 +74,6 @@ namespace Geometry
         {
             Contact pnt = new Contact(new Vector3d(_pos3d));
             pnt._originPos3d = new Vector3d(_originPos3d);
-            pnt._pos2d = new Vector2d(_pos2d);
-            pnt._originPos2d = new Vector2d(_originPos2d);
             return pnt;
         }
     }// Contact
