@@ -21,14 +21,14 @@ namespace Geometry
         public Common() { }
     }
 
-    public class Pos
+    public class Contact
     {
         public Vector3d _originPos3d;
         public Vector2d _originPos2d;
         public Vector3d _pos3d;
         public Vector2d _pos2d;
 
-        public Pos(Vector3d v)
+        public Contact(Vector3d v)
         {
             _originPos3d = new Vector3d(v);
             _pos3d = new Vector3d(v);
@@ -69,7 +69,16 @@ namespace Geometry
         {
             _pos2d = new Vector2d(v2);
         }
-    }// Pos
+
+        public Object Clone()
+        {
+            Contact pnt = new Contact(new Vector3d(_pos3d));
+            pnt._originPos3d = new Vector3d(_originPos3d);
+            pnt._pos2d = new Vector2d(_pos2d);
+            pnt._originPos2d = new Vector2d(_originPos2d);
+            return pnt;
+        }
+    }// Contact
 
     public class CoordinateSystem
     {

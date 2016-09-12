@@ -184,14 +184,16 @@ namespace FameBase
         bool _showEditAxes = false;
         public bool drawGround = false;
         private Vector3d[] _axes;
-        private Pos[] _editAxes;
+        private Contact[] _editAxes;
         private Polygon3D _groundPlane;
         int _hightlightAxis = -1;
         ArcBall _editArcBall;
         ArcBall _bodyArcBall;
         bool _isRightClick = false;
         bool _isDrawTranslucentHumanPose = true;
+
         Edge _selectedEdge = null;
+        Contact _selectedContact = null;
 
         /******************** Functions ********************/
 
@@ -617,13 +619,13 @@ namespace FameBase
                     Part ipart = _currModel._PARTS[i];
                     foreach (Vector3d v in ipart._BOUNDINGBOX._POINTS3D)
                     {
-                        sw.Write(vector3dToString(v) + " ");
+                        sw.Write(vector3dToString(v, true));
                     }
                     sw.WriteLine();
                     // principal axes
-                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.x) + " ");
-                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.y) + " ");
-                    sw.WriteLine(vector3dToString(ipart._BOUNDINGBOX.coordSys.z));
+                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.x, true));
+                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.y, true));
+                    sw.WriteLine(vector3dToString(ipart._BOUNDINGBOX.coordSys.z, false));
                     // save mesh
                     string meshName = "part_" + i.ToString() + ".obj";
                     this.saveObj(ipart._MESH, meshDir + meshName);
@@ -637,12 +639,16 @@ namespace FameBase
             }
         }// saveAPartBasedModel
 
-        private string vector3dToString(Vector3d v)
+        private string vector3dToString(Vector3d v, bool tailSpace)
         {
             StringBuilder sb = new StringBuilder();
             sb.Append(string.Format("{0:0.###}", v.x) + " " +
                             string.Format("{0:0.###}", v.y) + " " +
                             string.Format("{0:0.###}", v.z));
+            if (tailSpace)
+            {
+                sb.Append(" ");
+            }
             return sb.ToString();
         }// vector3dToString
 
@@ -875,8 +881,15 @@ namespace FameBase
                     int k = int.Parse(strs[1]);
                     if (strs.Length > 4)
                     {
-                        Vector3d c = new Vector3d(double.Parse(strs[2]), double.Parse(strs[3]), double.Parse(strs[4]));
-                        g.addAnEdge(g._NODES[j], g._NODES[k], c);
+                        int t = 2;
+                        List<Contact> contacts = new List<Contact>();
+                        while (t + 2 < strs.Length)
+                        {
+                            Vector3d v = new Vector3d(double.Parse(strs[t]), double.Parse(strs[t++]), double.Parse(strs[t++]));
+                            Contact c = new Contact(v);
+                            contacts.Add(c);
+                        }
+                        g.addAnEdge(g._NODES[j], g._NODES[k], contacts);
                     }
                     else
                     {
@@ -918,7 +931,12 @@ namespace FameBase
                 sw.WriteLine(_currModel._GRAPH._NEdges.ToString() + " edges.");
                 foreach(Edge e in _currModel._GRAPH._EDGES)
                 {
-                    sw.WriteLine(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString() + this.vector3dToString(e._contact._pos3d));
+                    sw.Write(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString() + " ");
+                    foreach (Contact pnt in e._contacts)
+                    {
+                        sw.Write(this.vector3dToString(pnt._pos3d, true));
+                    }
+                    sw.WriteLine();
                 }
             }
         }// saveAGrapph
@@ -1022,13 +1040,16 @@ namespace FameBase
             {
                 foreach (Edge e in _currModel._GRAPH._EDGES)
                 {
-                    Vector2d v2 = this.camera.Project(e._contact._pos3d).ToVector2d();
-                    e._contact._pos2d = new Vector2d(v2.x, this.Height - v2.y); 
+                    foreach (Contact pnt in e._contacts)
+                    {
+                        Vector2d v2 = this.camera.Project(pnt._pos3d).ToVector2d();
+                        pnt._pos2d = new Vector2d(v2.x, this.Height - v2.y);
+                    }
                 }
             }
             if (_editAxes != null)
             {
-                foreach (Pos p in _editAxes)
+                foreach (Contact p in _editAxes)
                 {
                     p._pos2d = getVec2D(p._pos3d);
                 }
@@ -1598,7 +1619,7 @@ namespace FameBase
                     }
                 }
             }// while
-        }// deformPropagation
+        }// deformPropagation        
 
         private void deformNode(Node node)
         {
@@ -1608,8 +1629,8 @@ namespace FameBase
             {
                 if (e._contactUpdated)
                 {
-                    sources.Add(e._contact._originPos3d);
-                    targets.Add(e._contact._pos3d);
+                    sources.AddRange(e.getOriginContactPoints());
+                    targets.AddRange(e.getContactPoints());
                 }
             }
             if (sources.Count == 1 && node._isGroundTouching)
@@ -1903,7 +1924,7 @@ namespace FameBase
             List<Vector3d> points = new List<Vector3d>();
             foreach (Edge e in edges)
             {
-                points.Add(e._contact._pos3d);
+                points.AddRange(e.getContactPoints());
             }
             return points;
         }// collectPoints
@@ -2164,9 +2185,9 @@ namespace FameBase
             {
                 center = _currHumanPose._ROOT._POS;
             }
-            else if (_selectedEdge != null)
+            else if (_selectedEdge != null && _selectedContact != null)
             {
-                center = _selectedEdge._contact._pos3d;
+                center = _selectedContact._pos3d;
             }
             ad /= 2;
             if (ad == 0)
@@ -2174,10 +2195,10 @@ namespace FameBase
                 ad = 0.2;
             }
             double arrow_d = ad / 6;
-            _editAxes = new Pos[18];
+            _editAxes = new Contact[18];
             for (int i = 0; i < _editAxes.Length; ++i )
             {
-                _editAxes[i] = new Pos(new Vector3d());
+                _editAxes[i] = new Contact(new Vector3d());
             }
             _editAxes[0]._pos3d = center - ad * Vector3d.XCoord;
             _editAxes[1]._pos3d = center + ad * Vector3d.XCoord;
@@ -2755,19 +2776,25 @@ namespace FameBase
             this.cal2D();
             double mind = double.MaxValue;
             Edge nearestEdge = null;
+            Contact nearestContact = null;
             foreach (Edge e in this._currModel._GRAPH._EDGES)
             {
-                Vector2d v2 = e._contact._pos2d;
-                double dis = (v2 - mousePos).Length();
-                if (dis < mind)
+                foreach (Contact pnt in e._contacts)
                 {
-                    mind = dis;
-                    nearestEdge = e;
+                    Vector2d v2 = pnt._pos2d;
+                    double dis = (v2 - mousePos).Length();
+                    if (dis < mind)
+                    {
+                        mind = dis;
+                        nearestEdge = e;
+                        nearestContact = pnt;
+                    }
                 }
             }
             if (mind < Common._thresh2d)
             {
                 _selectedEdge = nearestEdge;
+                _selectedContact = nearestContact;
             }
             if (_selectedEdge != null)
             {
@@ -2956,7 +2983,7 @@ namespace FameBase
 
         private void moveContactPoint(Vector2d mousePos)
         {
-            if (_selectedEdge == null)
+            if (_selectedEdge == null || _selectedContact == null)
             {
                 return;
             }
@@ -2972,7 +2999,7 @@ namespace FameBase
                     T[i, 3] = 0;
                 }
             }
-            _selectedEdge._contact.TransformFromOrigin(T);
+            _selectedContact.TransformFromOrigin(T);
         }// moveContactPoint
 
         private void moveContactUp()
@@ -2981,7 +3008,10 @@ namespace FameBase
             {
                 foreach (Edge e in _currModel._GRAPH._EDGES)
                 {
-                    e._contact.updateOrigin();
+                    foreach (Contact c in e._contacts)
+                    {
+                        c.updateOrigin();
+                    }
                 }
             }
         }// moveContactUp
@@ -3093,7 +3123,7 @@ namespace FameBase
 
         public void addAnEdge()
         {
-            if (_selectedParts.Count != 2)
+            if (_currModel == null || _currModel._GRAPH == null || _selectedParts.Count != 2)
             {
                 return;
             }
@@ -3101,7 +3131,21 @@ namespace FameBase
             int j = _currModel._PARTS.IndexOf(_selectedParts[1]);
             if (i != -1 && j != -1)
             {
-                _currModel._GRAPH.addAnEdge(_currModel._GRAPH._NODES[i], _currModel._GRAPH._NODES[j]);
+                Edge e = _currModel._GRAPH.isEdgeExist(_currModel._GRAPH._NODES[i], _currModel._GRAPH._NODES[j]);
+                if (e == null)
+                {
+                    _currModel._GRAPH.addAnEdge(_currModel._GRAPH._NODES[i], _currModel._GRAPH._NODES[j]);
+                }
+                else
+                {
+                    if (MessageBox.Show("Add a contact to an existing EDGE?") == DialogResult.Cancel)
+                    { }
+                    else
+                    {
+                        Vector3d v = e._contacts[0]._pos3d + new Vector3d(0.05, 0, 0);
+                        e._contacts.Add(new Contact(v));
+                    }
+                }
             }
         }// addAnEdge
 
@@ -3557,16 +3601,26 @@ namespace FameBase
                 {
                     foreach (Edge e in _currModel._GRAPH._EDGES)
                     {
-                        if (e == _selectedEdge)
+                        foreach (Contact c in e._contacts)
                         {
-                            GLDrawer.drawSphere(e._contact._pos3d, Common._hightlightContactPointsize, GLDrawer.HightLightContactColor); 
-                        }
-                        else
-                        {
-                            GLDrawer.drawSphere(e._contact._pos3d, Common._contactPointsize, GLDrawer.ContactColor);
+                            if (e == _selectedEdge && c == _selectedContact)
+                            {
+                                GLDrawer.drawSphere(c._pos3d, Common._hightlightContactPointsize, GLDrawer.HightLightContactColor);
+                            }
+                            else
+                            {
+                                GLDrawer.drawSphere(c._pos3d, Common._contactPointsize, GLDrawer.ContactColor);
+                            }
                         }
                     }
                 }
+            }
+
+            if (_selectedEdge != null)
+            {
+                // hightlight the nodes
+                GLDrawer.drawBoundingboxPlanes(_selectedEdge._start._PART._BOUNDINGBOX, GLDrawer.HightLightMeshColor);
+                GLDrawer.drawBoundingboxPlanes(_selectedEdge._end._PART._BOUNDINGBOX, GLDrawer.HightLightMeshColor);
             }
         }// DrawHighlight3D
 
@@ -3589,7 +3643,7 @@ namespace FameBase
             }
         }// drawAxes
 
-        private void drawAxes(Pos[] axes, float wid)
+        private void drawAxes(Contact[] axes, float wid)
         {
             // draw axes with arrows
             for (int i = 0; i < 6; i += 2)
