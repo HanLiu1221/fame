@@ -402,14 +402,14 @@
             // vertexToolStripMenuItem
             // 
             this.vertexToolStripMenuItem.Name = "vertexToolStripMenuItem";
-            this.vertexToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.vertexToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.vertexToolStripMenuItem.Text = "Vertex";
             this.vertexToolStripMenuItem.Click += new System.EventHandler(this.pointToolStripMenuItem_Click);
             // 
             // wireFrameToolStripMenuItem
             // 
             this.wireFrameToolStripMenuItem.Name = "wireFrameToolStripMenuItem";
-            this.wireFrameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.wireFrameToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.wireFrameToolStripMenuItem.Text = "WireFrame";
             this.wireFrameToolStripMenuItem.Click += new System.EventHandler(this.wireFrameToolStripMenuItem_Click);
             // 
@@ -418,7 +418,7 @@
             this.faceToolStripMenuItem.Checked = true;
             this.faceToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.faceToolStripMenuItem.Name = "faceToolStripMenuItem";
-            this.faceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.faceToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.faceToolStripMenuItem.Text = "Face";
             this.faceToolStripMenuItem.Click += new System.EventHandler(this.faceToolStripMenuItem_Click);
             // 
@@ -427,7 +427,7 @@
             this.boundingBoxToolStripMenuItem.Checked = true;
             this.boundingBoxToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.boundingBoxToolStripMenuItem.Name = "boundingBoxToolStripMenuItem";
-            this.boundingBoxToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.boundingBoxToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.boundingBoxToolStripMenuItem.Text = "BoundingBox";
             this.boundingBoxToolStripMenuItem.Click += new System.EventHandler(this.boundingBoxToolStripMenuItem_Click);
             // 
@@ -436,21 +436,21 @@
             this.graphToolStripMenuItem.Checked = true;
             this.graphToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.graphToolStripMenuItem.Name = "graphToolStripMenuItem";
-            this.graphToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.graphToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.graphToolStripMenuItem.Text = "Graph";
             this.graphToolStripMenuItem.Click += new System.EventHandler(this.graphToolStripMenuItem_Click);
             // 
             // axesToolStripMenuItem
             // 
             this.axesToolStripMenuItem.Name = "axesToolStripMenuItem";
-            this.axesToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.axesToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.axesToolStripMenuItem.Text = "Axes";
             this.axesToolStripMenuItem.Click += new System.EventHandler(this.axesToolStripMenuItem_Click);
             // 
             // groundToolStripMenuItem
             // 
             this.groundToolStripMenuItem.Name = "groundToolStripMenuItem";
-            this.groundToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.groundToolStripMenuItem.Size = new System.Drawing.Size(145, 22);
             this.groundToolStripMenuItem.Text = "Ground";
             this.groundToolStripMenuItem.Click += new System.EventHandler(this.groundToolStripMenuItem_Click);
             // 
@@ -471,28 +471,28 @@
             // vertexSelection
             // 
             this.vertexSelection.Name = "vertexSelection";
-            this.vertexSelection.Size = new System.Drawing.Size(152, 22);
+            this.vertexSelection.Size = new System.Drawing.Size(105, 22);
             this.vertexSelection.Text = "vertex";
             this.vertexSelection.Click += new System.EventHandler(this.vertexSelection_Click);
             // 
             // edgeSelection
             // 
             this.edgeSelection.Name = "edgeSelection";
-            this.edgeSelection.Size = new System.Drawing.Size(152, 22);
+            this.edgeSelection.Size = new System.Drawing.Size(105, 22);
             this.edgeSelection.Text = "edge";
             this.edgeSelection.Click += new System.EventHandler(this.edgeSelection_Click);
             // 
             // faceSelection
             // 
             this.faceSelection.Name = "faceSelection";
-            this.faceSelection.Size = new System.Drawing.Size(152, 22);
+            this.faceSelection.Size = new System.Drawing.Size(105, 22);
             this.faceSelection.Text = "face";
             this.faceSelection.Click += new System.EventHandler(this.faceSelection_Click);
             // 
             // boxToolStripMenuItem
             // 
             this.boxToolStripMenuItem.Name = "boxToolStripMenuItem";
-            this.boxToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.boxToolStripMenuItem.Size = new System.Drawing.Size(105, 22);
             this.boxToolStripMenuItem.Text = "box";
             this.boxToolStripMenuItem.Click += new System.EventHandler(this.boxToolStripMenuItem_Click);
             // 
@@ -640,42 +640,42 @@
             // addEdgeToolStripMenuItem
             // 
             this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.addEdgeToolStripMenuItem.Text = "Add Edge";
             this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // delEdgeToolStripMenuItem
             // 
             this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.delEdgeToolStripMenuItem.Text = "Del Edge";
             this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // symmetryToolStripMenuItem
             // 
             this.symmetryToolStripMenuItem.Name = "symmetryToolStripMenuItem";
-            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.symmetryToolStripMenuItem.Text = "Symmetry";
             this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
             // 
             // crossoverToolStripMenuItem
             // 
             this.crossoverToolStripMenuItem.Name = "crossoverToolStripMenuItem";
-            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.crossoverToolStripMenuItem.Text = "Crossover";
             this.crossoverToolStripMenuItem.Click += new System.EventHandler(this.crossoverToolStripMenuItem_Click);
             // 
             // mutateToolStripMenuItem
             // 
             this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.mutateToolStripMenuItem.Text = "Mutate";
             this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
             // 
             // autoGenerateToolStripMenuItem
             // 
             this.autoGenerateToolStripMenuItem.Name = "autoGenerateToolStripMenuItem";
-            this.autoGenerateToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.autoGenerateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.autoGenerateToolStripMenuItem.Text = "Auto generate";
             this.autoGenerateToolStripMenuItem.Click += new System.EventHandler(this.autoGenerateToolStripMenuItem_Click);
             // 

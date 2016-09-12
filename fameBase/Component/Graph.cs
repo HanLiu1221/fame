@@ -57,7 +57,12 @@ namespace Component
             {
                 int i = e._start._INDEX;
                 int j = e._end._INDEX;
-                Edge ec = new Edge(cloned._nodes[i], cloned._nodes[j], new Vector3d(e._contact._pos3d));
+                List<Contact> contacts = new List<Contact>();
+                foreach (Contact pnt in e._contacts)
+                {
+                    contacts.Add(pnt.Clone() as Contact);
+                }
+                Edge ec = new Edge(cloned._nodes[i], cloned._nodes[j], contacts);
                 cloned.addEdge(ec);
             }
             cloned._NNodes = cloned._nodes.Count;
@@ -222,6 +227,16 @@ namespace Component
             _NEdges = _edges.Count;
         }// addAnEdge
 
+        public void addAnEdge(Node n1, Node n2, List<Contact> contacts)
+        {
+            Edge e = new Edge(n1, n2, contacts);
+            if (!isEdgeExist(e))
+            {
+                addEdge(e);
+            }
+            _NEdges = _edges.Count;
+        }// addAnEdge
+
         public void deleteAnEdge(Node n1, Node n2)
         {
             Edge e = isEdgeExist(n1, n2);
@@ -245,7 +260,7 @@ namespace Component
             return false;
         }// isEdgeExist
 
-        private Edge isEdgeExist(Node i, Node j)
+        public Edge isEdgeExist(Node i, Node j)
         {
             foreach (Edge e in _edges)
             {
@@ -590,7 +605,7 @@ namespace Component
     {
         public Node _start;
         public Node _end;
-        public Pos _contact;
+        public List<Contact> _contacts;
         public bool _contactUpdated = false;
         public Common.NodeRelationType _type;
         
@@ -598,7 +613,15 @@ namespace Component
         {
             _start = a;
             _end = b;
-            _contact = new Pos(c);
+            _contacts = new List<Contact>();
+            _contacts.Add(new Contact(c));
+        }
+
+        public Edge(Node a, Node b, List<Contact> contacts)
+        {
+            _start = a;
+            _end = b;
+            _contacts = contacts;            
         }
 
         private void analyzeEdgeType()
@@ -616,10 +639,33 @@ namespace Component
 
         public void TransformContact(Matrix4d T)
         {
-            _contact.TransformFromOrigin(T);
-            _contact.updateOrigin();
+            foreach (Contact p in _contacts)
+            {
+                p.TransformFromOrigin(T);
+                p.updateOrigin();
+            }            
             _contactUpdated = true;
         }
+
+        public List<Vector3d> getOriginContactPoints()
+        {
+            List<Vector3d> pnts = new List<Vector3d>();
+            foreach (Contact p in _contacts)
+            {
+                pnts.Add(p._originPos3d);
+            }
+            return pnts;
+        }// getOriginContactPoints
+
+        public List<Vector3d> getContactPoints()
+        {
+            List<Vector3d> pnts = new List<Vector3d>();
+            foreach (Contact p in _contacts)
+            {
+                pnts.Add(p._pos3d);
+            }
+            return pnts;
+        }// getContactPoints
     }// Edge
 
     public class Symmetry
