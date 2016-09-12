@@ -57,7 +57,7 @@ namespace Component
             {
                 int i = e._start._INDEX;
                 int j = e._end._INDEX;
-                Edge ec = new Edge(cloned._nodes[i], cloned._nodes[j], new Vector3d(e._contact));
+                Edge ec = new Edge(cloned._nodes[i], cloned._nodes[j], new Vector3d(e._contact._pos3d));
                 cloned.addEdge(ec);
             }
             cloned._NNodes = cloned._nodes.Count;
@@ -205,6 +205,16 @@ namespace Component
             Vector3d contact;
             double mind = getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out contact);
             Edge e = new Edge(n1, n2, contact);
+            if (!isEdgeExist(e))
+            {
+                addEdge(e);
+            }
+            _NEdges = _edges.Count;
+        }// addAnEdge
+
+        public void addAnEdge(Node n1, Node n2, Vector3d c)
+        {
+            Edge e = new Edge(n1, n2, c);
             if (!isEdgeExist(e))
             {
                 addEdge(e);
@@ -580,17 +590,15 @@ namespace Component
     {
         public Node _start;
         public Node _end;
-        public Vector3d _originContact;
-        public Vector3d _contact;
+        public Pos _contact;
         public bool _contactUpdated = false;
         public Common.NodeRelationType _type;
         
-        public Edge(Node a, Node b, Vector3d contact)
+        public Edge(Node a, Node b, Vector3d c)
         {
             _start = a;
             _end = b;
-            _originContact = new Vector3d(contact);
-            _contact = contact;
+            _contact = new Pos(c);
         }
 
         private void analyzeEdgeType()
@@ -608,8 +616,8 @@ namespace Component
 
         public void TransformContact(Matrix4d T)
         {
-            _originContact = new Vector3d(_contact);
-            _contact = (T * new Vector4d(_contact, 1)).ToVector3D();
+            _contact.TransformFromOrigin(T);
+            _contact.updateOrigin();
             _contactUpdated = true;
         }
     }// Edge

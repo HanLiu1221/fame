@@ -77,7 +77,8 @@ namespace FameBase
         public enum UIMode 
         {
             // !Do not change the order of the modes --- used in the current program to retrieve the index (Integer)
-            Viewing, VertexSelection, EdgeSelection, FaceSelection, BoxSelection, BodyNodeEdit, Translate, Scale, Rotate, NONE
+            Viewing, VertexSelection, EdgeSelection, FaceSelection, BoxSelection, BodyNodeEdit, 
+            Translate, Scale, Rotate, Contact, NONE
         }
 
         private bool drawVertex = false;
@@ -112,6 +113,8 @@ namespace FameBase
         public bool showDrawnStroke = true;
 
         public bool showBlinking = false;
+
+        private bool _showContactPoint = false;
 
         private static Vector3d eyePosition3D = new Vector3d(0, 0, 1.5);
         private static Vector3d eyePosition2D = new Vector3d(0, 1, 1.5);
@@ -181,13 +184,14 @@ namespace FameBase
         bool _showEditAxes = false;
         public bool drawGround = false;
         private Vector3d[] _axes;
-        private Vector3d[] _editAxes;
+        private Pos[] _editAxes;
         private Polygon3D _groundPlane;
         int _hightlightAxis = -1;
         ArcBall _editArcBall;
         ArcBall _bodyArcBall;
         bool _isRightClick = false;
         bool _isDrawTranslucentHumanPose = true;
+        Edge _selectedEdge = null;
 
         /******************** Functions ********************/
 
@@ -732,10 +736,8 @@ namespace FameBase
             this.clearHighlights();
             _currModel = this.loadOnePartBasedModel(filename);
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
-            _currModel.unify();
             if (!File.Exists(graphName))
             {
-                //_currModel.initializeGraph();
                 _currModel.initialize();
             }
             else
@@ -871,7 +873,15 @@ namespace FameBase
                     strs = s.Split(separator);
                     int j = int.Parse(strs[0]);
                     int k = int.Parse(strs[1]);
-                    g.addAnEdge(g._NODES[j], g._NODES[k]);
+                    if (strs.Length > 4)
+                    {
+                        Vector3d c = new Vector3d(double.Parse(strs[2]), double.Parse(strs[3]), double.Parse(strs[4]));
+                        g.addAnEdge(g._NODES[j], g._NODES[k], c);
+                    }
+                    else
+                    {
+                        g.addAnEdge(g._NODES[j], g._NODES[k]);
+                    }
                 }
                 g.analyzeScale();
                 m.setGraph(g);
@@ -908,7 +918,7 @@ namespace FameBase
                 sw.WriteLine(_currModel._GRAPH._NEdges.ToString() + " edges.");
                 foreach(Edge e in _currModel._GRAPH._EDGES)
                 {
-                    sw.WriteLine(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString());
+                    sw.WriteLine(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString() + this.vector3dToString(e._contact._pos3d));
                 }
             }
         }// saveAGrapph
@@ -1005,11 +1015,32 @@ namespace FameBase
                 Prism box = p._BOUNDINGBOX;
                 for (int i = 0; i < box._POINTS3D.Length; ++i)
                 {
-                    Vector2d v2 = this.camera.Project(box._POINTS3D[i]).ToVector2d();
-                    p._BOUNDINGBOX._POINTS2D[i] = new Vector2d(v2.x, this.Height - v2.y); 
+                    p._BOUNDINGBOX._POINTS2D[i] = getVec2D(box._POINTS3D[i]);
+                }
+            }
+            if (_currModel._GRAPH != null)
+            {
+                foreach (Edge e in _currModel._GRAPH._EDGES)
+                {
+                    Vector2d v2 = this.camera.Project(e._contact._pos3d).ToVector2d();
+                    e._contact._pos2d = new Vector2d(v2.x, this.Height - v2.y); 
+                }
+            }
+            if (_editAxes != null)
+            {
+                foreach (Pos p in _editAxes)
+                {
+                    p._pos2d = getVec2D(p._pos3d);
                 }
             }
         }// calculatePoint2DInfo
+
+        private Vector2d getVec2D(Vector3d v3)
+        {
+            Vector2d v2 = this.camera.Project(v3).ToVector2d();
+            Vector2d v = new Vector2d(v2.x, this.Height - v2.y);
+            return v;
+        }// getVec2D
 
         public void writeModelViewMatrix(string filename)
         {
@@ -1241,26 +1272,27 @@ namespace FameBase
             _mutateGenerations.Add(secondGen);
             // crossover
             // only for the same contact points, for rebuilding the graph
-            //this.crossOver(firstGen, imageFolder_c);
-            //int maxIter = 1;
-            //int iter = 0;
-            //while (iter < maxIter)
-            //{
-                //List<Model> gen = this.crossOver(_crossoverGenerations[iter]);
-                //foreach (Model model in gen)
-                //{
-                //    if (model._GRAPH.isGeometryViolated())
-                //    {
-                //        continue;
-                //    }
-                //    saveAPartBasedModel(model._path + model._model_name + ".pam");
-                //    // screenshot
-                //    this.setCurrentModel(model, -1);
-                //    this.captureScreen(imageFolder_c + model._model_name + ".png");
-                //}
-                //++iter;
-                //_crossoverGenerations.Add(gen);
-            //}
+            int maxIter = 1;
+            int iter = 0;
+            while (iter < maxIter)
+            {
+                List<Model> cross_results = this.crossOver(_crossoverGenerations[iter]);
+                List<Model> gen = new List<Model>();
+                foreach (Model model in cross_results)
+                {
+                    if (model._GRAPH.isGeometryViolated())
+                    {
+                        continue;
+                    }
+                    gen.Add(model);
+                    saveAPartBasedModel(model._path + model._model_name + ".pam");
+                    // screenshot
+                    this.setCurrentModel(model, -1);
+                    this.captureScreen(imageFolder_c + model._model_name + ".png");
+                }
+                ++iter;
+                _crossoverGenerations.Add(gen);
+            }
             // cossover + mutate
 
         }// autoGenerate
@@ -1576,8 +1608,8 @@ namespace FameBase
             {
                 if (e._contactUpdated)
                 {
-                    sources.Add(e._originContact);
-                    targets.Add(e._contact);
+                    sources.Add(e._contact._originPos3d);
+                    targets.Add(e._contact._pos3d);
                 }
             }
             if (sources.Count == 1 && node._isGroundTouching)
@@ -1639,22 +1671,16 @@ namespace FameBase
                     switchNodes(m1._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
 
                     newM1.replaceNodes(nodes1, updatedNodes2);
-                    if (!newM1._GRAPH.isGeometryViolated())
-                    {
-                        _resViewers.Add(new ModelViewer(newM1, k++, this));
-                    }
+                    _resViewers.Add(new ModelViewer(newM1, k++, this));
                     newM2.replaceNodes(nodes2, updatedNodes1);
-                    if (!newM2._GRAPH.isGeometryViolated())
-                    {
-                        _resViewers.Add(new ModelViewer(newM2, k++, this));
-                    }
+                    _resViewers.Add(new ModelViewer(newM2, k++, this));
                 }
             }
             _crossOverBasket.Clear();
             return _resViewers;
         }// crossover
 
-        public List<Model> crossOver(List<Model> models, string imageFolder_c)
+        public List<Model> crossOver(List<Model> models)
         {
             if (models.Count < 2)
             {
@@ -1677,18 +1703,7 @@ namespace FameBase
                         m1._GRAPH.selectedNodes = nodeChoices1[t];
                         m2._GRAPH.selectedNodes = nodeChoices2[t];
                         List<Model> crossed = this.crossOverOp(m1, m2, t);
-                        foreach (Model model in crossed)
-                        {
-                            if (model._GRAPH.isGeometryViolated())
-                            {
-                                continue;
-                            }
-                            saveAPartBasedModel(model._path + model._model_name + ".pam");
-                            // screenshot
-                            this.setCurrentModel(model, -1);
-                            this.captureScreen(imageFolder_c + model._model_name + ".png");
-                        }
-                        //crossedModels.AddRange(crossed);
+                        crossedModels.AddRange(crossed);
                     }
                 }
             }
@@ -1888,7 +1903,7 @@ namespace FameBase
             List<Vector3d> points = new List<Vector3d>();
             foreach (Edge e in edges)
             {
-                points.Add(e._contact);
+                points.Add(e._contact._pos3d);
             }
             return points;
         }// collectPoints
@@ -2012,13 +2027,7 @@ namespace FameBase
                     }
                     normal = normal.normalize();
 
-                    if (double.IsNaN(normal.x)) //throw new Exception();
-                    {
-                        sx = 1.0;
-                        sy = 1.0;
-                        sz = 1.0;
-                    }
-                    else
+                    if (double.IsNaN(normal.x)) throw new Exception();
                     {
                         if (Math.Abs(normal.x) > 0.5)
                         {
@@ -2050,7 +2059,6 @@ namespace FameBase
                 {
                     node._PART.setRandomColor();
                 }
-                this.Refresh();
             }
         }
 
@@ -2085,12 +2093,16 @@ namespace FameBase
                 case 8:
                     this.currUIMode = UIMode.Rotate;
                     break;
+                case 9:
+                    this.currUIMode = UIMode.Contact;
+                    this._showContactPoint = true;
+                    break;
                 case 0:
                 default:
                     this.currUIMode = UIMode.Viewing;
                     break;
             }
-            if (i >= 6 && i <= 8)
+            if (i >= 6 && i <= 9)
             {
                 this.calEditAxesLoc();
                 _showEditAxes = true;
@@ -2152,33 +2164,41 @@ namespace FameBase
             {
                 center = _currHumanPose._ROOT._POS;
             }
+            else if (_selectedEdge != null)
+            {
+                center = _selectedEdge._contact._pos3d;
+            }
             ad /= 2;
             if (ad == 0)
             {
-                ad = 0.5;
+                ad = 0.2;
             }
             double arrow_d = ad / 6;
-            _editAxes = new Vector3d[18];
-            _editAxes[0] = center - ad * Vector3d.XCoord;
-            _editAxes[1] = center + ad * Vector3d.XCoord;
-            _editAxes[2] = _editAxes[1] - arrow_d * Vector3d.XCoord + arrow_d * Vector3d.YCoord;
-            _editAxes[3] = new Vector3d(_editAxes[1]);
-            _editAxes[4] = _editAxes[1] - arrow_d * Vector3d.XCoord - arrow_d * Vector3d.YCoord;
-            _editAxes[5] = new Vector3d(_editAxes[1]);
+            _editAxes = new Pos[18];
+            for (int i = 0; i < _editAxes.Length; ++i )
+            {
+                _editAxes[i] = new Pos(new Vector3d());
+            }
+            _editAxes[0]._pos3d = center - ad * Vector3d.XCoord;
+            _editAxes[1]._pos3d = center + ad * Vector3d.XCoord;
+            _editAxes[2]._pos3d = _editAxes[1]._pos3d - arrow_d * Vector3d.XCoord + arrow_d * Vector3d.YCoord;
+            _editAxes[3]._pos3d = new Vector3d(_editAxes[1]._pos3d);
+            _editAxes[4]._pos3d = _editAxes[1]._pos3d - arrow_d * Vector3d.XCoord - arrow_d * Vector3d.YCoord;
+            _editAxes[5]._pos3d = new Vector3d(_editAxes[1]._pos3d);
 
-            _editAxes[6] = center - ad * Vector3d.YCoord;
-            _editAxes[7] = center + ad * Vector3d.YCoord;
-            _editAxes[8] = _editAxes[7] - arrow_d * Vector3d.YCoord + arrow_d * Vector3d.XCoord;
-            _editAxes[9] = new Vector3d(_editAxes[7]);
-            _editAxes[10] = _editAxes[7] - arrow_d * Vector3d.YCoord - arrow_d * Vector3d.XCoord;
-            _editAxes[11] = new Vector3d(_editAxes[7]);
+            _editAxes[6]._pos3d = center - ad * Vector3d.YCoord;
+            _editAxes[7]._pos3d = center + ad * Vector3d.YCoord;
+            _editAxes[8]._pos3d = _editAxes[7]._pos3d - arrow_d * Vector3d.YCoord + arrow_d * Vector3d.XCoord;
+            _editAxes[9]._pos3d = new Vector3d(_editAxes[7]._pos3d);
+            _editAxes[10]._pos3d = _editAxes[7]._pos3d - arrow_d * Vector3d.YCoord - arrow_d * Vector3d.XCoord;
+            _editAxes[11]._pos3d = new Vector3d(_editAxes[7]._pos3d);
 
-            _editAxes[12] = center - ad * Vector3d.ZCoord;
-            _editAxes[13] = center + ad * Vector3d.ZCoord;
-            _editAxes[14] = _editAxes[13] - arrow_d * Vector3d.ZCoord + arrow_d * Vector3d.XCoord;
-            _editAxes[15] = new Vector3d(_editAxes[13]);
-            _editAxes[16] = _editAxes[13] - arrow_d * Vector3d.ZCoord - arrow_d * Vector3d.XCoord;
-            _editAxes[17] = new Vector3d(_editAxes[13]);
+            _editAxes[12]._pos3d = center - ad * Vector3d.ZCoord;
+            _editAxes[13]._pos3d = center + ad * Vector3d.ZCoord;
+            _editAxes[14]._pos3d = _editAxes[13]._pos3d - arrow_d * Vector3d.ZCoord + arrow_d * Vector3d.XCoord;
+            _editAxes[15]._pos3d = new Vector3d(_editAxes[13]._pos3d);
+            _editAxes[16]._pos3d = _editAxes[13]._pos3d - arrow_d * Vector3d.ZCoord - arrow_d * Vector3d.XCoord;
+            _editAxes[17]._pos3d = new Vector3d(_editAxes[13]._pos3d);
         }// calEditAxesLoc
 
         public void resetView()
@@ -2306,6 +2326,9 @@ namespace FameBase
             this.highlightQuad = null;
             _isRightClick = e.Button == System.Windows.Forms.MouseButtons.Right;
 
+            this.ContextMenuStrip = Program.GetFormMain().getRightButtonMenu();
+            this.ContextMenuStrip.Hide();
+
             switch (this.currUIMode)
             {
                 case UIMode.VertexSelection:
@@ -2363,6 +2386,7 @@ namespace FameBase
                     }
                     break;
                 case UIMode.Translate:
+                case UIMode.Contact:
                     {
                         this.editMouseDown(1, this.mouseDownPos);
                     }
@@ -2449,6 +2473,20 @@ namespace FameBase
                         this.Refresh();
                     }
                     break;
+                case UIMode.Contact:
+                    {
+                        if (this.isMouseDown)
+                        {
+                            this.moveContactPoint(this.currMousePos);
+                        }
+                        else
+                        {
+                            this.selectContactPoint(currMousePos);
+                            this.selectAxisWhileMouseMoving(this.currMousePos);
+                        }
+                        this.Refresh();
+                    }
+                    break;
                 case UIMode.Viewing:
                     //default:
                     {
@@ -2502,6 +2540,13 @@ namespace FameBase
                 case UIMode.Rotate:
                     {
                         this.editMouseUp();
+                        this.Refresh();
+                    }
+                    break;
+                case UIMode.Contact:
+                    {
+                        //_selectedEdge = null;
+                        this.moveContactUp();
                         this.Refresh();
                     }
                     break;
@@ -2618,6 +2663,11 @@ namespace FameBase
                         this.currUIMode = UIMode.BoxSelection;
                         break;
                     }
+                case Keys.C:
+                    {
+                        this.setUIMode(9); // contact
+                        break;
+                    }
                 case Keys.Space:
                     {
                         this.lockView = !this.lockView;
@@ -2698,6 +2748,32 @@ namespace FameBase
                 }
             }
         }//selectBbox
+
+        public void selectContactPoint(Vector2d mousePos)
+        {
+            if (this._currModel == null || _currModel._GRAPH == null) return;
+            this.cal2D();
+            double mind = double.MaxValue;
+            Edge nearestEdge = null;
+            foreach (Edge e in this._currModel._GRAPH._EDGES)
+            {
+                Vector2d v2 = e._contact._pos2d;
+                double dis = (v2 - mousePos).Length();
+                if (dis < mind)
+                {
+                    mind = dis;
+                    nearestEdge = e;
+                }
+            }
+            if (mind < Common._thresh2d)
+            {
+                _selectedEdge = nearestEdge;
+            }
+            if (_selectedEdge != null)
+            {
+                this.calEditAxesLoc();
+            }
+        }//selectContactPoint
 
         public void setMeshColor(Color c)
         {
@@ -2878,6 +2954,38 @@ namespace FameBase
             }
         }// transformSelections
 
+        private void moveContactPoint(Vector2d mousePos)
+        {
+            if (_selectedEdge == null)
+            {
+                return;
+            }
+            Matrix4d T = editMouseMove((int)mousePos.x, (int)mousePos.y);
+            if (_hightlightAxis == 2)
+            {
+                T[2, 3] = T[0, 3];
+            }
+            for (int i = 0; i < 3; ++i)
+            {
+                if (_hightlightAxis != -1 && i != _hightlightAxis)
+                {
+                    T[i, 3] = 0;
+                }
+            }
+            _selectedEdge._contact.TransformFromOrigin(T);
+        }// moveContactPoint
+
+        private void moveContactUp()
+        {
+            if (_currModel != null && _currModel._GRAPH != null)
+            {
+                foreach (Edge e in _currModel._GRAPH._EDGES)
+                {
+                    e._contact.updateOrigin();
+                }
+            }
+        }// moveContactUp
+
         private Vector3d getCenter(List<Part> parts)
         {
             if (parts == null || parts.Count == 0)
@@ -2943,18 +3051,19 @@ namespace FameBase
         private void selectAxisWhileMouseMoving(Vector2d mousePos)
         {
             this.updateCamera();
-            Vector2d s = this.camera.Project(_editAxes[0]).ToVector2d();
-            Vector2d e = this.camera.Project(_editAxes[1]).ToVector2d();
+            this.cal2D();
+            Vector2d s = _editAxes[0]._pos2d;
+            Vector2d e = _editAxes[1]._pos2d;
             Line2d xline = new Line2d(s, e);
             double xd = Polygon2D.PointDistToLine(mousePos, xline);
 
-            s = this.camera.Project(_editAxes[6]).ToVector2d();
-            e = this.camera.Project(_editAxes[7]).ToVector2d();
+            s = _editAxes[6]._pos2d;
+            e = _editAxes[7]._pos2d;
             Line2d yline = new Line2d(s, e);
             double yd = Polygon2D.PointDistToLine(mousePos, yline);
 
-            s = this.camera.Project(_editAxes[12]).ToVector2d();
-            e = this.camera.Project(_editAxes[13]).ToVector2d();
+            s = _editAxes[12]._pos2d;
+            e = _editAxes[13]._pos2d;
             Line2d zline = new Line2d(s, e);
             double zd = Polygon2D.PointDistToLine(mousePos, zline);
 
@@ -3441,6 +3550,24 @@ namespace FameBase
             {
                 this.drawAxes(_editAxes, 4.0f);
             }
+
+            if (_showContactPoint)
+            {
+                if (_currModel != null && _currModel._GRAPH != null)
+                {
+                    foreach (Edge e in _currModel._GRAPH._EDGES)
+                    {
+                        if (e == _selectedEdge)
+                        {
+                            GLDrawer.drawSphere(e._contact._pos3d, Common._hightlightContactPointsize, GLDrawer.HightLightContactColor); 
+                        }
+                        else
+                        {
+                            GLDrawer.drawSphere(e._contact._pos3d, Common._contactPointsize, GLDrawer.ContactColor);
+                        }
+                    }
+                }
+            }
         }// DrawHighlight3D
 
         private void drawAxes(Vector3d[] axes, float wid)
@@ -3459,6 +3586,25 @@ namespace FameBase
             for (int i = 12; i < 18; i += 2)
             {
                 GLDrawer.drawLines3D(axes[i], axes[i + 1], _hightlightAxis == 2 ? Color.Yellow : Color.Blue, wid);
+            }
+        }// drawAxes
+
+        private void drawAxes(Pos[] axes, float wid)
+        {
+            // draw axes with arrows
+            for (int i = 0; i < 6; i += 2)
+            {
+                GLDrawer.drawLines3D(axes[i]._pos3d, axes[i + 1]._pos3d, _hightlightAxis == 0 ? Color.Yellow : Color.Red, wid);
+            }
+
+            for (int i = 6; i < 12; i += 2)
+            {
+                GLDrawer.drawLines3D(axes[i]._pos3d, axes[i + 1]._pos3d, _hightlightAxis == 1 ? Color.Yellow : Color.Green, wid);
+            }
+
+            for (int i = 12; i < 18; i += 2)
+            {
+                GLDrawer.drawLines3D(axes[i]._pos3d, axes[i + 1]._pos3d, _hightlightAxis == 2 ? Color.Yellow : Color.Blue, wid);
             }
         }// drawAxes
 

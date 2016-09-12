@@ -13,6 +13,8 @@ namespace Geometry
         public static double _thresh = 1e-6;
         public static double _thresh2d = 20;
         public static double _bodyNodeRadius = 0.06;
+        public static double _contactPointsize = 0.03;
+        public static double _hightlightContactPointsize = 0.06;
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
@@ -21,8 +23,8 @@ namespace Geometry
 
     public class Pos
     {
-        Vector3d _originPos3d;
-        Vector2d _originPos2d;
+        public Vector3d _originPos3d;
+        public Vector2d _originPos2d;
         public Vector3d _pos3d;
         public Vector2d _pos2d;
 
@@ -50,6 +52,11 @@ namespace Geometry
         public void TransformOrigin(Matrix4d m)
         {
             _originPos3d = (m * new Vector4d(_originPos3d, 1)).ToVector3D();
+        }
+
+        public void updateOrigin()
+        {
+            _originPos3d = new Vector3d(_pos3d);
         }
 
         public void setPos2d(Vector2d v2)

@@ -30,6 +30,8 @@ namespace FameBase
         public static Color TranslucentBodyColor = Color.FromArgb(244, 165, 130);//(60, 171, 217, 233);
         public static Color BodyColor = Color.FromArgb(204, 204, 204);
         public static Color SelectionColor = Color.FromArgb(231, 138, 195);
+        public static Color ContactColor = Color.FromArgb(240, 59, 32);
+        public static Color HightLightContactColor = Color.FromArgb(189, 0, 38);
 
         public static int _NSlices = 40;
 
