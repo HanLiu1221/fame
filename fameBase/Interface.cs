@@ -584,5 +584,10 @@ namespace FameBase
         {
             this.glViewer.autoGenerate();
         }
+
+        private void contactToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.setUIMode(9);
+        }
 	}// Interface
 }// namespace
