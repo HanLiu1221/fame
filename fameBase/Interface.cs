@@ -196,7 +196,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\shelf" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\test" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -589,6 +589,16 @@ namespace FameBase
         private void contactToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.setUIMode(9);
+        }
+
+        private void functionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart();
+        }
+
+        private void saveRepPairsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.saveReplaceablePairs();
         }
 	}// Interface
 }// namespace

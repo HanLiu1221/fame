@@ -221,6 +221,7 @@ namespace FameBase
         private Vector3d[] _groundGrids;
         Edge _selectedEdge = null;
         Contact _selectedContact = null;
+        private ReplaceablePair[,] _replaceablePairs;
 
         /******************** Functions ********************/
 
@@ -344,7 +345,9 @@ namespace FameBase
         {
             _selectedNode = null;
             _hightlightAxis = -1;
-            //_selectedParts.Clear();
+            _selectedEdge = null;
+            _selectedContact = null;
+            _selectedParts.Clear();
         }// clearHighlights
 
         public void loadMesh(string filename)
@@ -837,8 +840,108 @@ namespace FameBase
                 this.setCurrentModel(_modelViewers[_modelViewers.Count - 1]._MODEL, _modelViewers.Count - 1);
             }
             this.readModelModelViewMatrix(foldername + "\\view.mat");
+
+            // try to load replaceable pairs
+            tryLoadReplaceablePairs();
+
             return _modelViewers;
         }// loadPartBasedModels
+
+        public void saveReplaceablePairs()
+        {
+            if (_crossOverBasket.Count < 2)
+            {
+                return;
+            }
+            Model model_i = _crossOverBasket[_crossOverBasket.Count - 2];
+            Model model_j = _crossOverBasket[_crossOverBasket.Count - 1];
+            Graph graph_i = model_i._GRAPH;
+            Graph graph_j = model_j._GRAPH;
+            if (graph_i == null || graph_j == null || graph_i.selectedNodePairs.Count != graph_j.selectedNodePairs.Count)
+            {
+                return;
+            }
+            string filename = model_i._path + model_i._model_name + "_" + model_j._model_name + ".corr";
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int n = graph_i.selectedNodePairs.Count;
+                sw.WriteLine(n.ToString());
+                for (int i = 0; i < n; ++i)
+                {
+                    for (int j = 0; j < graph_i.selectedNodePairs[i].Count; ++j)
+                    {
+                        sw.Write(graph_i.selectedNodePairs[i][j]._INDEX.ToString() + " ");
+                    }
+                    sw.WriteLine();
+                    for (int j = 0; j < graph_j.selectedNodePairs[i].Count; ++j)
+                    {
+                        sw.Write(graph_j.selectedNodePairs[i][j]._INDEX.ToString() + " ");
+                    }
+                    sw.WriteLine();
+                }
+            }
+        }// saveLoadReplaceablePairs
+
+        private void tryLoadReplaceablePairs()
+        {
+            if (_modelViewers.Count == 0)
+            {
+                return;
+            }
+            int n = _modelViewers.Count;
+            _replaceablePairs = new ReplaceablePair[n, n];
+            for (int i = 0; i < n - 1; ++i)
+            {
+                Model model_i = _modelViewers[i]._MODEL;
+                Graph graph_i = _modelViewers[i]._GRAPH;
+                for (int j = i + 1; j < n; ++j)
+                {
+                    Model model_j = _modelViewers[j]._MODEL;
+                    Graph graph_j = _modelViewers[j]._GRAPH;
+                    string filename = model_i._path + model_i._model_name + "_" + model_j._model_name + ".corr";
+                    List<List<int>> pairs_i = new List<List<int>>();
+                    List<List<int>> pairs_j = new List<List<int>>();
+                    loadReplaceablePair(filename, out pairs_i, out pairs_j);
+                    _replaceablePairs[i, j] = new ReplaceablePair(graph_i, graph_j, pairs_i, pairs_j);
+                }
+            }
+        }// tryLoadReplacePairs
+
+        private void loadReplaceablePair(string filename, out List<List<int>> pairs_1, out List<List<int>> pairs_2)
+        {
+            pairs_1 = new List<List<int>>();
+            pairs_2 = new List<List<int>>();
+            if (!File.Exists(filename))
+            {
+                return;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                string s = sr.ReadLine();
+                string[] strs = s.Split(separator);
+                int npairs = int.Parse(strs[0]);
+                for (int i = 0; i < npairs; ++i)
+                {
+                    List<int> p1 = new List<int>();
+                    List<int> p2 = new List<int>();
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    for (int j = 0; j < strs.Length; ++j)
+                    {
+                        p1.Add(int.Parse(strs[j]));
+                    }
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    for (int j = 0; j < strs.Length; ++j)
+                    {
+                        p2.Add(int.Parse(strs[j]));
+                    }
+                    pairs_1.Add(p1);
+                    pairs_2.Add(p2);
+                }
+            }
+        }// loadReplaceablePair
 
         public void loadAGrapph(Model m, string filename)
         {
@@ -885,6 +988,11 @@ namespace FameBase
                             symGroups.Add(i);
                             symGroups.Add(sym);
                         }
+                    }
+                    if (strs.Length > 6)
+                    {
+                        int isFunc = int.Parse(strs[6]);
+                        node._isFunction = isFunc == 1 ? true : false;
                     }
                     g.addANode(node);
                 }
@@ -953,7 +1061,13 @@ namespace FameBase
                     {
                         symIdx = iNode.symmetry._INDEX;
                     }
-                    sw.WriteLine(symIdx.ToString());
+                    sw.Write(symIdx.ToString());
+                    // function
+                    int isFunc = 0;
+                    if (iNode._isFunction) {
+                        isFunc = 1;
+                    }
+                    sw.WriteLine(" " + isFunc.ToString());
                 }
                 sw.WriteLine(_currModel._GRAPH._NEdges.ToString() + " edges.");
                 foreach(Edge e in _currModel._GRAPH._EDGES)
@@ -992,6 +1106,11 @@ namespace FameBase
             _models.Clear();
             _models.Add(m);
             _selectedModelIndex = idx;
+
+            _crossOverBasket.Remove(m);
+            m._GRAPH.selectedNodePairs.Clear();
+            _crossOverBasket.Add(m);
+
             this.cal2D();
             this.Refresh();
         }
@@ -1299,24 +1418,24 @@ namespace FameBase
             }
             // mutate
             //List<Model> secondGen = new List<Model>();
-            for (int i = 0; i < firstGen.Count; ++i)
-            {
-                Model m = firstGen[i];
-                this.setCurrentModel(m, i);
-                List<Model> res = this.mutate();
-                foreach (Model model in res)
-                {
-                    if (model._GRAPH.isGeometryViolated())
-                    {
-                        continue;
-                    }
-                    //secondGen.Add(model);
-                    saveAPartBasedModel(model._path + model._model_name + ".pam");
-                    // screenshot
-                    this.setCurrentModel(model, -1);
-                    this.captureScreen(imageFolder_m + model._model_name + ".png");
-                }
-            }
+            //for (int i = 0; i < firstGen.Count; ++i)
+            //{
+            //    Model m = firstGen[i];
+            //    this.setCurrentModel(m, i);
+            //    List<Model> res = this.mutate();
+            //    foreach (Model model in res)
+            //    {
+            //        if (model._GRAPH.isGeometryViolated())
+            //        {
+            //            continue;
+            //        }
+            //        //secondGen.Add(model);
+            //        saveAPartBasedModel(model._path + model._model_name + ".pam");
+            //        // screenshot
+            //        this.setCurrentModel(model, -1);
+            //        this.captureScreen(imageFolder_m + model._model_name + ".png");
+            //    }
+            //}
             //_mutateGenerations.Add(secondGen);
             // crossover
             // only for the same contact points, for rebuilding the graph
@@ -1443,32 +1562,26 @@ namespace FameBase
             {
                 _crossOverBasket.Add(_currModel);
             }
+            _currModel._GRAPH.selectedNodePairs.Add(_currModel._GRAPH.selectedNodes);
             Program.writeToConsole(_currModel._GRAPH.selectedNodes.Count.ToString() + " nodes in Graph #" + _selectedModelIndex.ToString() + " are selcted.");
         }// setSelectedNodes
 
         public void markSymmetry()
         {
-            if (_selectedParts.Count != 2)
+            if (_selectedNodes.Count != 2)
             {
                 return;
             }
-            Part p = _selectedParts[0];
-            Part q = _selectedParts[1];
-            Node pnode = null;
-            Node qnode = null;
-            foreach (Node node in _currModel._GRAPH._NODES)
-            {
-                if (node._PART == p)
-                {
-                    pnode = node;
-                }
-                if (node._PART == q)
-                {
-                    qnode = node;
-                }
-            }
-            _currModel._GRAPH.markSymmtry(pnode, qnode);
+            _currModel._GRAPH.markSymmtry(_selectedNodes[0], _selectedNodes[1]);
         }// markSymmetry
+
+        public void markFunctionPart()
+        {
+            foreach (Node node in _selectedNodes)
+            {
+                node._isFunction = true;
+            }
+        }// markFunctionPart
 
         public List<ModelViewer> getMutateViewers()
         {
@@ -1495,7 +1608,7 @@ namespace FameBase
             double s1 = 0.5;
             double s2 = 2.0;
             int idx = 0;
-            string path = _currModel._path + "mutate\\";
+            string path = _currModel._path + "mutate_models\\";
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
@@ -1745,7 +1858,16 @@ namespace FameBase
                     // set selected nodes
                     List<List<Node>> nodeChoices1;
                     List<List<Node>> nodeChoices2;
-                    this.selectReplaceableNodesPair(m1._GRAPH, m2._GRAPH, out nodeChoices1, out nodeChoices2);
+
+                    if (_replaceablePairs != null)
+                    {
+                        nodeChoices1 = _replaceablePairs[i, j]._pair1;
+                        nodeChoices2 = _replaceablePairs[i, j]._pair2;
+                    }
+                    else
+                    {
+                        this.selectReplaceableNodesPair(m1._GRAPH, m2._GRAPH, out nodeChoices1, out nodeChoices2);
+                    }
                     for (int t = 0; t < nodeChoices1.Count; ++t)
                     {
                         m1._GRAPH.selectedNodes = nodeChoices1[t];
@@ -1772,8 +1894,8 @@ namespace FameBase
 
             Model newM1 = m1.Clone() as Model;
             Model newM2 = m2.Clone() as Model;
-            newM1._path = m1._path + "crossOver\\";
-            newM2._path = m2._path + "crossOver\\";
+            newM1._path = m1._path + "crossOver_models\\";
+            newM2._path = m2._path + "crossOver_models\\";
             if (!Directory.Exists(newM1._path))
             {
                 Directory.CreateDirectory(newM1._path);
@@ -2040,10 +2162,14 @@ namespace FameBase
                     //normal = normal.normalize();
 
                     // 4 permutations, 012, 123, 023, 013
+                    //Vector3d aa = tarpts[0];
+                    //Vector3d bb = tarpts[1];
+                    //Vector3d cc = tarpts[2];
+                    //Vector3d dd = tarpts[3];
                     Vector3d aa = tarpts[0];
                     Vector3d bb = tarpts[1];
-                    Vector3d cc = tarpts[2];
-                    Vector3d dd = tarpts[3];
+                    Vector3d cc = tarpts[tarpts.Count - 2];
+                    Vector3d dd = tarpts[tarpts.Count - 1];
                     Vector3d[] nn = new Vector3d[4] {
 						((aa - bb).Cross(bb - cc)).normalize(),
 						((bb - cc).Cross(cc - dd)).normalize(),
@@ -2767,10 +2893,12 @@ namespace FameBase
         //######### Part-based #########//
         public void selectBbox(Quad2d q, bool isCtrl)
         {
-            if (this._currModel == null || q == null) return;
+            if (this._currModel == null || this._currModel._GRAPH == null || q == null) return;
             this.cal2D();
-            foreach (Part p in this._currModel._PARTS)
+            _selectedNodes = new List<Node>();
+            foreach(Node node in _currModel._GRAPH._NODES)
             {
+                Part p = node._PART;
                 if (p._BOUNDINGBOX == null) continue;
                 if (!isCtrl && _selectedParts.Contains(p))
                 {
@@ -2785,11 +2913,13 @@ namespace FameBase
                         if (isCtrl)
                         {
                             _selectedParts.Remove(p);
+                            _selectedNodes.Remove(node);
                             break;
                         }
                         else
                         {
-                            this._selectedParts.Add(p);
+                            _selectedParts.Add(p);
+                            _selectedNodes.Add(node);
                         }
                         break;
                     }

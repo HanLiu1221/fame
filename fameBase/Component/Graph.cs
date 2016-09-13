@@ -18,6 +18,7 @@ namespace Component
         double _maxAdjNodesDist; // max distance between two nodes
         // test
         public List<Node> selectedNodes;
+        public List<List<Node>> selectedNodePairs = new List<List<Node>>();
 
         public Graph() { }
 
@@ -349,7 +350,7 @@ namespace Component
             return nodes;
         }// getGroundTouchingNodes
 
-        private Node getKeyNodes()
+        private Node getKeyNode()
         {
             int nMaxConn = 0;
             Node key = null;
@@ -362,29 +363,74 @@ namespace Component
                 }
             }
             return key;
+        }// getKeyNode
+
+        private List<Node> getKeyNodes()
+        {
+            List<Node> keys = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (node._isFunction)
+                {
+                    if (!keys.Contains(node))
+                    {
+                        keys.Add(node);
+                        if (node.symmetry != null && !keys.Contains(node.symmetry))
+                        {
+                            keys.Add(node.symmetry);
+                        }
+                    }
+                }
+            }
+            if (keys.Count == 0)
+            {
+                Node key = getKeyNode();
+                keys.Add(key);
+                if (key.symmetry != null)
+                {
+                    keys.Add(key.symmetry);
+                }
+            }
+            return keys;
         }// getKeyNodes
 
         public List<List<Node>> splitAlongKeyNode()
         {
             List<List<Node>> splitNodes = new List<List<Node>>();
             // key node(s)
-            Node key = getKeyNodes();
-            List<Node> keyNodes = new List<Node>();
-            keyNodes.Add(key);
+            List<Node> keyNodes = getKeyNodes();
             bool[] added = new bool[_NNodes];
-            added[key._INDEX] = true;
-            if (key.symmetry != null)
+            foreach (Node node in keyNodes)
             {
-                keyNodes.Add(key.symmetry);
-                added[key.symmetry._INDEX] = true;
+                added[node._INDEX] = true;
             }
             splitNodes.Add(keyNodes);
             // split 1
             List<Node> split1 = new List<Node>();
             // dfs
             Queue<Node> queue = new Queue<Node>();
-            queue.Enqueue(key._adjNodes[0]);
-            added[key._adjNodes[0]._INDEX] = true;
+            // put an arbitrary not-visited node
+            foreach (Node node in keyNodes)
+            {
+                foreach (Node adj in node._adjNodes)
+                {
+                    if (!added[adj._INDEX])
+                    {
+                        queue.Enqueue(adj);
+                        added[adj._INDEX] = true;
+                        if (adj.symmetry != null)
+                        {
+                            queue.Enqueue(adj.symmetry);
+                            added[adj.symmetry._INDEX] = true;
+                        }
+                        break;
+                    }
+                }
+                if (queue.Count > 0)
+                {
+                    break;
+                }
+            }            
             bool containGround1 = false;
             while (queue.Count > 0)
             {
@@ -400,6 +446,11 @@ namespace Component
                     {
                         queue.Enqueue(node);
                         added[node._INDEX] = true;
+                        if (node.symmetry != null)
+                        {
+                            queue.Enqueue(node.symmetry);
+                            added[node.symmetry._INDEX] = true;
+                        }
                     }
                 }
             }
@@ -522,6 +573,7 @@ namespace Component
         public bool _allNeigborUpdated = false;
         public Node symmetry = null;
         public Symmetry symm = null;
+        public bool _isFunction = false;
 
         public Node(Part p, int idx)
         {
@@ -682,4 +734,35 @@ namespace Component
             _axis = a;
         }
     }// Symmetry
+
+    public class ReplaceablePair
+    {
+        public Graph _g1;
+        public Graph _g2;
+        public List<List<Node>> _pair1;
+        public List<List<Node>> _pair2;
+
+        public ReplaceablePair(Graph g1, Graph g2, List<List<int>> idx1, List<List<int>> idx2)
+        {
+            _g1 = g1;
+            _g2 = g2;
+            _pair1 = new List<List<Node>>();
+            _pair2 = new List<List<Node>>();
+            for (int i = 0; i < idx1.Count; ++i)
+            {
+                List<Node> nodes1 = new List<Node>();
+                List<Node> nodes2 = new List<Node>();
+                foreach (int j in idx1[i])
+                {
+                    nodes1.Add(_g1._NODES[j]);
+                }
+                foreach (int j in idx2[i])
+                {
+                    nodes2.Add(_g2._NODES[j]);
+                }
+                _pair1.Add(nodes1);
+                _pair2.Add(nodes2);
+            }
+        }
+    }// ReplaceablePair
 }// namespace
