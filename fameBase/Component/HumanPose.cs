@@ -107,7 +107,7 @@ namespace Component
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separator = { ' ', '\t' };
-                string line = sr.ReadLine();
+                string line = sr.ReadLine().Trim();
                 string[] strs = line.Split(separator);
                 int nnodes = 0;
                 try
@@ -121,7 +121,7 @@ namespace Component
                 _bodyNodes = new List<BodyNode>();
                 for (int i = 0; i < nnodes; ++i)
                 {
-                    line = sr.ReadLine();
+                    line = sr.ReadLine().Trim();
                     strs = line.Split(separator);
                     string name = strs[0];
                     Vector3d pos = new Vector3d(double.Parse(strs[1]), double.Parse(strs[2]), double.Parse(strs[3]));
@@ -134,7 +134,7 @@ namespace Component
                     }
                 }
                 int nbones = 0;
-                line = sr.ReadLine();
+                line = sr.ReadLine().Trim();
                 strs = line.Split(separator);
                 try
                 {
@@ -147,7 +147,7 @@ namespace Component
                 _bodyBones = new List<BodyBone>();
                 for (int i = 0; i < nbones; ++i)
                 {
-                    line = sr.ReadLine();
+                    line = sr.ReadLine().Trim();
                     strs = line.Split(separator);
                     string name = strs[0];
                     int inode = Int16.Parse(strs[1]);

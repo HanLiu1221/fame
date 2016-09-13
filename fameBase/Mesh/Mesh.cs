@@ -253,7 +253,7 @@ namespace Geometry
             int nproperty = 0;
             while (sr.Peek() > -1)
             {
-                line = sr.ReadLine();
+                line = sr.ReadLine().Trim();
                 string[] array = line.Split(separator);
                 if (array.Length > 0 && array[0].Equals("end_header"))
                 {
@@ -282,7 +282,7 @@ namespace Geometry
             }
             for (int i = 0; i < this.vertexCount; ++i)
             {
-                line = sr.ReadLine();
+                line = sr.ReadLine().Trim();
                 string[] array = line.Split(separator);
                 Vector3d v = new Vector3d();
                 for (int j = 0; j < 3; ++j)
@@ -315,7 +315,7 @@ namespace Geometry
 
             for (int i = 0; i < this.faceCount; ++i)
             {
-                line = sr.ReadLine();
+                line = sr.ReadLine().Trim();
                 string[] array = line.Split(separator);
                 List<int> currFaceArray = new List<int>();
                 for (int j = 1; j < 4; ++j)
@@ -404,7 +404,7 @@ namespace Geometry
             this.faceCount = 0;
             while (sr.Peek() > -1)
             {
-                string line = sr.ReadLine();
+                string line = sr.ReadLine().Trim();
                 line.Replace("  ", " ");
                 line.Replace("//", "/");
                 string[] array = line.Split(separator);
@@ -488,7 +488,7 @@ namespace Geometry
             int halfEdgeIdx = 0;
             while (sr.Peek() > -1)
             {
-                string line = sr.ReadLine();
+                string line = sr.ReadLine().Trim();
                 line.Replace("  ", " ");
                 line.Replace("//", "/");
                 string[] array = line.Split(separator);

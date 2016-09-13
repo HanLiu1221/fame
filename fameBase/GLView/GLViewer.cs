@@ -831,6 +831,7 @@ namespace FameBase
                 {
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
                     loadAGrapph(m, graphName);
+                    hasInValidContact(m._GRAPH);
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this);
                     _modelViewers.Add(modelViewer);
                 }
@@ -846,6 +847,22 @@ namespace FameBase
 
             return _modelViewers;
         }// loadPartBasedModels
+
+        private bool hasInValidContact(Graph g)
+        {
+            if (g == null) return false;
+            foreach (Edge e in g._EDGES)
+            {
+                foreach (Contact c in e._contacts)
+                {
+                    if (double.IsNaN(c._pos3d.x) || double.IsNaN(c._pos3d.y) || double.IsNaN(c._pos3d.z))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
 
         public void saveReplaceablePairs()
         {
@@ -918,7 +935,7 @@ namespace FameBase
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separator = { ' ', '\t' };
-                string s = sr.ReadLine();
+                string s = sr.ReadLine().Trim();
                 string[] strs = s.Split(separator);
                 int npairs = int.Parse(strs[0]);
                 for (int i = 0; i < npairs; ++i)
@@ -952,7 +969,7 @@ namespace FameBase
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separator = { ' ', '\t' };
-                string s = sr.ReadLine();
+                string s = sr.ReadLine().Trim();
                 string[] strs = s.Split(separator);
                 int nNodes = int.Parse(strs[0]);
                 if (nNodes != m._NPARTS)
@@ -965,7 +982,7 @@ namespace FameBase
                 bool hasGroundTouching = false;
                 for (int i = 0; i < nNodes; ++i)
                 {
-                    s = sr.ReadLine();
+                    s = sr.ReadLine().Trim();
                     strs = s.Split(separator);
                     int j = int.Parse(strs[0]);
                     int k = int.Parse(strs[1]);
@@ -1005,12 +1022,12 @@ namespace FameBase
                 {
                     g.markGroundTouchingNodes();
                 }
-                s = sr.ReadLine();
+                s = sr.ReadLine().Trim();
                 strs = s.Split(separator);
                 int nEdges = int.Parse(strs[0]);
                 for (int i = 0; i < nEdges; ++i)
                 {
-                    s = sr.ReadLine();
+                    s = sr.ReadLine().Trim();
                     strs = s.Split(separator);
                     int j = int.Parse(strs[0]);
                     int k = int.Parse(strs[1]);
@@ -1109,7 +1126,6 @@ namespace FameBase
 
             _crossOverBasket.Remove(m);
             m._GRAPH.selectedNodePairs.Clear();
-            _crossOverBasket.Add(m);
 
             this.cal2D();
             this.Refresh();
@@ -1233,7 +1249,7 @@ namespace FameBase
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separator = { ' ' };
-                string s = sr.ReadLine();
+                string s = sr.ReadLine().Trim();
                 s.Trim();
                 string[] strs = s.Split(separator);
                 double[] arr = new double[strs.Length];
@@ -1385,8 +1401,10 @@ namespace FameBase
         List<List<Model>> _mutateGenerations = new List<List<Model>>();
         List<List<Model>> _crossoverGenerations = new List<List<Model>>();
 
-        public void autoGenerate()
+        public List<ModelViewer> autoGenerate()
         {
+            _resViewers = new List<ModelViewer>();
+
             this.isDrawBbox = false;
             this.isDrawGraph = false;
             Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
@@ -1417,30 +1435,31 @@ namespace FameBase
                 Directory.CreateDirectory(imageFolder_c);
             }
             // mutate
-            //List<Model> secondGen = new List<Model>();
-            //for (int i = 0; i < firstGen.Count; ++i)
-            //{
-            //    Model m = firstGen[i];
-            //    this.setCurrentModel(m, i);
-            //    List<Model> res = this.mutate();
-            //    foreach (Model model in res)
-            //    {
-            //        if (model._GRAPH.isGeometryViolated())
-            //        {
-            //            continue;
-            //        }
-            //        //secondGen.Add(model);
-            //        saveAPartBasedModel(model._path + model._model_name + ".pam");
-            //        // screenshot
-            //        this.setCurrentModel(model, -1);
-            //        this.captureScreen(imageFolder_m + model._model_name + ".png");
-            //    }
-            //}
+            List<Model> secondGen = new List<Model>();
+            for (int i = 0; i < firstGen.Count; ++i)
+            {
+                Model m = firstGen[i];
+                this.setCurrentModel(m, i);
+                List<Model> res = this.mutate();
+                foreach (Model model in res)
+                {
+                    //if (model._GRAPH.isGeometryViolated())
+                    //{
+                    //    continue;
+                    //}
+                    //secondGen.Add(model);
+                    saveAPartBasedModel(model._path + model._model_name + ".pam");
+                    // screenshot
+                    this.setCurrentModel(model, -1);
+                    this.captureScreen(imageFolder_m + model._model_name + ".png");
+                }
+            }
             //_mutateGenerations.Add(secondGen);
             // crossover
             // only for the same contact points, for rebuilding the graph
             int maxIter = 1;
             int iter = 0;
+            int index = 0;
             while (iter < maxIter)
             {
                 List<Model> cross_results = this.crossOver(_crossoverGenerations[iter]);
@@ -1449,9 +1468,10 @@ namespace FameBase
                 {
                     if (model._GRAPH.isGeometryViolated())
                     {
-                        continue;
+                        //continue;
+                        _resViewers.Add(new ModelViewer(model, index++, this));
                     }
-                    gen.Add(model);
+                    //gen.Add(model);
                     saveAPartBasedModel(model._path + model._model_name + ".pam");
                     // screenshot
                     this.setCurrentModel(model, -1);
@@ -1461,7 +1481,7 @@ namespace FameBase
                 _crossoverGenerations.Add(gen);
             }
             // cossover + mutate
-
+            return _resViewers;
         }// autoGenerate
 
         private bool hasGroundTouching(List<Node> nodes)
@@ -1631,6 +1651,7 @@ namespace FameBase
                 {
                     ++idx;
                     Model model = _currModel.Clone() as Model;
+                    hasInValidContact(model._GRAPH);
                     model._path = path.Clone() as string;
                     model._model_name = _currModel._model_name + "_mutate_" + idx.ToString();
                     Node updateNode = model._GRAPH._NODES[j];
@@ -1651,6 +1672,7 @@ namespace FameBase
                     }
                     deformANodeAndEdges(updateNode, Q);
                     deformSymmetryNode(updateNode);
+                    hasInValidContact(model._GRAPH);
                     deformPropagation(model._GRAPH, updateNode);
                     model._GRAPH.resetUpdateStatus();
                     mutatedModels.Add(model);
@@ -1698,6 +1720,7 @@ namespace FameBase
         private void deformPropagation(Graph graph, Node edited)
         {
             Node activeNode = edited;
+            int time = 0;
             while (activeNode != null)
             {
                 int maxNumUpdatedContacts = -1;
@@ -1755,6 +1778,10 @@ namespace FameBase
                         {
                             deformNode(toUpdate);
                             deformSymmetryNode(toUpdate);
+                            if (hasInValidContact(graph))
+                            {
+                                ++time;
+                            }
                         }
                     }
                 }
@@ -1803,7 +1830,7 @@ namespace FameBase
             for (int i = 0; i < _crossOverBasket.Count - 1; ++i)
             {
                 Model m1 = _crossOverBasket[i];
-                for (int j = 0; j < _crossOverBasket.Count; ++j)
+                for (int j = i + 1; j < _crossOverBasket.Count; ++j)
                 {
                     Model m2 = _crossOverBasket[j];
                     List<Node> nodes1 = new List<Node>();
@@ -2036,17 +2063,23 @@ namespace FameBase
 
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
+            bool isGround = false;
             if (ground1 != null && ground2 != null && sources.Count > 0)
             {
                 //sources.Add(new Vector3d(center1.x, 0, center1.z));
                 //targets.Add(new Vector3d(center2.x, 0, center2.z));
                 sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
                 targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
+                isGround = true;
             }
             getTransformation(sources, targets, out S, out T, out Q);
             foreach (Node node in updateNodes1)
             {
                 node.Transform(Q);
+            }
+            if (isGround)
+            {
+                adjustGroundTouching(updateNodes1);
             }
 
             getTransformation(targets, sources, out S, out T, out Q);
@@ -2054,7 +2087,27 @@ namespace FameBase
             {
                 node.Transform(Q);
             }
+            if (isGround)
+            {
+                adjustGroundTouching(updateNodes2);
+            }
         }// switchOneNode
+
+        private void adjustGroundTouching(List<Node> nodes)
+        {
+            double miny = double.MaxValue;
+            foreach (Node node in nodes)
+            {
+                double y = node._PART._BOUNDINGBOX.MinCoord.y;
+                miny = miny < y ? miny : y;
+            }
+            Vector3d trans = new Vector3d(0, -miny, 0);
+            Matrix4d T = Matrix4d.TranslationMatrix(trans);
+            foreach (Node node in nodes)
+            {
+                node.Transform(T);
+            }
+        }// adjustGroundTouching
 
         private Node hasGroundTouchingNode(List<Node> nodes)
         {
@@ -2078,10 +2131,33 @@ namespace FameBase
             return points;
         }// collectPoints
 
+        private bool isNaNMat(Matrix4d m)
+        {
+            for (int i = 0; i < 16; ++i)
+            {
+                if (double.IsNaN(m[i]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, out Matrix4d S, out Matrix4d T, out Matrix4d Q)
         {
             int n = srcpts.Count;
-            if (n == 2)
+            if (n == 1)
+            {
+                double ss = 1;
+                Vector3d trans = tarpts[0] - srcpts[0];
+                S = Matrix4d.ScalingMatrix(ss, ss, ss);
+                T = Matrix4d.TranslationMatrix(trans);
+                Q = Matrix4d.TranslationMatrix(tarpts[0]) * S * Matrix4d.TranslationMatrix(new Vector3d() - srcpts[0]);
+                if (isNaNMat(Q))
+                {
+                    Q = Matrix4d.IdentityMatrix();
+                }
+            } else if (n == 2)
             {
                 Vector3d c1 = (srcpts[0] + srcpts[1]) / 2;
                 Vector3d c2 = (tarpts[0] + tarpts[1]) / 2;
@@ -2089,7 +2165,23 @@ namespace FameBase
                 Vector3d v2 = tarpts[1] - tarpts[0];
                 if (v1.Dot(v2) < 0) v1 = new Vector3d() - v1;
                 double ss = v2.Length() / v1.Length();
+                if (double.IsNaN(ss))
+                {
+                    ss = 1.0;
+                }
                 S = Matrix4d.ScalingMatrix(ss, ss, ss);
+
+                Vector3d maxv_s = Common.getMaxCoord(srcpts);
+                Vector3d minv_s = Common.getMinCoord(srcpts);
+                Vector3d maxv_t = Common.getMaxCoord(tarpts);
+                Vector3d minv_t = Common.getMinCoord(tarpts);
+                double sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
+                double sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
+                double sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
+                if (!Common.isValidNumber(sx) && !Common.isValidNumber(sy) && !Common.isValidNumber(sz))
+                {
+                    S = Matrix4d.ScalingMatrix(sx, sy, sz);
+                }
                 Matrix4d R = Matrix4d.IdentityMatrix();
                 double cos = v1.normalize().Dot(v2.normalize());
                 if (cos < Math.Cos(1.0 / 18 * Math.PI))
@@ -2097,9 +2189,17 @@ namespace FameBase
                     Vector3d axis = v1.Cross(v2).normalize();
                     double theta = Math.Acos(cos);
                     R = Matrix4d.RotationMatrix(axis, theta);
+                    if (isNaNMat(R))
+                    {
+                        R = Matrix4d.IdentityMatrix();
+                    }
                 }
                 T = Matrix4d.TranslationMatrix(c2 - c1);
                 Q = Matrix4d.TranslationMatrix(c2) * R * S * Matrix4d.TranslationMatrix(new Vector3d() - c1);
+                if (isNaNMat(Q))
+                {
+                    Q = Matrix4d.IdentityMatrix();
+                }
             }
             else
             {
@@ -2144,77 +2244,98 @@ namespace FameBase
                 }
 
                 // adjust scale 
-                if (n > 3)
+                //if (n > 3)
+                //{
+                //    //// find the points plane
+                //    //double[] points = new double[srcpts.Count * 3];
+                //    //for (int i = 0, jj = 0; i < srcpts.Count; ++i, jj += 3)
+                //    //{
+                //    //    points[jj] = srcpts[i].x;
+                //    //    points[jj + 1] = srcpts[i].y;
+                //    //    points[jj + 2] = srcpts[i].z;
+                //    //}
+                //    //double[] plane = new double[4];
+                //    //PlaneFitter.ZyyPlaneFitter _plfitter = new PlaneFitter.ZyyPlaneFitter();
+                //    //fixed (double* _pts = points, _pl = plane)
+                //    //    _plfitter.GetFittingPlane(_pts, srcpts.Count, _pl);
+                //    //Vector3d normal = new Vector3d(plane, 0);
+                //    //normal = normal.normalize();
+
+                //    // 4 permutations, 012, 123, 023, 013
+                //    //Vector3d aa = tarpts[0];
+                //    //Vector3d bb = tarpts[1];
+                //    //Vector3d cc = tarpts[2];
+                //    //Vector3d dd = tarpts[3];
+                //    Vector3d aa = tarpts[0];
+                //    Vector3d bb = tarpts[1];
+                //    Vector3d cc = tarpts[tarpts.Count - 2];
+                //    Vector3d dd = tarpts[tarpts.Count - 1];
+                //    Vector3d[] nn = new Vector3d[4] {
+                //        ((aa - bb).Cross(bb - cc)).normalize(),
+                //        ((bb - cc).Cross(cc - dd)).normalize(),
+                //        ((aa - cc).Cross(cc - dd)).normalize(),
+                //        ((aa - bb).Cross(bb - dd)).normalize()
+                //    };
+                //    Vector3d nor = new Vector3d();
+                //    for (int i = 0; i < 4; ++i)
+                //    {
+                //        if (!double.IsNaN(nn[i].x))
+                //        {
+                //            nor = nn[i];
+                //            break;
+                //        }
+                //    }
+                //    Vector3d normal = new Vector3d();
+                //    int count = 0;
+                //    for (int i = 0; i < 4; ++i)
+                //    {
+                //        if (!double.IsNaN(nn[i].x))
+                //        {
+                //            if (nn[i].Dot(nor) < 0)
+                //            {
+                //                nn[i] = new Vector3d() - nn[i];
+                //            }
+                //            normal += nn[i];
+                //            count++;
+                //        }
+                //    }
+                //    normal = normal.normalize();
+
+                //    if (double.IsNaN(normal.x)) throw new Exception();
+                //    {
+                //        if (Math.Abs(normal.x) > 0.5)
+                //        {
+                //            sx = 1.0;
+                //        }
+                //        else if (Math.Abs(normal.y) > 0.5)
+                //        {
+                //            sy = 1.0;
+                //        }
+                //        else if (Math.Abs(normal.z) > 0.5)
+                //            sz = 1.0;
+                //    }
+                //}
+
+                Vector3d maxv_s = Common.getMaxCoord(srcpts);
+                Vector3d minv_s = Common.getMinCoord(srcpts);
+                Vector3d maxv_t = Common.getMaxCoord(tarpts);
+                Vector3d minv_t = Common.getMinCoord(tarpts);
+                //sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
+                //sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
+                //sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
+
+                if (sx < Common._deform_thresh_min)// || sx > Common._deform_thresh_max)
                 {
-                    //// find the points plane
-                    //double[] points = new double[srcpts.Count * 3];
-                    //for (int i = 0, jj = 0; i < srcpts.Count; ++i, jj += 3)
-                    //{
-                    //    points[jj] = srcpts[i].x;
-                    //    points[jj + 1] = srcpts[i].y;
-                    //    points[jj + 2] = srcpts[i].z;
-                    //}
-                    //double[] plane = new double[4];
-                    //PlaneFitter.ZyyPlaneFitter _plfitter = new PlaneFitter.ZyyPlaneFitter();
-                    //fixed (double* _pts = points, _pl = plane)
-                    //    _plfitter.GetFittingPlane(_pts, srcpts.Count, _pl);
-                    //Vector3d normal = new Vector3d(plane, 0);
-                    //normal = normal.normalize();
-
-                    // 4 permutations, 012, 123, 023, 013
-                    //Vector3d aa = tarpts[0];
-                    //Vector3d bb = tarpts[1];
-                    //Vector3d cc = tarpts[2];
-                    //Vector3d dd = tarpts[3];
-                    Vector3d aa = tarpts[0];
-                    Vector3d bb = tarpts[1];
-                    Vector3d cc = tarpts[tarpts.Count - 2];
-                    Vector3d dd = tarpts[tarpts.Count - 1];
-                    Vector3d[] nn = new Vector3d[4] {
-						((aa - bb).Cross(bb - cc)).normalize(),
-						((bb - cc).Cross(cc - dd)).normalize(),
-						((aa - cc).Cross(cc - dd)).normalize(),
-						((aa - bb).Cross(bb - dd)).normalize()
-					};
-                    Vector3d nor = new Vector3d();
-                    for (int i = 0; i < 4; ++i)
-                    {
-                        if (!double.IsNaN(nn[i].x))
-                        {
-                            nor = nn[i];
-                            break;
-                        }
-                    }
-                    Vector3d normal = new Vector3d();
-                    int count = 0;
-                    for (int i = 0; i < 4; ++i)
-                    {
-                        if (!double.IsNaN(nn[i].x))
-                        {
-                            if (nn[i].Dot(nor) < 0)
-                            {
-                                nn[i] = new Vector3d() - nn[i];
-                            }
-                            normal += nn[i];
-                            count++;
-                        }
-                    }
-                    normal = normal.normalize();
-
-                    if (double.IsNaN(normal.x)) throw new Exception();
-                    {
-                        if (Math.Abs(normal.x) > 0.5)
-                        {
-                            sx = 1.0;
-                        }
-                        else if (Math.Abs(normal.y) > 0.5)
-                        {
-                            sy = 1.0;
-                        }
-                        else if (Math.Abs(normal.z) > 0.5)
-                            sz = 1.0;
-                    }
+                    sx = 1.0;
                 }
+                if ( sy < Common._deform_thresh_min)// || sy > Common._deform_thresh_max)
+                {
+                    sy = 1.0;
+                }
+                if (sz < Common._deform_thresh_min)// || sz > Common._deform_thresh_max)
+                {
+                    sz = 1.0;
+                }                              
 
                 Vector3d scale = new Vector3d(sx, sy, sz);
 
@@ -2222,9 +2343,14 @@ namespace FameBase
 
                 S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
                 Q = Matrix4d.TranslationMatrix(t2) * S * Matrix4d.TranslationMatrix(new Vector3d() - t1);
+                if (isNaNMat(Q))
+                {
+                    Q = Matrix4d.IdentityMatrix();
+                }
             }
         }// getTransformation
 
+        
         public void setRandomColor()
         {
             if (_currModel != null && _currModel._GRAPH != null)

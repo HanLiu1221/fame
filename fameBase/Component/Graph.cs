@@ -61,7 +61,7 @@ namespace Component
                 List<Contact> contacts = new List<Contact>();
                 foreach (Contact pnt in e._contacts)
                 {
-                    contacts.Add(pnt.Clone() as Contact);
+                    contacts.Add(new Contact(pnt._pos3d));
                 }
                 Edge ec = new Edge(cloned._nodes[i], cloned._nodes[j], contacts);
                 cloned.addEdge(ec);

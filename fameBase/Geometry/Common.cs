@@ -12,6 +12,8 @@ namespace Geometry
         public static int _nCuboidPoint = 8;
         public static double _thresh = 1e-6;
         public static double _thresh2d = 20;
+        public static double _deform_thresh_min = 0.1;
+        public static double _deform_thresh_max = 4.0;
         public static double _bodyNodeRadius = 0.06;
         public static double _contactPointsize = 0.03;
         public static double _hightlightContactPointsize = 0.04;
@@ -19,7 +21,32 @@ namespace Geometry
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
         public Common() { }
-    }
+
+        public static Vector3d getMaxCoord(List<Vector3d> vecs)
+        {
+            Vector3d maxv = Vector3d.MinCoord;
+            foreach (Vector3d v in vecs)
+            {
+                maxv = Vector3d.Max(maxv, v);
+            }
+            return maxv;
+        }// getMaxCoord
+
+        public static Vector3d getMinCoord(List<Vector3d> vecs)
+        {
+            Vector3d minv = Vector3d.MaxCoord;
+            foreach (Vector3d v in vecs)
+            {
+                minv = Vector3d.Min(minv, v);
+            }
+            return minv;
+        }// getMinCoord
+
+        public static bool isValidNumber(double x)
+        {
+            return (!double.IsNaN(x) && !double.IsInfinity(x));
+        }// isValidNumber
+    }// Common
 
     public class Contact
     {
@@ -68,13 +95,6 @@ namespace Geometry
         public void updatePos2d(Vector2d v2)
         {
             _pos2d = new Vector2d(v2);
-        }
-
-        public Object Clone()
-        {
-            Contact pnt = new Contact(new Vector3d(_pos3d));
-            pnt._originPos3d = new Vector3d(_originPos3d);
-            return pnt;
         }
     }// Contact
 
