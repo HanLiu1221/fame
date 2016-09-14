@@ -3055,12 +3055,12 @@ namespace FameBase
         //######### Part-based #########//
         public void selectBbox(Quad2d q, bool isCtrl)
         {
-            if (this._currModel == null || this._currModel._GRAPH == null || q == null) return;
+            // cannot use GRAPH, as it maybe used for data preprocessing, i.e., grouping, i dont need graph here
+            if (this._currModel == null || q == null) return;
             this.cal2D();
             _selectedNodes = new List<Node>();
-            foreach(Node node in _currModel._GRAPH._NODES)
+            foreach(Part p in _currModel._PARTS)
             {
-                Part p = node._PART;
                 if (p._BOUNDINGBOX == null) continue;
                 if (!isCtrl && _selectedParts.Contains(p))
                 {
@@ -3075,15 +3075,23 @@ namespace FameBase
                         if (isCtrl)
                         {
                             _selectedParts.Remove(p);
-                            _selectedNodes.Remove(node);
                             break;
                         }
                         else
                         {
                             _selectedParts.Add(p);
-                            _selectedNodes.Add(node);
                         }
                         break;
+                    }
+                }
+            }
+            if (_currModel._GRAPH != null)
+            {
+                foreach (Node node in _currModel._GRAPH._NODES)
+                {
+                    if (_selectedParts.Contains(node._PART))
+                    {
+                        _selectedNodes.Add(node);
                     }
                 }
             }
@@ -3142,6 +3150,7 @@ namespace FameBase
             Part newPart = _currModel.groupParts(_selectedParts);
             _selectedParts.Clear();
             _selectedParts.Add(newPart);
+            _currModel._GRAPH = null;
             this.cal2D();
             this.Refresh();
         }// groupParts

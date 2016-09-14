@@ -610,5 +610,6 @@ namespace FameBase
         {
             this.glViewer.saveReplaceablePairs();
         }
+
 	}// Interface
 }// namespace

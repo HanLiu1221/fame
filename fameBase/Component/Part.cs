@@ -96,6 +96,14 @@ namespace Component
 
         public void fitProxy()
         {
+            axes = new Vector3d[3];
+
+            axes[0] = Vector3d.XCoord;
+            axes[1] = Vector3d.YCoord;
+            axes[2] = Vector3d.ZCoord;
+            this.calculateAxisAlignedBbox();
+            return;
+
             int n = this._mesh.VertexCount;
             double[,] vArray = new double[n, 3];
             Vector3d center = new Vector3d();
@@ -106,10 +114,11 @@ namespace Component
                 vArray[i, 2] = this._mesh.VertexPos[j + 2];
                 center += new Vector3d(vArray[i, 0], vArray[i, 1], vArray[i, 2]);
             }
-            center /= n;
+            center /= n;           
+
             PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
             pca.Compute();
-            axes = new Vector3d[3];
+            
             if (pca.Components.Count < 3)
             {
                 // using axis aligned axes
@@ -268,6 +277,10 @@ namespace Component
             Vector3d maxv = _mesh.MaxCoord;
             Vector3d minv = _mesh.MinCoord;
             _boundingbox = new Prism(minv, maxv);
+
+            _boundingbox.coordSys = new CoordinateSystem((_mesh.MaxCoord + _mesh.MinCoord)/2, axes[0], axes[1], axes[2]);
+            _boundingbox.originCoordSys = new CoordinateSystem((_mesh.MaxCoord + _mesh.MinCoord) / 2, axes[0], axes[1], axes[2]);
+            _boundingbox._originScale = _boundingbox._scale = _mesh.MaxCoord - _mesh.MinCoord;
         }
 
         public void addAJoint(Part p, Joint j)
