@@ -196,8 +196,8 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\test" };
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\test" }; 
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\test" };
+            //var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\test" }; 
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -257,7 +257,7 @@ namespace FameBase
             dialog.Filter = "3D model (*.obj; *.off; *.ply)|*.obj; *.off; *.ply|All Files(*.*)|*.*";
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
-                this.glViewer.saveObj(null, dialog.FileName);
+                this.glViewer.saveObj(null, dialog.FileName, GLDrawer.MeshColor);
             }
         }
 
@@ -331,6 +331,7 @@ namespace FameBase
         {
             string stats = this.glViewer.getStats();
             this.statsLabel.Text = stats;
+            this.Refresh();
         }
 
         public ContextMenuStrip getRightButtonMenu()

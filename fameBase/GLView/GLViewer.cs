@@ -417,7 +417,7 @@ namespace FameBase
             this.Refresh();
         }// loadTriMesh
 
-        public void saveObj(Mesh mesh, string filename)
+        public void saveObj(Mesh mesh, string filename, Color c)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
             {
@@ -430,9 +430,13 @@ namespace FameBase
                 this.saveModelObj(filename);
                 return;
             }
+            string model_name = filename.Substring(filename.LastIndexOf('\\') + 1);
+            model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
+            string mtl_name = filename.Substring(0, filename.LastIndexOf('.')) + ".mtl";
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 // vertex
+                sw.WriteLine("usemtl " + model_name);
                 string s = "";
                 for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
                 {
@@ -452,7 +456,35 @@ namespace FameBase
                     sw.WriteLine(s);
                 }
             }
+            using (StreamWriter sw = new StreamWriter(mtl_name))
+            {
+                sw.WriteLine("newmtl " + model_name);
+                sw.Write("Ka ");
+                sw.WriteLine(colorToString(c, false));
+                sw.Write("Kd ");
+                sw.WriteLine(colorToString(c, false));
+                sw.Write("Ks ");
+                sw.WriteLine(colorToString(c, false));
+                sw.Write("ke ");
+                sw.WriteLine(colorToString(c, false));
+            }
         }// saveObj
+
+        private string colorToString(Color c, bool space)
+        {
+            double r = (double)c.R / 255.0;
+            double g = (double)c.G / 255.0;
+            double b = (double)c.B / 255.0;
+            StringBuilder sb = new StringBuilder();
+            sb.Append(string.Format("{0:0.###}", r) + " ");
+            sb.Append(string.Format("{0:0.###}", g) + " ");
+            sb.Append(string.Format("{0:0.###}", b));
+            if (space)
+            {
+                sb.Append(" ");
+            }
+            return sb.ToString();
+        }// colorToString
 
         private void saveModelObj(string filename)
         {
@@ -658,7 +690,7 @@ namespace FameBase
                     sw.WriteLine(vector3dToString(ipart._BOUNDINGBOX.coordSys.z, false));
                     // save mesh
                     string meshName = "part_" + i.ToString() + ".obj";
-                    this.saveObj(ipart._MESH, meshDir + meshName);
+                    this.saveObj(ipart._MESH, meshDir + meshName, ipart._COLOR);
                     sw.WriteLine(meshFolder + "\\" + meshName);
                 }
                 if (_currModel._GRAPH != null)
@@ -774,7 +806,7 @@ namespace FameBase
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
             if (!File.Exists(graphName))
             {
-                _currModel.initialize();
+                //_currModel.initialize();
             }
             else
             {
@@ -1448,10 +1480,11 @@ namespace FameBase
                     //    continue;
                     //}
                     //secondGen.Add(model);
-                    saveAPartBasedModel(model._path + model._model_name + ".pam");
                     // screenshot
                     this.setCurrentModel(model, -1);
+                    Program.GetFormMain().updateStats();
                     this.captureScreen(imageFolder_m + model._model_name + ".png");
+                    saveAPartBasedModel(model._path + model._model_name + ".pam");
                 }
             }
             //_mutateGenerations.Add(secondGen);
@@ -1470,12 +1503,14 @@ namespace FameBase
                     {
                         //continue;
                         _resViewers.Add(new ModelViewer(model, index++, this));
+                        Program.writeToConsole(model._model_name);
                     }
                     //gen.Add(model);
-                    saveAPartBasedModel(model._path + model._model_name + ".pam");
                     // screenshot
                     this.setCurrentModel(model, -1);
+                    Program.GetFormMain().updateStats();
                     this.captureScreen(imageFolder_c + model._model_name + ".png");
+                    saveAPartBasedModel(model._path + model._model_name + ".pam");
                 }
                 ++iter;
                 _crossoverGenerations.Add(gen);
@@ -1806,7 +1841,7 @@ namespace FameBase
                 targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
             }
             Matrix4d T, S, Q;
-            getTransformation(sources, targets, out S, out T, out Q);
+            getTransformation(sources, targets, out S, out T, out Q, null, false);
             node.Transform(Q);
             node.updated = true;
             foreach (Edge e in node._edges)
@@ -1991,11 +2026,18 @@ namespace FameBase
             updateNodes1 = new List<Node>();
             updateNodes2 = new List<Node>();
             Vector3d center1 = new Vector3d();
+            Vector3d maxv_s = Vector3d.MinCoord;
+            Vector3d minv_s = Vector3d.MaxCoord;
+            Vector3d maxv_t = Vector3d.MinCoord;
+            Vector3d minv_t = Vector3d.MaxCoord;
+            
             foreach (Node node in nodes1)
             {
                 Node cloned = node.Clone() as Node;
                 updateNodes1.Add(cloned);
                 center1 += node._PART._BOUNDINGBOX.CENTER;
+                maxv_s = Vector3d.Max(maxv_s, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_s = Vector3d.Min(minv_s, node._PART._BOUNDINGBOX.MinCoord);
             }
             center1 /= nodes1.Count;
             Vector3d center2 = new Vector3d();
@@ -2004,8 +2046,19 @@ namespace FameBase
                 Node cloned = node.Clone() as Node;
                 updateNodes2.Add(cloned);
                 center2 += node._PART._BOUNDINGBOX.CENTER;
+                maxv_t = Vector3d.Max(maxv_t, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_t = Vector3d.Min(minv_t, node._PART._BOUNDINGBOX.MinCoord);
             }
             center2 /= nodes2.Count;
+
+            double sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
+            double sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
+            double sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
+            Vector3d boxScale_1 = new Vector3d(sx, sy, sz);
+            sx = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
+            sy = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
+            sz = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
+            Vector3d boxScale_2 = new Vector3d(sx, sy, sz);
 
             Matrix4d S, T, Q;
 
@@ -2072,7 +2125,7 @@ namespace FameBase
                 targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
                 isGround = true;
             }
-            getTransformation(sources, targets, out S, out T, out Q);
+            getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true);
             foreach (Node node in updateNodes1)
             {
                 node.Transform(Q);
@@ -2082,7 +2135,7 @@ namespace FameBase
                 adjustGroundTouching(updateNodes1);
             }
 
-            getTransformation(targets, sources, out S, out T, out Q);
+            getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true);
             foreach (Node node in updateNodes2)
             {
                 node.Transform(Q);
@@ -2143,7 +2196,7 @@ namespace FameBase
             return false;
         }
 
-        public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, out Matrix4d S, out Matrix4d T, out Matrix4d Q)
+        public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, out Matrix4d S, out Matrix4d T, out Matrix4d Q, Vector3d boxScale, bool useScale)
         {
             int n = srcpts.Count;
             if (n == 1)
@@ -2151,6 +2204,10 @@ namespace FameBase
                 double ss = 1;
                 Vector3d trans = tarpts[0] - srcpts[0];
                 S = Matrix4d.ScalingMatrix(ss, ss, ss);
+                if (useScale && boxScale.isValidVector())
+                {
+                    S = Matrix4d.ScalingMatrix(boxScale);
+                }
                 T = Matrix4d.TranslationMatrix(trans);
                 Q = Matrix4d.TranslationMatrix(tarpts[0]) * S * Matrix4d.TranslationMatrix(new Vector3d() - srcpts[0]);
                 if (isNaNMat(Q))
@@ -2171,17 +2228,11 @@ namespace FameBase
                 }
                 S = Matrix4d.ScalingMatrix(ss, ss, ss);
 
-                Vector3d maxv_s = Common.getMaxCoord(srcpts);
-                Vector3d minv_s = Common.getMinCoord(srcpts);
-                Vector3d maxv_t = Common.getMaxCoord(tarpts);
-                Vector3d minv_t = Common.getMinCoord(tarpts);
-                double sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
-                double sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
-                double sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
-                if (!Common.isValidNumber(sx) && !Common.isValidNumber(sy) && !Common.isValidNumber(sz))
+                if (useScale && boxScale.isValidVector())
                 {
-                    S = Matrix4d.ScalingMatrix(sx, sy, sz);
+                    S = Matrix4d.ScalingMatrix(boxScale);
                 }
+
                 Matrix4d R = Matrix4d.IdentityMatrix();
                 double cos = v1.normalize().Dot(v2.normalize());
                 if (cos < Math.Cos(1.0 / 18 * Math.PI))
@@ -2244,104 +2295,89 @@ namespace FameBase
                 }
 
                 // adjust scale 
-                //if (n > 3)
-                //{
-                //    //// find the points plane
-                //    //double[] points = new double[srcpts.Count * 3];
-                //    //for (int i = 0, jj = 0; i < srcpts.Count; ++i, jj += 3)
-                //    //{
-                //    //    points[jj] = srcpts[i].x;
-                //    //    points[jj + 1] = srcpts[i].y;
-                //    //    points[jj + 2] = srcpts[i].z;
-                //    //}
-                //    //double[] plane = new double[4];
-                //    //PlaneFitter.ZyyPlaneFitter _plfitter = new PlaneFitter.ZyyPlaneFitter();
-                //    //fixed (double* _pts = points, _pl = plane)
-                //    //    _plfitter.GetFittingPlane(_pts, srcpts.Count, _pl);
-                //    //Vector3d normal = new Vector3d(plane, 0);
-                //    //normal = normal.normalize();
-
-                //    // 4 permutations, 012, 123, 023, 013
-                //    //Vector3d aa = tarpts[0];
-                //    //Vector3d bb = tarpts[1];
-                //    //Vector3d cc = tarpts[2];
-                //    //Vector3d dd = tarpts[3];
-                //    Vector3d aa = tarpts[0];
-                //    Vector3d bb = tarpts[1];
-                //    Vector3d cc = tarpts[tarpts.Count - 2];
-                //    Vector3d dd = tarpts[tarpts.Count - 1];
-                //    Vector3d[] nn = new Vector3d[4] {
-                //        ((aa - bb).Cross(bb - cc)).normalize(),
-                //        ((bb - cc).Cross(cc - dd)).normalize(),
-                //        ((aa - cc).Cross(cc - dd)).normalize(),
-                //        ((aa - bb).Cross(bb - dd)).normalize()
-                //    };
-                //    Vector3d nor = new Vector3d();
-                //    for (int i = 0; i < 4; ++i)
-                //    {
-                //        if (!double.IsNaN(nn[i].x))
-                //        {
-                //            nor = nn[i];
-                //            break;
-                //        }
-                //    }
-                //    Vector3d normal = new Vector3d();
-                //    int count = 0;
-                //    for (int i = 0; i < 4; ++i)
-                //    {
-                //        if (!double.IsNaN(nn[i].x))
-                //        {
-                //            if (nn[i].Dot(nor) < 0)
-                //            {
-                //                nn[i] = new Vector3d() - nn[i];
-                //            }
-                //            normal += nn[i];
-                //            count++;
-                //        }
-                //    }
-                //    normal = normal.normalize();
-
-                //    if (double.IsNaN(normal.x)) throw new Exception();
-                //    {
-                //        if (Math.Abs(normal.x) > 0.5)
-                //        {
-                //            sx = 1.0;
-                //        }
-                //        else if (Math.Abs(normal.y) > 0.5)
-                //        {
-                //            sy = 1.0;
-                //        }
-                //        else if (Math.Abs(normal.z) > 0.5)
-                //            sz = 1.0;
-                //    }
-                //}
-
-                Vector3d maxv_s = Common.getMaxCoord(srcpts);
-                Vector3d minv_s = Common.getMinCoord(srcpts);
-                Vector3d maxv_t = Common.getMaxCoord(tarpts);
-                Vector3d minv_t = Common.getMinCoord(tarpts);
-                //sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
-                //sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
-                //sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
-
-                if (sx < Common._deform_thresh_min)// || sx > Common._deform_thresh_max)
+                if (n > 3)
                 {
-                    sx = 1.0;
+                    //// find the points plane
+                    //double[] points = new double[srcpts.Count * 3];
+                    //for (int i = 0, jj = 0; i < srcpts.Count; ++i, jj += 3)
+                    //{
+                    //    points[jj] = srcpts[i].x;
+                    //    points[jj + 1] = srcpts[i].y;
+                    //    points[jj + 2] = srcpts[i].z;
+                    //}
+                    //double[] plane = new double[4];
+                    //PlaneFitter.ZyyPlaneFitter _plfitter = new PlaneFitter.ZyyPlaneFitter();
+                    //fixed (double* _pts = points, _pl = plane)
+                    //    _plfitter.GetFittingPlane(_pts, srcpts.Count, _pl);
+                    //Vector3d normal = new Vector3d(plane, 0);
+                    //normal = normal.normalize();
+
+                    // 4 permutations, 012, 123, 023, 013
+                    Vector3d aa = tarpts[0];
+                    Vector3d bb = tarpts[1];
+                    Vector3d cc = tarpts[2];
+                    Vector3d dd = tarpts[3];
+                    //Vector3d aa = tarpts[0];
+                    //Vector3d bb = tarpts[1];
+                    //Vector3d cc = tarpts[tarpts.Count - 2];
+                    //Vector3d dd = tarpts[tarpts.Count - 1];
+                    Vector3d[] nn = new Vector3d[4] {
+                        ((aa - bb).Cross(bb - cc)).normalize(),
+                        ((bb - cc).Cross(cc - dd)).normalize(),
+                        ((aa - cc).Cross(cc - dd)).normalize(),
+                        ((aa - bb).Cross(bb - dd)).normalize()
+                    };
+                    Vector3d nor = new Vector3d();
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        if (!double.IsNaN(nn[i].x))
+                        {
+                            nor = nn[i];
+                            break;
+                        }
+                    }
+                    Vector3d normal = new Vector3d();
+                    int count = 0;
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        if (!double.IsNaN(nn[i].x))
+                        {
+                            if (nn[i].Dot(nor) < 0)
+                            {
+                                nn[i] = new Vector3d() - nn[i];
+                            }
+                            normal += nn[i];
+                            count++;
+                        }
+                    }
+                    normal = normal.normalize();
+
+                    if (double.IsNaN(normal.x)) throw new Exception();
+                    {
+                        if (Math.Abs(normal.x) > 0.5)
+                        {
+                            sx = 1.0;
+                        }
+                        else if (Math.Abs(normal.y) > 0.5)
+                        {
+                            sy = 1.0;
+                        }
+                        else if (Math.Abs(normal.z) > 0.5)
+                            sz = 1.0;
+                    }
                 }
-                if ( sy < Common._deform_thresh_min)// || sy > Common._deform_thresh_max)
-                {
-                    sy = 1.0;
-                }
-                if (sz < Common._deform_thresh_min)// || sz > Common._deform_thresh_max)
-                {
-                    sz = 1.0;
-                }                              
 
                 Vector3d scale = new Vector3d(sx, sy, sz);
 
                 if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
 
                 S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
+
+                if (useScale && boxScale.isValidVector())
+                {
+                    S = Matrix4d.ScalingMatrix(boxScale);
+                }
+
                 Q = Matrix4d.TranslationMatrix(t2) * S * Matrix4d.TranslationMatrix(new Vector3d() - t1);
                 if (isNaNMat(Q))
                 {

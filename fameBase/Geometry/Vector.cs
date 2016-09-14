@@ -308,6 +308,11 @@ namespace Geometry
 				x * v.y - y * v.x);
 		}
 
+        public bool isValidVector()
+        {
+            return Common.isValidNumber(x) && Common.isValidNumber(y) && Common.isValidNumber(z);
+        }
+
 		// following the guiderlines of implementing operator == and overide Equals, GetHashCode
 		// to avoid warning...
 		public override bool Equals(Object obj)
