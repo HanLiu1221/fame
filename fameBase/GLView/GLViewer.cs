@@ -806,7 +806,7 @@ namespace FameBase
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
             if (!File.Exists(graphName))
             {
-                //_currModel.initialize();
+                _currModel.initialize();
             }
             else
             {

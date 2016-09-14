@@ -154,15 +154,15 @@ namespace Component
 
                 Prism cuboid = fitCuboid(center, scale, axes);
                 Prism cylinder = fitCylinder(center, scale, axes);
-                _boundingbox = cuboid;
-                //if (cuboid.fittingError <= cylinder.fittingError)
-                //{
-                //    _boundingbox = cuboid;
-                //}
-                //else
-                //{
-                //    _boundingbox = cylinder;
-                //}
+                //_boundingbox = cuboid;
+                if (cuboid.fittingError >= cylinder.fittingError && (cuboid.fittingError - cylinder.fittingError) / cylinder.fittingError > 0.2)
+                {
+                    _boundingbox = cylinder;
+                }
+                else
+                {
+                    _boundingbox = cuboid;
+                }
             }
         }// calPrincipalAxes
 
