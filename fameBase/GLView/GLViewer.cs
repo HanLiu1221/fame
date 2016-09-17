@@ -221,7 +221,7 @@ namespace FameBase
         private Vector3d[] _groundGrids;
         Edge _selectedEdge = null;
         Contact _selectedContact = null;
-        private ReplaceablePair[,] _replaceablePairs;
+        private ReplaceablePair[,] _replaceablePairs = null;
 
         /******************** Functions ********************/
 
@@ -1921,7 +1921,7 @@ namespace FameBase
                     List<List<Node>> nodeChoices1;
                     List<List<Node>> nodeChoices2;
 
-                    if (_replaceablePairs != null)
+                    if (_replaceablePairs != null && _replaceablePairs[i, j] != null && _replaceablePairs[i, j]._pair1.Count != 0)
                     {
                         nodeChoices1 = _replaceablePairs[i, j]._pair1;
                         nodeChoices2 = _replaceablePairs[i, j]._pair2;

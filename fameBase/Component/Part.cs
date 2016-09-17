@@ -155,7 +155,7 @@ namespace Component
                 Prism cuboid = fitCuboid(center, scale, axes);
                 Prism cylinder = fitCylinder(center, scale, axes);
                 //_boundingbox = cuboid;
-                if (cuboid.fittingError >= cylinder.fittingError && (cuboid.fittingError - cylinder.fittingError) / cylinder.fittingError > 0.2)
+                if (cuboid.fittingError >= cylinder.fittingError && (cuboid.fittingError - cylinder.fittingError) / Math.Abs(cylinder.fittingError) > 0.2)
                 {
                     _boundingbox = cylinder;
                 }
@@ -425,6 +425,7 @@ namespace Component
             }
             foreach (Node node in newNodes)
             {
+                node._PART.updateOriginPos();
                 _parts.Add(node._PART);
             }
             _GRAPH.replaceNodes(oldNodes, newNodes);
