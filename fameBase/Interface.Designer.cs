@@ -37,6 +37,7 @@
             this.loadPartBasedModels = new System.Windows.Forms.ToolStripMenuItem();
             this.importModelsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveRepPairsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.screenCaptureToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.file = new System.Windows.Forms.ToolStripDropDownButton();
             this.open3D = new System.Windows.Forms.ToolStripMenuItem();
             this.open3DGroupedToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -89,8 +90,6 @@
             this.YZbutton = new System.Windows.Forms.ToolStripButton();
             this.XZbutton = new System.Windows.Forms.ToolStripButton();
             this.toolStripDropDownButton1 = new System.Windows.Forms.ToolStripDropDownButton();
-            this.addEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.delEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.symmetryToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.crossoverToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mutateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -105,8 +104,9 @@
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.addEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.selectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.screenCaptureToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.delEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -186,6 +186,13 @@
             this.saveRepPairsToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.saveRepPairsToolStripMenuItem.Text = "Save Rep pairs";
             this.saveRepPairsToolStripMenuItem.Click += new System.EventHandler(this.saveRepPairsToolStripMenuItem_Click);
+            // 
+            // screenCaptureToolStripMenuItem
+            // 
+            this.screenCaptureToolStripMenuItem.Name = "screenCaptureToolStripMenuItem";
+            this.screenCaptureToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.screenCaptureToolStripMenuItem.Text = "Screen capture";
+            this.screenCaptureToolStripMenuItem.Click += new System.EventHandler(this.screenCaptureToolStripMenuItem_Click);
             // 
             // file
             // 
@@ -627,8 +634,6 @@
             // toolStripDropDownButton1
             // 
             this.toolStripDropDownButton1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.addEdgeToolStripMenuItem,
-            this.delEdgeToolStripMenuItem,
             this.symmetryToolStripMenuItem,
             this.crossoverToolStripMenuItem,
             this.mutateToolStripMenuItem,
@@ -641,52 +646,38 @@
             this.toolStripDropDownButton1.Text = "Graph";
             this.toolStripDropDownButton1.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
-            // addEdgeToolStripMenuItem
-            // 
-            this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
-            this.addEdgeToolStripMenuItem.Text = "Add Edge";
-            this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
-            // 
-            // delEdgeToolStripMenuItem
-            // 
-            this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
-            this.delEdgeToolStripMenuItem.Text = "Del Edge";
-            this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
-            // 
             // symmetryToolStripMenuItem
             // 
             this.symmetryToolStripMenuItem.Name = "symmetryToolStripMenuItem";
-            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.symmetryToolStripMenuItem.Text = "Symmetry";
             this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
             // 
             // crossoverToolStripMenuItem
             // 
             this.crossoverToolStripMenuItem.Name = "crossoverToolStripMenuItem";
-            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.crossoverToolStripMenuItem.Text = "Crossover";
             this.crossoverToolStripMenuItem.Click += new System.EventHandler(this.crossoverToolStripMenuItem_Click);
             // 
             // mutateToolStripMenuItem
             // 
             this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.mutateToolStripMenuItem.Text = "Mutate";
             this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
             // 
             // functionToolStripMenuItem
             // 
             this.functionToolStripMenuItem.Name = "functionToolStripMenuItem";
-            this.functionToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.functionToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.functionToolStripMenuItem.Text = "function";
             this.functionToolStripMenuItem.Click += new System.EventHandler(this.functionToolStripMenuItem_Click);
             // 
             // autoGenerateToolStripMenuItem
             // 
             this.autoGenerateToolStripMenuItem.Name = "autoGenerateToolStripMenuItem";
-            this.autoGenerateToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.autoGenerateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.autoGenerateToolStripMenuItem.Text = "Auto generate";
             this.autoGenerateToolStripMenuItem.Click += new System.EventHandler(this.autoGenerateToolStripMenuItem_Click);
             // 
@@ -779,30 +770,39 @@
             // 
             this.partRelatedTools.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.groupToolStripMenuItem,
+            this.addEdgeToolStripMenuItem,
+            this.delEdgeToolStripMenuItem,
             this.selectToolStripMenuItem});
             this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(108, 48);
+            this.partRelatedTools.Size = new System.Drawing.Size(153, 114);
             // 
             // groupToolStripMenuItem
             // 
             this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
+            // 
+            // addEdgeToolStripMenuItem
+            // 
+            this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.addEdgeToolStripMenuItem.Text = "Add edge";
+            this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // selectToolStripMenuItem
             // 
             this.selectToolStripMenuItem.Name = "selectToolStripMenuItem";
-            this.selectToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.selectToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
-            // screenCaptureToolStripMenuItem
+            // delEdgeToolStripMenuItem
             // 
-            this.screenCaptureToolStripMenuItem.Name = "screenCaptureToolStripMenuItem";
-            this.screenCaptureToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.screenCaptureToolStripMenuItem.Text = "Screen capture";
-            this.screenCaptureToolStripMenuItem.Click += new System.EventHandler(this.screenCaptureToolStripMenuItem_Click);
+            this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.delEdgeToolStripMenuItem.Text = "Del edge";
+            this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // Interface
             // 
@@ -895,8 +895,6 @@
         private System.Windows.Forms.ToolStripMenuItem importHumanPoseToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem graphToolStripMenuItem;
         private System.Windows.Forms.ToolStripDropDownButton toolStripDropDownButton1;
-        private System.Windows.Forms.ToolStripMenuItem addEdgeToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem delEdgeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem crossoverToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem selectToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem mutateToolStripMenuItem;
@@ -908,6 +906,8 @@
         private System.Windows.Forms.ToolStripMenuItem functionToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveRepPairsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem screenCaptureToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem addEdgeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem delEdgeToolStripMenuItem;
 	}
 }
 

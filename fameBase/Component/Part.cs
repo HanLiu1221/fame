@@ -32,6 +32,7 @@ namespace Component
         {
             _mesh = m;
             this.fitProxy();
+            setRandomColor();
         }
 
         public Part(Mesh m, Prism p)

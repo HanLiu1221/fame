@@ -812,6 +812,7 @@ namespace FameBase
             {
                 loadAGrapph(_currModel, graphName);
             }
+            this.setUIMode(0);
             this.Refresh();
         }// loadAPartBasedModel
 
@@ -876,7 +877,7 @@ namespace FameBase
 
             // try to load replaceable pairs
             tryLoadReplaceablePairs();
-
+            this.setUIMode(0);
             return _modelViewers;
         }// loadPartBasedModels
 
@@ -2431,7 +2432,7 @@ namespace FameBase
                     break;
                 case 9:
                     this.currUIMode = UIMode.Contact;
-                    this._showContactPoint = true;
+                    clearHighlights();
                     break;
                 case 0:
                 default:
@@ -3001,7 +3002,15 @@ namespace FameBase
                     }
                 case Keys.C:
                     {
-                        this.setUIMode(9); // contact
+                        _showContactPoint = !_showContactPoint;
+                        if (this._showContactPoint)
+                        {
+                            this.setUIMode(9); // contact
+                        }
+                        else
+                        {
+                            this.setUIMode(0);
+                        }
                         break;
                     }
                 case Keys.Space:
@@ -3469,9 +3478,9 @@ namespace FameBase
                 }
                 else
                 {
-                    if (MessageBox.Show("Add a contact to an existing EDGE?") == DialogResult.Cancel)
-                    { }
-                    else
+                    int ncontact = e._contacts.Count;
+                    string s = "Already has " + ncontact.ToString() + " contacts, add a contact anyway?";
+                    if (MessageBox.Show(s, "Edit Edge", MessageBoxButtons.YesNo) == DialogResult.Yes)
                     {
                         Vector3d v = e._contacts[0]._pos3d + new Vector3d(0.05, 0, 0);
                         e._contacts.Add(new Contact(v));

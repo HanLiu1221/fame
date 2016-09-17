@@ -33,7 +33,7 @@ namespace FameBase
         public static Color ContactColor = Color.FromArgb(240, 59, 32);
         public static Color HightLightContactColor = Color.FromArgb(189, 0, 38);
         public static Color DimMeshColor = Color.FromArgb(222, 235, 247);
-        public static Color HighlightBboxColor = Color.FromArgb(252, 146, 114);
+        public static Color HighlightBboxColor = Color.FromArgb(50, 252, 146, 114);
 
         public static int _NSlices = 40;
 
@@ -519,7 +519,14 @@ namespace FameBase
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
             Gl.glDisable(Gl.GL_CULL_FACE);
             // face
-            Gl.glColor4ub(c.R, c.G, c.B, 100);
+            if (c.A == 255)
+            {
+                Gl.glColor4ub(c.R, c.G, c.B, 100);
+            }
+            else
+            {
+                Gl.glColor4ub(c.R, c.G, c.B, c.A);
+            }
             Gl.glBegin(Gl.GL_POLYGON);
             for (int i = 0; i < q.points3d.Length; ++i)
             {
