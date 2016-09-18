@@ -80,7 +80,7 @@ namespace Component
             _maxAdjNodesDist = vals[0];
             _minNodeBboxScale = vals[1];
             _maxNodeBboxScale = vals[2];
-        }
+        }// analyzeScale
 
         private double[] calScale()
         {
@@ -119,6 +119,20 @@ namespace Component
             return vals;
         }// calScale
 
+        public List<Node> getNodesByFunctionality(Common.Functionality func)
+        {
+            // hierarchy grouping
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (node._funcs.Contains(func))
+                {
+                    nodes.Add(node);
+                }
+            }
+            return nodes;
+        }// getNodesByFunctionality
+
         public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
         {
             foreach (Node old in oldNodes)
@@ -151,6 +165,7 @@ namespace Component
                 if (Math.Abs(ydist) < Common._thresh)
                 {
                     node._isGroundTouching = true;
+                    node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
                 }
             }
         }// markGroundTouchingNodes
@@ -368,23 +383,27 @@ namespace Component
         private List<Node> getKeyNodes()
         {
             List<Node> keys = new List<Node>();
+            int max_funcs = 0;
+            Node key = null;
             foreach (Node node in _nodes)
             {
-                if (node._isFunction)
+                if (node._funcs.Count > max_funcs)
                 {
-                    if (!keys.Contains(node))
-                    {
-                        keys.Add(node);
-                        if (node.symmetry != null && !keys.Contains(node.symmetry))
-                        {
-                            keys.Add(node.symmetry);
-                        }
-                    }
+                    max_funcs = node._funcs.Count;
+                    key = node;
+                }
+            }
+            if (key != null && !keys.Contains(key))
+            {
+                keys.Add(key);
+                if (key.symmetry != null && !keys.Contains(key.symmetry))
+                {
+                    keys.Add(key.symmetry);
                 }
             }
             if (keys.Count == 0)
             {
-                Node key = getKeyNode();
+                key = getKeyNode();
                 keys.Add(key);
                 if (key.symmetry != null)
                 {
@@ -573,7 +592,7 @@ namespace Component
         public bool _allNeigborUpdated = false;
         public Node symmetry = null;
         public Symmetry symm = null;
-        public bool _isFunction = false;
+        public List<Common.Functionality> _funcs = new List<Common.Functionality>();
 
         public Node(Part p, int idx)
         {
@@ -590,7 +609,20 @@ namespace Component
             {
                 _adjNodes.Add(adj);
             }
-        }// addAdjNode        
+        }// addAdjNode       
+
+        public void addFunctionality(Common.Functionality func)
+        {
+            if (!_funcs.Contains(func))
+            {
+                _funcs.Add(func);
+            }
+        }// addFunctionality
+
+        public void removeAllFuncs()
+        {
+            _funcs.Clear();
+        }// removeAllFuncs
 
         public Object Clone(Part p)
         {

@@ -32,14 +32,14 @@ namespace Component
         {
             _mesh = m;
             this.fitProxy();
-            setRandomColor();
+            setRandomColorToNodes();
         }
 
         public Part(Mesh m, Prism p)
         {
             _mesh = m;
             _boundingbox = p;
-            setRandomColor();
+            setRandomColorToNodes();
         }
 
         public Part(Mesh m, int[] vIndex, double[] vPos, int[] fIndex)
@@ -66,7 +66,7 @@ namespace Component
                 faceVertexIndex[j++] = d[fv3];
             }
             _mesh = new Mesh(vPos, faceVertexIndex);
-            setRandomColor();
+            setRandomColorToNodes();
             this.fitProxy();
         }
 
@@ -90,7 +90,7 @@ namespace Component
             return p;
         }
 
-        public void setRandomColor()
+        public void setRandomColorToNodes()
         {
             _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
         }

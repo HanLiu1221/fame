@@ -659,6 +659,7 @@ namespace Geometry
         Vector3d _center = new Vector3d();
         Polygon3D[] _planes = null;
         int _nSideFaces = 20; // for cylinder
+        public Vector3d rot_axis = null;
         public CoordinateSystem coordSys;
         public CoordinateSystem originCoordSys;
         public double fittingError;
@@ -733,6 +734,17 @@ namespace Geometry
             updateScale();
             createPlanes();
             _points2d = new Vector2d[_points3d.Length];
+            Vector3d c_top = new Vector3d();
+            Vector3d c_bot = new Vector3d();
+            int nh =  _points3d.Length / 2;
+            for (int i = 0; i < nh; ++i)
+            {
+                c_top += _points3d[i];
+                c_bot += _points3d[nh + i];
+            }
+            c_top /= nh;
+            c_bot /= nh;
+            rot_axis = (c_top - c_bot).normalize();
         }
 
         private void createPlanes()

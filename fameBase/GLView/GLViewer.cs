@@ -696,7 +696,7 @@ namespace FameBase
                 if (_currModel._GRAPH != null)
                 {
                     string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
-                    saveAGrapph(graphName);
+                    saveAGraph(graphName);
                 }
             }
         }// saveAPartBasedModel
@@ -810,7 +810,7 @@ namespace FameBase
             }
             else
             {
-                loadAGrapph(_currModel, graphName);
+                saveAGraph(_currModel, graphName);
             }
             this.setUIMode(0);
             this.Refresh();
@@ -853,6 +853,7 @@ namespace FameBase
             this.clearHighlights();
             string[] files = Directory.GetFiles(segfolder);
             int idx = 0;
+            _models = new List<Model>();
             foreach (string file in files)
             {
                 if (!file.EndsWith("pam"))
@@ -862,8 +863,9 @@ namespace FameBase
                 Model m = loadOnePartBasedModel(file);
                 if (m != null)
                 {
+                    _models.Add(m);
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
-                    loadAGrapph(m, graphName);
+                    saveAGraph(m, graphName);
                     hasInValidContact(m._GRAPH);
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this);
                     _modelViewers.Add(modelViewer);
@@ -993,7 +995,7 @@ namespace FameBase
             }
         }// loadReplaceablePair
 
-        public void loadAGrapph(Model m, string filename)
+        public void saveAGraph(Model m, string filename)
         {
             if (m == null || !File.Exists(filename))
             {
@@ -1024,6 +1026,7 @@ namespace FameBase
                     if (node._isGroundTouching)
                     {
                         hasGroundTouching = true;
+                        node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
                     }
                     if (strs.Length > 4)
                     {
@@ -1041,8 +1044,11 @@ namespace FameBase
                     }
                     if (strs.Length > 6)
                     {
-                        int isFunc = int.Parse(strs[6]);
-                        node._isFunction = isFunc == 1 ? true : false;
+                        for (int f = 6; f < strs.Length; ++f)
+                        {
+                            Common.Functionality func = getFunctionalityFromString(strs[f]);
+                            node.addFunctionality(func);
+                        }
                     }
                     g.addANode(node);
                 }
@@ -1084,9 +1090,9 @@ namespace FameBase
                 g.analyzeScale();
                 m.setGraph(g);
             }
-        }// loadAGrapph
+        }// saveAGraph
 
-        public void saveAGrapph(string filename)
+        public void saveAGraph(string filename)
         {
             if (_currModel._GRAPH == null)
             {
@@ -1112,12 +1118,15 @@ namespace FameBase
                         symIdx = iNode.symmetry._INDEX;
                     }
                     sw.Write(symIdx.ToString());
-                    // function
-                    int isFunc = 0;
-                    if (iNode._isFunction) {
-                        isFunc = 1;
+                    // functionality
+                    if (iNode._funcs != null)
+                    {
+                        foreach (Common.Functionality func in iNode._funcs)
+                        {
+                            sw.Write(" " + func.ToString());
+                        }
                     }
-                    sw.WriteLine(" " + isFunc.ToString());
+                    sw.WriteLine();
                 }
                 sw.WriteLine(_currModel._GRAPH._NEdges.ToString() + " edges.");
                 foreach(Edge e in _currModel._GRAPH._EDGES)
@@ -1130,7 +1139,7 @@ namespace FameBase
                     sw.WriteLine();
                 }
             }
-        }// saveAGrapph
+        }// saveAGraph
 
         public void refreshModelViewers()
         {
@@ -1153,10 +1162,7 @@ namespace FameBase
         {
             _currModel = m;
             _selectedParts.Clear();
-            _models.Clear();
-            _models.Add(m);
             _selectedModelIndex = idx;
-
             _crossOverBasket.Remove(m);
             m._GRAPH.selectedNodePairs.Clear();
 
@@ -1418,6 +1424,64 @@ namespace FameBase
 			sw.WriteLine("stroke");
 		}
 
+        /*****************Functionality-aware evolution*************************/
+
+        public void markSymmetry()
+        {
+            if (_selectedNodes.Count != 2)
+            {
+                return;
+            }
+            _currModel._GRAPH.markSymmtry(_selectedNodes[0], _selectedNodes[1]);
+        }// markSymmetry
+
+        public void markFunctionPart(int i)
+        {
+            Common.Functionality func = getFunctionalityFromIndex(i);
+
+            foreach (Node node in _selectedNodes)
+            {
+                node.addFunctionality(func);
+            }
+
+        }// markFunctionPart
+
+        private Common.Functionality getFunctionalityFromIndex(int i)
+        {
+            switch (i)
+            {
+                case 1:
+                    return Common.Functionality.HUMAN_BACK;
+                case 2:
+                    return Common.Functionality.HUMAN_HIP;
+                case 3:
+                    return Common.Functionality.HAND_HOLD;
+                case 4:
+                    return Common.Functionality.HAND_PLACE;
+                case 0:
+                default:
+                    return Common.Functionality.GROUND_TOUCHING;
+            }
+        }// getFunctionalityFromIndex
+
+        private Common.Functionality getFunctionalityFromString(string s)
+        {
+            switch (s)
+            {
+                case "HUMAN_BACK":
+                    return Common.Functionality.HUMAN_BACK;
+                case "HUMAN_HIP":
+                    return Common.Functionality.HUMAN_HIP;
+                case "HAND_HOLD":
+                    return Common.Functionality.HAND_HOLD;
+                case "HAND_PLACE":
+                    return Common.Functionality.HAND_PLACE;
+                case "GROUND_TOUCHING":
+                default:
+                    return Common.Functionality.GROUND_TOUCHING;
+            }
+        }// getFunctionalityFromIndex
+
         public void switchParts(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2)
         {
             List<Edge> edgesToConnect_1 = g1.collectOutgoingEdges(nodes1);
@@ -1443,6 +1507,7 @@ namespace FameBase
             Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
             Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
 
+            // for capturing screen
             this.reloadView();
 
             List<Model> firstGen = new List<Model>();
@@ -1467,58 +1532,182 @@ namespace FameBase
             {
                 Directory.CreateDirectory(imageFolder_c);
             }
-            // mutate
-            List<Model> secondGen = new List<Model>();
-            for (int i = 0; i < firstGen.Count; ++i)
-            {
-                Model m = firstGen[i];
-                this.setCurrentModel(m, i);
-                List<Model> res = this.mutate();
-                foreach (Model model in res)
-                {
-                    //if (model._GRAPH.isGeometryViolated())
-                    //{
-                    //    continue;
-                    //}
-                    //secondGen.Add(model);
-                    // screenshot
-                    this.setCurrentModel(model, -1);
-                    Program.GetFormMain().updateStats();
-                    this.captureScreen(imageFolder_m + model._model_name + ".png");
-                    saveAPartBasedModel(model._path + model._model_name + ".pam");
-                }
-            }
-            //_mutateGenerations.Add(secondGen);
-            // crossover
-            // only for the same contact points, for rebuilding the graph
-            int maxIter = 1;
+            int maxIter = 10;
             int iter = 0;
-            int index = 0;
+            Random rand = new Random();
+            List<Model> generation = _models;
             while (iter < maxIter)
             {
-                List<Model> cross_results = this.crossOver(_crossoverGenerations[iter]);
-                List<Model> gen = new List<Model>();
-                foreach (Model model in cross_results)
+                // mutate or crossover ?
+                bool mc = runMutateOrCrossover(rand);
+                List<Model> cur = generation;
+                if (mc)
                 {
-                    if (model._GRAPH.isGeometryViolated())
-                    {
-                        //continue;
-                        _resViewers.Add(new ModelViewer(model, index++, this));
-                        Program.writeToConsole(model._model_name);
-                    }
-                    //gen.Add(model);
-                    // screenshot
-                    this.setCurrentModel(model, -1);
-                    Program.GetFormMain().updateStats();
-                    this.captureScreen(imageFolder_c + model._model_name + ".png");
-                    saveAPartBasedModel(model._path + model._model_name + ".pam");
+                    // mutate
+                    generation = runMutate(cur, iter, imageFolder_m);
+                }
+                else
+                {
+                    generation = runCrossover(cur, iter, rand, imageFolder_c);
                 }
                 ++iter;
-                _crossoverGenerations.Add(gen);
-            }
-            // cossover + mutate
+            }// while
             return _resViewers;
         }// autoGenerate
+
+        private List<Model> runMutate(List<Model> models, int gen, string imageFolder)
+        {
+            List<Model> mutated = new List<Model>();
+            if (models.Count == 0)
+            {
+                return mutated;
+            }
+            Random rand = new Random();
+            string path = models[0]._path + "gen_" + gen.ToString() + "_mutate\\";
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+            for (int i = 0; i < models.Count; ++i)
+            {
+                // select a node
+                Model iModel = models[i];
+                int j = rand.Next(iModel._GRAPH._NNodes);
+
+                Model model = iModel.Clone() as Model;
+                model._path = path.Clone() as string;
+                model._model_name = _currModel._model_name + "_mutate";
+                Node updateNode = model._GRAPH._NODES[j];
+                // mutate
+                mutateANode(updateNode, rand);
+                deformPropagation(model._GRAPH, updateNode);
+                model._GRAPH.resetUpdateStatus();
+                if (!model._GRAPH.isGeometryViolated())
+                {
+                    mutated.Add(model);
+                }
+                // screenshot
+                this.setCurrentModel(model, -1);
+                Program.GetFormMain().updateStats();
+                this.captureScreen(imageFolder + model._model_name + ".png");
+                saveAPartBasedModel(model._path + model._model_name + ".pam");
+            }
+            return mutated;
+        }// runMutate
+
+        private List<Model> runCrossover(List<Model> models, int gen, Random rand, string imageFolder)
+        {
+            List<Model> crossed = new List<Model>();
+            if (models.Count < 2)
+            {
+                return crossed;
+            }
+            int k = 0;
+            for (int i = 0; i < models.Count - 1; ++i)
+            {
+                Model m1 = models[i];
+                for (int j = i + 1; j < models.Count; ++j)
+                {
+                    Model m2 = models[j];
+                    // select functionality
+                    Common.Functionality func = selectAFunctionality(rand);
+                    List<Node> nodes1 = m1._GRAPH.getNodesByFunctionality(func);
+                    List<Node> nodes2 = m2._GRAPH.getNodesByFunctionality(func);
+                    // select half or all ?
+                    m1._GRAPH.selectedNodes = selectSubsetNodes(nodes1, rand);
+                    m2._GRAPH.selectedNodes = selectSubsetNodes(nodes2, rand);
+                    List<Model> results = this.crossOverOp(m1, m2, 0);
+                    // screenshot
+                    foreach (Model m in results)
+                    {
+                        this.setCurrentModel(m, -1);
+                        Program.GetFormMain().updateStats();
+                        this.captureScreen(imageFolder + m._model_name + ".png");
+                        saveAPartBasedModel(m._path + m._model_name + ".pam");
+                        if (!m._GRAPH.isGeometryViolated())
+                        {
+                            crossed.Add(m);
+                        }
+                    }
+                }
+            }
+            return crossed;
+        }// runCrossover
+
+        private bool runMutateOrCrossover(Random rand)
+        {
+            int n = 10;
+            int r = rand.Next(10);
+            return r < n / 2;
+        }// runMutateOrCrossover
+
+        private Common.Functionality selectAFunctionality(Random rand)
+        {
+            int n = 6;
+            int r = rand.Next(n);
+            return getFunctionalityFromIndex(r);
+        }// selectAFunctionality
+
+        private List<Node> selectSubsetNodes(List<Node> nodes, Random rand)
+        {
+            int n = rand.Next(2);
+            List<Node> selected = new List<Node>();
+            if (n == 0)
+            {
+                // select partial
+                int nnodes = nodes.Count / 2;
+                int i = 0;
+                while (i < nodes.Count && selected.Count < nnodes)
+                {
+                    if (!selected.Contains(nodes[i]))
+                    {
+                        selected.Add(nodes[i]);
+                        if (nodes[i].symmetry != null && !selected.Contains(nodes[i].symmetry))
+                        {
+                            selected.Add(nodes[i].symmetry);
+                        }
+                    }
+                    ++i;
+                }
+            }
+            else
+            {
+                selected = nodes;
+            }
+            return selected;
+        }// selectSubsetNodes
+
+        private void mutateANode(Node node, Random rand)
+        {
+            double s1 = 0.5; // min
+            double s2 = 2.0; // max
+            double scale = s1 + rand.NextDouble() * (s2 - s1);
+            Vector3d scale_vec = new Vector3d(1, 1, 1);
+            if (node._PART._BOUNDINGBOX.type == Common.PrimType.Cylinder)
+            {
+                Vector3d rot_axis = node._PART._BOUNDINGBOX.rot_axis;
+                scale_vec = scale * rot_axis;
+            }
+            else
+            {
+                int axis = rand.Next(3);
+                scale_vec[axis] = scale;
+            }
+            Matrix4d S = Matrix4d.ScalingMatrix(scale_vec);
+            Vector3d center = node._pos;
+            Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            if (node._isGroundTouching)
+            {
+                Node cNode = node.Clone() as Node;
+                deformANodeAndEdges(cNode, Q);
+                Vector3d trans = new Vector3d();
+                trans.y = -cNode._PART._BOUNDINGBOX.MinCoord.y;
+                Matrix4d T = Matrix4d.TranslationMatrix(trans);
+                Q = T * Q;
+            }
+            deformANodeAndEdges(node, Q);
+            deformSymmetryNode(node);
+        }// mutateANode
 
         private bool hasGroundTouching(List<Node> nodes)
         {
@@ -1621,23 +1810,6 @@ namespace FameBase
             _currModel._GRAPH.selectedNodePairs.Add(_currModel._GRAPH.selectedNodes);
             Program.writeToConsole(_currModel._GRAPH.selectedNodes.Count.ToString() + " nodes in Graph #" + _selectedModelIndex.ToString() + " are selcted.");
         }// setSelectedNodes
-
-        public void markSymmetry()
-        {
-            if (_selectedNodes.Count != 2)
-            {
-                return;
-            }
-            _currModel._GRAPH.markSymmtry(_selectedNodes[0], _selectedNodes[1]);
-        }// markSymmetry
-
-        public void markFunctionPart()
-        {
-            foreach (Node node in _selectedNodes)
-            {
-                node._isFunction = true;
-            }
-        }// markFunctionPart
 
         public List<ModelViewer> getMutateViewers()
         {
@@ -2387,18 +2559,9 @@ namespace FameBase
             }
         }// getTransformation
 
+        /*****************end - Functionality-aware evolution*************************/
         
-        public void setRandomColor()
-        {
-            if (_currModel != null && _currModel._GRAPH != null)
-            {
-                foreach (Node node in _currModel._GRAPH._NODES)
-                {
-                    node._PART.setRandomColor();
-                }
-            }
-        }
-
+        
         //########## set modes ##########//
         public void setTabIndex(int i)
         {
@@ -2482,6 +2645,17 @@ namespace FameBase
             this.isDrawAxes = isShow;
             this.Refresh();
         }
+
+        public void setRandomColorToNodes()
+        {
+            if (_currModel != null && _currModel._GRAPH != null)
+            {
+                foreach (Node node in _currModel._GRAPH._NODES)
+                {
+                    node._PART.setRandomColorToNodes();
+                }
+            }
+        }// setRandomColorToNodes
 
         private void calEditAxesLoc()
         {

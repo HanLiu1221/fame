@@ -580,7 +580,7 @@ namespace FameBase
 
         private void randomColorToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.glViewer.setRandomColor();
+            this.glViewer.setRandomColorToNodes();
         }
 
         private void autoGenerateToolStripMenuItem_Click(object sender, EventArgs e)
@@ -601,14 +601,34 @@ namespace FameBase
             this.glViewer.setUIMode(9);
         }
 
-        private void functionToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.markFunctionPart();
-        }
-
         private void saveRepPairsToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.saveReplaceablePairs();
+        }
+
+        private void humanbackToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(1);
+        }
+
+        private void humanhipToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(2);
+        }
+
+        private void handholdToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(3);
+        }
+
+        private void handplaceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(4);
+        }
+
+        private void groundtouchingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(0);
         }
 
 	}// Interface

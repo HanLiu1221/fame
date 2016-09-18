@@ -20,6 +20,9 @@ namespace Geometry
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
+
+        public enum Functionality { GROUND_TOUCHING, HUMAN_BACK, HUMAN_HIP, HAND_HOLD, HAND_PLACE };
+
         public Common() { }
 
         public static Vector3d getMaxCoord(List<Vector3d> vecs)
