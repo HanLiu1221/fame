@@ -36,6 +36,10 @@ namespace Component
 
         public Object Clone(List<Part> parts)
         {
+            if (_nodes.Count != parts.Count)
+            {
+                return null;
+            }
             Graph cloned = new Graph();
             cloned._NNodes = parts.Count;
             for (int i = 0; i < _NNodes; ++i)
@@ -121,7 +125,6 @@ namespace Component
 
         public List<Node> getNodesByFunctionality(Common.Functionality func)
         {
-            // hierarchy grouping
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
             {
@@ -133,8 +136,27 @@ namespace Component
             return nodes;
         }// getNodesByFunctionality
 
+        public List<Node> getNodesByFunctionality(List<Common.Functionality> funcs)
+        {
+            // sample functional parts (connected!)
+            List<Node> nodes = new List<Node>();
+            foreach (Common.Functionality f in funcs)
+            {
+                List<Node> cur = getNodesByFunctionality(f);
+                foreach (Node node in cur)
+                {
+                    if (!nodes.Contains(node))
+                    {
+                        nodes.Add(node);
+                    }
+                }
+            }
+            return nodes;
+        }// getNodesByFunctionality
+
         public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
         {
+            // update nodes first
             foreach (Node old in oldNodes)
             {
                 _nodes.Remove(old);
@@ -144,9 +166,143 @@ namespace Component
                 _nodes.Add(node);
             }
             _NNodes = _nodes.Count;
-            // update edges
+            resetNodeIndex();
 
+            // UPDATE edges
+
+            // 3.1 use the contacts from new nodes
+            List<Node> out_nodes = newNodes;
+            List<Edge> out_edges = getOutgoingEdges(out_nodes);
+            // delete all out edges from new nodes
+            foreach (Edge e in out_edges)
+            {
+                Node node = null;
+                if (newNodes.Contains(e._start))
+                {
+                    node = e._start;
+                }
+                if (newNodes.Contains(e._end))
+                {
+                    node = e._end;
+                }
+                if (node == null)
+                {
+                    break;
+                }
+                node.deleteAnEdge(e);
+            }
+            // 3.2 if new nodes has no contacts, use the contacts from old nodes
+            if (out_edges.Count == 0)
+            {
+                out_nodes = oldNodes;
+                out_edges = getOutgoingEdges(out_nodes);
+                foreach (Edge e in out_edges)
+                {
+                    this.deleteEdge(e);
+                }
+            }
+
+            // 1.1 remove inner edges from oldNodes
+            List<Edge> inner_edges_old = getInnerEdges(oldNodes);
+            foreach (Edge e in inner_edges_old)
+            {
+                this.deleteEdge(e);
+            }
+            // 1.2 remove out edges from oldNodes
+            List<Edge> out_old_edges = getOutgoingEdges(oldNodes);
+            foreach (Edge e in out_old_edges)
+            {
+                this.deleteEdge(e);
+            }
+            // 2. add inner edges from newNodes
+            List<Edge> inner_edges_new = getInnerEdges(newNodes);
+            foreach (Edge e in inner_edges_new)
+            {
+                this.addAnEdge(e._start, e._end, e._contacts);
+            }
+            // 3. connect     
+            foreach (Edge e in out_edges)
+            {
+                // find the nearest node depending on contacts
+                Node cur = null;
+                if (out_nodes.Contains(e._start) && !out_nodes.Contains(e._end))
+                {
+                    cur = e._start;
+                }
+                else if (!out_nodes.Contains(e._start) && out_nodes.Contains(e._end))
+                {
+                    cur = e._end;
+                } else {
+                    throw new Exception();
+                }
+                foreach (Contact c in e._contacts)
+                {
+                    Node closest = getNodeNearestToContact(_nodes, c, cur);
+                    this.addAnEdge(cur, closest, c._pos3d);
+                }
+            }            
+            _NEdges = _edges.Count;
         }// replaceNodes
+
+        private Node getNodeNearestToContact(List<Node> nodes, Contact c, Node cur)
+        {
+            Node res = null;
+            double min_dis = double.MaxValue;
+            // calculation based on meshes (would be more accurate if the vertices on the mesh is uniform)
+            foreach (Node node in nodes)
+            {
+                if (node == cur)
+                {
+                    continue;
+                }
+                Mesh mesh = node._PART._MESH;
+                Vector3d[] vecs = mesh.VertexVectorArray;
+                for (int i = 0; i < vecs.Length; ++i)
+                {
+                    double d = (vecs[i] - c._pos3d).Length();
+                    if (d < min_dis)
+                    {
+                        min_dis = d;
+                        res = node;
+                    }
+                }
+            }
+            return res;
+        }// getNodeNearestToContact
+
+        private List<Edge> getInnerEdges(List<Node> nodes)
+        {
+            List<Edge> edges = new List<Edge>();
+            foreach (Node node in nodes)
+            {
+                foreach (Edge edge in node._edges)
+                {
+                    Node other = edge._start == node ? edge._end : edge._start;
+                    if (nodes.Contains(other) && !edges.Contains(edge))
+                    {
+                        edges.Add(edge);
+                    }
+                }
+            }
+            return edges;
+        }// getInnerEdges
+
+        public Vector3d getGroundTouchingNodesCenter()
+        {
+            Vector3d center = new Vector3d();
+            int n = 0;
+            foreach (Node node in _nodes)
+            {
+                if (node._isGroundTouching)
+                {
+                    center += node._PART._BOUNDINGBOX.CENTER;
+                    ++n;
+                }
+            }
+            center /= n;
+            center.y = 0;
+            return center;
+        }// getGroundTouchingNode
 
         private void updateNodeIndex()
         {
@@ -223,11 +379,12 @@ namespace Component
 
         public void addAnEdge(Node n1, Node n2)
         {
-            Vector3d contact;
-            double mind = getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out contact);
-            Edge e = new Edge(n1, n2, contact);
-            if (!isEdgeExist(e))
+            Edge e = isEdgeExist(n1, n2);
+            if (e == null)
             {
+                Vector3d contact;
+                double mind = getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out contact);
+                e = new Edge(n1, n2, contact);
                 addEdge(e);
             }
             _NEdges = _edges.Count;
@@ -235,20 +392,30 @@ namespace Component
 
         public void addAnEdge(Node n1, Node n2, Vector3d c)
         {
-            Edge e = new Edge(n1, n2, c);
-            if (!isEdgeExist(e))
+            Edge e = isEdgeExist(n1, n2);
+            if (e == null)
             {
+                e = new Edge(n1, n2, c);
                 addEdge(e);
+            }
+            else
+            {
+                e._contacts.Add(new Contact(c));
             }
             _NEdges = _edges.Count;
         }// addAnEdge
 
         public void addAnEdge(Node n1, Node n2, List<Contact> contacts)
         {
-            Edge e = new Edge(n1, n2, contacts);
-            if (!isEdgeExist(e))
+            Edge e = isEdgeExist(n1, n2);
+            if (e == null)
             {
+                e = new Edge(n1, n2, contacts);
                 addEdge(e);
+            }
+            else
+            {
+                e._contacts = contacts;
             }
             _NEdges = _edges.Count;
         }// addAnEdge
@@ -262,6 +429,24 @@ namespace Component
             }
             _NEdges = _edges.Count;
         }// deleteAnEdge
+
+        private void addEdge(Edge e)
+        {
+            _edges.Add(e);
+            e._start.addAnEdge(e);
+            e._end.addAnEdge(e);
+            _NEdges = _edges.Count;
+        }// addEdge
+
+        private void deleteEdge(Edge e)
+        {
+            _edges.Remove(e);
+            e._start._adjNodes.Remove(e._end);
+            e._end._adjNodes.Remove(e._start);
+            e._start._edges.Remove(e);
+            e._end._edges.Remove(e);
+            _NEdges = _edges.Count;
+        }// deleteEdge
 
         private bool isEdgeExist(Edge edge)
         {
@@ -288,26 +473,6 @@ namespace Component
             return null;
         }// isEdgeExist
 
-        private void addEdge(Edge e)
-        {
-            _edges.Add(e);
-            e._start.addAdjNode(e._end);
-            e._end.addAdjNode(e._start);
-            e._start._edges.Add(e);
-            e._end._edges.Add(e);
-            _NEdges = _edges.Count;
-        }// addEdge
-
-        private void deleteEdge(Edge e)
-        {
-            _edges.Remove(e);
-            e._start._adjNodes.Remove(e._end);
-            e._end._adjNodes.Remove(e._start);
-            e._start._edges.Remove(e);
-            e._end._edges.Remove(e);
-            _NEdges = _edges.Count;
-        }// deleteEdge
-
         public void markSymmtry(Node a, Node b)
         {
             a.symmetry = b;
@@ -330,7 +495,7 @@ namespace Component
             return res;
         }// findReplaceableNodes
 
-        public List<Edge> collectOutgoingEdges(List<Node> nodes)
+        public List<Edge> getOutgoingEdges(List<Node> nodes)
         {
             // for the substructure, find out the edges that are to be connected
             List<Edge> edges = new List<Edge>();
@@ -350,7 +515,7 @@ namespace Component
                 }
             }
             return edges;
-        }// collectOutgoingEdges
+        }// getOutgoingEdges
 
         public List<Node> getGroundTouchingNodes()
         {
@@ -494,7 +659,7 @@ namespace Component
             {
                 add_split1_first = false;
             }
-            else if (collectOutgoingEdges(split2).Count > collectOutgoingEdges(split1).Count)
+            else if (getOutgoingEdges(split2).Count > getOutgoingEdges(split1).Count)
             {
                 add_split1_first = false;
             }
@@ -538,13 +703,25 @@ namespace Component
         {
             // geometry filter
             double[] vals = calScale();
-            double thr = 2.2;
-            if (vals[0] > _maxAdjNodesDist * thr || vals[1] < _minNodeBboxScale / thr || vals[2] > _maxNodeBboxScale * thr)
+            double max_adj_nodes_dist = 0.3;
+            double min_box_scale = 0.01;
+            double max_box_scale = 2.0;
+            // max scale is not reliable, since a large node may replace many small nodes
+            if (vals[0] > max_adj_nodes_dist || vals[1] < min_box_scale || vals[2] > max_box_scale)
             {
                 return true;
             }
             return false;
         }// isGeometryViolated
+
+        private void resetNodeIndex()
+        {
+            int i = 0;
+            foreach (Node node in _nodes)
+            {
+                node._INDEX = i++;
+            }
+        }// resetNodeIndex
 
         public void resetUpdateStatus()
         {
@@ -603,19 +780,52 @@ namespace Component
             _pos = p._BOUNDINGBOX.CENTER;
         }
 
-        public void addAdjNode(Node adj)
+        public void addAnEdge(Edge e)
         {
+            Node adj = e._start == this ? e._end : e._start;
             if (!_adjNodes.Contains(adj))
             {
                 _adjNodes.Add(adj);
             }
-        }// addAdjNode       
+            Edge edge = getEdge(adj);
+            if (edge == null)
+            {
+                _edges.Add(e);
+            }
+            else
+            {
+                edge._contacts = e._contacts;
+            }
+        }// addAnEdge  
+
+        public void deleteAnEdge(Edge e)
+        {
+            _edges.Remove(e);
+            Node other = e._start == this ? e._end : e._start;
+            _adjNodes.Remove(other);
+        }// deleteAnEdge
+
+        private Edge getEdge(Node adj)
+        {
+            foreach (Edge e in _edges)
+            {
+                if (e._start == adj || e._end == adj)
+                {
+                    return e;
+                }
+            }
+            return null;
+        }// getEdge
 
         public void addFunctionality(Common.Functionality func)
         {
             if (!_funcs.Contains(func))
             {
                 _funcs.Add(func);
+            }
+            if (func == Common.Functionality.GROUND_TOUCHING)
+            {
+                _isGroundTouching = true;
             }
         }// addFunctionality
 
@@ -628,6 +838,7 @@ namespace Component
         {
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
+            cloned._funcs = new List<Common.Functionality>(_funcs);
             return cloned;
         }// Clone
 
@@ -636,6 +847,7 @@ namespace Component
             Part p = _part.Clone() as Part;
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
+            cloned._funcs = new List<Common.Functionality>(_funcs);
             return cloned;
         }// Clone
 

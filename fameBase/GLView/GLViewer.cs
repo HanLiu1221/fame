@@ -208,7 +208,7 @@ namespace FameBase
         BodyNode _selectedNode;
         public bool _unitifyMesh = true;
         bool _showEditAxes = false;
-        public bool showGround = false;
+        public bool isDrawGround = false;
         private Vector3d[] _axes;
         private Contact[] _editAxes;
         private Polygon3D _groundPlane;
@@ -222,6 +222,8 @@ namespace FameBase
         Edge _selectedEdge = null;
         Contact _selectedContact = null;
         private ReplaceablePair[,] _replaceablePairs = null;
+        private int _currIter = 0;
+        private bool _mutateOrCross = true;
 
         /******************** Functions ********************/
 
@@ -402,6 +404,9 @@ namespace FameBase
                 sb.Append("\n#edges: ");
                 sb.Append(_currModel._GRAPH._NEdges.ToString());
             }
+            sb.Append("\n#iter: " + _currIter.ToString() + " ");
+            string mc = _mutateOrCross ? "mutate" : "crossover";
+            sb.Append(mc);
             return sb.ToString();
         }// getStats
 
@@ -810,7 +815,7 @@ namespace FameBase
             }
             else
             {
-                saveAGraph(_currModel, graphName);
+                LoadAGraph(_currModel, graphName);
             }
             this.setUIMode(0);
             this.Refresh();
@@ -865,7 +870,7 @@ namespace FameBase
                 {
                     _models.Add(m);
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
-                    saveAGraph(m, graphName);
+                    LoadAGraph(m, graphName);
                     hasInValidContact(m._GRAPH);
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this);
                     _modelViewers.Add(modelViewer);
@@ -995,7 +1000,7 @@ namespace FameBase
             }
         }// loadReplaceablePair
 
-        public void saveAGraph(Model m, string filename)
+        public void LoadAGraph(Model m, string filename)
         {
             if (m == null || !File.Exists(filename))
             {
@@ -1090,7 +1095,7 @@ namespace FameBase
                 g.analyzeScale();
                 m.setGraph(g);
             }
-        }// saveAGraph
+        }// LoadAGraph
 
         public void saveAGraph(string filename)
         {
@@ -1484,8 +1489,8 @@ namespace FameBase
 
         public void switchParts(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2)
         {
-            List<Edge> edgesToConnect_1 = g1.collectOutgoingEdges(nodes1);
-            List<Edge> edgesToConnect_2 = g2.collectOutgoingEdges(nodes2);
+            List<Edge> edgesToConnect_1 = g1.getOutgoingEdges(nodes1);
+            List<Edge> edgesToConnect_2 = g2.getOutgoingEdges(nodes2);
             List<Vector3d> sources = collectPoints(edgesToConnect_1);
             List<Vector3d> targets = collectPoints(edgesToConnect_2);
 
@@ -1504,8 +1509,10 @@ namespace FameBase
 
             this.isDrawBbox = false;
             this.isDrawGraph = false;
+            this.isDrawGround = true;
             Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
             Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
+            Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
 
             // for capturing screen
             this.reloadView();
@@ -1533,24 +1540,24 @@ namespace FameBase
                 Directory.CreateDirectory(imageFolder_c);
             }
             int maxIter = 10;
-            int iter = 0;
+            _currIter = 0;
             Random rand = new Random();
             List<Model> generation = _models;
-            while (iter < maxIter)
+            while (_currIter < maxIter)
             {
                 // mutate or crossover ?
-                bool mc = runMutateOrCrossover(rand);
+                _mutateOrCross = runMutateOrCrossover(rand);
                 List<Model> cur = generation;
-                if (mc)
+                if (_mutateOrCross)
                 {
                     // mutate
-                    generation = runMutate(cur, iter, imageFolder_m);
+                    generation = runMutate(cur, _currIter, imageFolder_m);
                 }
                 else
                 {
-                    generation = runCrossover(cur, iter, rand, imageFolder_c);
+                    generation = runCrossover(cur, _currIter, rand, imageFolder_c);
                 }
-                ++iter;
+                ++_currIter;
             }// while
             return _resViewers;
         }// autoGenerate
@@ -1563,7 +1570,7 @@ namespace FameBase
                 return mutated;
             }
             Random rand = new Random();
-            string path = models[0]._path + "gen_" + gen.ToString() + "_mutate\\";
+            string path = this.foldername + "\\mutate\\gen_" + gen.ToString() + "\\";
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
@@ -1573,109 +1580,31 @@ namespace FameBase
                 // select a node
                 Model iModel = models[i];
                 int j = rand.Next(iModel._GRAPH._NNodes);
-
                 Model model = iModel.Clone() as Model;
                 model._path = path.Clone() as string;
-                model._model_name = _currModel._model_name + "_mutate";
+                //model._model_name = iModel._model_name + "_g_" + gen.ToString();
+                model._model_name = "gen_" + gen.ToString() + "_" + i.ToString();
                 Node updateNode = model._GRAPH._NODES[j];
                 // mutate
+                if (hasInValidContact(model._GRAPH))
+                {
+                    break;
+                }
                 mutateANode(updateNode, rand);
                 deformPropagation(model._GRAPH, updateNode);
                 model._GRAPH.resetUpdateStatus();
                 if (!model._GRAPH.isGeometryViolated())
                 {
                     mutated.Add(model);
+                    // screenshot
+                    this.setCurrentModel(model, -1);
+                    Program.GetFormMain().updateStats();
+                    this.captureScreen(imageFolder + model._model_name + ".png");
+                    saveAPartBasedModel(model._path + model._model_name + ".pam");
                 }
-                // screenshot
-                this.setCurrentModel(model, -1);
-                Program.GetFormMain().updateStats();
-                this.captureScreen(imageFolder + model._model_name + ".png");
-                saveAPartBasedModel(model._path + model._model_name + ".pam");
             }
             return mutated;
         }// runMutate
-
-        private List<Model> runCrossover(List<Model> models, int gen, Random rand, string imageFolder)
-        {
-            List<Model> crossed = new List<Model>();
-            if (models.Count < 2)
-            {
-                return crossed;
-            }
-            int k = 0;
-            for (int i = 0; i < models.Count - 1; ++i)
-            {
-                Model m1 = models[i];
-                for (int j = i + 1; j < models.Count; ++j)
-                {
-                    Model m2 = models[j];
-                    // select functionality
-                    Common.Functionality func = selectAFunctionality(rand);
-                    List<Node> nodes1 = m1._GRAPH.getNodesByFunctionality(func);
-                    List<Node> nodes2 = m2._GRAPH.getNodesByFunctionality(func);
-                    // select half or all ?
-                    m1._GRAPH.selectedNodes = selectSubsetNodes(nodes1, rand);
-                    m2._GRAPH.selectedNodes = selectSubsetNodes(nodes2, rand);
-                    List<Model> results = this.crossOverOp(m1, m2, 0);
-                    // screenshot
-                    foreach (Model m in results)
-                    {
-                        this.setCurrentModel(m, -1);
-                        Program.GetFormMain().updateStats();
-                        this.captureScreen(imageFolder + m._model_name + ".png");
-                        saveAPartBasedModel(m._path + m._model_name + ".pam");
-                        if (!m._GRAPH.isGeometryViolated())
-                        {
-                            crossed.Add(m);
-                        }
-                    }
-                }
-            }
-            return crossed;
-        }// runCrossover
-
-        private bool runMutateOrCrossover(Random rand)
-        {
-            int n = 10;
-            int r = rand.Next(10);
-            return r < n / 2;
-        }// runMutateOrCrossover
-
-        private Common.Functionality selectAFunctionality(Random rand)
-        {
-            int n = 6;
-            int r = rand.Next(n);
-            return getFunctionalityFromIndex(r);
-        }// selectAFunctionality
-
-        private List<Node> selectSubsetNodes(List<Node> nodes, Random rand)
-        {
-            int n = rand.Next(2);
-            List<Node> selected = new List<Node>();
-            if (n == 0)
-            {
-                // select partial
-                int nnodes = nodes.Count / 2;
-                int i = 0;
-                while (i < nodes.Count && selected.Count < nnodes)
-                {
-                    if (!selected.Contains(nodes[i]))
-                    {
-                        selected.Add(nodes[i]);
-                        if (nodes[i].symmetry != null && !selected.Contains(nodes[i].symmetry))
-                        {
-                            selected.Add(nodes[i].symmetry);
-                        }
-                    }
-                    ++i;
-                }
-            }
-            else
-            {
-                selected = nodes;
-            }
-            return selected;
-        }// selectSubsetNodes
 
         private void mutateANode(Node node, Random rand)
         {
@@ -1708,6 +1637,374 @@ namespace FameBase
             deformANodeAndEdges(node, Q);
             deformSymmetryNode(node);
         }// mutateANode
+
+        private List<Model> runCrossover(List<Model> models, int gen, Random rand, string imageFolder)
+        {
+            List<Model> crossed = new List<Model>();
+            if (models.Count < 2)
+            {
+                return crossed;
+            }
+            int max_func_find = 6;
+            int m_idx = 0;
+            for (int i = 0; i < models.Count - 1; ++i)
+            {
+                Model m1 = models[i];
+                for (int j = i + 1; j < models.Count; ++j)
+                {
+                    Model m2 = models[j];
+                    // select functionality, one or more
+                    List<Common.Functionality> funcs = new List<Common.Functionality>(); 
+                    List<Node> nodes1 = new List<Node>();
+                    List<Node> nodes2 = new List<Node>();
+                    int find = 0;
+                    while (find < max_func_find && (nodes1.Count == 0 || nodes2.Count == 0))
+                    {
+                        // only switch 1 functionality at one time
+                        funcs = this.selectFunctionality(rand, 1);
+                        nodes1 = m1._GRAPH.getNodesByFunctionality(funcs);
+                        nodes2 = m2._GRAPH.getNodesByFunctionality(funcs);
+                        ++find;
+                    }
+                    if (nodes1.Count == 0 || nodes2.Count == 0)
+                    {
+                        continue;
+                    }
+                    // select partially or all ?
+                    int num = rand.Next(2);
+                    m1._GRAPH.selectedNodes = selectSubsetNodes(nodes1, num);
+                    m2._GRAPH.selectedNodes = selectSubsetNodes(nodes2, num);
+                    //m1._GRAPH.selectedNodes = nodes1;
+                    //m2._GRAPH.selectedNodes = nodes2;
+                    List<Model> results = this.crossOverOp(m1, m2, gen, m_idx);
+                    m_idx += 2;
+                    foreach (Model m in results)
+                    {
+                        if (!m._GRAPH.isGeometryViolated())
+                        {
+                            crossed.Add(m);
+                            // screenshot
+                            this.setCurrentModel(m, -1);
+                            Program.GetFormMain().updateStats();
+                            this.captureScreen(imageFolder + m._model_name + ".png");
+                            saveAPartBasedModel(m._path + m._model_name + ".pam");
+                        }
+                    }
+                }
+            }
+            return crossed;
+        }// runCrossover
+
+        public List<Model> crossOverOp(Model m1, Model m2, int gen, int idx)
+        {
+            List<Model> crossModels = new List<Model>();
+            if (m1 == null || m2 == null)
+            {
+                return crossModels;
+            }
+
+            List<Node> nodes1 = new List<Node>();
+            List<Node> nodes2 = new List<Node>();
+            //findOneToOneMatchingNodes(g1, g2, out nodes1, out nodes2);
+
+            Model newM1 = m1.Clone() as Model;
+            Model newM2 = m2.Clone() as Model;
+            newM1._path = this.foldername + "\\crossover\\gen_" + gen.ToString() + "\\";
+            newM2._path = this.foldername + "\\crossover\\gen_" + gen.ToString() + "\\";
+            if (!Directory.Exists(newM1._path))
+            {
+                Directory.CreateDirectory(newM1._path);
+            }
+            if (!Directory.Exists(newM2._path))
+            {
+                Directory.CreateDirectory(newM2._path);
+            }
+            // using model names will be too long, exceed the maximum length of file name
+            //newM1._model_name = m1._model_name + "_c_" + m2._model_name;
+            //newM2._model_name = m2._model_name + "_c_" + m1._model_name;
+            newM1._model_name = "gen_" + gen.ToString() + "_" + idx.ToString();
+            newM2._model_name = "gen_" + gen.ToString() + "_" + (idx + 1).ToString();
+
+            foreach (Node node in m1._GRAPH.selectedNodes)
+            {
+                nodes1.Add(newM1._GRAPH._NODES[node._INDEX]);
+            }
+            foreach (Node node in m2._GRAPH.selectedNodes)
+            {
+                nodes2.Add(newM2._GRAPH._NODES[node._INDEX]);
+            }
+
+            if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
+            {
+                return null;
+            }
+
+            List<Node> updatedNodes1;
+            List<Node> updatedNodes2;
+            // switch
+            switchNodes(newM1._GRAPH, newM2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
+
+            isValidGraph(newM1._GRAPH);
+            isValidGraph(newM2._GRAPH);
+
+            newM1.replaceNodes(nodes1, updatedNodes2);
+            crossModels.Add(newM1);
+
+            isValidGraph(newM1._GRAPH);
+
+            newM2.replaceNodes(nodes2, updatedNodes1);
+            crossModels.Add(newM2);
+            isValidGraph(newM2._GRAPH);
+
+            return crossModels;
+        }// crossover
+
+        private void isValidGraph(Graph g)
+        {
+            int n = g._NNodes;
+            foreach (Edge e in g._EDGES)
+            {
+                if (e._start._INDEX >= n || e._end._INDEX >= n)
+                {
+                    break;
+                }
+            }
+        }// isValidGraph
+
+        private void switchNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2,
+            out List<Node> updateNodes1, out List<Node> updateNodes2)
+        {
+            List<Edge> edgesToConnect_1 = g1.getOutgoingEdges(nodes1);
+            List<Edge> edgesToConnect_2 = g2.getOutgoingEdges(nodes2);
+            List<Vector3d> sources = collectPoints(edgesToConnect_1);
+            List<Vector3d> targets = collectPoints(edgesToConnect_2);
+
+            updateNodes1 = new List<Node>();
+            updateNodes2 = new List<Node>();
+            Vector3d center1 = new Vector3d();
+            Vector3d maxv_s = Vector3d.MinCoord;
+            Vector3d minv_s = Vector3d.MaxCoord;
+            Vector3d maxv_t = Vector3d.MinCoord;
+            Vector3d minv_t = Vector3d.MaxCoord;
+
+            updateNodes1 = cloneNodesAndRelations(nodes1);
+            foreach (Node node in nodes1)
+            {
+                center1 += node._PART._BOUNDINGBOX.CENTER;
+                maxv_s = Vector3d.Max(maxv_s, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_s = Vector3d.Min(minv_s, node._PART._BOUNDINGBOX.MinCoord);
+            }
+            center1 /= nodes1.Count;
+
+            Vector3d center2 = new Vector3d();
+            updateNodes2 = cloneNodesAndRelations(nodes2);
+            foreach (Node node in nodes2)
+            {
+                center2 += node._PART._BOUNDINGBOX.CENTER;
+                maxv_t = Vector3d.Max(maxv_t, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_t = Vector3d.Min(minv_t, node._PART._BOUNDINGBOX.MinCoord);
+            }
+            center2 /= nodes2.Count;
+
+            double sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
+            double sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
+            double sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
+            Vector3d boxScale_1 = new Vector3d(sx, sy, sz);
+            sx = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
+            sy = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
+            sz = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
+            Vector3d boxScale_2 = new Vector3d(sx, sy, sz);
+
+            Matrix4d S, T, Q;
+
+            // sort corresponding points
+            int nps = sources.Count;
+            bool startWithSrc = true;
+            List<Vector3d> left = sources;
+            List<Vector3d> right = targets;
+            if (targets.Count < nps)
+            {
+                nps = targets.Count;
+                startWithSrc = false;
+                left = targets;
+                right = sources;
+            }
+            List<Vector3d> src = new List<Vector3d>();
+            List<Vector3d> trt = new List<Vector3d>();
+            bool[] visited = new bool[right.Count];
+            foreach (Vector3d v in left)
+            {
+                src.Add(v);
+                int j = -1;
+                double mind = double.MaxValue;
+                for (int i = 0; i < right.Count; ++i)
+                {
+                    if (visited[i]) continue;
+                    double d = (v - right[i]).Length();
+                    if (d < mind)
+                    {
+                        mind = d;
+                        j = i;
+                    }
+                }
+                trt.Add(right[j]);
+                visited[j] = true;
+            }
+            if (startWithSrc)
+            {
+                sources = src;
+                targets = trt;
+            }
+            else
+            {
+                sources = trt;
+                targets = src;
+            }
+
+
+            if (sources.Count <= 1)
+            {
+                sources.Add(center1);
+                targets.Add(center2);
+            }
+            
+            Node ground1 = hasGroundTouchingNode(nodes1);
+            Node ground2 = hasGroundTouchingNode(nodes2);
+            bool isGround = ground1 != null || ground2 != null;
+            if (ground1 != null && ground2 != null)
+            {
+                sources.Add(g1.getGroundTouchingNodesCenter());
+                targets.Add(g2.getGroundTouchingNodesCenter());
+                //sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
+                //targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
+            }
+            getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true);
+            foreach (Node node in updateNodes1)
+            {
+                node.Transform(Q);
+            }
+            if (isGround)
+            {
+                adjustGroundTouching(updateNodes1);
+            }
+
+            getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true);
+            foreach (Node node in updateNodes2)
+            {
+                node.Transform(Q);
+            }
+            if (isGround)
+            {
+                adjustGroundTouching(updateNodes2);
+            }
+        }// switchOneNode
+
+        private List<Node> cloneNodesAndRelations(List<Node> nodes)
+        {
+            List<Node> clone_nodes = new List<Node>();
+            foreach (Node node in nodes)
+            {
+                Node cloned = node.Clone() as Node;
+                clone_nodes.Add(cloned);
+            }
+            // edges
+            for (int i = 0; i < nodes.Count;++i)
+            {
+                Node node = nodes[i];
+                foreach (Edge e in node._edges)
+                {
+                    Node other = e._start == node ? e._end : e._start;
+                    int j = nodes.IndexOf(other);
+                    Node adjNode = other;
+                    if (j != -1)
+                    {
+                        adjNode = clone_nodes[j];
+                    }
+                    if (adjNode == other || j > i)
+                    {
+                        List<Contact> contacts = new List<Contact>();
+                        foreach (Contact c in e._contacts)
+                        {
+                            contacts.Add(new Contact(c._pos3d));
+                        }
+                        Edge clone_edge = new Edge(clone_nodes[i], adjNode, contacts);
+                        clone_nodes[i].addAnEdge(clone_edge);
+                        if (adjNode != other)
+                        {
+                            adjNode.addAnEdge(clone_edge);
+                        }
+                    }
+                }
+            }
+            return clone_nodes;
+        }// cloneNodesAndRelations
+
+        private bool runMutateOrCrossover(Random rand)
+        {
+            int n = 10;
+            int r = rand.Next(10);
+            return r < n / 2;
+        }// runMutateOrCrossover
+
+        private List<Common.Functionality> selectFunctionality(Random rand, int maxNfunc)
+        {
+            int n = 5;
+            int r = rand.Next(n) + 1;
+            r = Math.Min(r, maxNfunc);
+            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            for (int i = 0; i < r; ++i)
+            {
+                int j = rand.Next(n);
+                Common.Functionality f = getFunctionalityFromIndex(j);
+                if (!funcs.Contains(f))
+                {
+                    funcs.Add(f);
+                }
+            }
+            return funcs;
+        }// selectAFunctionality
+
+        private List<Node> selectSubsetNodes(List<Node> nodes, int n)
+        {
+            List<Node> selected = new List<Node>();
+            if (n == 0)
+            {
+                // break symmetry
+                foreach (Node node in nodes)
+                {
+                    if (!selected.Contains(node) && !selected.Contains(node.symmetry))
+                    {
+                        selected.Add(node);
+                        if (node.symmetry != null)
+                        {
+                            Node other = node.symmetry;
+                            node.symmetry = null;
+                            other.symmetry = null;
+                        }
+                    }
+                }
+                // select partial
+                //int nnodes = nodes.Count / 2;
+                //int i = 0;
+                //while (i < nodes.Count && selected.Count < nnodes)
+                //{
+                //    if (!selected.Contains(nodes[i]))
+                //    {
+                //        selected.Add(nodes[i]);
+                //        if (nodes[i].symmetry != null && !selected.Contains(nodes[i].symmetry))
+                //        {
+                //            selected.Add(nodes[i].symmetry);
+                //        }
+                //    }
+                //    ++i;
+                //}
+            }
+            else
+            {
+                selected = nodes;
+            }
+            return selected;
+        }// selectSubsetNodes
 
         private bool hasGroundTouching(List<Node> nodes)
         {
@@ -1768,11 +2065,11 @@ namespace FameBase
             List<int> outEdgeNum2 = new List<int>();
             foreach (List<Node> nodes in symPairs1)
             {
-                outEdgeNum1.Add(g1.collectOutgoingEdges(nodes).Count);
+                outEdgeNum1.Add(g1.getOutgoingEdges(nodes).Count);
             }
             foreach (List<Node> nodes in symPairs2)
             {
-                outEdgeNum2.Add(g2.collectOutgoingEdges(nodes).Count);
+                outEdgeNum2.Add(g2.getOutgoingEdges(nodes).Count);
             }
             for (int i = 0; i < symPairs1.Count; ++i)
             {
@@ -2107,217 +2404,14 @@ namespace FameBase
                     {
                         m1._GRAPH.selectedNodes = nodeChoices1[t];
                         m2._GRAPH.selectedNodes = nodeChoices2[t];
-                        List<Model> crossed = this.crossOverOp(m1, m2, t);
+                        List<Model> crossed = this.crossOverOp(m1, m2, t, k);
+                        k += 2;
                         crossedModels.AddRange(crossed);
                     }
                 }
             }
             return crossedModels;
         }// crossover
-
-        public List<Model> crossOverOp(Model m1, Model m2, int idx)
-        {
-            if (m1 == null || m2 == null)
-            {
-                return null;
-            }
-            List<Model> crossModels = new List<Model>();
-
-            List<Node> nodes1 = new List<Node>();
-            List<Node> nodes2 = new List<Node>();
-            //findOneToOneMatchingNodes(g1, g2, out nodes1, out nodes2);
-
-            Model newM1 = m1.Clone() as Model;
-            Model newM2 = m2.Clone() as Model;
-            newM1._path = m1._path + "crossOver_models\\";
-            newM2._path = m2._path + "crossOver_models\\";
-            if (!Directory.Exists(newM1._path))
-            {
-                Directory.CreateDirectory(newM1._path);
-            }
-            if (!Directory.Exists(newM2._path))
-            {
-                Directory.CreateDirectory(newM2._path);
-            }
-            newM1._model_name = m1._model_name + "_cross_" + m2._model_name + "_" + idx.ToString();
-            newM2._model_name = m2._model_name + "_cross_" + m1._model_name + "_" + idx.ToString();
-
-            foreach (Node node in m1._GRAPH.selectedNodes)
-            {
-                nodes1.Add(newM1._GRAPH._NODES[node._INDEX]);
-            }
-            foreach (Node node in m2._GRAPH.selectedNodes)
-            {
-                nodes2.Add(newM2._GRAPH._NODES[node._INDEX]);
-            }
-
-            if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
-            {
-                return null;
-            }
-
-            List<Node> updatedNodes1;
-            List<Node> updatedNodes2;
-            switchNodes(m1._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
-
-            newM1.replaceNodes(nodes1, updatedNodes2);
-            crossModels.Add(newM1);
-
-            newM2.replaceNodes(nodes2, updatedNodes1);
-            crossModels.Add(newM2);
-
-            return crossModels;
-        }// crossover
-
-        private void findOneToOneMatchingNodes(Graph g1, Graph g2, out List<Node> nodes1, out List<Node> nodes2)
-        {
-            nodes1 = new List<Node>();
-            nodes2 = new List<Node>();
-            List<Node> matched = new List<Node>();
-            foreach (Node n1 in g1._NODES)
-            {
-                foreach (Node n2 in g2._NODES)
-                {
-                    if ((n1._isGroundTouching && n2._isGroundTouching) ||
-                        (n1._edges.Count == n2._edges.Count))
-                    {
-                        nodes1.Add(n1);
-                        nodes2.Add(n2);
-                    }
-                }
-            }
-        }// findOneToOneMatchingNodes
-
-        private void switchNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2, 
-            out List<Node> updateNodes1, out List<Node> updateNodes2)
-        {
-            List<Edge> edgesToConnect_1 = g1.collectOutgoingEdges(nodes1);
-            List<Edge> edgesToConnect_2 = g2.collectOutgoingEdges(nodes2);
-            List<Vector3d> sources = collectPoints(edgesToConnect_1);
-            List<Vector3d> targets = collectPoints(edgesToConnect_2);
-
-            updateNodes1 = new List<Node>();
-            updateNodes2 = new List<Node>();
-            Vector3d center1 = new Vector3d();
-            Vector3d maxv_s = Vector3d.MinCoord;
-            Vector3d minv_s = Vector3d.MaxCoord;
-            Vector3d maxv_t = Vector3d.MinCoord;
-            Vector3d minv_t = Vector3d.MaxCoord;
-            
-            foreach (Node node in nodes1)
-            {
-                Node cloned = node.Clone() as Node;
-                updateNodes1.Add(cloned);
-                center1 += node._PART._BOUNDINGBOX.CENTER;
-                maxv_s = Vector3d.Max(maxv_s, node._PART._BOUNDINGBOX.MaxCoord);
-                minv_s = Vector3d.Min(minv_s, node._PART._BOUNDINGBOX.MinCoord);
-            }
-            center1 /= nodes1.Count;
-            Vector3d center2 = new Vector3d();
-            foreach (Node node in nodes2)
-            {
-                Node cloned = node.Clone() as Node;
-                updateNodes2.Add(cloned);
-                center2 += node._PART._BOUNDINGBOX.CENTER;
-                maxv_t = Vector3d.Max(maxv_t, node._PART._BOUNDINGBOX.MaxCoord);
-                minv_t = Vector3d.Min(minv_t, node._PART._BOUNDINGBOX.MinCoord);
-            }
-            center2 /= nodes2.Count;
-
-            double sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
-            double sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
-            double sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
-            Vector3d boxScale_1 = new Vector3d(sx, sy, sz);
-            sx = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
-            sy = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
-            sz = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
-            Vector3d boxScale_2 = new Vector3d(sx, sy, sz);
-
-            Matrix4d S, T, Q;
-
-            {
-                // sort corresponding points
-                int nps = sources.Count;
-                bool startWithSrc = true;
-                List<Vector3d> left = sources;
-                List<Vector3d> right = targets;
-                if (targets.Count < nps)
-                {
-                    nps = targets.Count;
-                    startWithSrc = false;
-                    left = targets;
-                    right = sources;
-                }
-                List<Vector3d> src = new List<Vector3d>();
-                List<Vector3d> trt = new List<Vector3d>();
-                bool[] visited = new bool[right.Count];
-                foreach (Vector3d v in left)
-                {
-                    src.Add(v);
-                    int j = -1;
-                    double mind = double.MaxValue;
-                    for (int i = 0; i < right.Count; ++i)
-                    {
-                        if (visited[i]) continue;
-                        double d = (v - right[i]).Length();
-                        if (d < mind)
-                        {
-                            mind = d;
-                            j = i;
-                        }
-                    }
-                    trt.Add(right[j]);
-                    visited[j] = true;
-                }
-                if (startWithSrc)
-                {
-                    sources = src;
-                    targets = trt;
-                }
-                else
-                {
-                    sources = trt;
-                    targets = src;
-                }
-            }
-
-            if (sources.Count == 1)
-            {
-                sources.Add(center1);
-                targets.Add(center2);
-            }
-
-            Node ground1 = hasGroundTouchingNode(nodes1);
-            Node ground2 = hasGroundTouchingNode(nodes2);
-            bool isGround = false;
-            if (ground1 != null && ground2 != null && sources.Count > 0)
-            {
-                //sources.Add(new Vector3d(center1.x, 0, center1.z));
-                //targets.Add(new Vector3d(center2.x, 0, center2.z));
-                sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
-                targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
-                isGround = true;
-            }
-            getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true);
-            foreach (Node node in updateNodes1)
-            {
-                node.Transform(Q);
-            }
-            if (isGround)
-            {
-                adjustGroundTouching(updateNodes1);
-            }
-
-            getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true);
-            foreach (Node node in updateNodes2)
-            {
-                node.Transform(Q);
-            }
-            if (isGround)
-            {
-                adjustGroundTouching(updateNodes2);
-            }
-        }// switchOneNode
 
         private void adjustGroundTouching(List<Node> nodes)
         {
@@ -2333,6 +2427,16 @@ namespace FameBase
             {
                 node.Transform(T);
             }
+            // in case the nodes are not marked as ground touching
+            foreach (Node node in nodes)
+            {
+                double ydist = node._PART._MESH.MinCoord.y;
+                if (Math.Abs(ydist) < Common._thresh)
+                {
+                    node._isGroundTouching = true;
+                    node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
+                }
+            }
         }// adjustGroundTouching
 
         private Node hasGroundTouchingNode(List<Node> nodes)
@@ -2346,6 +2450,19 @@ namespace FameBase
             }
             return null;
         }// hasGroundTouchingNode
+
+        private List<Node> getGroundTouchingNode(List<Node> nodes)
+        {
+            List<Node> grounds = new List<Node>();
+            foreach (Node node in nodes)
+            {
+                if (node._isGroundTouching)
+                {
+                    grounds.Add(node);
+                }
+            }
+            return grounds;
+        }// getGroundTouchingNode
 
         private List<Vector3d> collectPoints(List<Edge> edges)
         {
@@ -3896,7 +4013,7 @@ namespace FameBase
                 this.drawAxes(_axes, 3.0f);
             }
 
-            if (this.showGround)
+            if (this.isDrawGround)
             {
                 drawGround();
             }
@@ -3946,7 +4063,7 @@ namespace FameBase
                     GLDrawer.drawLines3D(_groundGrids[i], _groundGrids[i + 1], Color.Gray, 2.0f);
                 }
             }
-        }// showGround
+        }// isDrawGround
 
         private void drawGraph(Graph g)
         {

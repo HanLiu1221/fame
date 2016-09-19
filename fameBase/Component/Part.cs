@@ -442,7 +442,8 @@ namespace Component
                 node._PART.updateOriginPos();
                 _parts.Add(node._PART);
             }
-            _GRAPH.replaceNodes(oldNodes, newNodes);
+            // topology
+            _GRAPH.replaceNodes(oldNodes, newNodes);            
         }// replaceNodes
 
         public Object Clone()
