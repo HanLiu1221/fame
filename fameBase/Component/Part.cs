@@ -27,11 +27,12 @@ namespace Component
 
         public Color _COLOR = Color.LightBlue;
 
-        
         public Part(Mesh m)
         {
             _mesh = m;
-            this.fitProxy();
+
+            this.fitProxy(-1);
+
             setRandomColorToNodes();
         }
 
@@ -67,7 +68,7 @@ namespace Component
             }
             _mesh = new Mesh(vPos, faceVertexIndex);
             setRandomColorToNodes();
-            this.fitProxy();
+            this.fitProxy(-1);
         }
 
         public Part(Mesh m, Prism bbox, bool fit)
@@ -77,7 +78,7 @@ namespace Component
             _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
             if (fit)
             {
-                this.fitProxy();
+                this.fitProxy(-1);
             }
         }
 
@@ -95,15 +96,15 @@ namespace Component
             _COLOR = Color.FromArgb(Common.rand.Next(255), Common.rand.Next(255), Common.rand.Next(255));
         }
 
-        public void fitProxy()
+        public void fitProxy(int option)
         {
             axes = new Vector3d[3];
 
-            axes[0] = Vector3d.XCoord;
-            axes[1] = Vector3d.YCoord;
-            axes[2] = Vector3d.ZCoord;
-            this.calculateAxisAlignedBbox();
-            return;
+            //axes[0] = Vector3d.XCoord;
+            //axes[1] = Vector3d.YCoord;
+            //axes[2] = Vector3d.ZCoord;
+            //this.calculateAxisAlignedBbox();
+            //return;
 
             int n = this._mesh.VertexCount;
             double[,] vArray = new double[n, 3];
@@ -165,13 +166,27 @@ namespace Component
                 Prism cuboid = fitCuboid(center, scale, axes);
                 Prism cylinder = fitCylinder(center, scale, axes);
                 //_boundingbox = cuboid;
-                if (cuboid.fittingError >= cylinder.fittingError && (cuboid.fittingError - cylinder.fittingError) / Math.Abs(cylinder.fittingError) > 0.2)
+                if (option == -1)
                 {
-                    _boundingbox = cylinder;
+                    if (cuboid.fittingError >= cylinder.fittingError && (cuboid.fittingError - cylinder.fittingError) / Math.Abs(cylinder.fittingError) > 0.2)
+                    {
+                        _boundingbox = cylinder;
+                    }
+                    else
+                    {
+                        _boundingbox = cuboid;
+                    }
                 }
                 else
                 {
-                    _boundingbox = cuboid;
+                    if (option == 0)
+                    {
+                        _boundingbox = cuboid;
+                    }
+                    else if (option == 1)
+                    {
+                        _boundingbox = cylinder;
+                    }
                 }
             }
         }// calPrincipalAxes

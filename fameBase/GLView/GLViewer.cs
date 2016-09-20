@@ -591,7 +591,7 @@ namespace FameBase
                     }
                 }
                 pm.afterUpdatePos();
-                p.fitProxy();
+                p.fitProxy(-1);
                 p.updateOriginPos();
             }
 
@@ -786,8 +786,8 @@ namespace FameBase
                         return null;
                     }
                     Mesh mesh = new Mesh(meshFile, false);
-                    Part part = new Part(mesh);
-                    //Part part = hasPrism ? new Part(mesh, prim) : new Part(mesh);
+                    //Part part = new Part(mesh);
+                    Part part = hasPrism ? new Part(mesh, prim) : new Part(mesh);
                     parts.Add(part);
                 }
                 Model model = new Model(parts);
@@ -888,6 +888,31 @@ namespace FameBase
             this.setUIMode(0);
             return _modelViewers;
         }// loadPartBasedModels
+
+        public void refit_by_cylinder()
+        {
+            if (_selectedParts.Count == 0)
+            {
+                return;
+            }
+            foreach (Part p in _selectedParts)
+            {
+                p.fitProxy(1);
+            }
+            this.Refresh();
+        }// refit_by_cylinder
+
+        public void refit_by_cuboid()
+        {
+            if (_selectedParts.Count == 0)
+            {
+                return;
+            }
+            foreach (Part p in _selectedParts)
+            {
+                p.fitProxy(0);
+            }
+        }// refit_by_cuboid
 
         private bool hasInValidContact(Graph g)
         {
@@ -1527,6 +1552,10 @@ namespace FameBase
         private void dfs_files(string folder, string snap_folder) 
         {
             string[] files = Directory.GetFiles(folder);
+            if (!Directory.Exists(snap_folder))
+            {
+                Directory.CreateDirectory(snap_folder);
+            }
             foreach (string file in files)
             {
                 if (!file.EndsWith("pam"))
@@ -2007,7 +2036,6 @@ namespace FameBase
             
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
-            bool isGround = ground1 != null || ground2 != null;
             if (ground1 != null && ground2 != null)
             {
                 sources.Add(g1.getGroundTouchingNodesCenter());
@@ -2017,7 +2045,7 @@ namespace FameBase
             }
             getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true);
             this.deformNodesAndEdges(updateNodes1, Q);
-            if (isGround)
+            if (ground2 != null)
             {
                 g1.resetUpdateStatus();
                 adjustGroundTouching(updateNodes1);
@@ -2026,7 +2054,7 @@ namespace FameBase
 
             getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true);
             this.deformNodesAndEdges(updateNodes2, Q);
-            if (isGround)
+            if (ground1 != null)
             {
                 g2.resetUpdateStatus();
                 adjustGroundTouching(updateNodes2);
@@ -2144,28 +2172,46 @@ namespace FameBase
         private List<Node> selectSubsetNodes(List<Node> nodes, int n)
         {
             List<Node> selected = new List<Node>();
+            List<Node> sym_nodes = new List<Node>();
+            Random rand = new Random();
+            foreach (Node node in nodes)
+            {
+                if (node.symmetry != null && !selected.Contains(node) && !selected.Contains(node.symmetry))
+                {
+                    selected.Add(node);
+                    selected.Add(node.symmetry);
+                }
+            }
             if (n == 0)
             {
-                // break symmetry
-                foreach (Node node in nodes)
+                // take symmetry
+                int nsym = sym_nodes.Count / 2;
+                for (int i = 0; i < nsym; i += 2)
                 {
-                    if (!selected.Contains(node) && !selected.Contains(node.symmetry))
+                    int s = rand.Next(2);
+                    if (s == 0)
                     {
-                        selected.Add(node);
-                        if (node.symmetry != null)
-                        {
-                            Node other = node.symmetry;
-                            node.symmetry = null;
-                            other.symmetry = null;
-                        }
+                        selected.Add(sym_nodes[i]);
+                        selected.Add(sym_nodes[i + 1]);
                     }
+                }
+                if (selected.Count == 0 && sym_nodes.Count != 0)
+                {
+                    int j = rand.Next(nsym);
+                    selected.Add(sym_nodes[j * 2]);
+                    selected.Add(sym_nodes[j * 2 + 1]);
                 }
             }
             else if (n == 1)
             {
-                // node propagation --- all inner nodes that only connect to the #nodes#
-                selected = Graph.GetNodePropagation(nodes);
-
+                //// node propagation --- all inner nodes that only connect to the #nodes#
+                //selected = Graph.GetNodePropagation(nodes);
+                // break symmetry
+                if (sym_nodes.Count == 2)
+                {
+                    int s = rand.Next(2);
+                    selected.Add(sym_nodes[s]);
+                }
             }
             else 
             {

@@ -639,12 +639,22 @@ namespace FameBase
 
         private void autoSnapshotsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\chair_shelf_table\res_1" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\mix\res_1" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
                 this.glViewer.collectSnapshotsFromFolder(folderName);
             }
+        }
+
+        private void refitcyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.refit_by_cylinder();
+        }
+
+        private void refitcbToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.refit_by_cuboid();
         }
 	}// Interface
 }// namespace
