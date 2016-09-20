@@ -859,6 +859,7 @@ namespace FameBase
             string[] files = Directory.GetFiles(segfolder);
             int idx = 0;
             _models = new List<Model>();
+            _modelViewers = new List<ModelViewer>();
             foreach (string file in files)
             {
                 if (!file.EndsWith("pam"))
@@ -1092,7 +1093,8 @@ namespace FameBase
                         g.addAnEdge(g._NODES[j], g._NODES[k]);
                     }
                 }
-                g.analyzeScale();
+                g.unify();
+                g.analyzeOriginFeatures();
                 m.setGraph(g);
             }
         }// LoadAGraph
@@ -1539,15 +1541,17 @@ namespace FameBase
             {
                 Directory.CreateDirectory(imageFolder_c);
             }
-            int maxIter = 10;
+            int maxIter = 5;
             _currIter = 0;
             Random rand = new Random();
             List<Model> generation = _models;
+            List<Model> cur = new List<Model>();
             while (_currIter < maxIter)
             {
                 // mutate or crossover ?
                 _mutateOrCross = runMutateOrCrossover(rand);
-                List<Model> cur = generation;
+                //cur = generation;
+                cur.AddRange(generation);
                 if (_mutateOrCross)
                 {
                     // mutate
@@ -1593,8 +1597,9 @@ namespace FameBase
                 mutateANode(updateNode, rand);
                 deformPropagation(model._GRAPH, updateNode);
                 model._GRAPH.resetUpdateStatus();
-                if (!model._GRAPH.isGeometryViolated())
+                if (!model._GRAPH.isViolateOrigin())
                 {
+                    model._GRAPH.unify();
                     mutated.Add(model);
                     // screenshot
                     this.setCurrentModel(model, -1);
@@ -1658,30 +1663,39 @@ namespace FameBase
                     List<Node> nodes1 = new List<Node>();
                     List<Node> nodes2 = new List<Node>();
                     int find = 0;
-                    while (find < max_func_find && (nodes1.Count == 0 || nodes2.Count == 0))
+                    m1._GRAPH.selectedNodes.Clear();
+                    m2._GRAPH.selectedNodes.Clear();
+                    while (find < max_func_find && !this.isValidSelection(m1._GRAPH, m2._GRAPH))
                     {
                         // only switch 1 functionality at one time
                         funcs = this.selectFunctionality(rand, 1);
                         nodes1 = m1._GRAPH.getNodesByFunctionality(funcs);
                         nodes2 = m2._GRAPH.getNodesByFunctionality(funcs);
+                        m1._GRAPH.selectedNodes = nodes1;
+                        m2._GRAPH.selectedNodes = nodes2;
                         ++find;
                     }
-                    if (nodes1.Count == 0 || nodes2.Count == 0)
+                    if (!this.isValidSelection(m1._GRAPH, m2._GRAPH))
                     {
                         continue;
                     }
                     // select partially or all ?
-                    int num = rand.Next(2);
+                    int num = rand.Next(3);
                     m1._GRAPH.selectedNodes = selectSubsetNodes(nodes1, num);
                     m2._GRAPH.selectedNodes = selectSubsetNodes(nodes2, num);
-                    //m1._GRAPH.selectedNodes = nodes1;
-                    //m2._GRAPH.selectedNodes = nodes2;
+                    // extreme cases
+                    if (!this.isValidSelection(m1._GRAPH, m2._GRAPH))
+                    {
+                        m1._GRAPH.selectedNodes = nodes1;
+                        m2._GRAPH.selectedNodes = nodes2;
+                    }
                     List<Model> results = this.crossOverOp(m1, m2, gen, m_idx);
                     m_idx += 2;
                     foreach (Model m in results)
                     {
-                        if (!m._GRAPH.isGeometryViolated())
+                        if (!m._GRAPH.isViolateOrigin())
                         {
+                            m._GRAPH.unify();
                             crossed.Add(m);
                             // screenshot
                             this.setCurrentModel(m, -1);
@@ -1694,6 +1708,73 @@ namespace FameBase
             }
             return crossed;
         }// runCrossover
+
+        private bool isValidSelection(Graph g1, Graph g2)
+        {
+            if (g1.selectedNodes.Count == g1._NNodes && g2.selectedNodes.Count == g2._NNodes)
+            {
+                return false;
+            }
+            if (g1.selectedNodes.Count == 0 || g2.selectedNodes.Count == 0)
+            {
+                return false;
+            }
+            // same functionality parts in g1.selected vs. g2.unselected
+            List<Node> g1_unselected = new List<Node>(g1._NODES);
+            foreach (Node node in g1.selectedNodes)
+            {
+                g1_unselected.Remove(node);
+            }
+            List<Node> g2_unselected = new List<Node>(g2._NODES);
+            foreach (Node node in g2.selectedNodes)
+            {
+                g2_unselected.Remove(node);
+            }
+            if (g1_unselected.Count == 0 || g2_unselected.Count == 0)
+            {
+                return false;
+            }
+
+            //List<Common.Functionality> g1_selected_funcs = getAllFuncs(g1.selectedNodes);
+            //List<Common.Functionality> g2_selected_funcs = getAllFuncs(g2.selectedNodes);
+            //List<Common.Functionality> g1_unselected_funcs = getAllFuncs(g1_unselected);
+            //List<Common.Functionality> g2_unselected_funcs = getAllFuncs(g2_unselected);
+
+            //if (this.hasfunctionIntersection(g1_selected_funcs, g2_unselected_funcs) ||
+            //    this.hasfunctionIntersection(g1_unselected_funcs, g2_selected_funcs))
+            //{
+            //    return false;
+            //}            
+            return true;
+        }// isValidSelection
+
+        private List<Common.Functionality> getAllFuncs(List<Node> nodes)
+        {
+            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            foreach (Node node in nodes)
+            {
+                foreach (Common.Functionality f in node._funcs)
+                {
+                    if (!funcs.Contains(f))
+                    {
+                        funcs.Add(f);
+                    }
+                }
+            }
+            return funcs;
+        }// getAllFuncs
+
+        private bool hasfunctionIntersection(List<Common.Functionality> funcs1, List<Common.Functionality> funcs2)
+        {
+            foreach (Common.Functionality f1 in funcs1)
+            {
+                if (funcs2.Contains(f1))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// hasIntersection
 
         public List<Model> crossOverOp(Model m1, Model m2, int gen, int idx)
         {
@@ -1734,7 +1815,7 @@ namespace FameBase
                 nodes2.Add(newM2._GRAPH._NODES[node._INDEX]);
             }
 
-            if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
+            if (nodes1 == null || nodes2 == null)
             {
                 return null;
             }
@@ -1750,11 +1831,8 @@ namespace FameBase
             newM1.replaceNodes(nodes1, updatedNodes2);
             crossModels.Add(newM1);
 
-            isValidGraph(newM1._GRAPH);
-
             newM2.replaceNodes(nodes2, updatedNodes1);
             crossModels.Add(newM2);
-            isValidGraph(newM2._GRAPH);
 
             return crossModels;
         }// crossover
@@ -1879,25 +1957,65 @@ namespace FameBase
                 //targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
             }
             getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true);
-            foreach (Node node in updateNodes1)
-            {
-                node.Transform(Q);
-            }
+            this.deformNodesAndEdges(updateNodes1, Q);
             if (isGround)
             {
+                g1.resetUpdateStatus();
                 adjustGroundTouching(updateNodes1);
             }
+            g1.resetUpdateStatus();
 
             getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true);
-            foreach (Node node in updateNodes2)
-            {
-                node.Transform(Q);
-            }
+            this.deformNodesAndEdges(updateNodes2, Q);
             if (isGround)
             {
+                g2.resetUpdateStatus();
                 adjustGroundTouching(updateNodes2);
             }
+            g2.resetUpdateStatus();
         }// switchOneNode
+
+        private void deformNodesAndEdges(List<Node> nodes, Matrix4d T)
+        {
+            foreach (Node node in nodes)
+            {
+                node.Transform(T);
+            }
+            List<Edge> inner_edges = Graph.GetAllEdges(nodes);
+            foreach (Edge e in inner_edges)
+            {
+                if (e._contactUpdated)
+                {
+                    continue;
+                }
+                e.TransformContact(T);
+            }
+        }// deformNodesAndEdges
+
+        private void adjustGroundTouching(List<Node> nodes)
+        {
+            double miny = double.MaxValue;
+            foreach (Node node in nodes)
+            {
+                double y = node._PART._BOUNDINGBOX.MinCoord.y;
+                miny = miny < y ? miny : y;
+            }
+            Vector3d trans = new Vector3d(0, -miny, 0);
+            Matrix4d T = Matrix4d.TranslationMatrix(trans);
+
+            this.deformNodesAndEdges(nodes, T);
+
+            // in case the nodes are not marked as ground touching
+            foreach (Node node in nodes)
+            {
+                double ydist = node._PART._MESH.MinCoord.y;
+                if (Math.Abs(ydist) < Common._thresh)
+                {
+                    node._isGroundTouching = true;
+                    node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
+                }
+            }
+        }// adjustGroundTouching
 
         private List<Node> cloneNodesAndRelations(List<Node> nodes)
         {
@@ -1983,23 +2101,14 @@ namespace FameBase
                         }
                     }
                 }
-                // select partial
-                //int nnodes = nodes.Count / 2;
-                //int i = 0;
-                //while (i < nodes.Count && selected.Count < nnodes)
-                //{
-                //    if (!selected.Contains(nodes[i]))
-                //    {
-                //        selected.Add(nodes[i]);
-                //        if (nodes[i].symmetry != null && !selected.Contains(nodes[i].symmetry))
-                //        {
-                //            selected.Add(nodes[i].symmetry);
-                //        }
-                //    }
-                //    ++i;
-                //}
             }
-            else
+            else if (n == 1)
+            {
+                // node propagation --- all inner nodes that only connect to the #nodes#
+                selected = Graph.GetNodePropagation(nodes);
+
+            }
+            else 
             {
                 selected = nodes;
             }
@@ -2412,32 +2521,6 @@ namespace FameBase
             }
             return crossedModels;
         }// crossover
-
-        private void adjustGroundTouching(List<Node> nodes)
-        {
-            double miny = double.MaxValue;
-            foreach (Node node in nodes)
-            {
-                double y = node._PART._BOUNDINGBOX.MinCoord.y;
-                miny = miny < y ? miny : y;
-            }
-            Vector3d trans = new Vector3d(0, -miny, 0);
-            Matrix4d T = Matrix4d.TranslationMatrix(trans);
-            foreach (Node node in nodes)
-            {
-                node.Transform(T);
-            }
-            // in case the nodes are not marked as ground touching
-            foreach (Node node in nodes)
-            {
-                double ydist = node._PART._MESH.MinCoord.y;
-                if (Math.Abs(ydist) < Common._thresh)
-                {
-                    node._isGroundTouching = true;
-                    node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
-                }
-            }
-        }// adjustGroundTouching
 
         private Node hasGroundTouchingNode(List<Node> nodes)
         {

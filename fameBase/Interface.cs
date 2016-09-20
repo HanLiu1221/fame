@@ -196,8 +196,8 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\test" };
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\chair_shelf_table" }; 
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\chair_shelf_table" };
+            //var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\chair_shelf_table" }; 
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -345,6 +345,7 @@ namespace FameBase
             int w = 200;
             int h = 200;
             int i = 0;
+            this.modelViewLayoutPanel.Controls.Clear();
             foreach (ModelViewer mv in modelViewers)
             {
                 mv.SetBounds(i * w, 0, w, h);

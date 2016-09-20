@@ -16,8 +16,11 @@ namespace Component
         double _maxNodeBboxScale; // max scale of a box
         double _minNodeBboxScale; // min scale of a box
         double _maxAdjNodesDist; // max distance between two nodes
+        
+        public List<Node> selectedNodes = new List<Node>();
+        private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
+
         // test
-        public List<Node> selectedNodes;
         public List<List<Node>> selectedNodePairs = new List<List<Node>>();
 
         public Graph() { }
@@ -33,6 +36,22 @@ namespace Component
             markGroundTouchingNodes();
             buildGraph();
         }
+
+        public List<Common.Functionality> getGraphFuncs()
+        {
+            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            foreach (Node node in _nodes)
+            {
+                foreach (Common.Functionality f in node._funcs)
+                {
+                    if (!funcs.Contains(f))
+                    {
+                        funcs.Add(f);
+                    }
+                }
+            }
+            return funcs;
+        }// getGraphFuncs
 
         public Object Clone(List<Part> parts)
         {
@@ -75,16 +94,18 @@ namespace Component
             cloned._maxAdjNodesDist = _maxAdjNodesDist;
             cloned._minNodeBboxScale = _minNodeBboxScale;
             cloned._maxNodeBboxScale = _maxNodeBboxScale;
+            cloned._origin_funcs = new List<Common.Functionality>(_origin_funcs);
             return cloned;
         }// clone
 
-        public void analyzeScale()
+        public void analyzeOriginFeatures()
         {
             double[] vals = calScale();
             _maxAdjNodesDist = vals[0];
             _minNodeBboxScale = vals[1];
             _maxNodeBboxScale = vals[2];
-        }// analyzeScale
+            _origin_funcs = this.getGraphFuncs();
+        }// analyzeOriginFeatures
 
         private double[] calScale()
         {
@@ -156,11 +177,13 @@ namespace Component
 
         public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
         {
-            // update nodes first
+            // replace the old nodes from this graph by newNodes
+            // UPDATE nodes first            
             foreach (Node old in oldNodes)
             {
                 _nodes.Remove(old);
             }
+            List<Node> nodes_in_oppo_list = new List<Node>(_nodes);
             foreach (Node node in newNodes)
             {
                 _nodes.Add(node);
@@ -169,92 +192,136 @@ namespace Component
             resetNodeIndex();
 
             // UPDATE edges
-
-            // 3.1 use the contacts from new nodes
-            List<Node> out_nodes = newNodes;
-            List<Edge> out_edges = getOutgoingEdges(out_nodes);
-            // delete all out edges from new nodes
-            foreach (Edge e in out_edges)
-            {
-                Node node = null;
-                if (newNodes.Contains(e._start))
-                {
-                    node = e._start;
-                }
-                if (newNodes.Contains(e._end))
-                {
-                    node = e._end;
-                }
-                if (node == null)
-                {
-                    break;
-                }
-                node.deleteAnEdge(e);
-            }
-            // 3.2 if new nodes has no contacts, use the contacts from old nodes
-            if (out_edges.Count == 0)
-            {
-                out_nodes = oldNodes;
-                out_edges = getOutgoingEdges(out_nodes);
-                foreach (Edge e in out_edges)
-                {
-                    this.deleteEdge(e);
-                }
-            }
-
             // 1.1 remove inner edges from oldNodes
-            List<Edge> inner_edges_old = getInnerEdges(oldNodes);
+            List<Edge> inner_edges_old = GetInnerEdges(oldNodes);
             foreach (Edge e in inner_edges_old)
             {
                 this.deleteEdge(e);
             }
-            // 1.2 remove out edges from oldNodes
+            
             List<Edge> out_old_edges = getOutgoingEdges(oldNodes);
+            List<Edge> out_new_edges = getOutgoingEdges(newNodes);
+            List<Node> out_nodes = new List<Node>();
+            List<Edge> out_edges = new List<Edge>();
+            if (out_new_edges.Count > out_old_edges.Count)
+            {
+                out_nodes = newNodes;
+                out_edges = out_new_edges;
+            }
+            else {
+                out_nodes = oldNodes;
+                out_edges = out_old_edges;
+                nodes_in_oppo_list = new List<Node>(newNodes);
+            }
+            // 1.2 remove out edges from oldNodes
             foreach (Edge e in out_old_edges)
             {
                 this.deleteEdge(e);
             }
-            // 2. add inner edges from newNodes
-            List<Edge> inner_edges_new = getInnerEdges(newNodes);
+            // 2. handle edges from newNodes
+            List<Edge> inner_edges_new = GetInnerEdges(newNodes);
+            // 2.1 remove all edges from newNodes
+            foreach (Node node in newNodes)
+            {
+                node._edges.Clear();
+                node._adjNodes.Clear();
+            }
+            // 2.2 add inner edges from newNodes
             foreach (Edge e in inner_edges_new)
             {
                 this.addAnEdge(e._start, e._end, e._contacts);
             }
-            // 3. connect     
-            foreach (Edge e in out_edges)
+            // 3. connect  
+            if (nodes_in_oppo_list.Count > 0)
             {
-                // find the nearest node depending on contacts
-                Node cur = null;
-                if (out_nodes.Contains(e._start) && !out_nodes.Contains(e._end))
+                foreach (Edge e in out_edges)
                 {
-                    cur = e._start;
+                    // find the nearest node depending on contacts
+                    Node cur = null;
+                    if (_nodes.Contains(e._start) && !_nodes.Contains(e._end))
+                    {
+                        cur = e._start;
+                    }
+                    else if (!_nodes.Contains(e._start) && _nodes.Contains(e._end))
+                    {
+                        cur = e._end;
+                    }
+                    else
+                    {
+                        throw new Exception();
+                    }
+                    foreach (Contact c in e._contacts)
+                    {
+                        Node closest = getNodeNearestToContact(nodes_in_oppo_list, c);
+                        this.addAnEdge(cur, closest, c._pos3d);
+                    }
                 }
-                else if (!out_nodes.Contains(e._start) && out_nodes.Contains(e._end))
-                {
-                    cur = e._end;
-                } else {
-                    throw new Exception();
-                }
-                foreach (Contact c in e._contacts)
-                {
-                    Node closest = getNodeNearestToContact(_nodes, c, cur);
-                    this.addAnEdge(cur, closest, c._pos3d);
-                }
-            }            
+            }
+            // 4. adjust contacts for new nodes
+            this.resetUpdateStatus();
+            foreach (Node node in newNodes)
+            {
+                adjustContacts(node);
+            }
+            this.resetUpdateStatus();
             _NEdges = _edges.Count;
         }// replaceNodes
 
-        private Node getNodeNearestToContact(List<Node> nodes, Contact c, Node cur)
+        private void adjustContacts(Node node)
+        {
+            double thr = 0.1;
+            foreach (Edge e in node._edges)
+            {
+                if (e._contactUpdated)
+                {
+                    continue;
+                }
+                Node n1 = e._start;
+                Node n2 = e._end;
+                foreach (Contact c in e._contacts)
+                {
+                    Vector3d v = this.getVertextNearToContactMeshes(n1._PART._MESH, n2._PART._MESH, c._pos3d);
+                    c._originPos3d = c._pos3d = v;
+                }
+                // remove overlapping contacts
+                Vector3d cnt;
+                double min_d = this.getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out cnt);
+                for (int i = 0; i < e._contacts.Count - 1; ++i)
+                {
+                    for (int j = i + 1; j < e._contacts.Count; ++j)
+                    {
+                        double d = (e._contacts[i]._pos3d - e._contacts[j]._pos3d).Length();
+                        if (d < thr)
+                        {
+                            // remove either i or j
+                            double di = (e._contacts[i]._pos3d - cnt).Length();
+                            double dj = (e._contacts[j]._pos3d - cnt).Length();
+                            if (di > dj)
+                            {
+                                e._contacts.RemoveAt(i);
+                                --i;
+                                break;
+                            }
+                            else
+                            {
+                                e._contacts.RemoveAt(j);
+                                --j;
+                                continue;
+                            }
+                        }
+                    }
+                }
+                e._contactUpdated = true;
+            }
+        }// adjustContacts
+
+        private Node getNodeNearestToContact(List<Node> nodes, Contact c)
         {
             Node res = null;
             double min_dis = double.MaxValue;
             // calculation based on meshes (would be more accurate if the vertices on the mesh is uniform)
             foreach (Node node in nodes)
             {
-                if (node == cur)
-                {
-                    continue;
-                }
                 Mesh mesh = node._PART._MESH;
                 Vector3d[] vecs = mesh.VertexVectorArray;
                 for (int i = 0; i < vecs.Length; ++i)
@@ -270,7 +337,7 @@ namespace Component
             return res;
         }// getNodeNearestToContact
 
-        private List<Edge> getInnerEdges(List<Node> nodes)
+        public static List<Edge> GetInnerEdges(List<Node> nodes)
         {
             List<Edge> edges = new List<Edge>();
             foreach (Node node in nodes)
@@ -285,7 +352,54 @@ namespace Component
                 }
             }
             return edges;
-        }// getInnerEdges
+        }// GetInnerEdges
+
+        public static List<Edge> GetAllEdges(List<Node> nodes)
+        {
+            List<Edge> edges = new List<Edge>();
+            foreach (Node node in nodes)
+            {
+                foreach (Edge edge in node._edges)
+                {
+                    if (!edges.Contains(edge))
+                    {
+                        edges.Add(edge);
+                    }
+                }
+            }
+            return edges;
+        }// GetInnerEdges
+
+        public static List<Node> GetNodePropagation(List<Node> nodes)
+        {
+            // propagate the nodes to all inner nodes that only connect to the input #nodes#
+            List<Node> inner_nodes = new List<Node>();
+            inner_nodes.AddRange(nodes);
+            foreach (Node node in nodes)
+            {
+                foreach (Node adj in node._adjNodes)
+                {
+                    if (inner_nodes.Contains(adj))
+                    {
+                        continue;
+                    }
+                    bool add = true;
+                    foreach (Node adjadj in adj._adjNodes)
+                    {
+                        if (!nodes.Contains(adjadj))
+                        {
+                            add = false;
+                            break;
+                        }
+                    }
+                    if (add)
+                    {
+                        inner_nodes.Add(adj);
+                    }
+                }
+            }
+            return inner_nodes;
+        }// GetNodePropagation
 
         public Vector3d getGroundTouchingNodesCenter()
         {
@@ -377,6 +491,32 @@ namespace Component
             return mind;
         }// getDistBetweenMeshes
 
+        private Vector3d getVertextNearToContactMeshes(Mesh m1, Mesh m2, Vector3d pos)
+        {
+            Vector3d vertex = pos;
+            double mind12 = double.MaxValue;
+            double mindc = double.MaxValue;
+            double thr = 0.2;
+            Vector3d[] v1 = m1.VertexVectorArray;
+            Vector3d[] v2 = m2.VertexVectorArray;
+            for (int i = 0; i < v1.Length; ++i)
+            {
+                for (int j = 0; j < v2.Length; ++j)
+                {
+                    double d_v1_v2 = (v1[i] - v2[j]).Length();
+                    Vector3d v0 = (v1[i] + v2[j]) / 2;
+                    double dc = (v0 - pos).Length();
+                    if (d_v1_v2 < mind12 && dc < thr)
+                    {
+                        mind12 = d_v1_v2;
+                        mindc = dc;
+                        vertex = v0;
+                    }
+                }
+            }
+            return vertex;
+        }// getVertextNearToContactMeshes
+
         public void addAnEdge(Node n1, Node n2)
         {
             Edge e = isEdgeExist(n1, n2);
@@ -398,7 +538,7 @@ namespace Component
                 e = new Edge(n1, n2, c);
                 addEdge(e);
             }
-            else
+            else if (e._contacts.Count < Common._max_edge_contacts)
             {
                 e._contacts.Add(new Contact(c));
             }
@@ -699,7 +839,7 @@ namespace Component
             return symPairs;
         }// getSymmetryPairs
 
-        public bool isGeometryViolated()
+        public bool isViolateOrigin()
         {
             // geometry filter
             double[] vals = calScale();
@@ -711,8 +851,24 @@ namespace Component
             {
                 return true;
             }
+            foreach (Node node in _nodes)
+            {
+                if (node._PART._BOUNDINGBOX.MinCoord.y < -Common._thresh)
+                {
+                    return true;
+                }
+            }
+            List<Common.Functionality> funs = this.getGraphFuncs();
+            foreach (Common.Functionality f in _origin_funcs)
+            {
+                if (!funs.Contains(f))
+                {
+                    return true;
+                }
+            }
+
             return false;
-        }// isGeometryViolated
+        }// isViolateOrigin
 
         private void resetNodeIndex()
         {
@@ -739,6 +895,38 @@ namespace Component
                 }
             }
         }// resetEdgeContactStatus
+
+        public void unify()
+        {
+            Vector3d maxCoord = Vector3d.MinCoord;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            foreach (Node node in _nodes)
+            {
+                maxCoord = Vector3d.Max(maxCoord, node._PART._MESH.MaxCoord);
+                minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
+            }
+            Vector3d scale = maxCoord - minCoord;
+            double maxS = scale.x > scale.y ? scale.x : scale.y;
+            maxS = maxS > scale.z ? maxS : scale.z;
+            maxS = 1.0 / maxS;
+            Vector3d center = (maxCoord + minCoord) / 2;
+            center = new Vector3d() - center;
+            Matrix4d T = Matrix4d.TranslationMatrix(center);
+            Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
+            Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            foreach (Node node in _nodes)
+            {
+                node.Transform(Q);
+            }
+            foreach (Edge edge in _edges)
+            {
+                if (!edge._contactUpdated)
+                {
+                    edge.TransformContact(Q);
+                }
+            }
+            resetUpdateStatus();
+        }// unify
 
         public List<Node> _NODES
         {
@@ -942,7 +1130,6 @@ namespace Component
             foreach (Contact p in _contacts)
             {
                 p.TransformFromOrigin(T);
-                //p.updateOrigin();
             }            
             _contactUpdated = true;
         }
