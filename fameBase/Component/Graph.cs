@@ -914,19 +914,37 @@ namespace Component
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
             Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            this.transformAll(T);
+            // y == 0
+            minCoord = Vector3d.MaxCoord;
             foreach (Node node in _nodes)
             {
-                node.Transform(Q);
+                minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
+            }
+            if (Math.Abs(minCoord.y) > Common._thresh)
+            {
+                Vector3d t = new Vector3d();
+                t.y = -minCoord.y;
+                T = Matrix4d.TranslationMatrix(t);
+                this.transformAll(T);
+            }
+        }// unify
+
+        private void transformAll(Matrix4d T)
+        {
+            foreach (Node node in _nodes)
+            {
+                node.Transform(T);
             }
             foreach (Edge edge in _edges)
             {
                 if (!edge._contactUpdated)
                 {
-                    edge.TransformContact(Q);
+                    edge.TransformContact(T);
                 }
             }
             resetUpdateStatus();
-        }// unify
+        }// transformAll
 
         public List<Node> _NODES
         {

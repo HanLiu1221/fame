@@ -815,7 +815,7 @@ namespace FameBase
             }
             else
             {
-                LoadAGraph(_currModel, graphName);
+                LoadAGraph(_currModel, graphName, true);
             }
             this.setUIMode(0);
             this.Refresh();
@@ -871,7 +871,7 @@ namespace FameBase
                 {
                     _models.Add(m);
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
-                    LoadAGraph(m, graphName);
+                    LoadAGraph(m, graphName, false);
                     hasInValidContact(m._GRAPH);
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this);
                     _modelViewers.Add(modelViewer);
@@ -1001,7 +1001,7 @@ namespace FameBase
             }
         }// loadReplaceablePair
 
-        public void LoadAGraph(Model m, string filename)
+        public void LoadAGraph(Model m, string filename, bool unify)
         {
             if (m == null || !File.Exists(filename))
             {
@@ -1093,7 +1093,10 @@ namespace FameBase
                         g.addAnEdge(g._NODES[j], g._NODES[k]);
                     }
                 }
-                g.unify();
+                if (unify)
+                {
+                    g.unify();
+                }
                 g.analyzeOriginFeatures();
                 m.setGraph(g);
             }
@@ -1545,28 +1548,32 @@ namespace FameBase
             _currIter = 0;
             Random rand = new Random();
             List<Model> generation = _models;
-            List<Model> cur = new List<Model>();
+            List<Model> cur = generation;
+            int start = 0;
             while (_currIter < maxIter)
             {
                 // mutate or crossover ?
                 _mutateOrCross = runMutateOrCrossover(rand);
-                //cur = generation;
-                cur.AddRange(generation);
                 if (_mutateOrCross)
                 {
                     // mutate
-                    generation = runMutate(cur, _currIter, imageFolder_m);
+                    generation = runMutate(cur, _currIter, imageFolder_m, start);
                 }
                 else
                 {
-                    generation = runCrossover(cur, _currIter, rand, imageFolder_c);
+                    generation = runCrossover(cur, _currIter, rand, imageFolder_c, start);
                 }
                 ++_currIter;
+                // only include the models from current generation
+                //cur = generation;
+                // including all models
+                cur.AddRange(generation);
+                start += generation.Count;
             }// while
             return _resViewers;
         }// autoGenerate
 
-        private List<Model> runMutate(List<Model> models, int gen, string imageFolder)
+        private List<Model> runMutate(List<Model> models, int gen, string imageFolder, int start)
         {
             List<Model> mutated = new List<Model>();
             if (models.Count == 0)
@@ -1579,7 +1586,7 @@ namespace FameBase
             {
                 Directory.CreateDirectory(path);
             }
-            for (int i = 0; i < models.Count; ++i)
+            for (int i = start; i < models.Count; ++i)
             {
                 // select a node
                 Model iModel = models[i];
@@ -1643,7 +1650,7 @@ namespace FameBase
             deformSymmetryNode(node);
         }// mutateANode
 
-        private List<Model> runCrossover(List<Model> models, int gen, Random rand, string imageFolder)
+        private List<Model> runCrossover(List<Model> models, int gen, Random rand, string imageFolder, int start)
         {
             List<Model> crossed = new List<Model>();
             if (models.Count < 2)
@@ -1655,7 +1662,9 @@ namespace FameBase
             for (int i = 0; i < models.Count - 1; ++i)
             {
                 Model m1 = models[i];
-                for (int j = i + 1; j < models.Count; ++j)
+                // jump those have already been visited
+                int j = Math.Max(i + 1, start + 1);
+                for (; j < models.Count; ++j)
                 {
                     Model m2 = models[j];
                     // select functionality, one or more
@@ -2685,21 +2694,34 @@ namespace FameBase
                     //Vector3d normal = new Vector3d(plane, 0);
                     //normal = normal.normalize();
 
-                    // 4 permutations, 012, 123, 023, 013
-                    Vector3d aa = tarpts[0];
-                    Vector3d bb = tarpts[1];
-                    Vector3d cc = tarpts[2];
-                    Vector3d dd = tarpts[3];
-                    //Vector3d aa = tarpts[0];
-                    //Vector3d bb = tarpts[1];
-                    //Vector3d cc = tarpts[tarpts.Count - 2];
-                    //Vector3d dd = tarpts[tarpts.Count - 1];
+                    // permutations
+                    Vector3d[] vecs = new Vector3d[4];
+                    vecs[0] = tarpts[0];
+                    vecs[1] = tarpts[1];
+                    vecs[2] = tarpts[2];
+                    vecs[3] = tarpts[3];
                     Vector3d[] nn = new Vector3d[4] {
-                        ((aa - bb).Cross(bb - cc)).normalize(),
-                        ((bb - cc).Cross(cc - dd)).normalize(),
-                        ((aa - cc).Cross(cc - dd)).normalize(),
-                        ((aa - bb).Cross(bb - dd)).normalize()
+                        ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[2])).normalize(),
+                        ((vecs[1] - vecs[2]).Cross(vecs[2] - vecs[3])).normalize(),
+                        ((vecs[0] - vecs[2]).Cross(vecs[2] - vecs[3])).normalize(),
+                        ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[3])).normalize()
                     };
+                    Random rand = new Random();
+                    int npnts = tarpts.Count;
+                    while (this.hasInvalidVec(nn))
+                    {
+                        for (int i = 0; i < 4; ++i)
+                        {
+                            vecs[i] = tarpts[rand.Next(npnts)];
+                        }
+                        nn = new Vector3d[4] {
+                        ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[2])).normalize(),
+                        ((vecs[1] - vecs[2]).Cross(vecs[2] - vecs[3])).normalize(),
+                        ((vecs[0] - vecs[2]).Cross(vecs[2] - vecs[3])).normalize(),
+                        ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[3])).normalize()
+                        };
+                    }
+                    
                     Vector3d nor = new Vector3d();
                     for (int i = 0; i < 4; ++i)
                     {
@@ -2725,7 +2747,7 @@ namespace FameBase
                     }
                     normal = normal.normalize();
 
-                    if (double.IsNaN(normal.x)) throw new Exception();
+                    if (Common.isValidNumber(normal.x) && Common.isValidNumber(normal.y) && Common.isValidNumber(normal.z))
                     {
                         if (Math.Abs(normal.x) > 0.5)
                         {
@@ -2736,7 +2758,9 @@ namespace FameBase
                             sy = 1.0;
                         }
                         else if (Math.Abs(normal.z) > 0.5)
+                        {
                             sz = 1.0;
+                        }
                     }
                 }
 
@@ -2758,6 +2782,18 @@ namespace FameBase
                 }
             }
         }// getTransformation
+
+        private bool hasInvalidVec(Vector3d[] vecs)
+        {
+            foreach (Vector3d v in vecs)
+            {
+                if (v.isValidVector())
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// hasInvalidVec
 
         /*****************end - Functionality-aware evolution*************************/
         
