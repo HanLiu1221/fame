@@ -1505,6 +1505,56 @@ namespace FameBase
             }
         }// switchParts
 
+        public void collectSnapshotsFromFolder(string folder)
+        {
+            string snapshot_folder = folder + "\\snapshots";
+
+            this.readModelModelViewMatrix(folder + "\\view.mat");
+
+            this.isDrawBbox = false;
+            this.isDrawGraph = false;
+            this.isDrawGround = true;
+            Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
+            Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
+            Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
+
+            // for capturing screen
+            this.reloadView();
+
+            dfs_files(folder, snapshot_folder);            
+        }// collectSnapshotsFromFolder
+
+        private void dfs_files(string folder, string snap_folder) 
+        {
+            string[] files = Directory.GetFiles(folder);
+            foreach (string file in files)
+            {
+                if (!file.EndsWith("pam"))
+                {
+                    continue;
+                }
+                Model m = loadOnePartBasedModel(file);
+                if (m != null)
+                {
+                    string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
+                    LoadAGraph(m, graphName, false);
+                    this.setCurrentModel(m, -1);
+                    Program.GetFormMain().updateStats();
+                    this.captureScreen(snap_folder + "\\" + m._model_name + ".png");
+                }
+            }
+            string[] folders = Directory.GetDirectories(folder);
+            if (folders.Length == 0)
+            {
+                return;
+            }
+            foreach (string subfolder in folders)
+            {
+                string foldername = subfolder.Substring(subfolder.LastIndexOf('\\'));
+                dfs_files(subfolder, snap_folder + foldername);
+            }
+        }// dfs_files
+
         List<List<Model>> _mutateGenerations = new List<List<Model>>();
         List<List<Model>> _crossoverGenerations = new List<List<Model>>();
 

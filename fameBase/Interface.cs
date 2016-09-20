@@ -637,7 +637,14 @@ namespace FameBase
             this.glViewer.markFunctionPart(0);
         }
 
-
-
+        private void autoSnapshotsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\chair_shelf_table\res_1" };
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                string folderName = dialog.SelectedPath;
+                this.glViewer.collectSnapshotsFromFolder(folderName);
+            }
+        }
 	}// Interface
 }// namespace
