@@ -196,8 +196,8 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\chair_shelf_table" };
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\mix" }; 
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\mix" };
+            //var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\mix" }; 
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -630,6 +630,11 @@ namespace FameBase
         private void handplaceToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.markFunctionPart(4);
+        }
+
+        private void supportToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(5);
         }
 
         private void groundtouchingToolStripMenuItem_Click(object sender, EventArgs e)

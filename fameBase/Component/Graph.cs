@@ -418,6 +418,20 @@ namespace Component
             return center;
         }// getGroundTouchingNode
 
+        public List<Node> selectSymmetryFuncNodes( Common.Functionality func)
+        {
+            List<Node> sym_nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (node.symmetry != null && node._funcs.Contains(func) && !sym_nodes.Contains(node) && !sym_nodes.Contains(node.symmetry))
+                {
+                    sym_nodes.Add(node);
+                    sym_nodes.Add(node.symmetry);
+                }
+            }
+            return sym_nodes;
+        }// selectSymmetryFuncNodes
+
         private void updateNodeIndex()
         {
             int idx = 0;
@@ -914,7 +928,7 @@ namespace Component
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
             Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
-            this.transformAll(T);
+            this.transformAll(Q);
             // y == 0
             minCoord = Vector3d.MaxCoord;
             foreach (Node node in _nodes)

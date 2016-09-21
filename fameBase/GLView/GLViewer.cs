@@ -1493,6 +1493,8 @@ namespace FameBase
                     return Common.Functionality.HAND_HOLD;
                 case 4:
                     return Common.Functionality.HAND_PLACE;
+                case 5:
+                    return Common.Functionality.SUPPORT;
                 case 0:
                 default:
                     return Common.Functionality.GROUND_TOUCHING;
@@ -1736,7 +1738,6 @@ namespace FameBase
             {
                 return crossed;
             }
-            int max_func_find = 6;
             int m_idx = 0;
             for (int i = 0; i < models.Count - 1; ++i)
             {
@@ -1746,36 +1747,11 @@ namespace FameBase
                 for (; j < models.Count; ++j)
                 {
                     Model m2 = models[j];
-                    // select functionality, one or more
-                    List<Common.Functionality> funcs = new List<Common.Functionality>(); 
-                    List<Node> nodes1 = new List<Node>();
-                    List<Node> nodes2 = new List<Node>();
-                    int find = 0;
-                    m1._GRAPH.selectedNodes.Clear();
-                    m2._GRAPH.selectedNodes.Clear();
-                    while (find < max_func_find && !this.isValidSelection(m1._GRAPH, m2._GRAPH))
-                    {
-                        // only switch 1 functionality at one time
-                        funcs = this.selectFunctionality(rand, 1);
-                        nodes1 = m1._GRAPH.getNodesByFunctionality(funcs);
-                        nodes2 = m2._GRAPH.getNodesByFunctionality(funcs);
-                        m1._GRAPH.selectedNodes = nodes1;
-                        m2._GRAPH.selectedNodes = nodes2;
-                        ++find;
-                    }
-                    if (!this.isValidSelection(m1._GRAPH, m2._GRAPH))
+                    // select parts for crossover
+                    bool isValid = this.selectNodesForCrossover(m1._GRAPH, m2._GRAPH, rand);
+                    if (!isValid)
                     {
                         continue;
-                    }
-                    // select partially or all ?
-                    int num = rand.Next(3);
-                    m1._GRAPH.selectedNodes = selectSubsetNodes(nodes1, num);
-                    m2._GRAPH.selectedNodes = selectSubsetNodes(nodes2, num);
-                    // extreme cases
-                    if (!this.isValidSelection(m1._GRAPH, m2._GRAPH))
-                    {
-                        m1._GRAPH.selectedNodes = nodes1;
-                        m2._GRAPH.selectedNodes = nodes2;
                     }
                     List<Model> results = this.crossOverOp(m1, m2, gen, m_idx);
                     m_idx += 2;
@@ -1796,6 +1772,73 @@ namespace FameBase
             }
             return crossed;
         }// runCrossover
+
+        private bool selectNodesForCrossover(Graph g1, Graph g2, Random rand)
+        {
+            // select functionality, one or more
+            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            int max_func_search = 6;
+            int search = 0;
+            g1.selectedNodes.Clear();
+            g2.selectedNodes.Clear();
+            int option = rand.Next(5);
+            if (option == 0)
+            {
+                // select functionality
+                while (search < max_func_search && !this.isValidSelection(g1, g2))
+                {
+                    // only switch 1 functionality at one time
+                    funcs = this.selectFunctionality(rand, 1);
+                    g1.selectedNodes = g1.getNodesByFunctionality(funcs);
+                    g2.selectedNodes = g2.getNodesByFunctionality(funcs);
+                    ++search;
+                }
+            }
+            bool isValid = this.isValidSelection(g1, g2);
+            if (option > 0 || !isValid)
+            {
+                g1.selectedNodes.Clear();
+                g2.selectedNodes.Clear();
+                // symmetry
+                List<int> visitedFuncs = new List<int>();
+                int nDiffFuncs = Enum.GetNames(typeof(Common.Functionality)).Length;
+                while (!this.isValidSelection(g1, g2) && visitedFuncs.Count < nDiffFuncs)
+                {
+                    int nf = rand.Next(nDiffFuncs);
+                    while (visitedFuncs.Contains(nf))
+                    {
+                        nf = rand.Next(nDiffFuncs);
+                    }
+                    visitedFuncs.Add(nf);
+                    Common.Functionality func = this.getFunctionalityFromIndex(nf);
+                    g1.selectedNodes = g1.selectSymmetryFuncNodes(func);
+                    g2.selectedNodes = g2.selectSymmetryFuncNodes(func);
+                }
+                if (option > 1)
+                {
+                    // break symmetry
+                    List<Node> nodes1 = new List<Node>();
+                    List<Node> nodes2 = new List<Node>();
+                    foreach (Node node in g1.selectedNodes)
+                    {
+                        if (!nodes1.Contains(node) && !nodes1.Contains(node.symmetry))
+                        {
+                            nodes1.Add(node);
+                        }
+                    }
+                    foreach (Node node in g2.selectedNodes)
+                    {
+                        if (!nodes2.Contains(node) && !nodes2.Contains(node.symmetry))
+                        {
+                            nodes2.Add(node);
+                        }
+                    }
+                    g1.selectedNodes = nodes1;
+                    g2.selectedNodes = nodes2;
+                }
+            }
+            return this.isValidSelection(g1, g2);
+        }//selectNodesForCrossover
 
         private bool isValidSelection(Graph g1, Graph g2)
         {
@@ -2182,7 +2225,7 @@ namespace FameBase
                     selected.Add(node.symmetry);
                 }
             }
-            if (n == 0)
+            if (n < 2)
             {
                 // take symmetry
                 int nsym = sym_nodes.Count / 2;
@@ -2202,7 +2245,7 @@ namespace FameBase
                     selected.Add(sym_nodes[j * 2 + 1]);
                 }
             }
-            else if (n == 1)
+            else if (n < 4)
             {
                 //// node propagation --- all inner nodes that only connect to the #nodes#
                 //selected = Graph.GetNodePropagation(nodes);
@@ -3305,29 +3348,35 @@ namespace FameBase
                 case UIMode.Scale:
                 case UIMode.Rotate:
                     {
-                        if (this.isMouseDown)
+                        if (_currModel != null)
                         {
-                            this.transformSelections(this.currMousePos);
+                            if (this.isMouseDown)
+                            {
+                                this.transformSelections(this.currMousePos);
+                            }
+                            else
+                            {
+                                this.selectAxisWhileMouseMoving(this.currMousePos);
+                            }
+                            this.Refresh();
                         }
-                        else
-                        {
-                            this.selectAxisWhileMouseMoving(this.currMousePos);
-                        }
-                        this.Refresh();
                     }
                     break;
                 case UIMode.Contact:
                     {
-                        if (this.isMouseDown)
+                        if (_currModel != null && _currModel._GRAPH != null)
                         {
-                            this.moveContactPoint(this.currMousePos);
+                            if (this.isMouseDown)
+                            {
+                                this.moveContactPoint(this.currMousePos);
+                            }
+                            else
+                            {
+                                this.selectContactPoint(currMousePos);
+                                this.selectAxisWhileMouseMoving(this.currMousePos);
+                            }
+                            this.Refresh();
                         }
-                        else
-                        {
-                            this.selectContactPoint(currMousePos);
-                            this.selectAxisWhileMouseMoving(this.currMousePos);
-                        }
-                        this.Refresh();
                     }
                     break;
                 case UIMode.Viewing:
