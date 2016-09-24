@@ -443,6 +443,7 @@ namespace Component
 
         public void markGroundTouchingNodes()
         {
+            return;
             foreach (Node node in _nodes)
             {
                 double ydist = node._PART._MESH.MinCoord.y;
@@ -857,7 +858,7 @@ namespace Component
         {
             // geometry filter
             double[] vals = calScale();
-            double max_adj_nodes_dist = 0.3;
+            double max_adj_nodes_dist = 0.2;
             double min_box_scale = 0.01;
             double max_box_scale = 2.0;
             // max scale is not reliable, since a large node may replace many small nodes

@@ -1625,7 +1625,7 @@ namespace FameBase
             {
                 Directory.CreateDirectory(imageFolder_c);
             }
-            int maxIter = 5;
+            int maxIter = 10;
             _currIter = 0;
             Random rand = new Random();
             List<Model> generation = _models;
@@ -2105,11 +2105,19 @@ namespace FameBase
             g2.resetUpdateStatus();
         }// switchOneNode
 
-        private void deformNodesAndEdges(List<Node> nodes, Matrix4d T)
+        private void deformNodesAndEdges(List<Node> nodes, Matrix4d Q, Matrix4d S, Matrix4d T)
         {
             foreach (Node node in nodes)
             {
-                node.Transform(T);
+                if (node._PART._BOUNDINGBOX.type == Common.PrimType.Cylinder)
+                {
+                    Matrix4d QQ = updateTransfromMatrixForCylinderNode(node, T, S, Q);
+                    node.Transform(QQ);
+                }
+                else
+                {
+                    node.Transform(Q);
+                }
             }
             List<Edge> inner_edges = Graph.GetAllEdges(nodes);
             foreach (Edge e in inner_edges)
@@ -2118,7 +2126,24 @@ namespace FameBase
                 {
                     continue;
                 }
-                e.TransformContact(T);
+                e.TransformContact(Q);
+            }
+        }// deformNodesAndEdges
+
+        private void deformNodesAndEdges(List<Node> nodes, Matrix4d Q)
+        {
+            foreach (Node node in nodes)
+            {
+                node.Transform(Q);
+            }
+            List<Edge> inner_edges = Graph.GetAllEdges(nodes);
+            foreach (Edge e in inner_edges)
+            {
+                if (e._contactUpdated)
+                {
+                    continue;
+                }
+                e.TransformContact(Q);
             }
         }// deformNodesAndEdges
 
@@ -2569,6 +2594,9 @@ namespace FameBase
             }
             Matrix4d T, S, Q;
             getTransformation(sources, targets, out S, out T, out Q, null, false);
+
+            Q = updateTransfromMatrixForCylinderNode(node, T, S, Q);
+
             node.Transform(Q);
             node.updated = true;
             foreach (Edge e in node._edges)
@@ -2580,6 +2608,22 @@ namespace FameBase
                 e.TransformContact(Q);
             }
         }// deformNode
+
+        private Matrix4d updateTransfromMatrixForCylinderNode(Node node, Matrix4d T, Matrix4d S, Matrix4d Q)
+        {
+            if (node._PART._BOUNDINGBOX.type == Common.PrimType.Cuboid) {
+                return Q;
+            }
+            Vector3d scale_vec = new Vector3d(1, 1, 1);
+            double scale = (S[0, 0] + S[1, 1] + S[2, 2]) / 3;
+            if (node._PART._BOUNDINGBOX.type == Common.PrimType.Cylinder)
+            {
+                Vector3d rot_axis = node._PART._BOUNDINGBOX.rot_axis;
+                scale_vec = scale * rot_axis;
+            }
+            Matrix4d SS = Matrix4d.ScalingMatrix(scale_vec);
+            return T * SS;
+        }// updateTransfromMatrixForCylinderNode
 
         public List<ModelViewer> crossOver()
         {
