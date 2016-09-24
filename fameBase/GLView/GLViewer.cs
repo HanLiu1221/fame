@@ -190,6 +190,7 @@ namespace FameBase
         private List<int> boxShowSequence = new List<int>();
 
         public bool zoonIn = false;
+        private int nMesh = 0;
 
         //########## sketch vars ##########//
         private List<Vector2d> currSketchPoints = new List<Vector2d>();
@@ -900,7 +901,9 @@ namespace FameBase
             string expert_lable_folder = foldername + "\\expert_verified\\points_label\\";
             string[] points_files = Directory.GetFiles(points_folder);
             int idx = 0;
+            int max_idx = 20;
             string points_name = foldername.Substring(foldername.LastIndexOf('\\') + 1);
+            this.meshClasses = new List<MeshClass>();
             foreach (String file in points_files)
             {
                 if (!file.EndsWith(".pts"))
@@ -908,8 +911,9 @@ namespace FameBase
                     continue;
                 }
                 // find if there is a .seg file (labeling)
-                string seg_file = file.Substring(file.LastIndexOf('\\') + 1);
-                seg_file = seg_file.Substring(0, seg_file.LastIndexOf('.')) + ".seg";
+                string mesh_name = file.Substring(file.LastIndexOf('\\') + 1);
+                mesh_name = mesh_name.Substring(0, mesh_name.LastIndexOf('.'));
+                string seg_file = mesh_name + ".seg";
                 seg_file = expert_lable_folder + seg_file;
                 if (!File.Exists(seg_file))
                 {
@@ -919,8 +923,12 @@ namespace FameBase
                 if (m != null)
                 {
                     this.currMeshClass = new MeshClass(m);
-                    this.meshClasses = new List<MeshClass>();
+                    this.currMeshClass._MESHNAME = mesh_name;
                     this.meshClasses.Add(this.currMeshClass);
+                    ++idx;
+                }
+                if (idx > max_idx)
+                {
                     break;
                 }
             }
@@ -971,6 +979,22 @@ namespace FameBase
                 return m;
             }
         }// loadPointCloud
+
+        public string nextMeshClass()
+        {
+            this.nMesh = (this.nMesh + 1) % this.meshClasses.Count;
+            this.currMeshClass = this.meshClasses[this.nMesh];
+            this.Refresh();
+            return this.currMeshClass._MESHNAME;
+        }
+
+        public string prevMeshClass()
+        {
+            this.nMesh = (this.nMesh - 1 + this.meshClasses.Count) % this.meshClasses.Count;
+            this.currMeshClass = this.meshClasses[this.nMesh];
+            this.Refresh();
+            return this.currMeshClass._MESHNAME;
+        }
 
         public void refit_by_cylinder()
         {
@@ -4382,7 +4406,7 @@ namespace FameBase
                 }
             }            
 
-            this.drawAllMeshes();
+            this.drawCurrentMesh();
 
             this.drawHumanPose();
 
@@ -4424,36 +4448,36 @@ namespace FameBase
             }
         }// drawGraph
 
-        private void drawAllMeshes()
+        private void drawCurrentMesh()
         {
             if (this.meshClasses == null || _currModel != null)
             {
                 return;
             }
-            foreach (MeshClass meshclass in this.meshClasses)
+            if(this.currMeshClass != null)
             {
                 if (this.drawFace)
                 {
-                    GLDrawer.drawMeshFace(meshclass.Mesh, GLDrawer.MeshColor, false);
+                    GLDrawer.drawMeshFace(currMeshClass.Mesh, GLDrawer.MeshColor, false);
                 }
                 if (this.drawEdge)
                 {
-                    meshclass.renderWireFrame();
+                    currMeshClass.renderWireFrame();
                 }
                 if (this.drawVertex)
                 {
-                    if (meshclass.Mesh.VertexColor != null && meshclass.Mesh.VertexColor.Length > 0)
+                    if (currMeshClass.Mesh.VertexColor != null && currMeshClass.Mesh.VertexColor.Length > 0)
                     {
-                        meshclass.renderVertices_color();
+                        currMeshClass.renderVertices_color();
                     }
                     else
                     {
-                        meshclass.renderVertices();
+                        currMeshClass.renderVertices();
                     }
                 }
-                meshclass.drawSelectedVertex();
-                meshclass.drawSelectedEdges();
-                meshclass.drawSelectedFaces();
+                currMeshClass.drawSelectedVertex();
+                currMeshClass.drawSelectedEdges();
+                currMeshClass.drawSelectedFaces();
             }
         }
 

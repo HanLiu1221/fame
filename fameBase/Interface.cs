@@ -671,5 +671,15 @@ namespace FameBase
                 this.glViewer.loadAShapeNetModel(folderName);
             }
         }
+
+        private void next_mesh_Click(object sender, EventArgs e)
+        {
+            this.mesh_name.Text = this.glViewer.nextMeshClass();
+        }
+
+        private void prev_mesh_Click(object sender, EventArgs e)
+        {
+            this.mesh_name.Text = this.glViewer.prevMeshClass();
+        }
 	}// Interface
 }// namespace

@@ -50,6 +50,7 @@ namespace FameBase
         private List<int> selectedEdges = new List<int>();
         private List<int> selectedFaces = new List<int>();
         private bool unSelect = false;
+        private string meshName = "";
 
         static private void ArrayConvCtoSB(ref sbyte[] to_sbyte, char[] from_char)
         {
@@ -327,6 +328,18 @@ namespace FameBase
                 }
             }
         }//selectMeshFaces
+
+        public string _MESHNAME
+        {
+            get
+            {
+                return this.meshName;
+            }
+            set
+            {
+                this.meshName = value;
+            }
+        }
 
         /******************** Render ********************/
         public void renderShaded()
