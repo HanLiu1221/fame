@@ -889,6 +889,89 @@ namespace FameBase
             return _modelViewers;
         }// loadPartBasedModels
 
+        public void loadAShapeNetModel(string foldername)
+        {
+            if (!Directory.Exists(foldername))
+            {
+                return;
+            }
+            // load points
+            string points_folder = foldername + "\\points";
+            string expert_lable_folder = foldername + "\\expert_verified\\points_label\\";
+            string[] points_files = Directory.GetFiles(points_folder);
+            int idx = 0;
+            string points_name = foldername.Substring(foldername.LastIndexOf('\\') + 1);
+            foreach (String file in points_files)
+            {
+                if (!file.EndsWith(".pts"))
+                {
+                    continue;
+                }
+                // find if there is a .seg file (labeling)
+                string seg_file = file.Substring(file.LastIndexOf('\\') + 1);
+                seg_file = seg_file.Substring(0, seg_file.LastIndexOf('.')) + ".seg";
+                seg_file = expert_lable_folder + seg_file;
+                if (!File.Exists(seg_file))
+                {
+                    continue;
+                }
+                Mesh m = loadPointCloud(file, seg_file);
+                if (m != null)
+                {
+                    this.currMeshClass = new MeshClass(m);
+                    this.meshClasses = new List<MeshClass>();
+                    this.meshClasses.Add(this.currMeshClass);
+                    break;
+                }
+            }
+            // only points
+            this.setRenderOption(1);
+        }// loadAShapeNetModel
+
+        private Mesh loadPointCloud(string points_file, string seg_file)
+        {
+            if (!File.Exists(points_file) || !File.Exists(seg_file))
+            {
+                return null;
+            }
+            char[] separator = { ' ', '\t' };
+            List<double> vertices = new List<double>();
+            List<byte> colors = new List<byte>();
+            using (StreamReader sr = new StreamReader(points_file))
+            {
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separator);
+                    if (strs.Length >= 3)
+                    {
+                        for (int i = 0; i < 3; ++i)
+                        {
+                            vertices.Add(double.Parse(strs[i]));
+                        }
+                    }
+                }
+            }
+            using (StreamReader sr = new StreamReader(seg_file))
+            {
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separator);
+                    if (strs.Length > 0)
+                    {
+                        int label = int.Parse(strs[0]);
+                        Color c = GLDrawer.ColorSet[label];
+                        colors.Add(c.R);
+                        colors.Add(c.G);
+                        colors.Add(c.B);
+                    }
+                }
+                Mesh m = new Mesh(vertices.ToArray(), colors.ToArray());
+                return m;
+            }
+        }// loadPointCloud
+
         public void refit_by_cylinder()
         {
             if (_selectedParts.Count == 0)
@@ -4359,7 +4442,14 @@ namespace FameBase
                 }
                 if (this.drawVertex)
                 {
-                    meshclass.renderVertices();
+                    if (meshclass.Mesh.VertexColor != null && meshclass.Mesh.VertexColor.Length > 0)
+                    {
+                        meshclass.renderVertices_color();
+                    }
+                    else
+                    {
+                        meshclass.renderVertices();
+                    }
                 }
                 meshclass.drawSelectedVertex();
                 meshclass.drawSelectedEdges();
