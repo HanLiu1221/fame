@@ -50,6 +50,7 @@ namespace FameBase
         private List<int> selectedEdges = new List<int>();
         private List<int> selectedFaces = new List<int>();
         private bool unSelect = false;
+        private string meshName = "";
 
         static private void ArrayConvCtoSB(ref sbyte[] to_sbyte, char[] from_char)
         {
@@ -328,6 +329,18 @@ namespace FameBase
             }
         }//selectMeshFaces
 
+        public string _MESHNAME
+        {
+            get
+            {
+                return this.meshName;
+            }
+            set
+            {
+                this.meshName = value;
+            }
+        }
+
         /******************** Render ********************/
         public void renderShaded()
         {
@@ -399,6 +412,21 @@ namespace FameBase
             Gl.glBegin(Gl.GL_POINTS);
             for (int i = 0; i < this.mesh.VertexCount; ++i)
             {
+                Gl.glVertex3d(this.mesh.VertexPos[i * 3], this.mesh.VertexPos[i * 3 + 1], this.mesh.VertexPos[i * 3 + 2]);
+            }
+            Gl.glEnd();
+            Gl.glDisable(Gl.GL_POINT_SMOOTH);
+            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        }
+
+        public void renderVertices_color()
+        {
+            Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            Gl.glPointSize(2.0f);
+            Gl.glBegin(Gl.GL_POINTS);
+            for (int i = 0; i < this.mesh.VertexCount; ++i)
+            {
+                Gl.glColor3ub(this.mesh.VertexColor[i * 3], this.mesh.VertexColor[i * 3 + 1], this.mesh.VertexColor[i * 3 + 2]);
                 Gl.glVertex3d(this.mesh.VertexPos[i * 3], this.mesh.VertexPos[i * 3 + 1], this.mesh.VertexPos[i * 3 + 2]);
             }
             Gl.glEnd();

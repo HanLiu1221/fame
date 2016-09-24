@@ -140,6 +140,14 @@ namespace Geometry
             this.collectMeshInfo();
         }
 
+        public Mesh(double[] vPos, byte[] color)
+        {
+            // point clound
+            this.vertexCount = vPos.Length / 3;
+            this.vertexPos = vPos;
+            this.vertexColor = color;
+        }
+
 		public Mesh(string meshFileName, bool normalize)
 		{
 			if(!File.Exists(meshFileName))
@@ -931,6 +939,14 @@ namespace Geometry
             get
             {
                 return this.faceColor;
+            }
+        }
+
+        public byte[] VertexColor
+        {
+            get
+            {
+                return this.vertexColor;
             }
         }
 

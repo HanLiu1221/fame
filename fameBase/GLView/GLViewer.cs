@@ -190,6 +190,7 @@ namespace FameBase
         private List<int> boxShowSequence = new List<int>();
 
         public bool zoonIn = false;
+        private int nMesh = 0;
 
         //########## sketch vars ##########//
         private List<Vector2d> currSketchPoints = new List<Vector2d>();
@@ -888,6 +889,112 @@ namespace FameBase
             this.setUIMode(0);
             return _modelViewers;
         }// loadPartBasedModels
+
+        public void loadAShapeNetModel(string foldername)
+        {
+            if (!Directory.Exists(foldername))
+            {
+                return;
+            }
+            // load points
+            string points_folder = foldername + "\\points";
+            string expert_lable_folder = foldername + "\\expert_verified\\points_label\\";
+            string[] points_files = Directory.GetFiles(points_folder);
+            int idx = 0;
+            int max_idx = 20;
+            string points_name = foldername.Substring(foldername.LastIndexOf('\\') + 1);
+            this.meshClasses = new List<MeshClass>();
+            foreach (String file in points_files)
+            {
+                if (!file.EndsWith(".pts"))
+                {
+                    continue;
+                }
+                // find if there is a .seg file (labeling)
+                string mesh_name = file.Substring(file.LastIndexOf('\\') + 1);
+                mesh_name = mesh_name.Substring(0, mesh_name.LastIndexOf('.'));
+                string seg_file = mesh_name + ".seg";
+                seg_file = expert_lable_folder + seg_file;
+                if (!File.Exists(seg_file))
+                {
+                    continue;
+                }
+                Mesh m = loadPointCloud(file, seg_file);
+                if (m != null)
+                {
+                    this.currMeshClass = new MeshClass(m);
+                    this.currMeshClass._MESHNAME = mesh_name;
+                    this.meshClasses.Add(this.currMeshClass);
+                    ++idx;
+                }
+                if (idx > max_idx)
+                {
+                    break;
+                }
+            }
+            // only points
+            this.setRenderOption(1);
+        }// loadAShapeNetModel
+
+        private Mesh loadPointCloud(string points_file, string seg_file)
+        {
+            if (!File.Exists(points_file) || !File.Exists(seg_file))
+            {
+                return null;
+            }
+            char[] separator = { ' ', '\t' };
+            List<double> vertices = new List<double>();
+            List<byte> colors = new List<byte>();
+            using (StreamReader sr = new StreamReader(points_file))
+            {
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separator);
+                    if (strs.Length >= 3)
+                    {
+                        for (int i = 0; i < 3; ++i)
+                        {
+                            vertices.Add(double.Parse(strs[i]));
+                        }
+                    }
+                }
+            }
+            using (StreamReader sr = new StreamReader(seg_file))
+            {
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separator);
+                    if (strs.Length > 0)
+                    {
+                        int label = int.Parse(strs[0]);
+                        Color c = GLDrawer.ColorSet[label];
+                        colors.Add(c.R);
+                        colors.Add(c.G);
+                        colors.Add(c.B);
+                    }
+                }
+                Mesh m = new Mesh(vertices.ToArray(), colors.ToArray());
+                return m;
+            }
+        }// loadPointCloud
+
+        public string nextMeshClass()
+        {
+            this.nMesh = (this.nMesh + 1) % this.meshClasses.Count;
+            this.currMeshClass = this.meshClasses[this.nMesh];
+            this.Refresh();
+            return this.currMeshClass._MESHNAME;
+        }
+
+        public string prevMeshClass()
+        {
+            this.nMesh = (this.nMesh - 1 + this.meshClasses.Count) % this.meshClasses.Count;
+            this.currMeshClass = this.meshClasses[this.nMesh];
+            this.Refresh();
+            return this.currMeshClass._MESHNAME;
+        }
 
         public void refit_by_cylinder()
         {
@@ -4343,7 +4450,7 @@ namespace FameBase
                 }
             }            
 
-            this.drawAllMeshes();
+            this.drawCurrentMesh();
 
             this.drawHumanPose();
 
@@ -4385,29 +4492,36 @@ namespace FameBase
             }
         }// drawGraph
 
-        private void drawAllMeshes()
+        private void drawCurrentMesh()
         {
             if (this.meshClasses == null || _currModel != null)
             {
                 return;
             }
-            foreach (MeshClass meshclass in this.meshClasses)
+            if(this.currMeshClass != null)
             {
                 if (this.drawFace)
                 {
-                    GLDrawer.drawMeshFace(meshclass.Mesh, GLDrawer.MeshColor, false);
+                    GLDrawer.drawMeshFace(currMeshClass.Mesh, GLDrawer.MeshColor, false);
                 }
                 if (this.drawEdge)
                 {
-                    meshclass.renderWireFrame();
+                    currMeshClass.renderWireFrame();
                 }
                 if (this.drawVertex)
                 {
-                    meshclass.renderVertices();
+                    if (currMeshClass.Mesh.VertexColor != null && currMeshClass.Mesh.VertexColor.Length > 0)
+                    {
+                        currMeshClass.renderVertices_color();
+                    }
+                    else
+                    {
+                        currMeshClass.renderVertices();
+                    }
                 }
-                meshclass.drawSelectedVertex();
-                meshclass.drawSelectedEdges();
-                meshclass.drawSelectedFaces();
+                currMeshClass.drawSelectedVertex();
+                currMeshClass.drawSelectedEdges();
+                currMeshClass.drawSelectedFaces();
             }
         }
 

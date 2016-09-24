@@ -661,5 +661,25 @@ namespace FameBase
         {
             this.glViewer.refit_by_cuboid();
         }
+
+        private void importShapeNetToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\shapenetcore_partanno_v0\Airplane" };
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                string folderName = dialog.SelectedPath;
+                this.glViewer.loadAShapeNetModel(folderName);
+            }
+        }
+
+        private void next_mesh_Click(object sender, EventArgs e)
+        {
+            this.mesh_name.Text = this.glViewer.nextMeshClass();
+        }
+
+        private void prev_mesh_Click(object sender, EventArgs e)
+        {
+            this.mesh_name.Text = this.glViewer.prevMeshClass();
+        }
 	}// Interface
 }// namespace
