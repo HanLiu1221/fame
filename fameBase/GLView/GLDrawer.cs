@@ -701,6 +701,37 @@ namespace FameBase
             Gl.glPopAttrib();
         }
 
+        public static void drawMeshVertices(Mesh m)
+        {
+            if (m == null) return;
+            Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            Gl.glColor3ub(GLDrawer.ColorSet[2].R, GLDrawer.ColorSet[2].G, GLDrawer.ColorSet[2].B);
+            Gl.glPointSize(4.0f);
+            Gl.glBegin(Gl.GL_POINTS);
+            for (int i = 0; i < m.VertexCount; ++i)
+            {
+                Gl.glVertex3d(m.VertexPos[i * 3], m.VertexPos[i * 3 + 1], m.VertexPos[i * 3 + 2]);
+            }
+            Gl.glEnd();
+            Gl.glDisable(Gl.GL_POINT_SMOOTH);
+            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        }// drawMeshVertices
+
+        public static void drawMeshVertices_color(Mesh m)
+        {
+            Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            Gl.glPointSize(4.0f);
+            Gl.glBegin(Gl.GL_POINTS);
+            for (int i = 0; i < m.VertexCount; ++i)
+            {
+                Gl.glColor3ub(m.VertexColor[i * 3], m.VertexColor[i * 3 + 1], m.VertexColor[i * 3 + 2]);
+                Gl.glVertex3d(m.VertexPos[i * 3], m.VertexPos[i * 3 + 1], m.VertexPos[i * 3 + 2]);
+            }
+            Gl.glEnd();
+            Gl.glDisable(Gl.GL_POINT_SMOOTH);
+            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        }// drawMeshVertices_color
+
         public static void drawMeshEdge(Mesh m)
         {
             if (m == null) return;
