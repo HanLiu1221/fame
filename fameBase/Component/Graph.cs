@@ -418,6 +418,19 @@ namespace Component
             return center;
         }// getGroundTouchingNode
 
+        public List<Node> selectFuncNodes(Common.Functionality func)
+        {
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (node._funcs.Contains(func) && !nodes.Contains(node))
+                {
+                    nodes.Add(node);
+                }
+            }
+            return nodes;
+        }// selectFuncNodes
+
         public List<Node> selectSymmetryFuncNodes( Common.Functionality func)
         {
             List<Node> sym_nodes = new List<Node>();
@@ -427,6 +440,7 @@ namespace Component
                 {
                     sym_nodes.Add(node);
                     sym_nodes.Add(node.symmetry);
+                    break;
                 }
             }
             return sym_nodes;
@@ -685,13 +699,14 @@ namespace Component
             return nodes;
         }// getGroundTouchingNodes
 
-        private Node getKeyNode()
+        public Node getKeyNode()
         {
             int nMaxConn = 0;
             Node key = null;
             foreach (Node node in _nodes)
             {
-                if (node._edges.Count > nMaxConn)
+                if (node._edges.Count > nMaxConn && 
+                    (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HUMAN_HIP)))
                 {
                     nMaxConn = node._edges.Count;
                     key = node;
@@ -858,9 +873,9 @@ namespace Component
         {
             // geometry filter
             double[] vals = calScale();
-            double max_adj_nodes_dist = 0.2;
+            double max_adj_nodes_dist = 0.3;
             double min_box_scale = 0.01;
-            double max_box_scale = 2.0;
+            double max_box_scale = 3.0;
             // max scale is not reliable, since a large node may replace many small nodes
             if (vals[0] > max_adj_nodes_dist || vals[1] < min_box_scale || vals[2] > max_box_scale)
             {
@@ -868,7 +883,7 @@ namespace Component
             }
             foreach (Node node in _nodes)
             {
-                if (node._PART._BOUNDINGBOX.MinCoord.y < -Common._thresh)
+                if (node._PART._BOUNDINGBOX.MinCoord.y < Common._minus_thresh)
                 {
                     return true;
                 }

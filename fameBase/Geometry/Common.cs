@@ -11,6 +11,7 @@ namespace Geometry
     {
         public static int _nCuboidPoint = 8;
         public static double _thresh = 1e-6;
+        public static double _minus_thresh = -0.01;
         public static double _thresh2d = 20;
         public static double _deform_thresh_min = 0.1;
         public static double _deform_thresh_max = 4.0;

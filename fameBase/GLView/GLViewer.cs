@@ -873,7 +873,6 @@ namespace FameBase
                     _models.Add(m);
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
                     LoadAGraph(m, graphName, false);
-                    hasInValidContact(m._GRAPH);
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this);
                     _modelViewers.Add(modelViewer);
                 }
@@ -1694,6 +1693,8 @@ namespace FameBase
                     return Common.Functionality.HAND_HOLD;
                 case "HAND_PLACE":
                     return Common.Functionality.HAND_PLACE;
+                case "SUPPORT":
+                    return Common.Functionality.SUPPORT;
                 case "GROUND_TOUCHING":
                 default:
                     return Common.Functionality.GROUND_TOUCHING;
@@ -1812,7 +1813,7 @@ namespace FameBase
             {
                 Directory.CreateDirectory(imageFolder_g);
             }
-            int maxIter = 5;
+            int maxIter = 10;
             _currIter = 0;
             Random rand = new Random();
             List<Model> generation = _models;
@@ -1822,7 +1823,14 @@ namespace FameBase
             {
                 // mutate or crossover ?
                 _mutateOrCross = runMutateOrCrossover(rand);
-                _mutateOrCross = 2;
+                if (_currIter == 0)
+                {
+                    _mutateOrCross = 0;
+                }
+                else if (_currIter == 1)
+                {
+                    _mutateOrCross = 2;
+                }
                 switch (_mutateOrCross)
                 {
                     case 0:
@@ -1855,19 +1863,174 @@ namespace FameBase
             {
                 return growth;
             }
-            int m_idx = 0;
-            for (int i = 0; i < models.Count - 1; ++i)
+            string path = this.foldername + "\\models\\growth\\gen_" + gen.ToString() + "\\";
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+            for (int i = 0; i < models.Count; ++i)
             {
                 Model m1 = models[i];
                 // jump those have already been visited
-                int j = Math.Max(i + 1, start + 1);
+                int j = start + 1;
+                if (i > start)
+                {
+                    j = 0;
+                }
+                int idx = 0;
                 for (; j < models.Count; ++j)
                 {
+                    if (i == j)
+                    {
+                        continue;
+                    }
                     Model m2 = models[j];
+                    Model model = addPlacement(m1, m2._GRAPH, path, idx, rand, gen);
+                    if (model != null)
+                    {
+                        growth.Add(model);
+                        // screenshot
+                        this.setCurrentModel(model, -1);
+                        Program.GetFormMain().updateStats();
+                        this.captureScreen(imageFolder + model._model_name + ".png");
+                        saveAPartBasedModel(model._path + model._model_name + ".pam");
+                        ++idx;
+                    }
                 }
             }
             return growth;
         }// runGrowth
+
+        private Model addPlacement(Model m1, Graph g2, string path, int idx, Random rand, int gen)
+        {
+            // get sth from g2 that can be added to g1
+            Graph g1 = m1._GRAPH;
+            Node place_g1 = null;
+            foreach (Node node in g1._NODES)
+            {
+                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                {
+                    place_g1 = node;
+                    break;
+                }
+            }
+            if (place_g1 == null)
+            {
+                return null;
+            }
+            int option = rand.Next(2);
+            if (m1._model_name.Contains("table"))
+            {
+                option = 0;
+            }
+            if (gen > 1)
+            {
+                option = 1;
+            }
+            Node nodeToAdd = getAddNode(m1._GRAPH, g2, option);
+            if (nodeToAdd == null) {
+                return null;
+            }
+            // along X-axis
+            double hx = (place_g1._PART._BOUNDINGBOX.MaxCoord.x - place_g1._PART._BOUNDINGBOX.MinCoord.x) / 2;
+            double xscale = hx / (nodeToAdd._PART._BOUNDINGBOX.MaxCoord.x - nodeToAdd._PART._BOUNDINGBOX.MinCoord.x);
+            double y = (nodeToAdd._PART._BOUNDINGBOX.MaxCoord.y - nodeToAdd._PART._BOUNDINGBOX.MinCoord.y);
+            double z = (nodeToAdd._PART._BOUNDINGBOX.MaxCoord.z - nodeToAdd._PART._BOUNDINGBOX.MinCoord.z);
+            double yscale = 1.0;
+            double zscale = (place_g1._PART._BOUNDINGBOX.MaxCoord.z - place_g1._PART._BOUNDINGBOX.MinCoord.z) / z;
+            Vector3d center = new Vector3d(place_g1._PART._BOUNDINGBOX.MaxCoord.x - hx / 2, 
+                place_g1._PART._BOUNDINGBOX.MaxCoord.y + y/2,
+                place_g1._PART._BOUNDINGBOX.CENTER.z);
+            
+            Matrix4d S = Matrix4d.ScalingMatrix(xscale, yscale, zscale);
+            if (option == 1)
+            {
+                center = new Vector3d(place_g1._PART._BOUNDINGBOX.CENTER.x,
+                place_g1._PART._BOUNDINGBOX.MaxCoord.y + y / 2,
+                place_g1._PART._BOUNDINGBOX.MinCoord.z + z / 2);
+                S = Matrix4d.ScalingMatrix(xscale * 2, 1.0, 1.0);
+            }
+            Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - nodeToAdd._PART._BOUNDINGBOX.CENTER);
+            Node nodeToAdd_clone = nodeToAdd.Clone() as Node;
+            nodeToAdd_clone._INDEX = m1._GRAPH._NNodes;
+            int node_idx = m1._GRAPH._NODES.IndexOf(place_g1);
+            Model m1_clone = m1.Clone() as Model;
+            m1_clone._path = path;
+            m1_clone._model_name = m1._model_name + "_grow_" + idx.ToString();
+            Graph g1_clone = m1_clone._GRAPH;
+            m1_clone.addAPart(nodeToAdd_clone._PART);
+            g1_clone.addANode(nodeToAdd_clone);
+            List<Contact> clone_contacts = new List<Contact>();
+            Vector3d[] contact_points = new Vector3d[4];
+            contact_points[0] = new Vector3d(nodeToAdd._PART._BOUNDINGBOX.MinCoord.x, nodeToAdd._PART._BOUNDINGBOX.MinCoord.y, nodeToAdd._PART._BOUNDINGBOX.MinCoord.z);
+            contact_points[1] = new Vector3d(nodeToAdd._PART._BOUNDINGBOX.MaxCoord.x, nodeToAdd._PART._BOUNDINGBOX.MinCoord.y, nodeToAdd._PART._BOUNDINGBOX.MinCoord.z);
+            contact_points[2] = new Vector3d(nodeToAdd._PART._BOUNDINGBOX.MaxCoord.x, nodeToAdd._PART._BOUNDINGBOX.MinCoord.y, nodeToAdd._PART._BOUNDINGBOX.MaxCoord.z);
+            contact_points[3] = new Vector3d(nodeToAdd._PART._BOUNDINGBOX.MinCoord.x, nodeToAdd._PART._BOUNDINGBOX.MinCoord.y, nodeToAdd._PART._BOUNDINGBOX.MaxCoord.z);
+
+            for (int i = 0; i < 4; ++i)
+            {
+                clone_contacts.Add(new Contact(contact_points[i]));
+            }            
+            g1_clone.addAnEdge(g1_clone._NODES[node_idx], nodeToAdd_clone, clone_contacts);
+            deformANodeAndEdges(nodeToAdd_clone, Q);
+            return m1_clone;
+        }// addPlacement
+
+        private Node getAddNode(Graph g1, Graph g2, int option)
+        {
+            List<Contact> contacts = new List<Contact>();
+            int maxSupport = 0;
+            Node nodeToAdd = null;
+            if (option == 1)
+            {
+                // add a new functionality
+                List<Common.Functionality> funcs1 = g1.getGraphFuncs();
+                List<Common.Functionality> funcs2 = g2.getGraphFuncs();
+                foreach (Common.Functionality f in funcs1)
+                {
+                    funcs2.Remove(f);
+                }
+                if (funcs2.Count > 0)
+                {
+                    Random rand = new Random();
+                    int fidx = rand.Next(funcs2.Count);
+                    Common.Functionality func = funcs2[fidx];
+                    foreach (Node node in g2._NODES)
+                    {
+                        if (node._funcs.Contains(func))
+                        {
+                            nodeToAdd = node;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                foreach (Node node in g2._NODES)
+                {
+                    int ns = 0;
+                    List<Contact> cnts = new List<Contact>();
+                    for (int i = 0; i < node._edges.Count; ++i)
+                    {
+                        Node adj = node._edges[i]._start == node ? node._edges[i]._end : node._edges[i]._start;
+                        if (adj._funcs.Contains(Common.Functionality.SUPPORT))
+                        //&& adj._PART._BOUNDINGBOX.MaxCoord.y < node._PART._BOUNDINGBOX.MaxCoord.y)
+                        {
+                            ++ns;
+                            cnts.AddRange(node._edges[i]._contacts);
+                        }
+                    }
+                    if (ns > maxSupport)
+                    {
+                        maxSupport = ns;
+                        nodeToAdd = node;
+                        contacts = cnts;
+                    }
+                }
+            }
+            return nodeToAdd;
+        }// getAddNode
 
         private List<Model> runMutate(List<Model> models, int gen, string imageFolder, int start)
         {
@@ -1877,7 +2040,7 @@ namespace FameBase
                 return mutated;
             }
             Random rand = new Random();
-            string path = this.foldername + "\\mutate\\gen_" + gen.ToString() + "\\";
+            string path = this.foldername + "\\models\\mutate\\gen_" + gen.ToString() + "\\";
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
@@ -1889,9 +2052,13 @@ namespace FameBase
                 int j = rand.Next(iModel._GRAPH._NNodes);
                 Model model = iModel.Clone() as Model;
                 model._path = path.Clone() as string;
-                //model._model_name = iModel._model_name + "_g_" + gen.ToString();
-                model._model_name = "gen_" + gen.ToString() + "_" + i.ToString();
-                Node updateNode = model._GRAPH._NODES[j];
+                model._model_name = iModel._model_name + "_g_" + gen.ToString();
+                //model._model_name = "gen_" + gen.ToString() + "_" + i.ToString();
+                Node updateNode = model._GRAPH.getKeyNode();// model._GRAPH._NODES[j];
+                if (gen > 1)
+                {
+                    updateNode = model._GRAPH._NODES[j];
+                }
                 // mutate
                 if (hasInValidContact(model._GRAPH))
                 {
@@ -1916,7 +2083,7 @@ namespace FameBase
 
         private void mutateANode(Node node, Random rand)
         {
-            double s1 = 0.5; // min
+            double s1 = 1.0;// 0.5; // min
             double s2 = 2.0; // max
             double scale = s1 + rand.NextDouble() * (s2 - s1);
             Vector3d scale_vec = new Vector3d(1, 1, 1);
@@ -1968,6 +2135,12 @@ namespace FameBase
                     {
                         continue;
                     }
+                    if (m1._model_name.Contains("cradle") && m2._model_name.Contains("table"))
+                    {
+                        Common.Functionality func = getFunctionalityFromString("GROUND_TOUCHING");
+                        m1._GRAPH.selectedNodes = m1._GRAPH.selectFuncNodes(func);
+                        m2._GRAPH.selectedNodes = m2._GRAPH.selectFuncNodes(func);
+                    }
                     List<Model> results = this.crossOverOp(m1, m2, gen, m_idx);
                     m_idx += 2;
                     foreach (Model m in results)
@@ -1996,7 +2169,7 @@ namespace FameBase
             int search = 0;
             g1.selectedNodes.Clear();
             g2.selectedNodes.Clear();
-            int option = rand.Next(5);
+            int option = rand.Next(2);
             if (option == 0)
             {
                 // select functionality
@@ -2136,8 +2309,8 @@ namespace FameBase
 
             Model newM1 = m1.Clone() as Model;
             Model newM2 = m2.Clone() as Model;
-            newM1._path = this.foldername + "\\crossover\\gen_" + gen.ToString() + "\\";
-            newM2._path = this.foldername + "\\crossover\\gen_" + gen.ToString() + "\\";
+            newM1._path = this.foldername + "\\models\\crossover\\gen_" + gen.ToString() + "\\";
+            newM2._path = this.foldername + "\\models\\crossover\\gen_" + gen.ToString() + "\\";
             if (!Directory.Exists(newM1._path))
             {
                 Directory.CreateDirectory(newM1._path);
@@ -4596,6 +4769,10 @@ namespace FameBase
 
         private void drawAllMeshes()
         {
+            if (_currModel != null)
+            {
+                return;
+            }
             foreach (MeshClass mc in this.meshClasses)
             {
                 if (this.drawFace)
