@@ -668,7 +668,7 @@ namespace FameBase
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
-                this.glViewer.loadAShapeNetModel(folderName);
+                this.mesh_name.Text = this.glViewer.loadAShapeNetModel(folderName);
             }
         }
 

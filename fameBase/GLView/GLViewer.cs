@@ -164,7 +164,7 @@ namespace FameBase
         private Vector2d prevMousePos;
         private Vector2d currMousePos;
         private bool isMouseDown = false;
-        private List<MeshClass> meshClasses;
+        private List<MeshClass> meshClasses = new List<MeshClass>();
         private MeshClass currMeshClass;
         private Quad2d highlightQuad;
         private Camera camera;
@@ -190,7 +190,7 @@ namespace FameBase
         private List<int> boxShowSequence = new List<int>();
 
         public bool zoonIn = false;
-        private int nMesh = 0;
+        private int meshIdx = 0;
 
         //########## sketch vars ##########//
         private List<Vector2d> currSketchPoints = new List<Vector2d>();
@@ -224,7 +224,7 @@ namespace FameBase
         Contact _selectedContact = null;
         private ReplaceablePair[,] _replaceablePairs = null;
         private int _currIter = 0;
-        private bool _mutateOrCross = true;
+        private int _mutateOrCross = -1;
 
         /******************** Functions ********************/
 
@@ -406,7 +406,7 @@ namespace FameBase
                 sb.Append(_currModel._GRAPH._NEdges.ToString());
             }
             sb.Append("\n#iter: " + _currIter.ToString() + " ");
-            string mc = _mutateOrCross ? "mutate" : "crossover";
+            string mc = _mutateOrCross == 0 ? "mutate" : (_mutateOrCross == 1 ? "crossover" : "growth");
             sb.Append(mc);
             return sb.ToString();
         }// getStats
@@ -890,18 +890,19 @@ namespace FameBase
             return _modelViewers;
         }// loadPartBasedModels
 
-        public void loadAShapeNetModel(string foldername)
+        public string loadAShapeNetModel(string foldername)
         {
             if (!Directory.Exists(foldername))
             {
-                return;
+                return "";
             }
             // load points
             string points_folder = foldername + "\\points";
             string expert_lable_folder = foldername + "\\expert_verified\\points_label\\";
+            string obj_folder = foldername + "\\objs\\";
             string[] points_files = Directory.GetFiles(points_folder);
             int idx = 0;
-            int max_idx = 20;
+            int max_idx = 1;
             string points_name = foldername.Substring(foldername.LastIndexOf('\\') + 1);
             this.meshClasses = new List<MeshClass>();
             foreach (String file in points_files)
@@ -915,11 +916,17 @@ namespace FameBase
                 mesh_name = mesh_name.Substring(0, mesh_name.LastIndexOf('.'));
                 string seg_file = mesh_name + ".seg";
                 seg_file = expert_lable_folder + seg_file;
+                string obj_file = obj_folder + mesh_name + "\\" + "model.obj";
                 if (!File.Exists(seg_file))
                 {
                     continue;
                 }
-                Mesh m = loadPointCloud(file, seg_file);
+                //Mesh m = loadPointCloud(file, seg_file);
+                if (!File.Exists(obj_file))
+                {
+                    continue;
+                }
+                Mesh m = loadPointCloud(file, obj_file, seg_file);
                 if (m != null)
                 {
                     this.currMeshClass = new MeshClass(m);
@@ -927,13 +934,20 @@ namespace FameBase
                     this.meshClasses.Add(this.currMeshClass);
                     ++idx;
                 }
-                if (idx > max_idx)
+                if (idx >= max_idx)
                 {
                     break;
                 }
             }
+            if (this.meshClasses.Count > 0)
+            {
+                this.currMeshClass = this.meshClasses[0];
+            }
             // only points
             this.setRenderOption(1);
+            this.meshIdx = -1;
+            string str = nextMeshClass();
+            return str;
         }// loadAShapeNetModel
 
         private Mesh loadPointCloud(string points_file, string seg_file)
@@ -980,20 +994,80 @@ namespace FameBase
             }
         }// loadPointCloud
 
+        private Mesh loadPointCloud(string points_file, string obj_file, string seg_file)
+        {
+            if (!File.Exists(obj_file) || !File.Exists(seg_file))
+            {
+                return null;
+            }
+            char[] separator = { ' ', '\t' };
+            List<double> vertices = new List<double>();
+            List<byte> colors = new List<byte>();
+            using (StreamReader sr = new StreamReader(points_file))
+            {
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separator);
+                    if (strs.Length >= 3)
+                    {
+                        for (int i = 0; i < 3; ++i)
+                        {
+                            vertices.Add(double.Parse(strs[i]));
+                        }
+                    }
+                }
+            }
+            Mesh m = new Mesh(obj_file, false);
+            using (StreamReader sr = new StreamReader(seg_file))
+            {
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separator);
+                    if (strs.Length > 0)
+                    {
+                        int label = int.Parse(strs[0]);
+                        Color c = GLDrawer.ColorSet[label];
+                        colors.Add(c.R);
+                        colors.Add(c.G);
+                        colors.Add(c.B);
+                    }
+                }
+            }
+            if (m.VertexCount != vertices.Count / 3)
+            {
+                return null;
+            }
+            return m;
+        }// loadPointCloud
+
         public string nextMeshClass()
         {
-            this.nMesh = (this.nMesh + 1) % this.meshClasses.Count;
-            this.currMeshClass = this.meshClasses[this.nMesh];
+            if (this.meshClasses.Count == 0)
+            {
+                return "0/0";
+            }
+            this.meshIdx = (this.meshIdx + 1) % this.meshClasses.Count;
+            this.currMeshClass = this.meshClasses[this.meshIdx];
             this.Refresh();
-            return this.currMeshClass._MESHNAME;
+            string str = (this.meshIdx + 1).ToString() + "\\" + this.meshClasses.Count.ToString() + ": ";
+            str += this.currMeshClass._MESHNAME;
+            return str;
         }
 
         public string prevMeshClass()
         {
-            this.nMesh = (this.nMesh - 1 + this.meshClasses.Count) % this.meshClasses.Count;
-            this.currMeshClass = this.meshClasses[this.nMesh];
+            if (this.meshClasses.Count == 0)
+            {
+                return "0/0";
+            }
+            this.meshIdx = (this.meshIdx - 1 + this.meshClasses.Count) % this.meshClasses.Count;
+            this.currMeshClass = this.meshClasses[this.meshIdx];
             this.Refresh();
-            return this.currMeshClass._MESHNAME;
+            string str = (this.meshIdx + 1).ToString() + "\\" + this.meshClasses.Count.ToString() + ": ";
+            str += this.currMeshClass._MESHNAME;
+            return str;
         }
 
         public void refit_by_cylinder()
@@ -1722,8 +1796,10 @@ namespace FameBase
             _crossoverGenerations.Add(firstGen);
             string mutateFolder = this.foldername.Clone() as string;
             string crossoverFolder = this.foldername.Clone() as string;
+            string grwothFolder = this.foldername.Clone() as string;
             string imageFolder_m = mutateFolder + "\\screenCapture\\mutate\\";
             string imageFolder_c = crossoverFolder + "\\screenCapture\\crossover\\";
+            string imageFolder_g = grwothFolder + "\\screenCapture\\growth\\";
             if (!Directory.Exists(imageFolder_m))
             {
                 Directory.CreateDirectory(imageFolder_m);
@@ -1731,6 +1807,10 @@ namespace FameBase
             if (!Directory.Exists(imageFolder_c))
             {
                 Directory.CreateDirectory(imageFolder_c);
+            }
+            if (!Directory.Exists(imageFolder_g))
+            {
+                Directory.CreateDirectory(imageFolder_g);
             }
             int maxIter = 5;
             _currIter = 0;
@@ -1742,15 +1822,22 @@ namespace FameBase
             {
                 // mutate or crossover ?
                 _mutateOrCross = runMutateOrCrossover(rand);
-                if (_mutateOrCross)
+                _mutateOrCross = 2;
+                switch (_mutateOrCross)
                 {
-                    // mutate
-                    generation = runMutate(cur, _currIter, imageFolder_m, start);
+                    case 0:
+                        // mutate
+                        generation = runMutate(cur, _currIter, imageFolder_m, start);
+                        break;
+                    case 1:
+                        generation = runCrossover(cur, _currIter, rand, imageFolder_c, start);
+                        break;
+                    case 2:
+                    default:
+                        generation = runGrowth(cur, _currIter, rand, imageFolder_g, start);
+                        break;
                 }
-                else
-                {
-                    generation = runCrossover(cur, _currIter, rand, imageFolder_c, start);
-                }
+
                 ++_currIter;
                 // only include the models from current generation
                 //cur = generation;
@@ -1760,6 +1847,27 @@ namespace FameBase
             }// while
             return _resViewers;
         }// autoGenerate
+
+        private List<Model> runGrowth(List<Model> models, int gen, Random rand, string imageFolder, int start)
+        {
+            List<Model> growth = new List<Model>();
+            if (models.Count < 2)
+            {
+                return growth;
+            }
+            int m_idx = 0;
+            for (int i = 0; i < models.Count - 1; ++i)
+            {
+                Model m1 = models[i];
+                // jump those have already been visited
+                int j = Math.Max(i + 1, start + 1);
+                for (; j < models.Count; ++j)
+                {
+                    Model m2 = models[j];
+                }
+            }
+            return growth;
+        }// runGrowth
 
         private List<Model> runMutate(List<Model> models, int gen, string imageFolder, int start)
         {
@@ -2294,11 +2402,11 @@ namespace FameBase
             return clone_nodes;
         }// cloneNodesAndRelations
 
-        private bool runMutateOrCrossover(Random rand)
+        private int runMutateOrCrossover(Random rand)
         {
-            int n = 10;
-            int r = rand.Next(10);
-            return r < n / 2;
+            int n = 3;
+            int r = rand.Next(n);
+            return r;
         }// runMutateOrCrossover
 
         private List<Common.Functionality> selectFunctionality(Random rand, int maxNfunc)
@@ -4450,7 +4558,12 @@ namespace FameBase
 
         private void drawCurrentMesh()
         {
-            if (this.meshClasses == null || _currModel != null)
+            if (this.meshClasses.Count > 0)
+            {
+                this.drawAllMeshes();
+                return;
+            }
+            if (this.currMeshClass == null || _currModel != null)
             {
                 return;
             }
@@ -4479,7 +4592,36 @@ namespace FameBase
                 currMeshClass.drawSelectedEdges();
                 currMeshClass.drawSelectedFaces();
             }
-        }
+        }// drawCurrentMesh
+
+        private void drawAllMeshes()
+        {
+            foreach (MeshClass mc in this.meshClasses)
+            {
+                if (this.drawFace)
+                {
+                    GLDrawer.drawMeshFace(mc.Mesh, GLDrawer.MeshColor, false);
+                }
+                if (this.drawEdge)
+                {
+                    mc.renderWireFrame();
+                }
+                if (this.drawVertex)
+                {
+                    if (mc.Mesh.VertexColor != null && mc.Mesh.VertexColor.Length > 0)
+                    {
+                        mc.renderVertices_color();
+                    }
+                    else
+                    {
+                        mc.renderVertices();
+                    }
+                }
+                mc.drawSelectedVertex();
+                mc.drawSelectedEdges();
+                mc.drawSelectedFaces();
+            }
+        }// drawAllMeshes
 
         private void drawParts()
         {
@@ -4502,6 +4644,18 @@ namespace FameBase
                 if (this.drawEdge)
                 {
                     GLDrawer.drawMeshEdge(part._MESH);
+                }
+                if (this.drawVertex)
+                {
+                    GLDrawer.drawMeshVertices(part._MESH);
+                    //if (part._MESH.VertexColor != null && part._MESH.VertexColor.Length > 0)
+                    //{
+                    //    GLDrawer.drawMeshVertices_color(part._MESH);
+                    //}
+                    //else
+                    //{
+                    //    GLDrawer.drawMeshVertices(part._MESH);
+                    //}
                 }
                 if (this.isDrawBbox)
                 {

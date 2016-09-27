@@ -670,25 +670,29 @@ namespace Geometry
 
         private void initializeColor()
         {
-            if (this.vertexColor == null || this.vertexColor.Length != this.vertexCount * 4)
+            int n = 3;
+            if (this.vertexColor == null || this.vertexColor.Length != this.vertexCount * n)
             {
-                this.vertexColor = new byte[this.vertexCount * 4];
+                this.vertexColor = new byte[this.vertexCount * n];
             }
-            this.faceColor = new byte[this.faceCount * 4];
+            this.faceColor = new byte[this.faceCount * n];
             for (int i = 0; i < this.faceCount; ++i)
             {
                 int vidx1 = this.faceVertexIndex[3 * i];
                 int vidx2 = this.faceVertexIndex[3 * i + 1];
                 int vidx3 = this.faceVertexIndex[3 * i + 2];
                 int r = 0, g = 0, b = 0, a = 0;
-                r = (int)this.vertexColor[vidx1 * 4] + (int)this.vertexColor[vidx2 * 4] + (int)this.vertexColor[vidx3 * 4];
-                g = (int)this.vertexColor[vidx1 * 4 + 1] + (int)this.vertexColor[vidx2 * 4 + 1] + (int)this.vertexColor[vidx3 * 4 + 1];
-                b = (int)this.vertexColor[vidx1 * 4 + 2] + (int)this.vertexColor[vidx2 * 4 + 2] + (int)this.vertexColor[vidx3 * 4 + 2];
-                a = (int)this.vertexColor[vidx1 * 4 + 3] + (int)this.vertexColor[vidx2 * 4 + 3] + (int)this.vertexColor[vidx3 * 4 + 3];
-                this.faceColor[i * 4] = (byte)(r / 3);
-                this.faceColor[i * 4 + 1] = (byte)(g / 3);
-                this.faceColor[i * 4 + 2] = (byte)(b / 3);
-                this.faceColor[i * 4 + 3] = (byte)(a / 3);
+                r = (int)this.vertexColor[vidx1 * n] + (int)this.vertexColor[vidx2 * n] + (int)this.vertexColor[vidx3 * n];
+                g = (int)this.vertexColor[vidx1 * n + 1] + (int)this.vertexColor[vidx2 * n + 1] + (int)this.vertexColor[vidx3 * n + 1];
+                b = (int)this.vertexColor[vidx1 * n + 2] + (int)this.vertexColor[vidx2 * n + 2] + (int)this.vertexColor[vidx3 * n + 2];
+                this.faceColor[i * n] = (byte)(r / 3);
+                this.faceColor[i * n + 1] = (byte)(g / 3);
+                this.faceColor[i * n + 2] = (byte)(b / 3);
+                if (n == 4)
+                {
+                    a = (int)this.vertexColor[vidx1 * n + 3] + (int)this.vertexColor[vidx2 * n + 3] + (int)this.vertexColor[vidx3 * n + 3];
+                    this.faceColor[i * n + 3] = (byte)(a / 3);
+                }
             }
         }//initializeColor
 
@@ -841,6 +845,13 @@ namespace Geometry
             this.vertexPos[3 * i + 1] = v.y;
             this.vertexPos[3 * i + 2] = v.z;
         }
+
+        public void setVertexColor(byte[] colors)
+        {
+            this.vertexColor = colors;
+            this.initializeColor();
+        }
+
         // to avoid changing the count of vertex/face
         public int VertexCount
         {
