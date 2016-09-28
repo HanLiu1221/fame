@@ -705,8 +705,8 @@ namespace Component
             Node key = null;
             foreach (Node node in _nodes)
             {
-                if (node._edges.Count > nMaxConn && 
-                    (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HUMAN_HIP)))
+                if (node._edges.Count > nMaxConn)
+                    //&& (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HUMAN_HIP)))
                 {
                     nMaxConn = node._edges.Count;
                     key = node;
@@ -873,9 +873,9 @@ namespace Component
         {
             // geometry filter
             double[] vals = calScale();
-            double max_adj_nodes_dist = 0.3;
-            double min_box_scale = 0.01;
-            double max_box_scale = 3.0;
+            double max_adj_nodes_dist = Math.Max(_maxAdjNodesDist, 0.1);
+            double min_box_scale = Math.Min(_minNodeBboxScale, Common._min_scale);
+            double max_box_scale = Math.Max(_maxNodeBboxScale, Common._max_scale);
             // max scale is not reliable, since a large node may replace many small nodes
             if (vals[0] > max_adj_nodes_dist || vals[1] < min_box_scale || vals[2] > max_box_scale)
             {

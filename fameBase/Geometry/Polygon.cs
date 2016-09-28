@@ -800,6 +800,12 @@ namespace Geometry
             return new Prism(top, bot);
         }// CreateCylinder
 
+        public void setMaxMinScaleFromMesh(Vector3d maxs, Vector3d mins)
+        {
+            _maxCoord = maxs;
+            _minCoord = mins;
+        }// setMaxMinScaleFromMesh
+
         public void Transform(Matrix4d T)
         {            
             for (int i = 0; i < _points3d.Length; ++i)
@@ -829,13 +835,9 @@ namespace Geometry
         private void updateScale()
         {
             _center = new Vector3d();
-            _maxCoord = Vector3d.MinCoord;
-            _minCoord = Vector3d.MaxCoord;
             for (int i = 0; i < _points3d.Length; ++i)
             {
                 _center += _points3d[i];
-                _maxCoord = Vector3d.Max(_maxCoord, _points3d[i]);
-                _minCoord = Vector3d.Min(_minCoord, _points3d[i]);
             }
             _center /= _points3d.Length;
             _scale = (_maxCoord - _minCoord) / 2;

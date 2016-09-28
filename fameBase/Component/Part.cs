@@ -210,6 +210,7 @@ namespace Component
             Matrix4d R = new Matrix4d(r);
             R[3, 3] = 1.0;
 
+            proxy.setMaxMinScaleFromMesh(_mesh.MaxCoord, _mesh.MinCoord);
             proxy.Transform(T * R * S);
             proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
             proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
@@ -256,6 +257,7 @@ namespace Component
                 R = Matrix4d.RotationMatrix(rot_axis, angle);
             }
 
+            proxy.setMaxMinScaleFromMesh(_mesh.MaxCoord, _mesh.MinCoord);
             proxy.Transform(T * R * S);
             proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
             proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
@@ -269,6 +271,7 @@ namespace Component
         public void Transform(Matrix4d T)
         {
             _mesh.Transform(T);
+            _boundingbox.setMaxMinScaleFromMesh(_mesh.MaxCoord, _mesh.MinCoord);
             _boundingbox.Transform(T);
         }
 

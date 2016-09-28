@@ -1823,13 +1823,17 @@ namespace FameBase
             {
                 // mutate or crossover ?
                 _mutateOrCross = runMutateOrCrossover(rand);
-                if (_currIter == 0)
+                //if (_currIter == 0)
+                //{
+                //    _mutateOrCross = 0;
+                //}
+                //else if (_currIter == 1)
+                //{
+                //    _mutateOrCross = 2;
+                //}
+                if (_mutateOrCross > 0)
                 {
-                    _mutateOrCross = 0;
-                }
-                else if (_currIter == 1)
-                {
-                    _mutateOrCross = 2;
+                    _mutateOrCross = 1;
                 }
                 switch (_mutateOrCross)
                 {
@@ -1999,8 +2003,13 @@ namespace FameBase
                     {
                         if (node._funcs.Contains(func))
                         {
+                            if (nodeToAdd != null)
+                            {
+                                nodeToAdd = null; // only support one node for now
+                                break;
+                            }
                             nodeToAdd = node;
-                            break;
+                            //break;
                         }
                     }
                 }
@@ -2054,7 +2063,7 @@ namespace FameBase
                 model._path = path.Clone() as string;
                 model._model_name = iModel._model_name + "_g_" + gen.ToString();
                 //model._model_name = "gen_" + gen.ToString() + "_" + i.ToString();
-                Node updateNode = model._GRAPH.getKeyNode();// model._GRAPH._NODES[j];
+                Node updateNode = model._GRAPH._NODES[j];
                 if (gen > 1)
                 {
                     updateNode = model._GRAPH._NODES[j];
@@ -2135,12 +2144,14 @@ namespace FameBase
                     {
                         continue;
                     }
-                    if (m1._model_name.Contains("cradle") && m2._model_name.Contains("table"))
-                    {
-                        Common.Functionality func = getFunctionalityFromString("GROUND_TOUCHING");
-                        m1._GRAPH.selectedNodes = m1._GRAPH.selectFuncNodes(func);
-                        m2._GRAPH.selectedNodes = m2._GRAPH.selectFuncNodes(func);
-                    }
+                    //// TEST
+                    //if ((m1._model_name.Contains("cradle") && m2._model_name.Contains("table")) ||
+                    //   ( m2._model_name.Contains("cradle") && m1._model_name.Contains("table")))
+                    //{
+                    //    Common.Functionality func = getFunctionalityFromString("GROUND_TOUCHING");
+                    //    m1._GRAPH.selectedNodes = m1._GRAPH.selectFuncNodes(func);
+                    //    m2._GRAPH.selectedNodes = m2._GRAPH.selectFuncNodes(func);
+                    //}
                     List<Model> results = this.crossOverOp(m1, m2, gen, m_idx);
                     m_idx += 2;
                     foreach (Model m in results)
@@ -2584,13 +2595,17 @@ namespace FameBase
 
         private List<Common.Functionality> selectFunctionality(Random rand, int maxNfunc)
         {
-            int n = 5;
+            int n = 6;
             int r = rand.Next(n) + 1;
             r = Math.Min(r, maxNfunc);
             List<Common.Functionality> funcs = new List<Common.Functionality>();
             for (int i = 0; i < r; ++i)
             {
                 int j = rand.Next(n);
+                if (j >= n)
+                {
+                      j = 2;
+                }
                 Common.Functionality f = getFunctionalityFromIndex(j);
                 if (!funcs.Contains(f))
                 {
@@ -3290,8 +3305,9 @@ namespace FameBase
                         }
                     }
                 }
-
+                
                 Vector3d scale = new Vector3d(sx, sy, sz);
+                //scale = adjustScale(scale);
 
                 if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
 
@@ -3309,6 +3325,23 @@ namespace FameBase
                 }
             }
         }// getTransformation
+
+        private Vector3d adjustScale(Vector3d scale)
+        {
+            for (int i = 0; i < 3; ++i)
+            {
+                if (scale[i] > Common._max_scale)
+                {
+                    scale[i] = Common._max_scale;
+                }
+
+                if (scale[i] < Common._min_scale)
+                {
+                    scale[i] = Common._min_scale;
+                }
+            }
+            return scale;
+        }// adjustScale
 
         private bool hasInvalidVec(Vector3d[] vecs)
         {

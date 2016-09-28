@@ -18,6 +18,8 @@ namespace Geometry
         public static double _bodyNodeRadius = 0.06;
         public static double _contactPointsize = 0.03;
         public static double _hightlightContactPointsize = 0.04;
+        public static double _min_scale = 0.3;
+        public static double _max_scale = 3.0;
         public static int _max_edge_contacts = 2; // max number of contacts between two nodes
 
         public static Random rand = new Random();
