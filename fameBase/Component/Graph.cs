@@ -1175,9 +1175,13 @@ namespace Component
 
         public void TransformContact(Matrix4d T)
         {
-            foreach (Contact p in _contacts)
+            foreach (Contact c in _contacts)
             {
-                p.TransformFromOrigin(T);
+                c.TransformFromOrigin(T);
+                if (!c._pos3d.isValidVector())
+                {
+                    break;
+                }
             }            
             _contactUpdated = true;
         }

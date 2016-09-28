@@ -724,6 +724,8 @@ namespace Geometry
             Vector3d[] pnts = _points3d.Clone() as Vector3d[];
             Prism p = new Prism(pnts);
             p.coordSys = coordSys.Clone() as CoordinateSystem;
+            p._maxCoord = new Vector3d(_maxCoord);
+            p._minCoord = new Vector3d(_minCoord);
             return p;
         }
 

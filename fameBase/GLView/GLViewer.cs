@@ -1816,7 +1816,7 @@ namespace FameBase
             int maxIter = 10;
             _currIter = 0;
             Random rand = new Random();
-            List<Model> generation = _models;
+            List<Model> generation = new List<Model>(_models);
             List<Model> cur = generation;
             int start = 0;
             while (_currIter < maxIter)
@@ -1831,10 +1831,6 @@ namespace FameBase
                 //{
                 //    _mutateOrCross = 2;
                 //}
-                if (_mutateOrCross > 0)
-                {
-                    _mutateOrCross = 1;
-                }
                 switch (_mutateOrCross)
                 {
                     case 0:
@@ -1855,7 +1851,7 @@ namespace FameBase
                 //cur = generation;
                 // including all models
                 cur.AddRange(generation);
-                start += generation.Count;
+                //start += generation.Count;
             }// while
             return _resViewers;
         }// autoGenerate
@@ -1973,6 +1969,10 @@ namespace FameBase
 
             for (int i = 0; i < 4; ++i)
             {
+                if (!contact_points[i].isValidVector())
+                {
+                    break;
+                }
                 clone_contacts.Add(new Contact(contact_points[i]));
             }            
             g1_clone.addAnEdge(g1_clone._NODES[node_idx], nodeToAdd_clone, clone_contacts);

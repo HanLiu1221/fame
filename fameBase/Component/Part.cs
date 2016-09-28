@@ -40,6 +40,7 @@ namespace Component
         {
             _mesh = m;
             _boundingbox = p;
+            _boundingbox.setMaxMinScaleFromMesh(m.MaxCoord, m.MinCoord);
             setRandomColorToNodes();
         }
 
