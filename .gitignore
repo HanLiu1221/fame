@@ -2,10 +2,17 @@ download_images/
 intro/
 icons/
 refer/
-data_sets/
-refer_codes/
-MATLAB/
-output/
+fameBase/models/
+fameBase/bin/Debug/
+fameBase/bin/Rlease/
+fameBase/bin/x64/
 vs settings/
-fameBase/bin/Dlls/Accord.Math.dll
-fameBase/bin/
+output/
+*.TMP
+ref_codes/
+refer_codes/
+matlab/
+data_sets/
+report/
+demo/
+fameBase/backup_codes_Before_Oct_2016/
