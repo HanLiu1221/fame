@@ -6,7 +6,7 @@ using System.Text;
 using Tao.OpenGl;
 using System.IO;
 
-namespace SketchPlatform
+namespace FameBase
 {
     public class Shader
     {
@@ -37,20 +37,21 @@ namespace SketchPlatform
         public void CreateAndCompileVertexShader(string file)
         {
             // Create and compile the vertex shader
-            // 1. read vertex shader file
-            string[] shaderSource;
-            StreamReader sr = new StreamReader(file);
-            shaderSource = sr.ReadToEnd().Split('\n');
-            sr.Close();
-
-            // 2 create the vertex shader
-            this.vertexShader = Gl.glCreateShader(Gl.GL_VERTEX_SHADER);
-            Gl.glShaderSource(vertexShader, 1, shaderSource, new IntPtr());
-            Gl.glCompileShader(vertexShader);
-
-            if (!this.CompileSuccessful(this.vertexShader))
+            using (StreamReader sr = new StreamReader(file))
             {
-                Console.WriteLine("glsl vertex shader compile failed");
+                // 1. read vertex shader file
+                string[] shaderSource;
+                shaderSource = sr.ReadToEnd().Split('\n');
+
+                // 2 create the vertex shader
+                this.vertexShader = Gl.glCreateShader(Gl.GL_VERTEX_SHADER);
+                Gl.glShaderSource(vertexShader, 1, shaderSource, new IntPtr());
+                Gl.glCompileShader(vertexShader);
+
+                if (!this.CompileSuccessful(this.vertexShader))
+                {
+                    Console.WriteLine("glsl vertex shader compile failed");
+                }
             }
         }
 
@@ -59,9 +60,10 @@ namespace SketchPlatform
             // Create and compile the vertex shader
             // 1. read vertex shader file
             string[] shaderSource;
-            StreamReader sr = new StreamReader(file);
-            shaderSource = sr.ReadToEnd().Split('\n');
-            sr.Close();
+            using (StreamReader sr = new StreamReader(file))
+            {
+                shaderSource = sr.ReadToEnd().Split('\n');
+            }
 
             // 2 create the vertex shader
             this.fragmentShader = Gl.glCreateShader(Gl.GL_FRAGMENT_SHADER);
