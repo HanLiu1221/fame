@@ -12,7 +12,7 @@ namespace FameBase
 {
     public class ModelViewer : SimpleOpenGlControl
     {
-        public ModelViewer(Model m, int idx, GLViewer glViewer) 
+        public ModelViewer(Model m, int idx, GLViewer glViewer, int gen)
         {
             this.InitializeComponent();
             this.InitializeContexts();
@@ -20,6 +20,7 @@ namespace FameBase
             _graph = m._GRAPH;
             _mainView = glViewer;
             _idx = idx;
+            _gen = gen;
         }
 
         private void InitializeComponent()
@@ -38,6 +39,11 @@ namespace FameBase
         int _idx = -1;
         Matrix4d _modelViewMat = Matrix4d.IdentityMatrix();
         Vector3d _eye = new Vector3d(0, 0, 1.5);
+        float[] back_color = { 1.0f, 1.0f, 1.0f };
+        // 0: ancester
+        // 1: last parent
+        // > 1: children
+        private int _gen = -1;
 
         public void setModelViewMatrix(Matrix4d m)
         {
@@ -65,6 +71,36 @@ namespace FameBase
             }
         }
 
+        public int _GEN
+        {
+            get
+            {
+                return _gen;
+            }
+        }
+
+        public void setBackColor(Color c)
+        {
+            back_color[0] = (float)c.R / 255;
+            back_color[1] = (float)c.G / 255;
+            back_color[2] = (float)c.B / 255;
+        }
+
+        protected override void OnMouseClick(System.Windows.Forms.MouseEventArgs e)
+        {
+            base.OnMouseClick(e);
+            bool selcted = _mainView.userSelectModel(this._model);
+            if (selcted)
+            {
+                this.setBackColor(GLDrawer.SelectedBackgroundColor);
+            }
+            else
+            {
+                this.setBackColor(Color.White);
+            }
+            this.Refresh();
+        }
+
         protected override void OnMouseDoubleClick(System.Windows.Forms.MouseEventArgs e)
         {
             base.OnMouseDoubleClick(e);
@@ -82,7 +118,7 @@ namespace FameBase
 
         private void clearScene()
         {
-            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+            Gl.glClearColor(back_color[0], back_color[1], back_color[2], 0.5f);
             Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
 
             Gl.glDisable(Gl.GL_BLEND);

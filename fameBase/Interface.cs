@@ -681,5 +681,6 @@ namespace FameBase
         {
             this.mesh_name.Text = this.glViewer.prevMeshClass();
         }
+
 	}// Interface
 }// namespace

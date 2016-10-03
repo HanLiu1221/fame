@@ -17,10 +17,10 @@ using System.Web.Script.Serialization;
 
 namespace FameBase
 {
-    public class GLViewer :  SimpleOpenGlControl
+    public class GLViewer : SimpleOpenGlControl
     {
         /******************** Initialization ********************/
-        public GLViewer() 
+        public GLViewer()
         {
             this.InitializeComponent();
             this.InitializeContexts();
@@ -40,7 +40,7 @@ namespace FameBase
             //this.LoadTextures();
         }
 
-        private void InitializeComponent() 
+        private void InitializeComponent()
         {
             this.SuspendLayout();
 
@@ -100,10 +100,10 @@ namespace FameBase
         }
 
         // modes
-        public enum UIMode 
+        public enum UIMode
         {
             // !Do not change the order of the modes --- used in the current program to retrieve the index (Integer)
-            Viewing, VertexSelection, EdgeSelection, FaceSelection, BoxSelection, BodyNodeEdit, 
+            Viewing, VertexSelection, EdgeSelection, FaceSelection, BoxSelection, BodyNodeEdit,
             Translate, Scale, Rotate, Contact, NONE
         }
 
@@ -115,11 +115,6 @@ namespace FameBase
         private bool isDrawAxes = false;
         private bool isDrawQuad = false;
 
-        public bool showSketchyEdges = true;
-        public bool showSketchyContour = false;
-        public bool showGuideLines = false;
-        public bool showAllGuides = true;
-        public bool showOcclusion = false;
         public bool enableDepthTest = true;
         public bool showVanishingLines = true;
         public bool lockView = false;
@@ -127,20 +122,7 @@ namespace FameBase
 
         public bool showSharpEdge = false;
         public bool enableHiddencheck = true;
-		public bool condition = true;
-
-        public bool showSegSilhouette = false;
-        public bool showSegContour = false;
-        public bool showSegSuggestiveContour = false;
-        public bool showSegApparentRidge = false;
-        public bool showSegBoundary = false;
-        public bool showLineOrMesh = true;
-
-        public bool showDrawnStroke = true;
-
-        public bool showBlinking = false;
-
-        private bool _showContactPoint = false;
+        public bool condition = true;
 
         private static Vector3d eyePosition3D = new Vector3d(0, 0.5, 1.5);
         private static Vector3d eyePosition2D = new Vector3d(0, 1, 1.5);
@@ -174,7 +156,7 @@ namespace FameBase
 
         private List<Model> _crossOverBasket = new List<Model>();
         private int _selectedModelIndex = -1;
-        
+
         public string foldername;
         private Vector3d objectCenter = new Vector3d();
         private enum Depthtype
@@ -194,16 +176,14 @@ namespace FameBase
 
         //########## sketch vars ##########//
         private List<Vector2d> currSketchPoints = new List<Vector2d>();
-        
+
 
         /******************** Vars ********************/
         Model _currModel;
         List<Model> _models = new List<Model>();
         List<Part> _selectedParts = new List<Part>();
         List<Node> _selectedNodes = new List<Node>();
-        List<ModelViewer> _modelViewers = new List<ModelViewer>();
-        List<ModelViewer> _partViewers = new List<ModelViewer>();
-        List<ModelViewer> _resViewers = new List<ModelViewer>();
+        List<ModelViewer> _ancesterModelViewers = new List<ModelViewer>();
         HumanPose _currHumanPose;
         List<HumanPose> _humanposes = new List<HumanPose>();
         BodyNode _selectedNode;
@@ -215,7 +195,6 @@ namespace FameBase
         private Polygon3D _groundPlane;
         int _hightlightAxis = -1;
         ArcBall _editArcBall;
-        ArcBall _bodyArcBall;
         bool _isRightClick = false;
         bool _isDrawTranslucentHumanPose = true;
 
@@ -225,6 +204,13 @@ namespace FameBase
         private ReplaceablePair[,] _replaceablePairs = null;
         private int _currIter = 0;
         private int _mutateOrCross = -1;
+        private bool _showContactPoint = false;
+
+        List<ModelViewer> _partViewers = new List<ModelViewer>();
+        List<List<Model>> _mutateGenerations = new List<List<Model>>();
+        List<List<Model>> _crossoverGenerations = new List<List<Model>>();
+        List<ModelViewer> _currGenModelViewers = new List<ModelViewer>();
+        List<Model> _currGen = new List<Model>();
 
         /******************** Functions ********************/
 
@@ -337,8 +323,7 @@ namespace FameBase
             _currModel = null;
             _selectedParts = new List<Part>();
             _models.Clear();
-            _modelViewers = new List<ModelViewer>();
-            _partViewers = new List<ModelViewer>();
+            _ancesterModelViewers.Clear();
             _currHumanPose = null;
             this.meshClasses.Clear();
             _humanposes.Clear();
@@ -369,7 +354,7 @@ namespace FameBase
         public void importMesh(string filename, bool multiple)
         {
             // if import multiple meshes, do not unify each mesh
-            Mesh m = new Mesh(filename, multiple ? false : _unitifyMesh); 
+            Mesh m = new Mesh(filename, multiple ? false : _unitifyMesh);
             MeshClass mc = new MeshClass(m);
             this.meshClasses.Add(mc);
             this.currMeshClass = mc;
@@ -859,8 +844,6 @@ namespace FameBase
             this.clearHighlights();
             string[] files = Directory.GetFiles(segfolder);
             int idx = 0;
-            _models = new List<Model>();
-            _modelViewers = new List<ModelViewer>();
             foreach (string file in files)
             {
                 if (!file.EndsWith("pam"))
@@ -873,20 +856,20 @@ namespace FameBase
                     _models.Add(m);
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
                     LoadAGraph(m, graphName, false);
-                    ModelViewer modelViewer = new ModelViewer(m, idx++, this);
-                    _modelViewers.Add(modelViewer);
+                    ModelViewer modelViewer = new ModelViewer(m, idx++, this, 0); // ancester
+                    _ancesterModelViewers.Add(modelViewer);
                 }
             }
-            if (_modelViewers.Count > 0)
+            if (_ancesterModelViewers.Count > 0)
             {
-                this.setCurrentModel(_modelViewers[_modelViewers.Count - 1]._MODEL, _modelViewers.Count - 1);
+                this.setCurrentModel(_ancesterModelViewers[_ancesterModelViewers.Count - 1]._MODEL, _ancesterModelViewers.Count - 1);
             }
             this.readModelModelViewMatrix(foldername + "\\view.mat");
 
             // try to load replaceable pairs
             tryLoadReplaceablePairs();
             this.setUIMode(0);
-            return _modelViewers;
+            return _ancesterModelViewers;
         }// loadPartBasedModels
 
         public string loadAShapeNetModel(string foldername)
@@ -1147,20 +1130,20 @@ namespace FameBase
 
         private void tryLoadReplaceablePairs()
         {
-            if (_modelViewers.Count == 0)
+            if (_ancesterModelViewers.Count == 0)
             {
                 return;
             }
-            int n = _modelViewers.Count;
+            int n = _ancesterModelViewers.Count;
             _replaceablePairs = new ReplaceablePair[n, n];
             for (int i = 0; i < n - 1; ++i)
             {
-                Model model_i = _modelViewers[i]._MODEL;
-                Graph graph_i = _modelViewers[i]._GRAPH;
+                Model model_i = _ancesterModelViewers[i]._MODEL;
+                Graph graph_i = _ancesterModelViewers[i]._GRAPH;
                 for (int j = i + 1; j < n; ++j)
                 {
-                    Model model_j = _modelViewers[j]._MODEL;
-                    Graph graph_j = _modelViewers[j]._GRAPH;
+                    Model model_j = _ancesterModelViewers[j]._MODEL;
+                    Graph graph_j = _ancesterModelViewers[j]._GRAPH;
                     string filename = model_i._path + model_i._model_name + "_" + model_j._model_name + ".corr";
                     List<List<int>> pairs_i = new List<List<int>>();
                     List<List<int>> pairs_j = new List<List<int>>();
@@ -1344,7 +1327,7 @@ namespace FameBase
                     sw.WriteLine();
                 }
                 sw.WriteLine(_currModel._GRAPH._NEdges.ToString() + " edges.");
-                foreach(Edge e in _currModel._GRAPH._EDGES)
+                foreach (Edge e in _currModel._GRAPH._EDGES)
                 {
                     sw.Write(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString() + " ");
                     foreach (Contact pnt in e._contacts)
@@ -1359,15 +1342,15 @@ namespace FameBase
         public void refreshModelViewers()
         {
             // view the same as the main view
-            foreach (ModelViewer mv in _modelViewers)
+            foreach (ModelViewer mv in _ancesterModelViewers)
+            {
+                mv.Refresh();
+            }
+            foreach (ModelViewer mv in _currGenModelViewers)
             {
                 mv.Refresh();
             }
             foreach (ModelViewer mv in _partViewers)
-            {
-                mv.Refresh();
-            }
-            foreach (ModelViewer mv in _resViewers)
             {
                 mv.Refresh();
             }
@@ -1384,7 +1367,22 @@ namespace FameBase
             this.cal2D();
             this.Refresh();
         }
-     
+
+        public bool userSelectModel(Model m)
+        {
+            // from user selction
+            if (_currGen.Contains(m))
+            {
+                _currGen.Remove(m);
+                return false;
+            }
+            else
+            {
+                _currGen.Add(m);
+                return true;
+            }
+        }// userSelectModel
+
         private void cal2D()
         {
             // otherwise when glViewe is initialized, it will run this function from MouseUp()
@@ -1440,7 +1438,7 @@ namespace FameBase
                     bn._pos2 = new Vector2d(v2.x, this.Height - v2.y);
                 }
             }
-            if (this._currModel == null || this._currModel._PARTS == null) 
+            if (this._currModel == null || this._currModel._PARTS == null)
                 return;
             Vector2d max_coord = Vector2d.MinCoord();
             Vector2d min_coord = Vector2d.MaxCoord();
@@ -1520,13 +1518,13 @@ namespace FameBase
 
         public void captureScreen(int idx)
         {
-            Size newSize = new System.Drawing.Size(this.Width, this.Height); 
+            Size newSize = new System.Drawing.Size(this.Width, this.Height);
             var bmp = new Bitmap(newSize.Width, newSize.Height);
             var gfx = Graphics.FromImage(bmp);
             gfx.CopyFromScreen((int)(this.Location.X), (int)(this.Location.Y) + 90,
                 0, 0, newSize, CopyPixelOperation.SourceCopy);
             string imageFolder = foldername + "\\screenCapture";
-            
+
             if (!Directory.Exists(imageFolder))
             {
                 Directory.CreateDirectory(imageFolder);
@@ -1555,89 +1553,89 @@ namespace FameBase
             return (this._modelTransformMatrix.Inverse() * new Vector4d(v, 1)).ToVector3D();
         }
 
-		public void renderToImage(string filename)
-		{
-			//uint FramerbufferName = 0;
-			//Gl.glGenFramebuffersEXT(1, out FramerbufferName);
-			//Gl.glBindFramebufferEXT(Gl.GL_FRAMEBUFFER_EXT, FramerbufferName);
-			this.Draw3D();
-			int w = this.Width, h = this.Height;
-			Bitmap bmp = new Bitmap(w, h);
-			Rectangle rect = new Rectangle(0,0,w,h);
-			System.Drawing.Imaging.BitmapData data =
-				bmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.WriteOnly,
-				System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-				//System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        public void renderToImage(string filename)
+        {
+            //uint FramerbufferName = 0;
+            //Gl.glGenFramebuffersEXT(1, out FramerbufferName);
+            //Gl.glBindFramebufferEXT(Gl.GL_FRAMEBUFFER_EXT, FramerbufferName);
+            this.Draw3D();
+            int w = this.Width, h = this.Height;
+            Bitmap bmp = new Bitmap(w, h);
+            Rectangle rect = new Rectangle(0, 0, w, h);
+            System.Drawing.Imaging.BitmapData data =
+                bmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.WriteOnly,
+                System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            //System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
 
-			Gl.glReadPixels(0, 0, w, h, Gl.GL_BGR, Gl.GL_UNSIGNED_BYTE, data.Scan0);
-			bmp.UnlockBits(data);
-			bmp.RotateFlip(RotateFlipType.Rotate180FlipX);
-			bmp.Save(filename, System.Drawing.Imaging.ImageFormat.Png);
-		}
+            Gl.glReadPixels(0, 0, w, h, Gl.GL_BGR, Gl.GL_UNSIGNED_BYTE, data.Scan0);
+            bmp.UnlockBits(data);
+            bmp.RotateFlip(RotateFlipType.Rotate180FlipX);
+            bmp.Save(filename, System.Drawing.Imaging.ImageFormat.Png);
+        }
 
-		private void writeALine(StreamWriter sw, Vector2d u, Vector2d v, float width, Color color)
-		{
-			sw.WriteLine("newpath");
-			double x = u.x;
-			double y = u.y;
-			sw.Write(x.ToString() + " ");
-			sw.Write(y.ToString() + " ");
-			sw.WriteLine("moveto ");
-			x = v.x;
-			y = v.y;
-			sw.Write(x.ToString() + " ");
-			sw.Write(y.ToString() + " ");
-			sw.WriteLine("lineto ");
-			//sw.WriteLine("gsave");
-			sw.WriteLine(width.ToString() + " " + "setlinewidth");
-			float[] c = { (float)color.R / 255, (float)color.G / 255, (float)color.B / 255 };
-			sw.WriteLine(c[0].ToString() + " " +
-				c[1].ToString() + " " +
-				c[2].ToString() + " setrgbcolor");
-			sw.WriteLine("stroke");
-		}
+        private void writeALine(StreamWriter sw, Vector2d u, Vector2d v, float width, Color color)
+        {
+            sw.WriteLine("newpath");
+            double x = u.x;
+            double y = u.y;
+            sw.Write(x.ToString() + " ");
+            sw.Write(y.ToString() + " ");
+            sw.WriteLine("moveto ");
+            x = v.x;
+            y = v.y;
+            sw.Write(x.ToString() + " ");
+            sw.Write(y.ToString() + " ");
+            sw.WriteLine("lineto ");
+            //sw.WriteLine("gsave");
+            sw.WriteLine(width.ToString() + " " + "setlinewidth");
+            float[] c = { (float)color.R / 255, (float)color.G / 255, (float)color.B / 255 };
+            sw.WriteLine(c[0].ToString() + " " +
+                c[1].ToString() + " " +
+                c[2].ToString() + " setrgbcolor");
+            sw.WriteLine("stroke");
+        }
 
-		private void writeATriangle(StreamWriter sw, Vector2d u, Vector2d v, Vector2d w, float width, Color color)
-		{
-			sw.WriteLine("newpath");
-			double x = u.x;
-			double y = u.y;
-			sw.Write(x.ToString() + " ");
-			sw.Write(y.ToString() + " ");
-			sw.WriteLine("moveto ");
-			x = v.x;
-			y = v.y;
-			sw.Write(x.ToString() + " ");
-			sw.Write(y.ToString() + " ");
-			sw.WriteLine("lineto ");
-			sw.Write(w.x.ToString() + " ");
-			sw.Write(w.y.ToString() + " ");
-			sw.WriteLine("lineto ");
-			sw.WriteLine("closepath");
-			sw.WriteLine("gsave");
-			
-			float[] c = { (float)color.R / 255, (float)color.G / 255, (float)color.B / 255 };
-			sw.WriteLine("grestore");
-			sw.WriteLine(width.ToString() + " " + "setlinewidth");
-			sw.WriteLine(c[0].ToString() + " " +
-				c[1].ToString() + " " +
-				c[2].ToString() + " setrgbcolor");
-			sw.WriteLine("stroke");
-		}
+        private void writeATriangle(StreamWriter sw, Vector2d u, Vector2d v, Vector2d w, float width, Color color)
+        {
+            sw.WriteLine("newpath");
+            double x = u.x;
+            double y = u.y;
+            sw.Write(x.ToString() + " ");
+            sw.Write(y.ToString() + " ");
+            sw.WriteLine("moveto ");
+            x = v.x;
+            y = v.y;
+            sw.Write(x.ToString() + " ");
+            sw.Write(y.ToString() + " ");
+            sw.WriteLine("lineto ");
+            sw.Write(w.x.ToString() + " ");
+            sw.Write(w.y.ToString() + " ");
+            sw.WriteLine("lineto ");
+            sw.WriteLine("closepath");
+            sw.WriteLine("gsave");
 
-		private void writeACircle(StreamWriter sw, Vector2d center, float radius, Color color, float width)
-		{			
-			float[] c = { (float)color.R / 255, (float)(float)color.G / 255, (float)(float)color.B / 255 };
-			sw.WriteLine(width.ToString() + " " + "setlinewidth");
-			sw.Write(center.x.ToString() + " ");
-			sw.Write(center.y.ToString() + " ");
-			sw.Write(radius.ToString());
-			sw.WriteLine(" 0 360 arc closepath");
-			sw.WriteLine(c[0].ToString() + " " +
-						c[1].ToString() + " " +
-						c[2].ToString() + " setrgbcolor fill");
-			sw.WriteLine("stroke");
-		}
+            float[] c = { (float)color.R / 255, (float)color.G / 255, (float)color.B / 255 };
+            sw.WriteLine("grestore");
+            sw.WriteLine(width.ToString() + " " + "setlinewidth");
+            sw.WriteLine(c[0].ToString() + " " +
+                c[1].ToString() + " " +
+                c[2].ToString() + " setrgbcolor");
+            sw.WriteLine("stroke");
+        }
+
+        private void writeACircle(StreamWriter sw, Vector2d center, float radius, Color color, float width)
+        {
+            float[] c = { (float)color.R / 255, (float)(float)color.G / 255, (float)(float)color.B / 255 };
+            sw.WriteLine(width.ToString() + " " + "setlinewidth");
+            sw.Write(center.x.ToString() + " ");
+            sw.Write(center.y.ToString() + " ");
+            sw.Write(radius.ToString());
+            sw.WriteLine(" 0 360 arc closepath");
+            sw.WriteLine(c[0].ToString() + " " +
+                        c[1].ToString() + " " +
+                        c[2].ToString() + " setrgbcolor fill");
+            sw.WriteLine("stroke");
+        }
 
         /*****************Functionality-aware evolution*************************/
 
@@ -1710,7 +1708,7 @@ namespace FameBase
 
             if (sources.Count == targets.Count && sources.Count == 2)
             {
-                
+
             }
         }// switchParts
 
@@ -1730,10 +1728,10 @@ namespace FameBase
             // for capturing screen
             this.reloadView();
 
-            dfs_files(folder, snapshot_folder);            
+            dfs_files(folder, snapshot_folder);
         }// collectSnapshotsFromFolder
 
-        private void dfs_files(string folder, string snap_folder) 
+        private void dfs_files(string folder, string snap_folder)
         {
             string[] files = Directory.GetFiles(folder);
             if (!Directory.Exists(snap_folder))
@@ -1768,96 +1766,138 @@ namespace FameBase
             }
         }// dfs_files
 
-        List<List<Model>> _mutateGenerations = new List<List<Model>>();
-        List<List<Model>> _crossoverGenerations = new List<List<Model>>();
+        // save folders
+        string userFolder;
+        string mutateFolder;
+        string crossoverFolder;
+        string growthFolder;
+        string imageFolder_m;
+        string imageFolder_c;
+        string imageFolder_g;
+        int _userIndex = 1;
+
+        public int registerANewUser()
+        {
+            string root = this.foldername.Clone() as string;
+            _userIndex = 1;
+            userFolder = root + "\\user_" + _userIndex.ToString();
+            while (Directory.Exists(userFolder))
+            {
+                // create a new folder for the new user
+                ++_userIndex;
+                userFolder = root + "\\User_" + _userIndex.ToString();
+            }
+            Directory.CreateDirectory(userFolder);
+
+            mutateFolder = userFolder + "\\models\\mutate\\";
+            crossoverFolder = userFolder + "\\models\\crossover\\";
+            growthFolder = userFolder + "\\models\\growth\\";
+
+            createDirectory(mutateFolder);
+            createDirectory(crossoverFolder);
+            createDirectory(growthFolder);
+
+            imageFolder_m = userFolder + "\\screenCapture\\mutate\\";
+            imageFolder_c = userFolder + "\\screenCapture\\crossover\\";
+            imageFolder_g = userFolder + "\\screenCapture\\growth\\";
+
+            createDirectory(imageFolder_m);
+            createDirectory(imageFolder_c);
+            createDirectory(imageFolder_g);
+
+            return _userIndex;
+        }// registerANewUser
+
+        private void createDirectory(string folder)
+        {
+            if (!Directory.Exists(folder))
+            {
+                Directory.CreateDirectory(folder);
+            }
+        }
+
+        private void saveUserSelections(int gen)
+        {
+            string dir = userFolder + "\\selections";
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+            string selectionTxt = dir + "\\gen_" + gen.ToString() + ".txt";
+            using (StreamWriter sw = new StreamWriter(selectionTxt))
+            {
+                sw.WriteLine("User " + _userIndex.ToString());
+                sw.WriteLine("Generation " + gen.ToString());
+                foreach (Model model in _currGen)
+                {
+                    sw.WriteLine(model._path + model._model_name);
+                }
+            }
+        }// saveUserSelections
 
         public List<ModelViewer> autoGenerate()
         {
-            _resViewers = new List<ModelViewer>();
+            if (!Directory.Exists(userFolder))
+            {
+                this.registerANewUser();
+            }
 
             this.isDrawBbox = false;
             this.isDrawGraph = false;
             this.isDrawGround = true;
-            Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
-            Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
-            Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
 
             // for capturing screen
             this.reloadView();
 
-            List<Model> firstGen = new List<Model>();
-            foreach (ModelViewer mv in _modelViewers)
+            List<Model> parents = new List<Model>();
+            List<Model> prev_parents = new List<Model>(_currGen);
+            // always include the ancient models
+            foreach (ModelViewer mv in _ancesterModelViewers)
             {
-                firstGen.Add(mv._MODEL);
+                parents.Add(mv._MODEL);
             }
-            _mutateGenerations.Clear();
-            _crossoverGenerations.Clear();
+            _currGenModelViewers.Clear();
+            // add user selected models
+            if (_currIter > 0)
+            {
+                this.saveUserSelections(_currIter);
+            }
+            parents.AddRange(_currGen);
 
-            _mutateGenerations.Add(firstGen);
-            _crossoverGenerations.Add(firstGen);
-            string mutateFolder = this.foldername.Clone() as string;
-            string crossoverFolder = this.foldername.Clone() as string;
-            string grwothFolder = this.foldername.Clone() as string;
-            string imageFolder_m = mutateFolder + "\\screenCapture\\mutate\\";
-            string imageFolder_c = crossoverFolder + "\\screenCapture\\crossover\\";
-            string imageFolder_g = grwothFolder + "\\screenCapture\\growth\\";
-            if (!Directory.Exists(imageFolder_m))
-            {
-                Directory.CreateDirectory(imageFolder_m);
-            }
-            if (!Directory.Exists(imageFolder_c))
-            {
-                Directory.CreateDirectory(imageFolder_c);
-            }
-            if (!Directory.Exists(imageFolder_g))
-            {
-                Directory.CreateDirectory(imageFolder_g);
-            }
-            int maxIter = 10;
-            _currIter = 0;
             Random rand = new Random();
-            List<Model> generation = _models;
-            List<Model> cur = generation;
-            int start = 0;
-            while (_currIter < maxIter)
-            {
-                // mutate or crossover ?
-                _mutateOrCross = runMutateOrCrossover(rand);
-                //if (_currIter == 0)
-                //{
-                //    _mutateOrCross = 0;
-                //}
-                //else if (_currIter == 1)
-                //{
-                //    _mutateOrCross = 2;
-                //}
-                if (_mutateOrCross > 0)
-                {
-                    _mutateOrCross = 1;
-                }
-                switch (_mutateOrCross)
-                {
-                    case 0:
-                        // mutate
-                        generation = runMutate(cur, _currIter, imageFolder_m, start);
-                        break;
-                    case 1:
-                        generation = runCrossover(cur, _currIter, rand, imageFolder_c, start);
-                        break;
-                    case 2:
-                    default:
-                        generation = runGrowth(cur, _currIter, rand, imageFolder_g, start);
-                        break;
-                }
+            _mutateOrCross = runMutateOrCrossover(rand);
 
-                ++_currIter;
-                // only include the models from current generation
-                //cur = generation;
-                // including all models
-                cur.AddRange(generation);
-                start += generation.Count;
-            }// while
-            return _resViewers;
+            switch (_mutateOrCross)
+            {
+                case 0:
+                    // mutate
+                    _currGen = runMutate(parents, _currIter, imageFolder_m, 0);
+                    break;
+                case 1:
+                    // crossover
+                    _currGen = runCrossover(parents, _currIter, rand, imageFolder_c, 0);
+                    break;
+                case 2:
+                default:
+                    _currGen = runGrowth(parents, _currIter, rand, imageFolder_g, 0);
+                    break;
+            }
+
+            ++_currIter;
+            int n = _ancesterModelViewers.Count;
+            foreach (Model m in prev_parents)
+            {
+                ModelViewer mv = new ModelViewer(m, n++, this, 1);
+                _currGenModelViewers.Add(mv);
+            }
+            foreach (Model m in _currGen)
+            {
+                ModelViewer mv = new ModelViewer(m, n++, this, 2);
+                _currGenModelViewers.Add(mv);
+            }
+            _currGen.Clear(); // for user selection
+            _currGen.AddRange(prev_parents);
+            return _currGenModelViewers;
         }// autoGenerate
 
         private List<Model> runGrowth(List<Model> models, int gen, Random rand, string imageFolder, int start)
@@ -1867,7 +1907,7 @@ namespace FameBase
             {
                 return growth;
             }
-            string path = this.foldername + "\\models\\growth\\gen_" + gen.ToString() + "\\";
+            string path = growthFolder + "gen_" + gen.ToString() + "\\";
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
@@ -1932,7 +1972,8 @@ namespace FameBase
                 option = 1;
             }
             Node nodeToAdd = getAddNode(m1._GRAPH, g2, option);
-            if (nodeToAdd == null) {
+            if (nodeToAdd == null)
+            {
                 return null;
             }
             // along X-axis
@@ -1942,10 +1983,10 @@ namespace FameBase
             double z = (nodeToAdd._PART._BOUNDINGBOX.MaxCoord.z - nodeToAdd._PART._BOUNDINGBOX.MinCoord.z);
             double yscale = 1.0;
             double zscale = (place_g1._PART._BOUNDINGBOX.MaxCoord.z - place_g1._PART._BOUNDINGBOX.MinCoord.z) / z;
-            Vector3d center = new Vector3d(place_g1._PART._BOUNDINGBOX.MaxCoord.x - hx / 2, 
-                place_g1._PART._BOUNDINGBOX.MaxCoord.y + y/2,
+            Vector3d center = new Vector3d(place_g1._PART._BOUNDINGBOX.MaxCoord.x - hx / 2,
+                place_g1._PART._BOUNDINGBOX.MaxCoord.y + y / 2,
                 place_g1._PART._BOUNDINGBOX.CENTER.z);
-            
+
             Matrix4d S = Matrix4d.ScalingMatrix(xscale, yscale, zscale);
             if (option == 1)
             {
@@ -1974,7 +2015,7 @@ namespace FameBase
             for (int i = 0; i < 4; ++i)
             {
                 clone_contacts.Add(new Contact(contact_points[i]));
-            }            
+            }
             g1_clone.addAnEdge(g1_clone._NODES[node_idx], nodeToAdd_clone, clone_contacts);
             deformANodeAndEdges(nodeToAdd_clone, Q);
             return m1_clone;
@@ -2049,7 +2090,7 @@ namespace FameBase
                 return mutated;
             }
             Random rand = new Random();
-            string path = this.foldername + "\\models\\mutate\\gen_" + gen.ToString() + "\\";
+            string path = mutateFolder + "gen_" + gen.ToString() + "\\";
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
@@ -2320,8 +2361,8 @@ namespace FameBase
 
             Model newM1 = m1.Clone() as Model;
             Model newM2 = m2.Clone() as Model;
-            newM1._path = this.foldername + "\\models\\crossover\\gen_" + gen.ToString() + "\\";
-            newM2._path = this.foldername + "\\models\\crossover\\gen_" + gen.ToString() + "\\";
+            newM1._path = crossoverFolder + "gen_" + gen.ToString() + "\\";
+            newM2._path = crossoverFolder + "gen_" + gen.ToString() + "\\";
             if (!Directory.Exists(newM1._path))
             {
                 Directory.CreateDirectory(newM1._path);
@@ -2475,7 +2516,7 @@ namespace FameBase
                 sources.Add(center1);
                 targets.Add(center2);
             }
-            
+
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
             if (ground1 != null && ground2 != null)
@@ -2555,7 +2596,7 @@ namespace FameBase
                 clone_nodes.Add(cloned);
             }
             // edges
-            for (int i = 0; i < nodes.Count;++i)
+            for (int i = 0; i < nodes.Count; ++i)
             {
                 Node node = nodes[i];
                 foreach (Edge e in node._edges)
@@ -2604,7 +2645,7 @@ namespace FameBase
                 int j = rand.Next(n);
                 if (j >= n)
                 {
-                      j = 2;
+                    j = 2;
                 }
                 Common.Functionality f = getFunctionalityFromIndex(j);
                 if (!funcs.Contains(f))
@@ -2659,7 +2700,7 @@ namespace FameBase
                     selected.Add(sym_nodes[s]);
                 }
             }
-            else 
+            else
             {
                 selected = nodes;
             }
@@ -2687,7 +2728,7 @@ namespace FameBase
             List<Node> nodes2 = g2.getGroundTouchingNodes();
             nodeChoices1.Add(nodes1);
             nodeChoices2.Add(nodes2);
-            
+
             // Key nodes
             List<List<Node>> splitNodes1 = g1.splitAlongKeyNode();
             List<List<Node>> splitNodes2 = g2.splitAlongKeyNode();
@@ -2737,7 +2778,7 @@ namespace FameBase
                 for (int j = 0; j < symPairs2.Count; ++j)
                 {
                     bool isGround2 = symPairs2[j][0]._isGroundTouching;
-                    if ( (isGround1 && isGround2) || (!isGround1 && !isGround2 && outEdgeNum1[i] == outEdgeNum2[j]))
+                    if ((isGround1 && isGround2) || (!isGround1 && !isGround2 && outEdgeNum1[i] == outEdgeNum2[j]))
                     {
                         nodeChoices1.Add(symPairs1[i]);
                         nodeChoices2.Add(symPairs2[j]);
@@ -2771,11 +2812,11 @@ namespace FameBase
         public List<ModelViewer> getMutateViewers()
         {
             List<Model> models = mutate();
-            _resViewers = new List<ModelViewer>();
+            List<ModelViewer> _resViewers = new List<ModelViewer>();
             int i = 0;
             foreach (Model m in models)
             {
-                _resViewers.Add(new ModelViewer(m, i++, this));
+                _resViewers.Add(new ModelViewer(m, i++, this, 1));
             }
             return _resViewers;
         }// getMutateViewers
@@ -2990,7 +3031,7 @@ namespace FameBase
             {
                 return null;
             }
-            _resViewers = new List<ModelViewer>();
+            List<ModelViewer> _resViewers = new List<ModelViewer>();
             int k = 0;
             for (int i = 0; i < _crossOverBasket.Count - 1; ++i)
             {
@@ -3024,9 +3065,9 @@ namespace FameBase
                     switchNodes(m1._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
 
                     newM1.replaceNodes(nodes1, updatedNodes2);
-                    _resViewers.Add(new ModelViewer(newM1, k++, this));
+                    _resViewers.Add(new ModelViewer(newM1, k++, this, 1));
                     newM2.replaceNodes(nodes2, updatedNodes1);
-                    _resViewers.Add(new ModelViewer(newM2, k++, this));
+                    _resViewers.Add(new ModelViewer(newM2, k++, this, 1));
                 }
             }
             _crossOverBasket.Clear();
@@ -3138,7 +3179,8 @@ namespace FameBase
                 {
                     Q = Matrix4d.IdentityMatrix();
                 }
-            } else if (n == 2)
+            }
+            else if (n == 2)
             {
                 Vector3d c1 = (srcpts[0] + srcpts[1]) / 2;
                 Vector3d c2 = (tarpts[0] + tarpts[1]) / 2;
@@ -3263,7 +3305,7 @@ namespace FameBase
                         ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[3])).normalize()
                         };
                     }
-                    
+
                     Vector3d nor = new Vector3d();
                     for (int i = 0; i < 4; ++i)
                     {
@@ -3305,7 +3347,7 @@ namespace FameBase
                         }
                     }
                 }
-                
+
                 Vector3d scale = new Vector3d(sx, sy, sz);
                 //scale = adjustScale(scale);
 
@@ -3356,8 +3398,8 @@ namespace FameBase
         }// hasInvalidVec
 
         /*****************end - Functionality-aware evolution*************************/
-        
-        
+
+
         //########## set modes ##########//
         public void setTabIndex(int i)
         {
@@ -3482,7 +3524,7 @@ namespace FameBase
             }
             double arrow_d = ad / 6;
             _editAxes = new Contact[18];
-            for (int i = 0; i < _editAxes.Length; ++i )
+            for (int i = 0; i < _editAxes.Length; ++i)
             {
                 _editAxes[i] = new Contact(new Vector3d());
             }
@@ -3527,7 +3569,7 @@ namespace FameBase
             this.cal2D();
             this.Refresh();
         }
-        
+
         public void reloadView()
         {
             this.arcBall.reset();
@@ -3562,7 +3604,7 @@ namespace FameBase
         {
             if (this.camera == null) return;
             Matrix4d m = this._currModelTransformMatrix;
-            double[] ballmat =  m.Transpose().ToArray();	// matrix applied with arcball
+            double[] ballmat = m.Transpose().ToArray();	// matrix applied with arcball
             this.camera.SetBallMatrix(ballmat);
             this.camera.Update();
         }
@@ -3602,21 +3644,22 @@ namespace FameBase
             this.arcBall.mouseMove(x, y);
         }// viewMouseMove
 
-		private int nPointPerspective = 3;
+        private int nPointPerspective = 3;
 
         private void viewMouseUp()
         {
             this._currModelTransformMatrix = this.arcBall.getTransformMatrix(this.nPointPerspective) * this._currModelTransformMatrix;
             if (this.arcBall.motion == ArcBall.MotionType.Pan)
             {
-				this.transMat = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.transMat;
-            }else if  (this.arcBall.motion == ArcBall.MotionType.Rotate)
+                this.transMat = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.transMat;
+            }
+            else if (this.arcBall.motion == ArcBall.MotionType.Rotate)
             {
-				this.rotMat = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.rotMat;
+                this.rotMat = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.rotMat;
             }
             else
             {
-				this.scaleMat = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.scaleMat;
+                this.scaleMat = this.arcBall.getTransformMatrix(this.nPointPerspective) * this.scaleMat;
             }
             this.arcBall.mouseUp();
             //this._modelTransformMatrix = this.transMat * this.rotMat * this.scaleMat;
@@ -3644,12 +3687,12 @@ namespace FameBase
                     {
                         if (this.currMeshClass != null)
                         {
-							Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this._currModelTransformMatrix;
+                            Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this._currModelTransformMatrix;
                             Gl.glMatrixMode(Gl.GL_MODELVIEW);
                             Gl.glPushMatrix();
                             Gl.glMultMatrixd(m.Transpose().ToArray());
 
-                            this.currMeshClass.selectMouseDown((int)this.currUIMode, 
+                            this.currMeshClass.selectMouseDown((int)this.currUIMode,
                                 Control.ModifierKeys == Keys.Shift,
                                 Control.ModifierKeys == Keys.Control);
 
@@ -3841,7 +3884,7 @@ namespace FameBase
                         this.isDrawQuad = false;
                         if (this._currModel != null && e.Button != System.Windows.Forms.MouseButtons.Right)
                         {
-                            this.selectMouseUp(this.highlightQuad, 
+                            this.selectMouseUp(this.highlightQuad,
                                 Control.ModifierKeys == Keys.Shift,
                                 Control.ModifierKeys == Keys.Control);
                         }
@@ -4034,7 +4077,7 @@ namespace FameBase
             this.Draw2D();
 
             this.SwapBuffers();
-			
+
         }// onPaint
 
         //######### Part-based #########//
@@ -4044,7 +4087,7 @@ namespace FameBase
             if (this._currModel == null || q == null) return;
             this.cal2D();
             _selectedNodes = new List<Node>();
-            foreach(Part p in _currModel._PARTS)
+            foreach (Part p in _currModel._PARTS)
             {
                 if (p._BOUNDINGBOX == null) continue;
                 if (!isCtrl && _selectedParts.Contains(p))
@@ -4153,7 +4196,7 @@ namespace FameBase
                 cloneParts.Add(np);
             }
             Model m = new Model(cloneParts);
-            ModelViewer mv = new ModelViewer(m, -1, this);
+            ModelViewer mv = new ModelViewer(m, -1, this, 1);
             _partViewers.Add(mv);
             return mv;
         }// addSelectedPartsToBasket
@@ -4264,12 +4307,13 @@ namespace FameBase
                 {
                     p.TransformFromOrigin(T);
                 }
-            } else if (_currHumanPose != null) // NOTE!! else relation
+            }
+            else if (_currHumanPose != null) // NOTE!! else relation
             {
                 ori = _currHumanPose._ROOT._ORIGIN;
                 _currHumanPose.TransformFromOrigin(T);
             }
-            
+
             if (this.currUIMode != UIMode.Translate)
             {
                 Vector3d after = new Vector3d();
@@ -4388,7 +4432,7 @@ namespace FameBase
                     Part pclone = p.Clone() as Part;
                     parts.Add(pclone);
                 }
-            }            
+            }
             _currModel = new Model(parts);
             this.cal2D();
             this.Refresh();
@@ -4619,7 +4663,7 @@ namespace FameBase
             m = Matrix4d.TranslationMatrix(this.objectCenter) * m * Matrix4d.TranslationMatrix(
                 new Vector3d() - this.objectCenter);
 
-            foreach (ModelViewer mv in _modelViewers)
+            foreach (ModelViewer mv in _ancesterModelViewers)
             {
                 mv.setModelViewMatrix(m);
             }
@@ -4627,7 +4671,7 @@ namespace FameBase
             {
                 mv.setModelViewMatrix(m);
             }
-            foreach (ModelViewer mv in _resViewers)
+            foreach (ModelViewer mv in _currGenModelViewers)
             {
                 mv.setModelViewMatrix(m);
             }
@@ -4718,13 +4762,13 @@ namespace FameBase
                 {
                     this.drawGraph(_currModel._GRAPH);
                 }
-            }            
+            }
 
             this.drawCurrentMesh();
 
             this.drawHumanPose();
 
-            this.DrawHighlight3D();            
+            this.DrawHighlight3D();
 
             if (this.enableDepthTest)
             {
@@ -4734,7 +4778,7 @@ namespace FameBase
             Gl.glDisable(Gl.GL_POLYGON_OFFSET_FILL);
             Gl.glMatrixMode(Gl.GL_MODELVIEW);
             Gl.glPopMatrix();
-            
+
         }// Draw3D   
 
         private void drawGround()
@@ -4773,7 +4817,7 @@ namespace FameBase
             {
                 return;
             }
-            if(this.currMeshClass != null)
+            if (this.currMeshClass != null)
             {
                 if (this.drawFace)
                 {
