@@ -1845,6 +1845,9 @@ namespace FameBase
             this.isDrawBbox = false;
             this.isDrawGraph = false;
             this.isDrawGround = true;
+            Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
+            Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
+            Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
 
             // for capturing screen
             this.reloadView();
@@ -1864,39 +1867,42 @@ namespace FameBase
             }
             parents.AddRange(_currGen);
 
-            Random rand = new Random();
-            _mutateOrCross = runMutateOrCrossover(rand);
-
-            switch (_mutateOrCross)
+            // 
+            int maxIter = 5;
+            int start = 0;
+            for (int i = 0; i < maxIter; ++i)
             {
-                case 0:
-                    // mutate
-                    _currGen = runMutate(parents, _currIter, imageFolder_m, 0);
-                    break;
-                case 1:
-                    // crossover
-                    _currGen = runCrossover(parents, _currIter, rand, imageFolder_c, 0);
-                    break;
-                case 2:
-                default:
-                    _currGen = runGrowth(parents, _currIter, rand, imageFolder_g, 0);
-                    break;
+                Random rand = new Random();
+                _mutateOrCross = runMutateOrCrossover(rand);
+                List<Model> cur_par = new List<Model>(parents);
+                List<Model> cur_kids = new List<Model>();
+                switch (_mutateOrCross)
+                {
+                    case 0:
+                        // mutate
+                        cur_kids = runMutate(cur_par, _currIter, imageFolder_m, start);
+                        break;
+                    case 1:
+                        // crossover
+                        cur_kids = runCrossover(cur_par, _currIter, rand, imageFolder_c, start);
+                        break;
+                    case 2:
+                    default:
+                        cur_kids = runGrowth(cur_par, _currIter, rand, imageFolder_g, start);
+                        break;
+                }
+                start += _currGen.Count;
+                parents.AddRange(cur_kids);
+                _currGen.AddRange(cur_kids);
+                ++_currIter;
             }
-
-            ++_currIter;
             int n = _ancesterModelViewers.Count;
-            foreach (Model m in prev_parents)
-            {
-                ModelViewer mv = new ModelViewer(m, n++, this, 1);
-                _currGenModelViewers.Add(mv);
-            }
             foreach (Model m in _currGen)
             {
                 ModelViewer mv = new ModelViewer(m, n++, this, 2);
                 _currGenModelViewers.Add(mv);
             }
-            _currGen.Clear(); // for user selection
-            _currGen.AddRange(prev_parents);
+            _currGen = new List<Model>(prev_parents); // for user selection
             return _currGenModelViewers;
         }// autoGenerate
 
@@ -1930,7 +1936,7 @@ namespace FameBase
                     }
                     Model m2 = models[j];
                     Model model = addPlacement(m1, m2._GRAPH, path, idx, rand, gen);
-                    if (model != null)
+                    if (model != null && model._GRAPH != null && model._GRAPH.isValid())
                     {
                         growth.Add(model);
                         // screenshot
@@ -2117,7 +2123,7 @@ namespace FameBase
                 mutateANode(updateNode, rand);
                 deformPropagation(model._GRAPH, updateNode);
                 model._GRAPH.resetUpdateStatus();
-                if (!model._GRAPH.isViolateOrigin())
+                if (!model._GRAPH.isValid())
                 {
                     model._GRAPH.unify();
                     mutated.Add(model);
@@ -2197,7 +2203,7 @@ namespace FameBase
                     m_idx += 2;
                     foreach (Model m in results)
                     {
-                        if (!m._GRAPH.isViolateOrigin())
+                        if (!m._GRAPH.isValid())
                         {
                             m._GRAPH.unify();
                             crossed.Add(m);
@@ -2395,10 +2401,6 @@ namespace FameBase
             List<Node> updatedNodes2;
             // switch
             switchNodes(newM1._GRAPH, newM2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
-
-            isValidGraph(newM1._GRAPH);
-            isValidGraph(newM2._GRAPH);
-
             newM1.replaceNodes(nodes1, updatedNodes2);
             crossModels.Add(newM1);
 
@@ -2407,18 +2409,6 @@ namespace FameBase
 
             return crossModels;
         }// crossover
-
-        private void isValidGraph(Graph g)
-        {
-            int n = g._NNodes;
-            foreach (Edge e in g._EDGES)
-            {
-                if (e._start._INDEX >= n || e._end._INDEX >= n)
-                {
-                    break;
-                }
-            }
-        }// isValidGraph
 
         private void switchNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2,
             out List<Node> updateNodes1, out List<Node> updateNodes2)

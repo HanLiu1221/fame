@@ -126,6 +126,7 @@ namespace Component
             double maxScale = double.MinValue;
             foreach (Node node in _nodes)
             {
+                node._PART._BOUNDINGBOX.setMaxMinScaleFromMesh(node._PART._MESH.MaxCoord, node._PART._MESH.MinCoord);
                 for (int i = 0; i < 3; ++i)
                 {
                     if (minScale > node._PART._BOUNDINGBOX._scale[i])
@@ -517,6 +518,21 @@ namespace Component
                     }
                 }
             }
+            // between faces
+            for (int i = 0; i < m1.FaceCount; ++i)
+            {
+                Vector3d c1 = m1.getFaceCenter(i);
+                for (int j = 0; j < m2.FaceCount; ++j)
+                {
+                    Vector3d c2 = m2.getFaceCenter(j);
+                    double d = (c1 - c2).Length();
+                    if (d < mind)
+                    {
+                        mind = d;
+                        contact = (c1 + c2) / 2;
+                    }
+                }
+            }
             return mind;
         }// getDistBetweenMeshes
 
@@ -869,37 +885,6 @@ namespace Component
             return symPairs;
         }// getSymmetryPairs
 
-        public bool isViolateOrigin()
-        {
-            // geometry filter
-            double[] vals = calScale();
-            double max_adj_nodes_dist = Math.Max(_maxAdjNodesDist, 0.1);
-            double min_box_scale = Math.Min(_minNodeBboxScale, Common._min_scale);
-            double max_box_scale = Math.Max(_maxNodeBboxScale, Common._max_scale);
-            // max scale is not reliable, since a large node may replace many small nodes
-            if (vals[0] > max_adj_nodes_dist || vals[1] < min_box_scale || vals[2] > max_box_scale)
-            {
-                return true;
-            }
-            foreach (Node node in _nodes)
-            {
-                if (node._PART._BOUNDINGBOX.MinCoord.y < Common._minus_thresh)
-                {
-                    return true;
-                }
-            }
-            List<Common.Functionality> funs = this.getGraphFuncs();
-            foreach (Common.Functionality f in _origin_funcs)
-            {
-                if (!funs.Contains(f))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }// isViolateOrigin
-
         private void resetNodeIndex()
         {
             int i = 0;
@@ -975,6 +960,153 @@ namespace Component
             }
             resetUpdateStatus();
         }// transformAll
+
+        //*********** Validation ***********//
+        public bool isValid()
+        {
+            if (!isIndexValid())
+            {
+                return false;
+            }
+            if (!isValidContacts())
+            {
+                return false;
+            }
+            if (isLoseOriginalFunctionality())
+            {
+                return false;
+            }
+            if (hasDetachedParts())
+            {
+                return false;
+            }
+            if (!isPhysicalValid())
+            {
+                return false;
+            }
+            if (isViolateOriginalScales())
+            {
+                return false;
+            }
+            return true;
+        }// isValid
+
+        private bool isPhysicalValid()
+        {
+            // center of mass falls in the supporting polygon
+            Vector3d centerOfMass = new Vector3d();
+            _NNodes = _nodes.Count;
+            List<Vector2d> centers2d = new List<Vector2d>();
+            List<Vector3d> groundPnts = new List<Vector3d>();
+            foreach (Node node in _nodes)
+            {
+                Vector3d v = node._PART._BOUNDINGBOX.CENTER;
+                centerOfMass += v;
+                centers2d.Add(new Vector2d(v.x, v.z));
+                if (node._funcs.Contains(Common.Functionality.GROUND_TOUCHING))
+                {
+                    groundPnts.Add(node._PART._BOUNDINGBOX.MinCoord);
+                }
+            }
+            centerOfMass /= _NNodes;
+            Vector2d center = new Vector2d(centerOfMass.x, centerOfMass.z);
+            int i = 0;
+            Vector2d[] groundPnts2d = new Vector2d[groundPnts.Count];
+            foreach (Vector3d v in groundPnts)
+            {
+                groundPnts2d[i++] = new Vector2d(v.x, v.z);
+            }
+            foreach (Vector2d v in centers2d)
+            {
+                if (!Polygon2D.isPointInPolygon(center, groundPnts2d))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }// isPhysicalValid
+
+        private bool isIndexValid()
+        {
+            _NNodes = _nodes.Count;
+            foreach (Edge e in _edges)
+            {
+                if (e._start._INDEX >= _NNodes || e._end._INDEX >= _NNodes)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }// isValidGraph
+
+        private bool isValidContacts()
+        {
+            foreach (Edge e in _edges)
+            {
+                foreach (Contact c in e._contacts)
+                {
+                    if (!c._pos3d.isValidVector())
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }// isValidContacts
+
+        private bool isViolateOriginalScales()
+        {
+            // geometry filter
+            double[] vals = calScale();
+            double max_adj_nodes_dist = Math.Max(_maxAdjNodesDist, 0.05); // not working for non-uniform meshes
+            double min_box_scale = Math.Min(_minNodeBboxScale, Common._min_scale);
+            double max_box_scale = Math.Max(_maxNodeBboxScale, Common._max_scale);
+            // max scale is not reliable, since a large node may replace many small nodes
+            if (vals[0] > max_adj_nodes_dist || vals[1] < min_box_scale || vals[2] > max_box_scale)
+            {
+                return true;
+            }
+            foreach (Node node in _nodes)
+            {
+                if (node._PART._BOUNDINGBOX.MinCoord.y < Common._minus_thresh)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// isViolateOriginalScales
+
+        private bool isLoseOriginalFunctionality()
+        {
+            List<Common.Functionality> funs = this.getGraphFuncs();
+            foreach (Common.Functionality f in _origin_funcs)
+            {
+                if (!funs.Contains(f))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// isLoseOriginalFunctionality
+
+        private bool hasDetachedParts()
+        {
+            foreach (Edge e in _edges)
+            {
+                Mesh m1 = e._start._PART._MESH;
+                Mesh m2 = e._end._PART._MESH;
+                if (isTwoPolyOverlap(m1.MinCoord, m2.MaxCoord) || isTwoPolyOverlap(m2.MinCoord, m1.MaxCoord))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// hasDetachedParts
+
+        private bool isTwoPolyOverlap(Vector3d v1_min, Vector3d v2_max)
+        {
+            return v1_min.x > v2_max.x || v1_min.y > v2_max.y || v1_min.z > v2_max.z;
+        }// isTwoPolyOverlap
 
         public List<Node> _NODES
         {

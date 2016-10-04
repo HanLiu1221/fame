@@ -318,7 +318,9 @@ namespace Geometry
             Polygon3D cloned = new Polygon3D(this.points3d);
             return cloned;
         }
-    }
+
+
+    }// Polygon3D
 
     public class Line2d
     {
@@ -727,7 +729,7 @@ namespace Geometry
             return p;
         }
 
-        private void initInfo()
+        public void initInfo()
         {
             _originPoints3d = _points3d.Clone() as Vector3d[];
             _nSideFaces = _points3d.Length / 2;
@@ -804,6 +806,7 @@ namespace Geometry
         {
             _maxCoord = maxs;
             _minCoord = mins;
+            updateScale();
         }// setMaxMinScaleFromMesh
 
         public void Transform(Matrix4d T)
@@ -840,7 +843,7 @@ namespace Geometry
                 _center += _points3d[i];
             }
             _center /= _points3d.Length;
-            _scale = (_maxCoord - _minCoord) / 2;
+            _scale = (_maxCoord - _minCoord);
         }
 
         public void updateOrigin()
