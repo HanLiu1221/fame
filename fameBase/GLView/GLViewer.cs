@@ -157,7 +157,7 @@ namespace FameBase
         private List<Model> _crossOverBasket = new List<Model>();
         private int _selectedModelIndex = -1;
 
-        public string foldername;
+        public string foldername = ".\\mix_4";
         private Vector3d objectCenter = new Vector3d();
         private enum Depthtype
         {
@@ -1766,6 +1766,11 @@ namespace FameBase
             }
         }// dfs_files
 
+        public int getParentModelNum()
+        {
+            return _ancesterModelViewers.Count;
+        }
+
         // save folders
         string userFolder;
         string mutateFolder;
@@ -1780,7 +1785,7 @@ namespace FameBase
         {
             string root = this.foldername.Clone() as string;
             _userIndex = 1;
-            userFolder = root + "\\user_" + _userIndex.ToString();
+            userFolder = root + "\\User_" + _userIndex.ToString();
             while (Directory.Exists(userFolder))
             {
                 // create a new folder for the new user
@@ -1868,12 +1873,13 @@ namespace FameBase
             parents.AddRange(_currGen);
 
             // 
-            int maxIter = 5;
+            int maxIter = 1;
             int start = 0;
             for (int i = 0; i < maxIter; ++i)
             {
                 Random rand = new Random();
                 _mutateOrCross = runMutateOrCrossover(rand);
+                _mutateOrCross = 2;
                 List<Model> cur_par = new List<Model>(parents);
                 List<Model> cur_kids = new List<Model>();
                 switch (_mutateOrCross)
@@ -1891,7 +1897,7 @@ namespace FameBase
                         cur_kids = runGrowth(cur_par, _currIter, rand, imageFolder_g, start);
                         break;
                 }
-                start += _currGen.Count;
+                //start += _currGen.Count;
                 parents.AddRange(cur_kids);
                 _currGen.AddRange(cur_kids);
                 ++_currIter;
@@ -1935,9 +1941,11 @@ namespace FameBase
                         continue;
                     }
                     Model m2 = models[j];
-                    Model model = addPlacement(m1, m2._GRAPH, path, idx, rand, gen);
+                    //Model model = addPlacement(m1, m2._GRAPH, path, idx, rand, gen);
+                    Model model = growNewFunctionality(m1, m2, path, idx, rand);
                     if (model != null && model._GRAPH != null && model._GRAPH.isValid())
                     {
+                        model._GRAPH.reset();
                         growth.Add(model);
                         // screenshot
                         this.setCurrentModel(model, -1);
@@ -1950,6 +1958,99 @@ namespace FameBase
             }
             return growth;
         }// runGrowth
+
+        private Model growNewFunctionality(Model m1, Model m2, string path, int idx, Random rand)
+        {
+            // find the new func in m2 and add to m1
+            List<Common.Functionality> funcs1 = m1._GRAPH.getGraphFuncs();
+            List<Common.Functionality> funcs2 = m2._GRAPH.getGraphFuncs();
+            List<Common.Functionality> cands = new List<Common.Functionality>();
+            foreach (Common.Functionality f2 in funcs2)
+            {
+                if (!funcs1.Contains(f2))
+                {
+                    cands.Add(f2);
+                }
+            }
+            if (cands.Count == 0) {
+                return null;
+            }
+            int i = rand.Next(cands.Count);
+            Common.Functionality addf = cands[i];
+            Model m1_clone = m1.Clone() as Model;
+            m1_clone._path = path;
+            m1_clone._model_name = m1._model_name + "_grow_" + idx.ToString();
+            Graph g1_clone = m1_clone._GRAPH;
+            List<Node> nodes = m2._GRAPH.getNodesByUniqueFunctionality(addf);
+            if (nodes.Count == 0)
+            {
+                return null;
+            }
+            List<Edge> outEdges = m2._GRAPH.getOutgoingEdges(nodes);
+            List<Node> clone_nodes = new List<Node>();
+            List<Edge> clone_edges = new List<Edge>();
+            m2._GRAPH.cloneSubgraph(nodes, out clone_nodes, out clone_edges);
+            foreach (Node node in clone_nodes)
+            {
+                m1_clone.addAPart(node._PART);
+                g1_clone.addANode(node);
+            }
+            foreach (Edge e in clone_edges)
+            {
+                g1_clone.addAnEdge(e._start, e._end, e._contacts);
+            }
+            // node to attach
+            Node attach = g1_clone.getNodeToAttach();
+            if (attach == null)
+            {
+                return null;
+            }
+            Vector3d sourcePos = new Vector3d();
+            int ne = 0;
+            foreach (Edge e in outEdges)
+            {
+                List<Contact> clone_contacts = new List<Contact>();
+                foreach (Contact c in e._contacts)
+                {
+                    sourcePos += c._pos3d;
+                    ++ne;
+                    clone_contacts.Add(new Contact(new Vector3d(c._pos3d)));
+                }
+                Node out_node =  nodes.Contains(e._start) ? e._start : e._end;
+                Node cnode = clone_nodes[nodes.IndexOf(out_node)];
+                g1_clone.addAnEdge(cnode, attach, clone_contacts);
+            }
+            sourcePos /= ne;
+            Vector3d targetPos;
+            if (addf == Common.Functionality.HAND_PLACE || addf == Common.Functionality.HUMAN_HIP)
+            {
+                targetPos = new Vector3d(
+                attach._PART._BOUNDINGBOX.CENTER.x,
+                attach._PART._BOUNDINGBOX.MaxCoord.y,
+                attach._PART._BOUNDINGBOX.CENTER.z);
+            }
+            else if (addf == Common.Functionality.SUPPORT)
+            {
+                targetPos = new Vector3d(
+                attach._PART._BOUNDINGBOX.CENTER.x,
+                attach._PART._BOUNDINGBOX.MinCoord.y,
+                attach._PART._BOUNDINGBOX.CENTER.z);
+            }
+            else
+            {
+                targetPos = new Vector3d(
+                attach._PART._BOUNDINGBOX.CENTER.x,
+                attach._PART._BOUNDINGBOX.MaxCoord.y,
+                attach._PART._BOUNDINGBOX.MinCoord.z);
+            }
+
+            Matrix4d T = Matrix4d.TranslationMatrix(targetPos - sourcePos);
+            foreach (Node cnode in clone_nodes)
+            {
+                deformANodeAndEdges(cnode, T);
+            }
+            return m1_clone;
+        }// growNewFunctionality
 
         private Model addPlacement(Model m1, Graph g2, string path, int idx, Random rand, int gen)
         {
@@ -2123,7 +2224,7 @@ namespace FameBase
                 mutateANode(updateNode, rand);
                 deformPropagation(model._GRAPH, updateNode);
                 model._GRAPH.resetUpdateStatus();
-                if (!model._GRAPH.isValid())
+                if (model._GRAPH.isValid())
                 {
                     model._GRAPH.unify();
                     mutated.Add(model);
@@ -2143,19 +2244,21 @@ namespace FameBase
             double s2 = 2.0; // max
             double scale = s1 + rand.NextDouble() * (s2 - s1);
             Vector3d scale_vec = new Vector3d(1, 1, 1);
+            Matrix4d R = Matrix4d.IdentityMatrix();
+            int axis = rand.Next(3);
+            scale_vec[axis] = scale;
+            Vector3d ori_axis = new Vector3d();
+            ori_axis[axis]=1;
             if (node._PART._BOUNDINGBOX.type == Common.PrimType.Cylinder)
             {
                 Vector3d rot_axis = node._PART._BOUNDINGBOX.rot_axis;
-                scale_vec = scale * rot_axis;
-            }
-            else
-            {
-                int axis = rand.Next(3);
-                scale_vec[axis] = scale;
+                R = Matrix4d.RotationMatrix(rot_axis, Math.Acos(ori_axis.Dot(rot_axis)));
+                //scale_vec = scale * rot_axis;
             }
             Matrix4d S = Matrix4d.ScalingMatrix(scale_vec);
             Vector3d center = node._pos;
-            Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            Matrix4d Q = R * S;
+            Q = Matrix4d.TranslationMatrix(center) * Q * Matrix4d.TranslationMatrix(new Vector3d() - center);
             if (node._isGroundTouching)
             {
                 Node cNode = node.Clone() as Node;
@@ -2191,19 +2294,22 @@ namespace FameBase
                     {
                         continue;
                     }
-                    //// TEST
-                    //if ((m1._model_name.Contains("cradle") && m2._model_name.Contains("table")) ||
-                    //   ( m2._model_name.Contains("cradle") && m1._model_name.Contains("table")))
-                    //{
-                    //    Common.Functionality func = getFunctionalityFromString("GROUND_TOUCHING");
-                    //    m1._GRAPH.selectedNodes = m1._GRAPH.selectFuncNodes(func);
-                    //    m2._GRAPH.selectedNodes = m2._GRAPH.selectFuncNodes(func);
-                    //}
+                    // include all inner connected nodes
+                    List<Node> nodes1 = m1._GRAPH.getNodePropagation(m1._GRAPH.selectedNodes);
+                    List<Node> nodes2 = m2._GRAPH.getNodePropagation(m2._GRAPH.selectedNodes);
+                    if (nodes1.Count < m1._GRAPH._NNodes)
+                    {
+                        m1._GRAPH.selectedNodes = nodes1;
+                    }
+                    if (nodes2.Count < m2._GRAPH._NNodes)
+                    {
+                        m2._GRAPH.selectedNodes = nodes2;
+                    }
                     List<Model> results = this.crossOverOp(m1, m2, gen, m_idx);
                     m_idx += 2;
                     foreach (Model m in results)
                     {
-                        if (!m._GRAPH.isValid())
+                        if (m._GRAPH.isValid())
                         {
                             m._GRAPH.unify();
                             crossed.Add(m);
@@ -2227,21 +2333,29 @@ namespace FameBase
             int search = 0;
             g1.selectedNodes.Clear();
             g2.selectedNodes.Clear();
-            int option = rand.Next(2);
-            if (option == 0)
+            int option = rand.Next(4);
+            if (option < 2)
             {
                 // select functionality
                 while (search < max_func_search && !this.isValidSelection(g1, g2))
                 {
                     // only switch 1 functionality at one time
                     funcs = this.selectFunctionality(rand, 1);
-                    g1.selectedNodes = g1.getNodesByFunctionality(funcs);
-                    g2.selectedNodes = g2.getNodesByFunctionality(funcs);
+                    if (option == 0)
+                    {
+                        g1.selectedNodes = g1.getNodesByFunctionality(funcs);
+                        g2.selectedNodes = g2.getNodesByFunctionality(funcs);
+                    }
+                    else
+                    {
+                        g1.selectedNodes = g1.getNodesByUniqueFunctionality(funcs[0]);
+                        g2.selectedNodes = g2.getNodesByUniqueFunctionality(funcs[0]);
+                    }
                     ++search;
                 }
             }
             bool isValid = this.isValidSelection(g1, g2);
-            if (option > 0 || !isValid)
+            if (option > 1 || !isValid)
             {
                 g1.selectedNodes.Clear();
                 g2.selectedNodes.Clear();
@@ -2884,7 +2998,10 @@ namespace FameBase
             node.updated = true;
             foreach (Edge e in node._edges)
             {
-                e.TransformContact(T);
+                if (!e._contactUpdated)
+                {
+                    e.TransformContact(T);
+                }
             }
         }// deformANodeAndEdges
 
@@ -3667,7 +3784,11 @@ namespace FameBase
             _isRightClick = e.Button == System.Windows.Forms.MouseButtons.Right;
 
             this.ContextMenuStrip = Program.GetFormMain().getRightButtonMenu();
-            this.ContextMenuStrip.Hide();
+            this.ContextMenuStrip = Program.GetFormMain().getRightButtonMenu();
+            if (this.ContextMenuStrip != null)
+            {
+                this.ContextMenuStrip.Hide();
+            }
 
             switch (this.currUIMode)
             {
@@ -4880,9 +5001,17 @@ namespace FameBase
                 {
                     continue;
                 }
+                bool isSelected = _selectedEdge != null && (_selectedEdge._start._PART == part || _selectedEdge._end._PART == part);
                 if (this.drawFace)
                 {
-                    GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    if (isSelected)
+                    {
+                        GLDrawer.drawMeshFace(part._MESH, GLDrawer.HighlightBboxColor, false);
+                    }
+                    else
+                    {
+                        GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                    }
                     //GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
                 }
                 if (this.drawEdge)
@@ -4903,7 +5032,14 @@ namespace FameBase
                 }
                 if (this.isDrawBbox)
                 {
-                    GLDrawer.drawBoundingboxPlanes(part._BOUNDINGBOX, part._COLOR);
+                    if (isSelected)
+                    {
+                        GLDrawer.drawBoundingboxPlanes(part._BOUNDINGBOX, GLDrawer.HighlightBboxColor);
+                    }
+                    else
+                    {
+                        GLDrawer.drawBoundingboxPlanes(part._BOUNDINGBOX, part._COLOR);
+                    }
                     if (part._BOUNDINGBOX.type == Common.PrimType.Cuboid)
                     {
                         GLDrawer.drawBoundingboxEdges(part._BOUNDINGBOX, part._COLOR);
