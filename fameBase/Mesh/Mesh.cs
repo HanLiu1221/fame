@@ -52,131 +52,26 @@ namespace Geometry
 
 	public class Mesh
 	{
-		private double[] vertexPos = null;
-		private int[] faceVertexIndex = null;
-		private HalfEdge[] halfEdges = null;
-        private HalfEdge[] singleHalfEdges = null;
-		private double[] vertexNormal = null;
-		private double[] faceNormal = null;
-        private byte[] vertexColor = null;
-        private byte[] faceColor = null;
-        private List<List<int>> vertexFaceIndex = null;
-		private int vertexCount = 0;
-		private int faceCount = 0;
-        private Vector3d minCoord = Vector3d.MaxCoord();
-        private Vector3d maxCoord = Vector3d.MinCoord();
-        private bool[] flags;
-
+		double[] vertexPos = null;
+        double[] originVertextPos = null;
+		int[] faceVertexIndex = null;
+		HalfEdge[] halfEdges = null;
+        HalfEdge[] singleHalfEdges = null;
+		double[] vertexNormal = null;
+		double[] faceNormal = null;
+        byte[] vertexColor = null;
+        byte[] faceColor = null;
+        List<List<int>> vertexFaceIndex = null;
+		int vertexCount = 0;
+		int faceCount = 0;
+        Vector3d _minCoord = Vector3d.MaxCoord;
+        Vector3d _maxCoord = Vector3d.MinCoord;
+        bool[] flags;
+        string sourceFile;
+        int[][] _vv; // vertex-vertex adjancency
+        int[][] _vf; // vertex-face
         public HalfEdge edgeIter = null;
 		
-		// to avoid changing the count of vertex/face
-		public int VertexCount
-		{
-			get
-			{
-				return vertexCount;
-			}
-		}
-
-		public int FaceCount
-		{
-			get 
-			{ 
-				return faceCount; 
-			}
-		}
-
-        public double[] VertexPos
-        {
-            get
-            {
-                return this.vertexPos;
-            }
-        }
-
-        public double[] VertexNormal
-        {
-            get
-            {
-                return this.vertexNormal;
-            }
-        }
-
-        public int[] FaceVertexIndex
-        {
-            get
-            {
-                return this.faceVertexIndex;
-            }
-        }
-
-        public HalfEdge[] HalfEdges
-        {
-            get
-            {
-                return this.halfEdges;
-            }
-        }
-
-        public HalfEdge[] Edges
-        {
-            get
-            {
-                return singleHalfEdges;
-            }
-        }
-
-        public double[] FaceNormal
-        {
-            get
-            {
-                return this.faceNormal;
-            }
-        } 
-
-        public byte[] FaceColor
-        {
-            get
-            {
-                return this.faceColor;
-            }
-        }
-
-        public Vector3d MaxCoord
-        {
-            get
-            {
-                return this.maxCoord;
-            }
-        }
-
-        public Vector3d MinCoord
-        {
-            get
-            {
-                return this.minCoord;
-            }
-        }
-
-        public List<List<int>> VertexFaceIndex
-        {
-            get
-            {
-                return this.vertexFaceIndex;
-            }
-        }
-
-        public bool[] Flags
-        {
-            get
-            {
-                return this.flags;
-            }
-            set
-            {
-                this.flags = value;
-            }
-        }
 		public Mesh()
 		{ }
 
@@ -221,9 +116,36 @@ namespace Geometry
                 idx = edge.nextHalfEdge.index;
                 this.halfEdges[i].nextHalfEdge = this.halfEdges[idx];
             }
-            
-            this.calculateFaceVertexNormal();
-            this.flags = new bool[this.vertexCount];
+            this.collectMeshInfo();
+        }
+
+        public Mesh(double[] vPos, int[] fIndex)
+        {
+            this.vertexCount = vPos.Length / 3;
+            this.faceCount = fIndex.Length / 3; // tri mesh
+            this.faceVertexIndex = fIndex;
+            this.vertexPos = vPos;
+            this.vertexFaceIndex = new List<List<int>>();
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                this.vertexFaceIndex.Add(new List<int>());
+            }
+            for (int i = 0, j = 0; i < this.faceCount; ++i)
+            {
+                this.vertexFaceIndex[fIndex[j++]].Add(i);
+                this.vertexFaceIndex[fIndex[j++]].Add(i);
+                this.vertexFaceIndex[fIndex[j++]].Add(i);
+            }
+            this.buildHalfEdge();
+            this.collectMeshInfo();
+        }
+
+        public Mesh(double[] vPos, byte[] color)
+        {
+            // point clound
+            this.vertexCount = vPos.Length / 3;
+            this.vertexPos = vPos;
+            this.vertexColor = color;
         }
 
 		public Mesh(string meshFileName, bool normalize)
@@ -232,23 +154,98 @@ namespace Geometry
 			{
 				return;
 			}
-			StreamReader sr = new StreamReader(meshFileName);
-			// mesh file type
-			string extension = Path.GetExtension(meshFileName); 
-			if(extension.Equals(".off"))
-			{
-				loadOffMesh(sr, normalize);
-			} else if (extension.Equals(".ply"))
+            sourceFile = meshFileName;
+            using (StreamReader sr = new StreamReader(meshFileName))
             {
-                LoadPlyfile(sr, normalize);
+                // mesh file type
+                string extension = Path.GetExtension(meshFileName);
+                if (extension.Equals(".off"))
+                {
+                    loadOffMesh(sr, normalize);
+                }
+                else if (extension.Equals(".ply"))
+                {
+                    LoadPlyfile(sr, normalize);
+                }
+                else // default ".obj"
+                {
+                    //loadObjMesh_withoutHalfEdge(sr, normalize);
+                    loadObjMesh(sr, normalize);
+                }
+                sr.Close();
             }
-            else // default ".obj"
-            {
-                loadObjMesh(sr, normalize);
-            }
-			sr.Close();
-            this.flags = new bool[this.vertexCount];
+            this.collectMeshInfo();
 		}
+
+        public Object Clone()
+        {
+            double[] vPos = vertexPos.Clone() as double[];
+            int[] fIndex = faceVertexIndex.Clone() as int[];
+            Mesh m = new Mesh();
+            m.vertexCount = vPos.Length / 3;
+            m.faceCount = fIndex.Length / 3; // tri mesh
+            m.faceVertexIndex = fIndex;
+            m.vertexPos = vPos;
+            m.vertexFaceIndex = new List<List<int>>();
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                m.vertexFaceIndex.Add(new List<int>());
+            }
+            for (int i = 0, j = 0; i < this.faceCount; ++i)
+            {
+                m.vertexFaceIndex[fIndex[j++]].Add(i);
+                m.vertexFaceIndex[fIndex[j++]].Add(i);
+                m.vertexFaceIndex[fIndex[j++]].Add(i);
+            }
+            m.originVertextPos = this.vertexPos.Clone() as double[];
+            m._maxCoord = new Vector3d(_maxCoord);
+            m._minCoord = new Vector3d(_minCoord);
+            m.faceNormal = faceNormal.Clone() as double[];
+            m.vertexNormal = vertexNormal.Clone() as double[];
+            return m;
+        }
+
+        public void Transform(Matrix4d T) 
+        {
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            for (int i = 0, j = 0; i < this.VertexCount; ++i, j += 3)
+            {
+                Vector3d ori = new Vector3d(this.vertexPos[j], this.vertexPos[j + 1], this.vertexPos[j + 2]);
+                Vector3d transformed = (T * new Vector4d(ori, 1)).ToVector3D();
+                for (int k = 0; k < 3; ++k)
+                {
+                    this.vertexPos[j + k] = transformed[k];
+                }
+                _maxCoord = Vector3d.Max(_maxCoord, transformed);
+                _minCoord = Vector3d.Min(_minCoord, transformed);
+            }
+            //this.afterUpdatePos();
+            this.getBoundary();
+        }// Transform
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            for (int i = 0, j = 0; i < this.VertexCount; ++i, j += 3)
+            {
+                Vector3d ori = new Vector3d(this.originVertextPos[j], this.originVertextPos[j + 1], this.originVertextPos[j + 2]);
+                Vector3d transformed = (T * new Vector4d(ori, 1)).ToVector3D();
+                for (int k = 0; k < 3; ++k)
+                {
+                    this.vertexPos[j + k] = transformed[k];
+                }
+                _maxCoord = Vector3d.Max(_maxCoord, transformed);
+                _minCoord = Vector3d.Min(_minCoord, transformed);
+            }
+            this.afterUpdatePos();
+        }// Transform
+
+        public void updateOriginPos()
+        {
+            this.originVertextPos = this.vertexPos.Clone() as double[];
+        }
 
         private void LoadPlyfile(StreamReader sr, bool normalize)
         {
@@ -256,9 +253,6 @@ namespace Geometry
             List<double> vertexNormalArray = new List<double>();
             List<byte> vertexColorArray = new List<byte>();
             List<int> faceArray = new List<int>();
-            List<HalfEdge> halfEdgeArray = new List<HalfEdge>();
-            List<HalfEdge> edgeArray = new List<HalfEdge>();
-            Dictionary<int, int> edgeHashTable = new Dictionary<int, int>();
             char[] separator = new char[] { ' ', '\t' };
             this.vertexCount = 0;
             this.faceCount = 0;
@@ -267,7 +261,7 @@ namespace Geometry
             int nproperty = 0;
             while (sr.Peek() > -1)
             {
-                line = sr.ReadLine();
+                line = sr.ReadLine().Trim();
                 string[] array = line.Split(separator);
                 if (array.Length > 0 && array[0].Equals("end_header"))
                 {
@@ -296,7 +290,7 @@ namespace Geometry
             }
             for (int i = 0; i < this.vertexCount; ++i)
             {
-                line = sr.ReadLine();
+                line = sr.ReadLine().Trim();
                 string[] array = line.Split(separator);
                 Vector3d v = new Vector3d();
                 for (int j = 0; j < 3; ++j)
@@ -304,8 +298,8 @@ namespace Geometry
                     v[j] = double.Parse(array[j]);
                     vertexArray.Add(v[j]);
                 }
-                this.minCoord = Vector3d.Min(this.minCoord, v);
-                this.maxCoord = Vector3d.Max(this.maxCoord, v);
+                this._minCoord = Vector3d.Min(this._minCoord, v);
+                this._maxCoord = Vector3d.Max(this._maxCoord, v);
                 if (nproperty >= 20)
                 {
                     Vector3d normal = new Vector3d();
@@ -326,26 +320,52 @@ namespace Geometry
                     }
                 }
             }
+
+            for (int i = 0; i < this.faceCount; ++i)
+            {
+                line = sr.ReadLine().Trim();
+                string[] array = line.Split(separator);
+                List<int> currFaceArray = new List<int>();
+                for (int j = 1; j < 4; ++j)
+                {
+                    int fv = int.Parse(array[j]);
+                    currFaceArray.Add(fv); // face index from 1
+                    this.vertexFaceIndex[fv].Add(i);
+                }
+                faceArray.AddRange(currFaceArray);
+            }
+            this.buildHalfEdge();
+            this.faceVertexIndex = faceArray.ToArray();
+            this.vertexPos = vertexArray.ToArray();
+            if (vertexNormalArray.Count > 0)
+            {
+                this.vertexNormal = vertexNormalArray.ToArray();
+            }
+            this.vertexColor = vertexColorArray.ToArray();
+            if (normalize)
+            {
+                this.normalize();
+            }
+            this.initializeColor();
+            this.calculateFaceNormal();
+            //this.calculateFaceVertexNormal();
+        }
+
+        private void buildHalfEdge()
+        {
+            List<HalfEdge> halfEdgeArray = new List<HalfEdge>();
+            List<HalfEdge> edgeArray = new List<HalfEdge>();
+            Dictionary<int, int> edgeHashTable = new Dictionary<int, int>();
             int halfEdgeIdx = 0;
             for (int i = 0; i < this.faceCount; ++i)
             {
-                line = sr.ReadLine();
-                string[] array = line.Split(separator);
-                List<int> currFaceArray = new List<int>();
+                int[] currFaceArray = { this.faceVertexIndex[i * 3], this.faceVertexIndex[i * 3 + 1], this.faceVertexIndex[i * 3 + 2] };
                 List<HalfEdge> currHalfEdgeArray = new List<HalfEdge>();
-                for (int j = 1; j < 4; ++j)
-                {
-                    currFaceArray.Add(int.Parse(array[j])); // face index from 1
-                }
-                faceArray.AddRange(currFaceArray);
                 // hash map here for opposite halfedge
                 for (int j = 0; j < 3; ++j)
                 {
                     int v1 = currFaceArray[j];
                     int v2 = currFaceArray[(j + 1) % 3];
-
-                    this.vertexFaceIndex[v1].Add(i);
-
                     HalfEdge halfedge = new HalfEdge(v1, v2, i, halfEdgeIdx++);
                     int key = Math.Min(v1, v2) * vertexCount + Math.Max(v1, v2);
                     if (edgeHashTable.ContainsKey(key)) // find a halfedge
@@ -371,155 +391,308 @@ namespace Geometry
                 }
             }
 
-            this.vertexPos = vertexArray.ToArray();
-            if (vertexNormalArray.Count > 0)
-            {
-                this.vertexNormal = vertexNormalArray.ToArray();
-            }
-            this.faceVertexIndex = faceArray.ToArray();
             this.halfEdges = halfEdgeArray.ToArray();
-            this.vertexColor = vertexColorArray.ToArray();
             this.singleHalfEdges = edgeArray.ToArray();
-            this.edgeIter = this.halfEdges[0];
-            if (normalize)
+            if (this.halfEdges != null && this.halfEdges.Length > 0)
             {
-                this.normalize();
+                this.edgeIter = this.halfEdges[0];
             }
-            this.initializeColor();
-            this.calculateFaceNormal();
-            //this.calculateFaceVertexNormal();
-        }
+        }// buildHalfEdge
 
-        private void loadObjMesh(StreamReader sr, bool normalize)
-		{
-			List<double> vertexArray = new List<double>();
-			List<int> faceArray = new List<int>();
-			List<HalfEdge> halfEdgeArray = new List<HalfEdge>();
+        private void loadObjMesh_withoutHalfEdge(StreamReader sr, bool normalize)
+        {
+            // for messy .obj file
+            List<double> vertexArray = new List<double>();
+            List<int> faceArray = new List<int>();
+            List<HalfEdge> halfEdgeArray = new List<HalfEdge>();
             List<HalfEdge> edgeArray = new List<HalfEdge>();
-			Dictionary<int, int> edgeHashTable = new Dictionary<int, int>();
-			char[] separator = new char[]{' ', '\t'};
-			this.vertexCount = 0;
-			this.faceCount = 0;
-			int halfEdgeIdx = 0;
-			while(sr.Peek() > -1)
-			{
-				string line = sr.ReadLine();
+            Dictionary<int, int> edgeHashTable = new Dictionary<int, int>();
+            char[] separator = new char[] { ' ', '\t', '\\' };
+            this.vertexCount = 0;
+            this.faceCount = 0;
+            while (sr.Peek() > -1)
+            {
+                string line = sr.ReadLine().Trim();
                 line.Replace("  ", " ");
-				string[] array = line.Split(separator);
-                if (line == "" || line[0] == '#' || line[0] == 'g') 
+                line.Replace("//", "/");
+                string[] array = line.Split(separator);
+                if (line == "" || line[0] == '#' || line[0] == 'g')
                     continue;
-                //if (array.Length != 4)
-                //{
-                //    Console.WriteLine(line);
-                //    Console.WriteLine("Vertex/Face read error.");
-                //    return;
-                //}
-				if(line[0] == 'v')
-				{
+                if (array[0] == "v")
+                {
                     Vector3d v = new Vector3d();
-                    for (int i = 1; i < 4; ++i) 
+                    int i = 0;
+                    int j = 0;
+                    while (++i < array.Length)
                     {
-                        if (array[i] == "") continue;
-                        v[i - 1] = double.Parse(array[i]);
-                        vertexArray.Add(v[i - 1]);
-                    }
-					++this.vertexCount;
-                    this.minCoord = Vector3d.Min(this.minCoord, v);
-                    this.maxCoord = Vector3d.Max(this.maxCoord, v);
-				}
-				else if(line[0] == 'f')
-				{
-                    if (this.vertexFaceIndex == null)
-                    {
-                        this.vertexFaceIndex = new List<List<int>>();
-                        for (int i = 0; i < this.vertexCount; ++i)
+                        if (array[i] == "")
                         {
-                            this.vertexFaceIndex.Add(new List<int>());
+                            continue;
                         }
+                        v[j] = double.Parse(array[i]);
+                        vertexArray.Add(v[j++]);
                     }
-					List<int> currFaceArray = new List<int>();
-					List<HalfEdge> currHalfEdgeArray = new List<HalfEdge>();
+                    if (j > 3)
+                    {
+                        return;
+                    }
+                    ++this.vertexCount;
+                    this._minCoord = Vector3d.Min(this._minCoord, v);
+                    this._maxCoord = Vector3d.Max(this._maxCoord, v);
+                }
+                else if (array[0] == "f")
+                {
+                    List<int> currFaceArray = new List<int>();
+                    List<HalfEdge> currHalfEdgeArray = new List<HalfEdge>();
                     for (int i = 1; i < array.Length; ++i)
                     {
                         if (array[i] == "") continue;
-						currFaceArray.Add(int.Parse(array[i]) - 1); // face index from 1
-					}
-					faceArray.AddRange(currFaceArray);
-					// hash map here for opposite halfedge
-					for (int i = 0; i < 3; ++i)
-					{
-						int v1 = currFaceArray[i];
-						int v2 = currFaceArray[(i + 1) % 3];
-                        this.vertexFaceIndex[v1].Add(faceCount);
-						HalfEdge halfedge = new HalfEdge(v1, v2, faceCount, halfEdgeIdx++);
-						int key = Math.Min(v1, v2) * vertexCount + Math.Max(v1, v2);
-						if (edgeHashTable.ContainsKey(key)) // find a halfedge
-						{
-							HalfEdge oppHalfEdge = halfEdgeArray[edgeHashTable[key]];
-							halfedge.invHalfEdge = oppHalfEdge;
-							oppHalfEdge.invHalfEdge = halfedge;
-						}
-						else
-						{
-							edgeHashTable.Add(key, halfEdgeArray.Count);
-                            edgeArray.Add(halfedge);
-						}
-						halfEdgeArray.Add(halfedge);
-						currHalfEdgeArray.Add(halfedge);
-					}
-                    
-					for (int i = 0; i < 3;++i )
-					{
-						currHalfEdgeArray[i].nextHalfEdge = currHalfEdgeArray[(i + 1) % 3];
-						currHalfEdgeArray[(i + 1) % 3].prevHalfEdge = currHalfEdgeArray[i];
-						currHalfEdgeArray[i].prevHalfEdge = currHalfEdgeArray[(i - 1 + 3) % 3];
-						currHalfEdgeArray[(i - 1 + 3) % 3].nextHalfEdge = currHalfEdgeArray[i].prevHalfEdge;
-					}
-					++faceCount;
-				} 
-				else if(line.Length > 1 && line.Substring(0,2).Equals("vt"))
-				{
-				}
-			}//while
-			this.vertexPos = vertexArray.ToArray();
-			this.faceVertexIndex = faceArray.ToArray();
-			this.halfEdges = halfEdgeArray.ToArray();
+                        string idStr = array[i];
+                        if (array[i].Contains('/'))
+                        {
+                            // extract only the vertex index
+                            idStr = array[i].Substring(0, array[i].IndexOf('/'));
+                        }
+                        currFaceArray.Add(int.Parse(idStr) - 1); // face index from 1
+                    }
+                    faceArray.AddRange(currFaceArray);
+                    ++faceCount;
+                }
+            }//while
+            this.vertexPos = vertexArray.ToArray();
+            this.faceVertexIndex = faceArray.ToArray();
             this.singleHalfEdges = edgeArray.ToArray();
-            this.edgeIter = this.halfEdges[0];
+
+            this.vertexFaceIndex = new List<List<int>>();
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                this.vertexFaceIndex.Add(new List<int>());
+            }
+            for (int i = 0; i < this.faceVertexIndex.Length; i += 3)
+            {
+                int f = i / 3;
+                this.vertexFaceIndex[this.faceVertexIndex[i]].Add(f);
+                this.vertexFaceIndex[this.faceVertexIndex[i + 1]].Add(f);
+                this.vertexFaceIndex[this.faceVertexIndex[i + 2]].Add(f);
+            }
+
             if (normalize)
             {
                 this.normalize();
             }
             this.initializeColor();
-			this.calculateFaceVertexNormal();
-		}//loadObjMesh
+        }//loadObjMesh
+
+        private void loadObjMesh(StreamReader sr, bool normalize)
+        {
+            List<double> vertexArray = new List<double>();
+            List<int> faceArray = new List<int>();
+            List<HalfEdge> halfEdgeArray = new List<HalfEdge>();
+            List<HalfEdge> edgeArray = new List<HalfEdge>();
+            Dictionary<int, int> edgeHashTable = new Dictionary<int, int>();
+            char[] separator = new char[] { ' ', '\t', '\\' };
+            this.vertexCount = 0;
+            this.faceCount = 0;
+            int halfEdgeIdx = 0;
+            while (sr.Peek() > -1)
+            {
+                string line = sr.ReadLine().Trim();
+                line.Replace("  ", " ");
+                line.Replace("//", "/");
+                string[] array = line.Split(separator);
+                if (line == "" || line[0] == '#' || line[0] == 'g')
+                    continue;
+                if (array[0] == "v")
+                {
+                    Vector3d v = new Vector3d();
+                    int i = 0;
+                    int j = 0;
+                    while (++i < array.Length)
+                    {
+                        if (array[i] == "")
+                        {
+                            continue;
+                        }
+                        v[j] = double.Parse(array[i]);
+                        vertexArray.Add(v[j++]);
+                    }
+                    if (j > 3)
+                    {
+                        return;
+                    }
+                    ++this.vertexCount;
+                    this._minCoord = Vector3d.Min(this._minCoord, v);
+                    this._maxCoord = Vector3d.Max(this._maxCoord, v);
+                }
+                else if (array[0] == "f")
+                {
+                    List<int> currFaceArray = new List<int>();
+                    for (int i = 1; i < array.Length; ++i)
+                    {
+                        if (array[i] == "") continue;
+                        string idStr = array[i];
+                        if (array[i].Contains('/'))
+                        {
+                            // extract only the vertex index
+                            idStr = array[i].Substring(0, array[i].IndexOf('/'));
+                        }
+                        currFaceArray.Add(int.Parse(idStr) - 1); // face index from 1
+                    }
+                    faceArray.AddRange(currFaceArray);
+                    ++faceCount;
+                }
+                else if (line.Length > 1 && line.Substring(0, 2).Equals("vt"))
+                {
+                }
+            }//while
+            this.vertexFaceIndex = new List<List<int>>();
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                this.vertexFaceIndex.Add(new List<int>());
+            }
+            // hash map here for opposite halfedge
+            for (int f = 0, k = 0; f < faceCount; ++f, k += 3)
+            {
+                List<int> currFaceArray = new List<int>();
+                for (int i = 0; i < 3; ++i)
+                {
+                    currFaceArray.Add(faceArray[k + i]);
+                }
+                List<HalfEdge> currHalfEdgeArray = new List<HalfEdge>();
+                for (int i = 0; i < 3; ++i)
+                {
+                    int v1 = currFaceArray[i];
+                    int v2 = currFaceArray[(i + 1) % 3];
+                    this.vertexFaceIndex[v1].Add(f);
+                    HalfEdge halfedge = new HalfEdge(v1, v2, faceCount, halfEdgeIdx++);
+                    int key = Math.Min(v1, v2) * vertexCount + Math.Max(v1, v2);
+                    if (edgeHashTable.ContainsKey(key)) // find a halfedge
+                    {
+                        HalfEdge oppHalfEdge = halfEdgeArray[edgeHashTable[key]];
+                        halfedge.invHalfEdge = oppHalfEdge;
+                        oppHalfEdge.invHalfEdge = halfedge;
+                    }
+                    else
+                    {
+                        edgeHashTable.Add(key, halfEdgeArray.Count);
+                        edgeArray.Add(halfedge);
+                    }
+                    halfEdgeArray.Add(halfedge);
+                    currHalfEdgeArray.Add(halfedge);
+                }
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    currHalfEdgeArray[i].nextHalfEdge = currHalfEdgeArray[(i + 1) % 3];
+                    currHalfEdgeArray[(i + 1) % 3].prevHalfEdge = currHalfEdgeArray[i];
+                    currHalfEdgeArray[i].prevHalfEdge = currHalfEdgeArray[(i - 1 + 3) % 3];
+                    currHalfEdgeArray[(i - 1 + 3) % 3].nextHalfEdge = currHalfEdgeArray[i].prevHalfEdge;
+                }
+            }
+            this.vertexPos = vertexArray.ToArray();
+            this.faceVertexIndex = faceArray.ToArray();
+            this.halfEdges = halfEdgeArray.ToArray();
+            this.singleHalfEdges = edgeArray.ToArray();
+            this.edgeIter = this.halfEdges[0];
+
+            if (normalize)
+            {
+                this.normalize();
+            }
+            this.initializeColor();
+        }//loadObjMesh
 
         private void loadOffMesh(StreamReader sr, bool normalize)
 		{
 
 		}//loadOffMesh
 
+        private void collectMeshInfo()
+        {
+            _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
+            _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
+            this.originVertextPos = this.vertexPos.Clone() as double[];
+            this.afterUpdatePos();
+            this.flags = new bool[this.vertexCount];
+        }
+
+        public void afterUpdatePos()
+        {
+            this.getBoundary();
+            this.calculateFaceVertexNormal();
+            this.calculateFaceNormal();
+        }
+        private void getBoundary()
+        {
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            for (int i = 0, j = 0; i < this.vertexCount; ++i, j += 3)
+            {
+                Vector3d v = new Vector3d(this.vertexPos[j], this.vertexPos[j + 1], this.vertexPos[j + 2]);
+                _maxCoord = Vector3d.Max(v, _maxCoord);
+                _minCoord = Vector3d.Min(v, _minCoord);
+            }
+        }// getBoundary
+
+        private SparseMatrix buildVertexToVertexAdjancenyMatrix()
+        {
+            if (faceVertexIndex == null) return null;
+            SparseMatrix mat = new SparseMatrix(vertexCount, vertexCount);
+            for (int i = 0, j = 0; i < faceCount; ++i)
+            {
+                int j1 = faceVertexIndex[j++];
+                int j2 = faceVertexIndex[j++];
+                int j3 = faceVertexIndex[j++];
+                mat.AddTriplet(j1, j2, 1);
+                mat.AddTriplet(j1, j3, 1);
+                mat.AddTriplet(j2, j1, 1);
+                mat.AddTriplet(j2, j3, 1);
+                mat.AddTriplet(j3, j1, 1);
+                mat.AddTriplet(j3, j2, 1);
+            }
+            mat.sort();
+            return mat;
+        }// buildVertexToVertexAdjancenyMatrix
+
+        private SparseMatrix buildFaceVertexAdjancencyMatrix()
+        {
+            if (faceVertexIndex == null) return null;
+            SparseMatrix mat = new SparseMatrix(faceCount, vertexCount);
+            for (int i = 0, j = 0; i < faceCount; ++i)
+            {
+                mat.AddTriplet(i, faceVertexIndex[j++], 1);
+                mat.AddTriplet(i, faceVertexIndex[j++], 1);
+                mat.AddTriplet(i, faceVertexIndex[j++], 1);
+            }
+            mat.sort();
+            return mat;
+        }// buildFaceVertexAdjancencyMatrix
+
         private void initializeColor()
         {
-            if (this.vertexColor == null || this.vertexColor.Length != this.vertexCount * 4)
+            int n = 3;
+            if (this.vertexColor == null || this.vertexColor.Length != this.vertexCount * n)
             {
-                this.vertexColor = new byte[this.vertexCount * 4];
+                this.vertexColor = new byte[this.vertexCount * n];
             }
-            this.faceColor = new byte[this.faceCount * 4];
+            this.faceColor = new byte[this.faceCount * n];
             for (int i = 0; i < this.faceCount; ++i)
             {
                 int vidx1 = this.faceVertexIndex[3 * i];
                 int vidx2 = this.faceVertexIndex[3 * i + 1];
                 int vidx3 = this.faceVertexIndex[3 * i + 2];
                 int r = 0, g = 0, b = 0, a = 0;
-                r = (int)this.vertexColor[vidx1 * 4] + (int)this.vertexColor[vidx2 * 4] + (int)this.vertexColor[vidx3 * 4];
-                g = (int)this.vertexColor[vidx1 * 4 + 1] + (int)this.vertexColor[vidx2 * 4 + 1] + (int)this.vertexColor[vidx3 * 4 + 1];
-                b = (int)this.vertexColor[vidx1 * 4 + 2] + (int)this.vertexColor[vidx2 * 4 + 2] + (int)this.vertexColor[vidx3 * 4 + 2];
-                a = (int)this.vertexColor[vidx1 * 4 + 3] + (int)this.vertexColor[vidx2 * 4 + 3] + (int)this.vertexColor[vidx3 * 4 + 3];
-                this.faceColor[i * 4] = (byte)(r / 3);
-                this.faceColor[i * 4 + 1] = (byte)(g / 3);
-                this.faceColor[i * 4 + 2] = (byte)(b / 3);
-                this.faceColor[i * 4 + 3] = (byte)(a / 3);
+                r = (int)this.vertexColor[vidx1 * n] + (int)this.vertexColor[vidx2 * n] + (int)this.vertexColor[vidx3 * n];
+                g = (int)this.vertexColor[vidx1 * n + 1] + (int)this.vertexColor[vidx2 * n + 1] + (int)this.vertexColor[vidx3 * n + 1];
+                b = (int)this.vertexColor[vidx1 * n + 2] + (int)this.vertexColor[vidx2 * n + 2] + (int)this.vertexColor[vidx3 * n + 2];
+                this.faceColor[i * n] = (byte)(r / 3);
+                this.faceColor[i * n + 1] = (byte)(g / 3);
+                this.faceColor[i * n + 2] = (byte)(b / 3);
+                if (n == 4)
+                {
+                    a = (int)this.vertexColor[vidx1 * n + 3] + (int)this.vertexColor[vidx2 * n + 3] + (int)this.vertexColor[vidx3 * n + 3];
+                    this.faceColor[i * n + 3] = (byte)(a / 3);
+                }
             }
         }//initializeColor
 
@@ -551,7 +724,7 @@ namespace Geometry
             }
         }
 
-		private void calculateFaceVertexNormal()
+		public void calculateFaceVertexNormal()
 		{
 			if(this.faceVertexIndex == null || this.faceVertexIndex.Length == 0)
 			{
@@ -616,11 +789,10 @@ namespace Geometry
 
         private void normalize()
         {
-            Vector3d c = (this.maxCoord + this.minCoord) / 2;
-            Vector3d d = this.maxCoord - this.minCoord;
+            Vector3d c = (this._maxCoord + this._minCoord) / 2;
+            Vector3d d = this._maxCoord - this._minCoord;
             double scale = d.x > d.y ? d.x : d.y;
             scale = d.z > scale ? d.z : scale;
-            //scale /= 1.5; 
             scale /= 2; // [-1, 1]
             for (int i = 0, j = 0; i < this.VertexCount; ++i, j += 3)
             {
@@ -631,8 +803,6 @@ namespace Geometry
                     this.vertexPos[j + k] /= scale;
                 }
             }
-
-
         }
 
         public void normalize(Vector3d center, double scale)
@@ -645,7 +815,7 @@ namespace Geometry
                     this.vertexPos[j + k] -= center[k];
                 }
             }
-            this.calculateFaceVertexNormal();
+            this.afterUpdatePos();
         }
 
         public Vector3d getFaceCenter(int fidx)
@@ -667,6 +837,180 @@ namespace Geometry
         public Vector3d getVertexPos(int vidx)
         {
             return new Vector3d(this.vertexPos[vidx * 3], this.vertexPos[vidx * 3 + 1], this.vertexPos[vidx * 3 + 2]);
+        }
+
+        public void setVertextPos(int i, Vector3d v)
+        {
+            this.vertexPos[3 * i] = v.x;
+            this.vertexPos[3 * i + 1] = v.y;
+            this.vertexPos[3 * i + 2] = v.z;
+        }
+
+        public void setVertexColor(byte[] colors)
+        {
+            this.vertexColor = colors;
+            this.initializeColor();
+        }
+
+        // to avoid changing the count of vertex/face
+        public int VertexCount
+        {
+            get
+            {
+                return vertexCount;
+            }
+        }
+
+        public int FaceCount
+        {
+            get
+            {
+                return faceCount;
+            }
+        }
+
+        public double[] VertexPos
+        {
+            get
+            {
+                return this.vertexPos;
+            }
+        }
+
+        public double[,] VertexArray
+        {
+            get
+            {
+                double[,] array = new double[this.vertexCount, 3];
+                for (int i = 0, j = 0; i < this.vertexCount; ++i, j += 3)
+                {
+                    array[i, 0] = this.vertexPos[j];
+                    array[i, 1] = this.vertexPos[j + 1];
+                    array[i, 2] = this.vertexPos[j + 2];
+                }
+                return array;
+            }
+        }
+
+        public Vector3d[] VertexVectorArray
+        {
+            get
+            {
+                Vector3d[] array = new Vector3d[this.vertexCount];
+                for (int i = 0, j = 0; i < this.vertexCount; ++i, j += 3)
+                {
+                    array[i] = new Vector3d(this.vertexPos[j], this.vertexPos[j + 1], this.vertexPos[j + 2]);
+                }
+                return array;
+            }
+        }
+
+        public double[] VertexNormal
+        {
+            get
+            {
+                return this.vertexNormal;
+            }
+        }
+
+        public int[] FaceVertexIndex
+        {
+            get
+            {
+                return this.faceVertexIndex;
+            }
+        }
+
+        public HalfEdge[] HalfEdges
+        {
+            get
+            {
+                return this.halfEdges;
+            }
+        }
+
+        public HalfEdge[] Edges
+        {
+            get
+            {
+                return singleHalfEdges;
+            }
+        }
+
+        public double[] FaceNormal
+        {
+            get
+            {
+                return this.faceNormal;
+            }
+        }
+
+        public byte[] FaceColor
+        {
+            get
+            {
+                return this.faceColor;
+            }
+        }
+
+        public byte[] VertexColor
+        {
+            get
+            {
+                return this.vertexColor;
+            }
+        }
+
+        public Vector3d MaxCoord
+        {
+            get
+            {
+                return this._maxCoord;
+            }
+        }
+
+        public Vector3d MinCoord
+        {
+            get
+            {
+                return this._minCoord;
+            }
+        }
+
+        public List<List<int>> VertexFaceIndex
+        {
+            get
+            {
+                return this.vertexFaceIndex;
+            }
+        }
+
+        public int[][] _VF
+        {
+            get
+            {
+                return _vf;
+            }
+        }
+
+        public int[][] _VV
+        {
+            get
+            {
+                return _vv;
+            }
+        }
+
+        public bool[] Flags
+        {
+            get
+            {
+                return this.flags;
+            }
+            set
+            {
+                this.flags = value;
+            }
         }
 	}//Mesh
 

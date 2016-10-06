@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 
-namespace SketchPlatform
+namespace FameBase
 {
 	static class Program
 	{
@@ -22,5 +22,10 @@ namespace SketchPlatform
 		{
 			return Program.formMain;
 		}
+
+        public static void writeToConsole(string s)
+        {
+            Program.formMain.writeToConsole(s);
+        }
 	}
 }
