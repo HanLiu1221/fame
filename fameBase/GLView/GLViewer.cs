@@ -174,10 +174,6 @@ namespace FameBase
         public bool zoonIn = false;
         private int meshIdx = 0;
 
-        //########## sketch vars ##########//
-        private List<Vector2d> currSketchPoints = new List<Vector2d>();
-
-
         /******************** Vars ********************/
         Model _currModel;
         List<Model> _models = new List<Model>();
@@ -211,6 +207,7 @@ namespace FameBase
         List<List<Model>> _crossoverGenerations = new List<List<Model>>();
         List<ModelViewer> _currGenModelViewers = new List<ModelViewer>();
         List<Model> _currGen = new List<Model>();
+        List<FunctionalityModel> _functionalityModels = new List<FunctionalityModel>();
 
         /******************** Functions ********************/
 
@@ -338,6 +335,7 @@ namespace FameBase
             _selectedParts.Clear();
         }// clearHighlights
 
+        /******************** Load & Save ********************/
         public void loadMesh(string filename)
         {
             this.clearContext();
@@ -1023,6 +1021,113 @@ namespace FameBase
             }
             return m;
         }// loadPointCloud
+
+        public void loadPointWeight(string filename)
+        {
+            if (_currModel == null)
+            {
+                MessageBox.Show("Please load a model first.");
+                return;
+            }
+            // load the point cloud with weights indicating the functionality patch
+            // since it is not a segmented model, and most of the models are hard to segment
+            // there is no need to take it as an original input and perform segmentation.
+            // Unify the mesh, and compare the vertex to vertex distances between the point cloud with a segmented version
+            List<Vector3d> points = new List<Vector3d>();
+            List<double> weights = new List<double>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+                string s = sr.ReadLine();
+                int nline = 0;
+                while (sr.Peek() > -1)
+                {
+                    ++nline;
+                    string[] strs = s.Split(separators);
+                    if (strs.Length < 4)
+                    {
+                        MessageBox.Show("Wrong format at line " + nline.ToString());
+                        return;
+                    }
+                    Vector3d v = new Vector3d();
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        v[i] = double.Parse(strs[i]);
+                    }
+                    points.Add(v);
+                    weights.Add(double.Parse(strs[3]));
+                }
+                convertFunctionalityDescription(points.ToArray(), weights.ToArray());
+            }
+        }// loadPointWeight
+
+        public void loadFunctionalityModelsFromIcon(string filename)
+        {
+            if (!File.Exists(filename))
+            {
+                return;
+            }
+            char[] separators = { ' ', '\\', '\t' };
+            _functionalityModels = new List<FunctionalityModel>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separators);
+                    string name = strs[0]; // category name
+                    double[] fs = new double[strs.Length - 1];
+                    for (int i = 1; i < strs.Length; ++i)
+                    {
+                        fs[i - 1] = double.Parse(strs[i]);
+                    }
+                    FunctionalityModel fm = new FunctionalityModel(fs, name);
+                    if (fm != null)
+                    {
+                        _functionalityModels.Add(fm);
+                    }
+                }
+            }
+        }// loadFunctionalityModelsFromIcon
+
+        public void loadFunctionalityModelsFromIcon2(string foldername)
+        {
+            string[] filenames = Directory.GetFiles(foldername);
+            _functionalityModels = new List<FunctionalityModel>();
+            foreach (string filename in filenames)
+            {
+                FunctionalityModel fm = loadOneFunctionalityModel(filename);
+                if (fm != null)
+                {
+                    _functionalityModels.Add(fm);
+                }
+            }
+        }// loadFunctionalityModelsFromIcon2
+
+        private FunctionalityModel loadOneFunctionalityModel(string filename)
+        {
+            if (!File.Exists(filename))
+            {
+                return null;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                string nameAndExt = Path.GetFileName(filename);
+                string name = nameAndExt.Substring(0, nameAndExt.LastIndexOf('.'));
+                char[] separators = { ' ', '\\', '\t' };
+                string s = sr.ReadLine();
+                string[] strs = s.Split(separators);
+                double[] fs = new double[strs.Length];
+                for (int i = 0; i < strs.Length; ++i)
+                {
+                    fs[i] = double.Parse(strs[i]);
+                }
+                FunctionalityModel fm = new FunctionalityModel(fs, name);
+                return fm;
+            }
+        }// loadOneFunctionalityModel
+
+        /******************** End - Load & Save ********************/
 
         public string nextMeshClass()
         {
@@ -1770,6 +1875,61 @@ namespace FameBase
         {
             return _ancesterModelViewers.Count;
         }
+
+        private void convertFunctionalityDescription(Vector3d[] points, double[] weights)
+        {
+            if (_currModel == null || _currModel._GRAPH == null || points == null || weights == null || points.Length != weights.Length)
+            {
+                return;
+            }
+            // TO BE UPDATED AFTER GET THE DATA
+            int[] labels = new int[weights.Length];
+            foreach (Node node in _currModel._GRAPH._NODES)
+            {
+                // get a stats of each point
+                Mesh m = node._PART._MESH;
+                Vector3d[] vecs = m.VertexVectorArray;
+                Dictionary<int, int> dict = new Dictionary<int, int>();
+                for (int i = 0; i < vecs.Length; ++i)
+                {
+                    double mind = double.MaxValue;
+                    int plabel = -1;
+                    for (int j = 0; j < points.Length; ++j)
+                    {
+                        double d = (vecs[i] - points[j]).Length();
+                        if (d < mind)
+                        {
+                            mind = d;
+                            plabel = labels[j];
+                        }
+                    }
+                    int val = 0;
+                    if (dict.TryGetValue(plabel, out val))
+                    {
+                        val++;
+                    }
+                    else
+                    {
+                        val = 1;
+                    }
+                    dict.Add(plabel, val);
+                }// for -vertex
+                // label by the majority
+                Dictionary<int, int>.Enumerator iter = dict.GetEnumerator();
+                int part_label = -1;
+                int maxnum = 0;
+                while (iter.MoveNext())
+                {
+                    int num = iter.Current.Value;
+                    if (num > maxnum)
+                    {
+                        maxnum = num;
+                        part_label = iter.Current.Key;
+                    }
+                }
+                node.addFunctionality(this.getFunctionalityFromIndex(part_label));
+            }// for-part
+        }// convertFunctionalityDescription
 
         // save folders
         string userFolder;
