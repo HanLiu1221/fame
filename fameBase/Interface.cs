@@ -682,5 +682,29 @@ namespace FameBase
             this.mesh_name.Text = this.glViewer.prevMeshClass();
         }
 
+        private void loadIconPatchToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+           var dialog = new OpenFileDialog()
+            {
+                Title = "Open a ICON point cloud",
+                DefaultExt = ".patch",
+                Filter = "Point Cloud (*.patch)|*.patch"
+            };
+           if (dialog.ShowDialog() == DialogResult.OK)
+           {
+               this.glViewer.loadPointWeight(dialog.FileName);
+           }
+        }
+
+        private void loadFunctionlityModelToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\shapenetcore_partanno_v0\Airplane" };
+            if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
+            {
+                string foldername = dialog.SelectedPath;
+                this.glViewer.loadFunctionalityModelsFromIcon2(foldername);
+            }
+        }
+
 	}// Interface
 }// namespace

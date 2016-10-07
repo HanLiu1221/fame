@@ -51,6 +51,7 @@
             this.saveMergedMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.unitifyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.importShapeNetToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadIconPatchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tools = new System.Windows.Forms.ToolStripDropDownButton();
             this.viewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.resetViewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -122,7 +123,7 @@
             this.supportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundtouchingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.removeallToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer1 = new FameBase.GLViewer();
+            this.loadFunctionlityModelToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -233,7 +234,9 @@
             this.importHumanPoseToolStripMenuItem,
             this.saveMergedMeshToolStripMenuItem,
             this.unitifyToolStripMenuItem,
-            this.importShapeNetToolStripMenuItem});
+            this.importShapeNetToolStripMenuItem,
+            this.loadIconPatchToolStripMenuItem,
+            this.loadFunctionlityModelToolStripMenuItem});
             this.file.Image = ((System.Drawing.Image)(resources.GetObject("file.Image")));
             this.file.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.file.Name = "file";
@@ -319,6 +322,13 @@
             this.importShapeNetToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
             this.importShapeNetToolStripMenuItem.Text = "Import ShapeNet";
             this.importShapeNetToolStripMenuItem.Click += new System.EventHandler(this.importShapeNetToolStripMenuItem_Click);
+            // 
+            // loadIconPatchToolStripMenuItem
+            // 
+            this.loadIconPatchToolStripMenuItem.Name = "loadIconPatchToolStripMenuItem";
+            this.loadIconPatchToolStripMenuItem.Size = new System.Drawing.Size(178, 22);
+            this.loadIconPatchToolStripMenuItem.Text = "Load icon patch";
+            this.loadIconPatchToolStripMenuItem.Click += new System.EventHandler(this.loadIconPatchToolStripMenuItem_Click);
             // 
             // tools
             // 
@@ -747,9 +757,8 @@
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
             this.viewPanel.Panel2.Controls.Add(this.partBasket);
             this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
-            this.viewPanel.Panel2.Controls.Add(this.glViewer1);
-            this.viewPanel.Size = new System.Drawing.Size(1099, 675);
-            this.viewPanel.SplitterDistance = 25;
+            this.viewPanel.Size = new System.Drawing.Size(1099, 735);
+            this.viewPanel.SplitterDistance = 27;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -759,7 +768,7 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(1093, 28);
+            this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
             this.fileNameTabs.TabIndex = 0;
             // 
             // prev_next_panel
@@ -771,15 +780,15 @@
             this.prev_next_panel.Controls.Add(this.next_mesh);
             this.prev_next_panel.Location = new System.Drawing.Point(794, 3);
             this.prev_next_panel.Name = "prev_next_panel";
-            this.prev_next_panel.Size = new System.Drawing.Size(98, 54);
+            this.prev_next_panel.Size = new System.Drawing.Size(98, 59);
             this.prev_next_panel.TabIndex = 18;
             // 
             // mesh_name
             // 
             this.mesh_name.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.mesh_name.Location = new System.Drawing.Point(3, 34);
+            this.mesh_name.Location = new System.Drawing.Point(3, 37);
             this.mesh_name.Name = "mesh_name";
-            this.mesh_name.Size = new System.Drawing.Size(92, 14);
+            this.mesh_name.Size = new System.Drawing.Size(92, 13);
             this.mesh_name.TabIndex = 21;
             // 
             // prev_mesh
@@ -790,7 +799,7 @@
             this.prev_mesh.Image = ((System.Drawing.Image)(resources.GetObject("prev_mesh.Image")));
             this.prev_mesh.Location = new System.Drawing.Point(3, 2);
             this.prev_mesh.Name = "prev_mesh";
-            this.prev_mesh.Size = new System.Drawing.Size(44, 27);
+            this.prev_mesh.Size = new System.Drawing.Size(44, 29);
             this.prev_mesh.TabIndex = 18;
             this.prev_mesh.UseVisualStyleBackColor = true;
             this.prev_mesh.Click += new System.EventHandler(this.prev_mesh_Click);
@@ -803,7 +812,7 @@
             this.next_mesh.Image = ((System.Drawing.Image)(resources.GetObject("next_mesh.Image")));
             this.next_mesh.Location = new System.Drawing.Point(53, 3);
             this.next_mesh.Name = "next_mesh";
-            this.next_mesh.Size = new System.Drawing.Size(43, 27);
+            this.next_mesh.Size = new System.Drawing.Size(43, 29);
             this.next_mesh.TabIndex = 17;
             this.next_mesh.UseVisualStyleBackColor = true;
             this.next_mesh.Click += new System.EventHandler(this.next_mesh_Click);
@@ -836,7 +845,7 @@
             this.glViewer.DepthBits = ((byte)(16));
             this.glViewer.Location = new System.Drawing.Point(216, 3);
             this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(676, 638);
+            this.glViewer.Size = new System.Drawing.Size(676, 695);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
@@ -848,7 +857,7 @@
             this.partBasket.BackColor = System.Drawing.Color.White;
             this.partBasket.Location = new System.Drawing.Point(896, 3);
             this.partBasket.Name = "partBasket";
-            this.partBasket.Size = new System.Drawing.Size(203, 643);
+            this.partBasket.Size = new System.Drawing.Size(203, 701);
             this.partBasket.TabIndex = 15;
             // 
             // modelViewLayoutPanel
@@ -859,7 +868,7 @@
             this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
             this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
-            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 643);
+            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 701);
             this.modelViewLayoutPanel.TabIndex = 13;
             // 
             // partRelatedTools
@@ -963,29 +972,19 @@
             this.removeallToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
             this.removeallToolStripMenuItem.Text = "remove_all";
             // 
-            // glViewer1
+            // loadFunctionlityModelToolStripMenuItem
             // 
-            this.glViewer1.AccumBits = ((byte)(0));
-            this.glViewer1.AutoCheckErrors = false;
-            this.glViewer1.AutoFinish = false;
-            this.glViewer1.AutoMakeCurrent = true;
-            this.glViewer1.AutoSwapBuffers = true;
-            this.glViewer1.BackColor = System.Drawing.Color.Black;
-            this.glViewer1.ColorBits = ((byte)(32));
-            this.glViewer1.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer1.DepthBits = ((byte)(16));
-            this.glViewer1.Location = new System.Drawing.Point(216, 3);
-            this.glViewer1.Name = "glViewer1";
-            this.glViewer1.Size = new System.Drawing.Size(676, 638);
-            this.glViewer1.StencilBits = ((byte)(0));
-            this.glViewer1.TabIndex = 19;
+            this.loadFunctionlityModelToolStripMenuItem.Name = "loadFunctionlityModelToolStripMenuItem";
+            this.loadFunctionlityModelToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.loadFunctionlityModelToolStripMenuItem.Text = "Load functionlity model";
+            this.loadFunctionlityModelToolStripMenuItem.Click += new System.EventHandler(this.loadFunctionlityModelToolStripMenuItem_Click);
             // 
             // Interface
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(1099, 714);
+            this.ClientSize = new System.Drawing.Size(1099, 774);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -1101,7 +1100,8 @@
         private System.Windows.Forms.Button prev_mesh;
         private System.Windows.Forms.TextBox mesh_name;
         private System.Windows.Forms.ToolStripButton autoGenerateToolStripMenuItem;
-        private GLViewer glViewer1;
+        private System.Windows.Forms.ToolStripMenuItem loadIconPatchToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem loadFunctionlityModelToolStripMenuItem;
 	}
 }
 
