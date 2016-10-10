@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using Accord.Statistics.Analysis;
 
 namespace Geometry
 {
@@ -71,6 +72,7 @@ namespace Geometry
         int[][] _vv; // vertex-vertex adjancency
         int[][] _vf; // vertex-face
         public HalfEdge edgeIter = null;
+        alglib.kdtree _kdtree;
 		
 		public Mesh()
 		{ }
@@ -136,7 +138,7 @@ namespace Geometry
                 this.vertexFaceIndex[fIndex[j++]].Add(i);
                 this.vertexFaceIndex[fIndex[j++]].Add(i);
             }
-            this.buildHalfEdge();
+            //this.buildHalfEdge();
             this.collectMeshInfo();
         }
 
@@ -604,17 +606,36 @@ namespace Geometry
 
         private void loadOffMesh(StreamReader sr, bool normalize)
 		{
-
+            double[,] xy = new double[this.VertexCount, 3];
+            int[] tags = new int[this.VertexCount];
+            for (int i = 0, j = 0; i < this.VertexCount; ++i)
+            {
+                xy[i, 0] = this.VertexPos[j++];
+                xy[i, 1] = this.VertexPos[j++];
+                xy[i, 2] = this.VertexPos[j++];
+                tags[i] = i;
+            }
+            int nx = 3;
+            int ny = 0;
+            int normtype = 2;
+            alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out _kdtree);
 		}//loadOffMesh
 
         private void collectMeshInfo()
         {
+            this.buildHalfEdge();
+            this.buildKdtree();
             _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
             _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
             this.originVertextPos = this.vertexPos.Clone() as double[];
             this.afterUpdatePos();
             this.flags = new bool[this.vertexCount];
-        }
+        }// collectMeshInfo
+
+        private void buildKdtree()
+        {
+
+        }// buildKdtree
 
         public void afterUpdatePos()
         {
@@ -839,6 +860,11 @@ namespace Geometry
             return new Vector3d(this.vertexPos[vidx * 3], this.vertexPos[vidx * 3 + 1], this.vertexPos[vidx * 3 + 2]);
         }
 
+        public Vector3d getVertexNormal(int vidx)
+        {
+            return new Vector3d(this.vertexNormal[vidx * 3], this.vertexNormal[vidx * 3 + 1], this.vertexNormal[vidx * 3 + 2]);
+        }
+
         public void setVertextPos(int i, Vector3d v)
         {
             this.vertexPos[3 * i] = v.x;
@@ -851,6 +877,160 @@ namespace Geometry
             this.vertexColor = colors;
             this.initializeColor();
         }
+
+        // Shape2Pose & ICON features
+        public Vector3d[] computePointPCA()
+        {
+            // return eigen values (1 vec) and eigen vectors (3 vecs)
+            Vector3d[] pcaInfo = new Vector3d[this.vertexCount * 4];
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                // geodescic neighborhood
+                Vector3d[] neigs = this.getNeighborPoints(i);
+                double[,] vArray = new double[neigs.Length, 3];
+                for (int v = 0; v < neigs.Length; ++v)
+                {
+                    vArray[v, 0] = neigs[v].x;
+                    vArray[v, 1] = neigs[v].y;
+                    vArray[v, 2] = neigs[v].z;
+                }
+                PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
+                pca.Compute();
+                if (pca.Components.Count < 3)
+                {
+                    pcaInfo[i * 4] = new Vector3d(1, 1, 1).normalize();
+                    pcaInfo[i * 4 + 1] = Vector3d.XCoord;
+                    pcaInfo[i * 4 + 2] = Vector3d.YCoord;
+                    pcaInfo[i * 4 + 3] = Vector3d.ZCoord;
+                }
+                else
+                {
+                    pcaInfo[i * 4] = new Vector3d(
+                        pca.Components[0].Eigenvalue,
+                        pca.Components[1].Eigenvalue,
+                        pca.Components[2].Eigenvalue);
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        pcaInfo[i * 4 + j + 1] = new Vector3d(
+                            pca.Components[j].Eigenvector[0],
+                            pca.Components[j].Eigenvector[1],
+                            pca.Components[j].Eigenvector[2]);
+                    }
+                }
+            }
+            return pcaInfo;
+        }// computePointsPCA
+
+        public double[] computeCurvFeatures(out double minCurv, out double maxCurv, out double avgCurv)
+        {
+            double[] curvs = new double[this.vertexCount];
+            minCurv = double.MaxValue;
+            maxCurv = double.MinValue;
+            avgCurv = 0;
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                Vector3d vpos = getVertexPos(i);
+                Vector3d normal = getVertexNormal(i);
+                int[] neigs = this.getNeighborPointsIndex(i);
+                Vector3d sum_offset = new Vector3d();
+                int num_offset = 0;
+                for (int j = 0; j < neigs.Length; ++j)
+                {
+                    Vector3d neig_vpos = getVertexPos(neigs[j]);
+                    Vector3d neig_nor = getVertexNormal(neigs[j]);
+                    if (neig_nor.Dot(normal) < 0) // ignore points on hidden side
+                    {
+                        neig_nor *= -1;
+                        continue;
+                    }
+                    Vector3d offset = (neig_vpos - vpos).normalize();
+                    sum_offset += offset;
+                    ++num_offset;
+                }
+                curvs[i] = num_offset > 0 ? Math.Abs(sum_offset.Dot(normal)) / num_offset : 0;
+                minCurv = minCurv < curvs[i] ? minCurv : curvs[i];
+                maxCurv = maxCurv > curvs[i] ? maxCurv : curvs[i];
+                avgCurv += curvs[i];
+            }
+            avgCurv /= this.vertexCount;
+            return curvs;
+        }// computeCurvFeatures
+
+        private Vector3d[] getNeighborPoints(int vertexIdx)
+        {
+            if (_kdtree == null)
+            {
+                this.buildKdtree();
+            }
+
+            int k = 5; // maximum k nearest points
+            double maxdist = 0.05; // maximum distance to the point in the neighborhood
+            double[] vpos = new double[3];
+            vpos[0] = this.vertexPos[3 * vertexIdx];
+            vpos[1] = this.vertexPos[3 * vertexIdx + 1];
+            vpos[2] = this.vertexPos[3 * vertexIdx + 2];
+
+            int res = alglib.kdtreequeryknn(_kdtree, vpos, k, true); // true for overlapping points
+            int[] pointsIdxs = new int[k];
+            alglib.kdtreequeryresultstags(_kdtree, ref pointsIdxs);
+
+            List<Vector3d> neigPoints = new List<Vector3d>();
+            Vector3d ivec = new Vector3d(vpos);
+            for (int v = 0; v < pointsIdxs.Length; ++v)
+            {
+                int vidx = pointsIdxs[v];
+                Vector3d nvec = getVertexPos(vidx);
+                if ((nvec - ivec).Length() < maxdist)
+                {
+                    neigPoints.Add(nvec);
+                }
+            }
+            return neigPoints.ToArray();
+        }// getNeighborPoints
+
+        private int[] getNeighborPointsIndex(int vertexIdx)
+        {
+            if (_kdtree == null)
+            {
+                this.buildKdtree();
+            }
+            int k = 5; // maximum k nearest points
+            double[] vpos = new double[3];
+            vpos[0] = this.vertexPos[3 * vertexIdx];
+            vpos[0] = this.vertexPos[3 * vertexIdx + 1];
+            vpos[0] = this.vertexPos[3 * vertexIdx + 2];
+            int res = alglib.kdtreequeryknn(_kdtree, vpos, k, true); // true for overlapping points
+            int[] pointsIdxs = new int[k];
+            alglib.kdtreequeryresultstags(_kdtree, ref pointsIdxs);
+            return pointsIdxs;
+
+            //List<int> vindices = new List<int>();
+            //vindices.Add(vertexIdx);
+            //int start = 0;
+            //int c = 0;
+            //while (c < ncycle && start < vindices.Count)
+            //{
+            //    int nvindices = vindices.Count;
+            //    for (int s = start; s < vindices.Count; ++s)
+            //    {
+            //        int vidx = vindices[s];
+            //        for (int k = 0; k < this.vertexFaceIndex[vidx].Count; ++k)
+            //        {
+            //            int f = this.vertexFaceIndex[vidx][k];
+            //            for (int fv = 0; fv < 3; ++fv)
+            //            {
+            //                int vid = this.faceVertexIndex[f * 3 + fv];
+            //                if (!vindices.Contains(vid))
+            //                {
+            //                    vindices.Add(vid);
+            //                }
+            //            }
+            //        }// vertex
+            //    }
+            //    start += nvindices;
+            //}// n-circle
+            //return vindices;
+        }// getNeighborPoints
 
         // to avoid changing the count of vertex/face
         public int VertexCount

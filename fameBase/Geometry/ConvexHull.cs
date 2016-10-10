@@ -67,6 +67,7 @@ namespace Geometry
         private List<int> hullVertices = new List<int>();
         private double volume = 0;
         private int[] initIndex;
+        public Vector3d _center = new Vector3d();
 
         // public properties
         public double Volume { get { return volume; } }
@@ -286,6 +287,7 @@ namespace Geometry
                     }
                 }
             }
+            computeCenter();
         }
         private double ComputeVolume()
         {
@@ -300,6 +302,17 @@ namespace Geometry
             vol /= 6.0;
 
             return vol;
+        }
+
+        private void computeCenter()
+        {
+            _center = new Vector3d();
+            for (int i = 0; i < hullVertices.Count; ++i)
+            {
+                Vector3d v = p[hullVertices[i]];
+                _center += v;
+            }
+            _center /= hullVertices.Count;
         }
 
         #region IMeshDisplay Members

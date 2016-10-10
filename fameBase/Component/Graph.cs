@@ -19,6 +19,8 @@ namespace Component
 
         public List<Node> selectedNodes = new List<Node>();
         private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
+        private ConvexHull _hull;
+        private Polygon3D _symPlane;
 
         // test
         public List<List<Node>> selectedNodePairs = new List<List<Node>>();
@@ -36,6 +38,34 @@ namespace Component
             markGroundTouchingNodes();
             buildGraph();
         }
+
+        public void init()
+        {
+            computeConvexHull();
+            analyzeOriginFeatures();
+            computeFeatures();
+        }// init
+
+        private void computeConvexHull()
+        {
+            // merge meshes
+            int start = 0;
+            List<double> pos = new List<double>();
+            List<int> findices = new List<int>();
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                pos.AddRange(mesh.VertexPos);
+                for (int i = 0; i < mesh.FaceVertexIndex.Length; ++i)
+                {
+                    findices.Add(start + mesh.FaceVertexIndex[i]);
+                }
+                start += mesh.VertexCount;
+            }
+            Mesh merged = new Mesh(pos.ToArray(), findices.ToArray());
+            // compute
+            _hull = new ConvexHull(merged);
+        }// computeConvexHull
 
         public List<Common.Functionality> getGraphFuncs()
         {
@@ -1198,6 +1228,113 @@ namespace Component
             return v1_min.x > v2_max.x || v1_min.y > v2_max.y || v1_min.z > v2_max.z;
         }// isTwoPolyOverlap
 
+        // Functionality features
+        public void computeFeatures()
+        {
+            // 1. point featurs
+            computePointFeatures();
+            // 2. curvature features
+
+            // 3. pca features
+            computePCAFeatures();
+            // 
+        }// computeFeatures
+
+        private void computePointFeatures()
+        {
+            // normalize height, angle to [0.0, 1.0]
+            double maxh = double.MinValue;
+            double minh = double.MaxValue;
+            double maxd = double.MinValue;
+            int d = 3;
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                double[] pointFeats = new double[mesh.VertexCount * d];
+                for (int i = 0, j = 0; i < mesh.VertexCount; ++i, j += 3)
+                {
+                    Vector3d v = new Vector3d(mesh.VertexPos[j], mesh.VertexPos[j + 1], mesh.VertexPos[j + 2]);
+                    // height - v project to the upright (unit) vector
+                    double height = v.Dot(Common.uprightVec);
+                    maxh = maxh > height ? maxh : height;
+                    minh = minh < height ? minh : height;
+                    Vector3d nor = new Vector3d(mesh.VertexNormal[j], mesh.VertexNormal[j + 1], mesh.VertexNormal[j + 2]);
+                    // angle - normal vs. upright vector
+                    double angle = Math.Acos(nor.Dot(Common.uprightVec)) / Math.PI;
+                    if (angle < 0)
+                    {
+                        angle = 0;
+                    }
+                    else if (angle > 1)
+                    {
+                        angle = 1;
+                    }
+                    // dist to center of hull - reflection plane
+                    double dist = (v - _hull._center).Length();
+                    pointFeats[i * d] = angle;
+                    pointFeats[i * d + 1] = height;
+                    pointFeats[i * d + 2] = dist;
+                    maxd = maxd > dist ? maxd : dist;
+                }
+                node.funcFeat._pointFeats = pointFeats;
+            }
+            // normalize
+            double diffh = maxh - minh;
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                for (int i = 0, j = 0; i < mesh.VertexCount; ++i, j += 3)
+                {
+                    double h = node.funcFeat._pointFeats[i * d + 1];
+                    node.funcFeat._pointFeats[i * d + 1] = (h - minh) / diffh;
+                    node.funcFeat._pointFeats[i * d + 2] /= maxd;
+                }
+            }
+        }// computePointFeatures
+
+        private void computeCurvatureFeatures()
+        {
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                double minCurv;
+                double maxCurv;
+                double avgCurv;
+                node.funcFeat._curvFeats = mesh.computeCurvFeatures(out minCurv, out maxCurv, out avgCurv);
+            }
+        }// computeCurvatureFeatures
+
+        private void computePCAFeatures()
+        {
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                Vector3d[] pcaInfo = mesh.computePointPCA();
+                int n = pcaInfo.Length / 4; // #vertex
+                int d = 5;
+                node.funcFeat._pcaFeats = new double[n * d];
+                for (int i = 0; i < n; ++i)
+                {
+                    double lamda1 = pcaInfo[i * 4].x;
+                    double lamda2 = pcaInfo[i * 4].y;
+                    double lamda3 = pcaInfo[i * 4].z;
+                    double sum = lamda1 + lamda2 + lamda3;
+                    double L = (lamda1 - lamda2) / sum; // linear-shaped
+                    double P = 2 * (lamda2 - lamda3) / sum; // planar-shaped
+                    double S = 3 * lamda3 / sum; // spherical-shaped
+                    Vector3d axis_0 = pcaInfo[i * 4 + 1];
+                    Vector3d axis_2 = pcaInfo[i * 4 + 3];
+                    double alpha_0 = Math.Acos(axis_0.Dot(Common.uprightVec));
+                    double alpha_2 = Math.Acos(axis_2.Dot(Common.uprightVec));
+                    node.funcFeat._pcaFeats[i * d] = L;
+                    node.funcFeat._pcaFeats[i * d + 1] = P;
+                    node.funcFeat._pcaFeats[i * d + 2] = S;
+                    node.funcFeat._pcaFeats[i * d + 3] = alpha_2;
+                    node.funcFeat._pcaFeats[i * d + 4] = alpha_0;
+                }
+            }
+        }// computePCAFeatures
+
         public List<Node> _NODES
         {
             get
@@ -1228,6 +1365,7 @@ namespace Component
         public Node symmetry = null;
         public Symmetry symm = null;
         public List<Common.Functionality> _funcs = new List<Common.Functionality>();
+        public FuncFeatures funcFeat;
 
         public Node(Part p, int idx)
         {
@@ -1236,6 +1374,7 @@ namespace Component
             _edges = new List<Edge>();
             _adjNodes = new List<Node>();
             _pos = p._BOUNDINGBOX.CENTER;
+            funcFeat = new FuncFeatures();
         }
 
         public void addAnEdge(Edge e)
@@ -1466,4 +1605,32 @@ namespace Component
             }
         }
     }// ReplaceablePair
+
+    public class FuncFeatures
+    {
+        public double[] _pointFeats;
+        public double[] _curvFeats;
+        public double[] _pcaFeats;
+
+        public FuncFeatures() { }
+
+        public FuncFeatures(double[] pf, double[] cf, double[] pcaf) {
+            _pointFeats = pf;
+            _curvFeats = cf;
+            _pcaFeats = pcaf;
+        }
+
+        public Object clone()
+        {
+            if (_pointFeats == null || _curvFeats == null || _pcaFeats == null)
+            {
+                return null;
+            }
+            double[] pointFeats_c = _pointFeats.Clone() as double[];
+            double[] curvFeats_c = _curvFeats.Clone() as double[];
+            double[] pcaFeats_c = _pcaFeats.Clone() as double[];
+            FuncFeatures ff = new FuncFeatures();
+            return ff;
+        }
+    }
 }// namespace

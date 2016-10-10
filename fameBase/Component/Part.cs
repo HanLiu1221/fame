@@ -610,7 +610,7 @@ namespace Component
                     return;
                 }
                 double[,] x = new double[0,0];
-                int[] tag = new int[0];
+                int[] tag = new int[k];
                 foreach (Part p1 in _parts)
                 {
                     bool found = false;
