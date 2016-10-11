@@ -129,12 +129,6 @@ namespace Geometry
             return (pt - footPoint).Length();
         }
 
-        public static double PointDistToPlane(Vector3d pos, Vector3d center, Vector3d normal)
-        {
-            double d = (pos - center).Dot(normal) / normal.Length();
-            return Math.Abs(d);
-        }
-
         public static bool IsLineSegmentIntersectWithCircle(Vector2d u, Vector2d v, Vector2d c, double radius)
         {
             if ((u - c).Length() < radius || (v - c).Length() < radius) return true;
