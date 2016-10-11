@@ -16,9 +16,12 @@ namespace Component
         double _maxNodeBboxScale; // max scale of a box
         double _minNodeBboxScale; // min scale of a box
         double _maxAdjNodesDist; // max distance between two nodes
-        
+
         public List<Node> selectedNodes = new List<Node>();
         private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
+        private ConvexHull _hull;
+        private Vector3d _centerOfMass;
+        private Polygon3D _symPlane;
 
         // test
         public List<List<Node>> selectedNodePairs = new List<List<Node>>();
@@ -36,6 +39,60 @@ namespace Component
             markGroundTouchingNodes();
             buildGraph();
         }
+
+        public void init()
+        {
+            computeCenterOfMass();
+            computeConvexHull();
+            analyzeOriginFeatures();
+            computeFeatures();
+        }// init
+
+        private void computeConvexHull()
+        {
+            // merge meshes
+            int start = 0;
+            List<double> pos = new List<double>();
+            List<int> findices = new List<int>();
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                pos.AddRange(mesh.VertexPos);
+                for (int i = 0; i < mesh.FaceVertexIndex.Length; ++i)
+                {
+                    findices.Add(start + mesh.FaceVertexIndex[i]);
+                }
+                start += mesh.VertexCount;
+            }
+            Mesh merged = new Mesh(pos.ToArray(), findices.ToArray());
+            // compute
+            _hull = new ConvexHull(merged);
+        }// computeConvexHull
+
+        private void computeCenterOfMass()
+        {
+            _centerOfMass = new Vector3d();
+            _NNodes = _nodes.Count;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            Vector3d maxCoord = Vector3d.MinCoord;
+            foreach (Node node in _nodes)
+            {
+                Vector3d v = node._PART._BOUNDINGBOX.CENTER;
+                _centerOfMass += v;
+                foreach(Vector3d v3 in node._PART._BOUNDINGBOX._POINTS3D) {
+                    minCoord = Vector3d.Min(v3, minCoord);
+                    maxCoord = Vector3d.Max(v3, maxCoord);
+                }
+            }
+            _centerOfMass /= _NNodes;
+            Vector3d[] symPlaneVecs = new Vector3d[4];
+            // assume upright vec is y-axis, the shape is symmetry along the center plane
+            symPlaneVecs[0] = new Vector3d(_centerOfMass.x, minCoord.y, minCoord.z);
+            symPlaneVecs[1] = new Vector3d(_centerOfMass.x, maxCoord.y, minCoord.z);
+            symPlaneVecs[2] = new Vector3d(_centerOfMass.x, maxCoord.y, maxCoord.z);
+            symPlaneVecs[3] = new Vector3d(_centerOfMass.x, minCoord.y, maxCoord.z);
+            _symPlane = new Polygon3D(symPlaneVecs);
+        }// computeCenterOfMass
 
         public List<Common.Functionality> getGraphFuncs()
         {
@@ -145,6 +202,19 @@ namespace Component
             return vals;
         }// calScale
 
+        public List<Node> getNodesByUniqueFunctionality(Common.Functionality func)
+        {
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (node._funcs.Count == 1 && node._funcs.Contains(func))
+                {
+                    nodes.Add(node);
+                }
+            }
+            return nodes;
+        }// getNodesByUniqueFunctionality
+
         public List<Node> getNodesByFunctionality(Common.Functionality func)
         {
             List<Node> nodes = new List<Node>();
@@ -199,7 +269,7 @@ namespace Component
             {
                 this.deleteEdge(e);
             }
-            
+
             List<Edge> out_old_edges = getOutgoingEdges(oldNodes);
             List<Edge> out_new_edges = getOutgoingEdges(newNodes);
             List<Node> out_nodes = new List<Node>();
@@ -209,7 +279,8 @@ namespace Component
                 out_nodes = newNodes;
                 out_edges = out_new_edges;
             }
-            else {
+            else
+            {
                 out_nodes = oldNodes;
                 out_edges = out_old_edges;
                 nodes_in_oppo_list = new List<Node>(newNodes);
@@ -371,7 +442,7 @@ namespace Component
             return edges;
         }// GetInnerEdges
 
-        public static List<Node> GetNodePropagation(List<Node> nodes)
+        public List<Node> getNodePropagation(List<Node> nodes)
         {
             // propagate the nodes to all inner nodes that only connect to the input #nodes#
             List<Node> inner_nodes = new List<Node>();
@@ -384,10 +455,11 @@ namespace Component
                     {
                         continue;
                     }
+                    // check if #adj# is an innter node
                     bool add = true;
                     foreach (Node adjadj in adj._adjNodes)
                     {
-                        if (!nodes.Contains(adjadj))
+                        if (!inner_nodes.Contains(adjadj))
                         {
                             add = false;
                             break;
@@ -432,7 +504,7 @@ namespace Component
             return nodes;
         }// selectFuncNodes
 
-        public List<Node> selectSymmetryFuncNodes( Common.Functionality func)
+        public List<Node> selectSymmetryFuncNodes(Common.Functionality func)
         {
             List<Node> sym_nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -722,7 +794,7 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 if (node._edges.Count > nMaxConn)
-                    //&& (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HUMAN_HIP)))
+                //&& (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HUMAN_HIP)))
                 {
                     nMaxConn = node._edges.Count;
                     key = node;
@@ -800,7 +872,7 @@ namespace Component
                 {
                     break;
                 }
-            }            
+            }
             bool containGround1 = false;
             while (queue.Count > 0)
             {
@@ -824,7 +896,7 @@ namespace Component
                     }
                 }
             }
-            
+
             List<Node> split2 = new List<Node>();
             bool containGround2 = false;
             foreach (Node node in _nodes)
@@ -839,9 +911,11 @@ namespace Component
                 }
             }
             bool add_split1_first = true;
-            if (containGround1 && !containGround2) {
+            if (containGround1 && !containGround2)
+            {
                 add_split1_first = true;
-            } else if (!containGround1 && containGround2)
+            }
+            else if (!containGround1 && containGround2)
             {
                 add_split1_first = false;
             }
@@ -911,6 +985,12 @@ namespace Component
             }
         }// resetEdgeContactStatus
 
+        public void reset()
+        {
+            resetNodeIndex();
+            resetUpdateStatus();
+        }// reset
+
         public void unify()
         {
             Vector3d maxCoord = Vector3d.MinCoord;
@@ -925,7 +1005,6 @@ namespace Component
             maxS = maxS > scale.z ? maxS : scale.z;
             maxS = 1.0 / maxS;
             Vector3d center = (maxCoord + minCoord) / 2;
-            center = new Vector3d() - center;
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
             Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
@@ -936,13 +1015,12 @@ namespace Component
             {
                 minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
             }
-            if (Math.Abs(minCoord.y) > Common._thresh)
-            {
-                Vector3d t = new Vector3d();
+       
+                Vector3d t = new Vector3d() - center;
                 t.y = -minCoord.y;
                 T = Matrix4d.TranslationMatrix(t);
                 this.transformAll(T);
-            }
+            
         }// unify
 
         private void transformAll(Matrix4d T)
@@ -960,6 +1038,62 @@ namespace Component
             }
             resetUpdateStatus();
         }// transformAll
+
+        public void cloneSubgraph(List<Node> nodes, out List<Node> clone_nodes, out List<Edge> clone_edges)
+        {
+            clone_nodes = new List<Node>();
+            clone_edges = new List<Edge>();
+            List<Edge> visited = new List<Edge>();
+            foreach (Node node in nodes)
+            {
+                Node cloned = node.Clone() as Node;
+                clone_nodes.Add(cloned);
+            }
+            for (int i = 0; i < nodes.Count; ++i)
+            {
+                Node node = nodes[i];
+                Node cloned = clone_nodes[i];
+                foreach (Edge e in node._edges)
+                {
+                    if (visited.Contains(e))
+                    {
+                        continue;
+                    }
+                    Node adj = e._start == node ? e._end : e._start;
+                    int idx = nodes.IndexOf(adj);
+                    if (idx != -1)
+                    {
+                        Node adj_cloned = clone_nodes[idx];
+                        List<Contact> contacts = new List<Contact>();
+                        foreach (Contact c in e._contacts)
+                        {
+                            contacts.Add(new Contact(new Vector3d(c._pos3d)));
+                        }
+                        Edge cloned_e = new Edge(cloned, adj_cloned, contacts);
+                        clone_edges.Add(cloned_e);
+                    }
+                    visited.Add(e);
+                }
+            }
+        }// cloneSubgraph
+
+        public Node getNodeToAttach()
+        {
+            double minz = double.MaxValue;
+            Node attach = null;
+            foreach (Node node in _nodes)
+            {
+                if (node._funcs.Contains(Common.Functionality.HUMAN_BACK) || node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                {
+                    if (node._PART._MESH.MinCoord.z < minz)
+                    {
+                        minz = node._PART._MESH.MinCoord.z;
+                        attach = node;
+                    }
+                }
+            }
+            return attach;
+        }// getNodeToAttach
 
         //*********** Validation ***********//
         public bool isValid()
@@ -994,35 +1128,48 @@ namespace Component
         private bool isPhysicalValid()
         {
             // center of mass falls in the supporting polygon
-            Vector3d centerOfMass = new Vector3d();
+            _centerOfMass = new Vector3d();
             _NNodes = _nodes.Count;
             List<Vector2d> centers2d = new List<Vector2d>();
             List<Vector3d> groundPnts = new List<Vector3d>();
             foreach (Node node in _nodes)
             {
                 Vector3d v = node._PART._BOUNDINGBOX.CENTER;
-                centerOfMass += v;
+                _centerOfMass += v;
                 centers2d.Add(new Vector2d(v.x, v.z));
                 if (node._funcs.Contains(Common.Functionality.GROUND_TOUCHING))
                 {
                     groundPnts.Add(node._PART._BOUNDINGBOX.MinCoord);
+                    groundPnts.Add(node._PART._BOUNDINGBOX.MaxCoord);
                 }
             }
-            centerOfMass /= _NNodes;
-            Vector2d center = new Vector2d(centerOfMass.x, centerOfMass.z);
-            int i = 0;
-            Vector2d[] groundPnts2d = new Vector2d[groundPnts.Count];
+            _centerOfMass /= _NNodes;
+            Vector2d center = new Vector2d(_centerOfMass.x, _centerOfMass.z);
+            Vector2d minCoord = Vector2d.MaxCoord();
+            Vector2d maxCoord = Vector2d.MinCoord();
             foreach (Vector3d v in groundPnts)
             {
-                groundPnts2d[i++] = new Vector2d(v.x, v.z);
+                Vector2d v2 = new Vector2d(v.x, v.z);
+                minCoord = Vector2d.Min(v2, minCoord);
+                maxCoord = Vector2d.Max(v2, maxCoord);
             }
-            foreach (Vector2d v in centers2d)
+            // in case some model only has 2 ground touching points
+            Vector2d[] groundPnts2d = new Vector2d[4];
+            groundPnts2d[0] = new Vector2d(minCoord.x, minCoord.y);
+            groundPnts2d[1] = new Vector2d(minCoord.x, maxCoord.y);
+            groundPnts2d[2] = new Vector2d(maxCoord.x, maxCoord.y);
+            groundPnts2d[3] = new Vector2d(maxCoord.x, minCoord.y);
+            if (!Polygon2D.isPointInPolygon(center, groundPnts2d))
             {
-                if (!Polygon2D.isPointInPolygon(center, groundPnts2d))
-                {
-                    return false;
-                }
+                return false;
             }
+            //foreach (Vector2d v in centers2d)
+            //{
+            //    if (!Polygon2D.isPointInPolygon(v, groundPnts2d))
+            //    {
+            //        return false;
+            //    }
+            //}
             return true;
         }// isPhysicalValid
 
@@ -1108,6 +1255,190 @@ namespace Component
             return v1_min.x > v2_max.x || v1_min.y > v2_max.y || v1_min.z > v2_max.z;
         }// isTwoPolyOverlap
 
+        // Functionality features
+        public void computeFeatures()
+        {
+            // 1. point featurs
+            computePointFeatures();
+            // 2. curvature features
+            computeCurvatureFeatures();
+            // 3. pca features
+            computePCAFeatures();
+            // 4. ray features
+            computeRayFeatures();
+            // 5. convex hull center features
+            computeDistAndAngleToCenterOfConvexHull();
+            // 6. center of mass features
+            computeDistAndAngleToCenterOfMass();
+        }// computeFeatures
+
+        private void computePointFeatures()
+        {
+            // normalize height, angle to [0.0, 1.0]
+            double maxh = double.MinValue;
+            double minh = double.MaxValue;
+            double maxd = double.MinValue;
+            int d = Common._POINT_FEAT_DIM;
+            if (_symPlane == null)
+            {
+                computeCenterOfMass();
+            }
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                double[] pointFeats = new double[mesh.VertexCount * d];
+                for (int i = 0; i < mesh.VertexCount; ++i)
+                {
+                    Vector3d v = mesh.getVertexPos(i);
+                    // height - v project to the upright (unit) vector
+                    double height = v.Dot(Common.uprightVec);
+                    maxh = maxh > height ? maxh : height;
+                    minh = minh < height ? minh : height;
+                    Vector3d nor = mesh.getVertexNormal(i);
+                    // angle - normal vs. upright vector
+                    double angle = Math.Acos(nor.Dot(Common.uprightVec)) / Math.PI;
+                    angle = Common.cutoff(angle, 0, 1.0);
+                    // dist to center of hull - reflection plane
+                    double dist = Common.PointDistToPlane(v, _symPlane.center, _symPlane.normal);
+                    pointFeats[i * d] = angle;
+                    pointFeats[i * d + 1] = height;
+                    pointFeats[i * d + 2] = dist;
+                    maxd = maxd > dist ? maxd : dist;
+                }
+                node.funcFeat._pointFeats = pointFeats;
+            }
+            // normalize
+            double diffh = maxh - minh;
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                for (int i = 0, j = 0; i < mesh.VertexCount; ++i, j += 3)
+                {
+                    double h = node.funcFeat._pointFeats[i * d + 1];
+                    node.funcFeat._pointFeats[i * d + 1] = (h - minh) / diffh;
+                    node.funcFeat._pointFeats[i * d + 2] /= maxd;
+                }
+            }
+        }// computePointFeatures
+
+        private void computeCurvatureFeatures()
+        {
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                double minCurv;
+                double maxCurv;
+                double avgCurv;
+                node.funcFeat._curvFeats = mesh.computeCurvFeatures(out minCurv, out maxCurv, out avgCurv);
+            }
+        }// computeCurvatureFeatures
+
+        private void computePCAFeatures()
+        {
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                Vector3d[] pcaInfo = mesh.computePointPCA();
+                int n = pcaInfo.Length / 4; // #vertex
+                int d = 5;
+                node.funcFeat._pcaFeats = new double[n * d];
+                for (int i = 0; i < n; ++i)
+                {
+                    double lamda1 = pcaInfo[i * 4].x;
+                    double lamda2 = pcaInfo[i * 4].y;
+                    double lamda3 = pcaInfo[i * 4].z;
+                    double sum = lamda1 + lamda2 + lamda3;
+                    double L = (lamda1 - lamda2) / sum; // linear-shaped
+                    double P = 2 * (lamda2 - lamda3) / sum; // planar-shaped
+                    double S = 3 * lamda3 / sum; // spherical-shaped
+                    Vector3d axis_0 = pcaInfo[i * 4 + 1];
+                    Vector3d axis_2 = pcaInfo[i * 4 + 3];
+                    double alpha_0 = Math.Acos(axis_0.Dot(Common.uprightVec));
+                    double alpha_2 = Math.Acos(axis_2.Dot(Common.uprightVec));
+                    node.funcFeat._pcaFeats[i * d] = L;
+                    node.funcFeat._pcaFeats[i * d + 1] = P;
+                    node.funcFeat._pcaFeats[i * d + 2] = S;
+                    node.funcFeat._pcaFeats[i * d + 3] = alpha_2;
+                    node.funcFeat._pcaFeats[i * d + 4] = alpha_0;
+                }
+            }
+        }// computePCAFeatures
+
+        private void computeRayFeatures()
+        {
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                node.funcFeat._rayFeats = mesh.computeRayDist();
+            }
+        }// computeRayFeatures
+
+        private void computeDistAndAngleToCenterOfConvexHull()
+        {
+            int dim = Common._CONVEXHULL_FEAT_DIM;
+            double maxdist = double.MinValue;
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                node.funcFeat._conhullFeats = new double[dim * mesh.VertexCount];
+                for (int i = 0; i < mesh.VertexCount; ++i)
+                {
+                    Vector3d v = mesh.getVertexPos(i);
+                    double dist = 0;
+                    double angle = 0;
+                    computeDistAndAngleToAnchorNormalized(v, _hull._center, out dist, out angle);
+                    node.funcFeat._conhullFeats[i * dim] = dist;
+                    node.funcFeat._conhullFeats[i * dim + 1] = angle;
+                    maxdist = maxdist > dist ? maxdist : dist;
+                }
+            }
+            foreach (Node node in _nodes)
+            {
+                for (int i = 0; i < node.funcFeat._conhullFeats.Length; i += dim)
+                {
+                    node.funcFeat._conhullFeats[i] /= maxdist;
+                }
+            }
+        }// computeDistAndAngleToCenterOfConvexHull
+
+        private void computeDistAndAngleToCenterOfMass()
+        {
+            int dim = Common._CONVEXHULL_FEAT_DIM;
+            double maxdist = double.MinValue;
+            foreach (Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                node.funcFeat._cenOfMassFeats = new double[dim * mesh.VertexCount];
+                for (int i = 0; i < mesh.VertexCount; ++i)
+                {
+                    Vector3d v = mesh.getVertexPos(i);
+                    double dist = 0;
+                    double angle = 0;
+                    computeDistAndAngleToAnchorNormalized(v, _centerOfMass, out dist, out angle);
+                    node.funcFeat._cenOfMassFeats[i * dim] = dist;
+                    node.funcFeat._cenOfMassFeats[i * dim + 1] = angle;
+                    maxdist = maxdist > dist ? maxdist : dist;
+                }
+            }
+            foreach (Node node in _nodes)
+            {
+                for (int i = 0; i < node.funcFeat._conhullFeats.Length; i += dim)
+                {
+                    node.funcFeat._conhullFeats[i] /= maxdist;
+                }
+            }
+        }// computeDistAndAngleToCenterOfMass
+
+        private void computeDistAndAngleToAnchorNormalized(Vector3d v, Vector3d anchor, out double dist, out double angle)
+        {
+            Vector3d dir = (v - anchor).normalize();
+            dist = (v - anchor).Length();
+            double cosv = dir.Dot(Common.uprightVec);
+            cosv = Common.cutoff(cosv, -1.0, 1.0);
+            angle = Math.Acos(cosv) / Math.PI;
+            angle = Common.cutoff(angle, 0.0, 1.0);
+        }// computeDistAndAngleToAnchorNormalized
+
         public List<Node> _NODES
         {
             get
@@ -1138,6 +1469,7 @@ namespace Component
         public Node symmetry = null;
         public Symmetry symm = null;
         public List<Common.Functionality> _funcs = new List<Common.Functionality>();
+        public FuncFeatures funcFeat;
 
         public Node(Part p, int idx)
         {
@@ -1146,6 +1478,7 @@ namespace Component
             _edges = new List<Edge>();
             _adjNodes = new List<Node>();
             _pos = p._BOUNDINGBOX.CENTER;
+            funcFeat = new FuncFeatures();
         }
 
         public void addAnEdge(Edge e)
@@ -1276,7 +1609,7 @@ namespace Component
         public List<Contact> _contacts;
         public bool _contactUpdated = false;
         public Common.NodeRelationType _type;
-        
+
         public Edge(Node a, Node b, Vector3d c)
         {
             _start = a;
@@ -1289,7 +1622,7 @@ namespace Component
         {
             _start = a;
             _end = b;
-            _contacts = contacts;            
+            _contacts = contacts;
         }
 
         private void analyzeEdgeType()
@@ -1310,7 +1643,7 @@ namespace Component
             foreach (Contact p in _contacts)
             {
                 p.TransformFromOrigin(T);
-            }            
+            }
             _contactUpdated = true;
         }
 
@@ -1376,4 +1709,41 @@ namespace Component
             }
         }
     }// ReplaceablePair
+
+    public class FuncFeatures
+    {
+        public double[] _pointFeats;
+        public double[] _curvFeats;
+        public double[] _pcaFeats;
+        public double[] _rayFeats;
+        public double[] _conhullFeats;
+        public double[] _cenOfMassFeats;
+
+        public FuncFeatures() { }
+
+        public FuncFeatures(double[] pf, double[] cf, double[] pcaf, double[] rf, double[] chf, double[] cmf) {
+            _pointFeats = pf;
+            _curvFeats = cf;
+            _pcaFeats = pcaf;
+            _rayFeats = rf;
+            _conhullFeats = chf;
+            _cenOfMassFeats = cmf;
+        }
+
+        public Object clone()
+        {
+            if (_pointFeats == null || _curvFeats == null || _pcaFeats == null)
+            {
+                return null;
+            }
+            double[] pointFeats_c = _pointFeats.Clone() as double[];
+            double[] curvFeats_c = _curvFeats.Clone() as double[];
+            double[] pcaFeats_c = _pcaFeats.Clone() as double[];
+            double[] rayFeats_c = _rayFeats.Clone() as double[];
+            double[] conhullFeats_c = _conhullFeats.Clone() as double[];
+            double[] cenMassFeats_c = _cenOfMassFeats.Clone() as double[];
+            FuncFeatures ff = new FuncFeatures(pointFeats_c, curvFeats_c, pcaFeats_c, rayFeats_c, conhullFeats_c, cenMassFeats_c);
+            return ff;
+        }
+    }
 }// namespace

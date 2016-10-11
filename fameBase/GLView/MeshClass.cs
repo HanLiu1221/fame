@@ -416,22 +416,44 @@ namespace FameBase
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_POINT_SMOOTH);
-            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+            //Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        }
+
+        public void drawSamplePoints()
+        {
+            if (mesh.samplePoints == null)
+            {
+                return;
+            }
+            Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            Gl.glColor3ub(GLDrawer.ColorSet[2].R, GLDrawer.ColorSet[2].G, GLDrawer.ColorSet[2].B);
+            Gl.glPointSize(4.0f);
+            Gl.glEnable(Gl.GL_DEPTH_TEST);
+            Gl.glBegin(Gl.GL_POINTS);
+            for (int i = 0; i < this.mesh.samplePoints.Length; i += 3)
+            {
+                Gl.glColor3ub(this.mesh.sampleColors[i], this.mesh.sampleColors[i + 1], this.mesh.sampleColors[i + 2]);
+                Gl.glBegin(Gl.GL_POINTS);
+                Gl.glVertex3d(this.mesh.samplePoints[i], this.mesh.samplePoints[i + 1], this.mesh.samplePoints[i + 2]);
+                Gl.glEnd();
+            }
+            Gl.glEnd();
+            Gl.glDisable(Gl.GL_POINT_SMOOTH);
         }
 
         public void renderVertices_color()
         {
             Gl.glEnable(Gl.GL_POINT_SMOOTH);
             Gl.glPointSize(2.0f);
-            Gl.glBegin(Gl.GL_POINTS);
             for (int i = 0; i < this.mesh.VertexCount; ++i)
             {
                 Gl.glColor3ub(this.mesh.VertexColor[i * 3], this.mesh.VertexColor[i * 3 + 1], this.mesh.VertexColor[i * 3 + 2]);
+                Gl.glBegin(Gl.GL_POINTS);
                 Gl.glVertex3d(this.mesh.VertexPos[i * 3], this.mesh.VertexPos[i * 3 + 1], this.mesh.VertexPos[i * 3 + 2]);
+                Gl.glEnd();
             }
-            Gl.glEnd();
             Gl.glDisable(Gl.GL_POINT_SMOOTH);
-            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+            //Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         }
 
         public void drawSelectedVertex()

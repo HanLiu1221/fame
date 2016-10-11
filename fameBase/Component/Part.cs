@@ -610,7 +610,7 @@ namespace Component
                     return;
                 }
                 double[,] x = new double[0,0];
-                int[] tag = new int[0];
+                int[] tag = new int[k];
                 foreach (Part p1 in _parts)
                 {
                     bool found = false;
@@ -764,4 +764,42 @@ namespace Component
             _point = v;
         }
     }// Joint
+
+    public class FunctionalityModel
+    {
+        int _dim = 0;
+        double[] _features;
+        string _category;
+
+        public FunctionalityModel(double[] fs, string name)
+        {
+            _dim = fs.Length;
+            _features = fs;
+            _category = name;
+        }
+
+        public int _DIM
+        {
+            get
+            {
+                return _dim;
+            }
+        }
+
+        public string _CATEGORY
+        {
+            get
+            {
+                return _category;
+            }
+        }
+
+        public double[] _FEATURES
+        {
+            get
+            {
+                return _features;
+            }
+        }
+    }// FunctionalityModel
 }

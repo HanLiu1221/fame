@@ -33,12 +33,70 @@ namespace FameBase
         public static Color ContactColor = Color.FromArgb(240, 59, 32);
         public static Color HightLightContactColor = Color.FromArgb(189, 0, 38);
         public static Color DimMeshColor = Color.FromArgb(222, 235, 247);
-        public static Color HighlightBboxColor = Color.FromArgb(50, 252, 146, 114);
+        public static Color HighlightBboxColor = Color.FromArgb(50, 255, 255, 255);
         public static Color SelectedBackgroundColor = Color.FromArgb(253, 174, 107);
         public static Color ParentViewBackgroundColor = Color.FromArgb(224, 236, 244);
 
+        public static Color GradientColor_0 = Color.FromArgb(254, 204, 92);
+        public static Color GradientColor_1 = Color.FromArgb(189, 0, 38);
+        public static Color GradientColor_2 = Color.FromArgb(209, 229, 240);
+        public static Color GradientColor_3 = Color.FromArgb(33, 102, 172);
+        public static Color GradientColor_4 = Color.FromArgb(217, 239, 139);
+        public static Color GradientColor_5 = Color.FromArgb(26, 152, 80);
+        public static Color GradientColor_6 = Color.FromArgb(231, 212, 232);
+        public static Color GradientColor_7 = Color.FromArgb(118, 42, 131);
+
         public static int _NSlices = 40;
 
+        public static Color getColorGradient(double ratio, int npatch)
+        {
+            Color color = Color.White;
+            switch (npatch)
+            {
+                case 1:
+                    color = getColorGradient(ratio, GradientColor_2, GradientColor_3);
+                    break;
+                case 2:
+                    color = getColorGradient(ratio, GradientColor_4, GradientColor_5);
+                    break;
+                case 3:
+                    color = getColorGradient(ratio, GradientColor_6, GradientColor_7);
+                    break;
+                case 0:
+                default:
+                    color = getColorGradient(ratio, GradientColor_0, GradientColor_1);
+                    break;
+            }
+            return color;
+        }// getColorGradient
+
+        public static Color getColorGradient(double ratio, Color c0, Color c1)
+        {
+            Vector3d v0 = getColorVec(c0);
+            Vector3d v1 = getColorVec(c1);
+            Vector3d dir = (v1 - v0).normalize();
+            Vector3d v = v0 + ratio * dir;
+            return getColorRGB(v);
+        }// getColorGradient
+
+        public static Vector3d getColorVec(Color c)
+        {
+            return new Vector3d((double)c.R / 255, (double)c.G / 255, (double)c.B / 255);
+        }// getColorVec
+
+        public static Color getColorRGB(Vector3d v)
+        {
+            return Color.FromArgb((byte)(v.x * 255), (byte)(v.y * 255), (byte)(v.z * 255)); 
+        }
+
+        public static byte[] getColorArray(Color c)
+        {
+            byte[] cv = new byte[3];
+            cv[0] = c.R;
+            cv[1] = c.G;
+            cv[2] = c.B;
+            return cv;
+        }
         public static void drawTriangle(Triangle3D t)
         {
             Gl.glVertex3dv(t.u.ToArray());
@@ -583,6 +641,83 @@ namespace FameBase
             //	Gl.glDisable(Gl.GL_BLEND);
         }
 
+        public static void drawMeshFace(Mesh m)
+        {
+            if (m == null) return;
+
+            Gl.glPushAttrib(Gl.GL_COLOR_BUFFER_BIT);
+            int iMultiSample = 0;
+            int iNumSamples = 0;
+            Gl.glGetIntegerv(Gl.GL_SAMPLE_BUFFERS, out iMultiSample);
+            Gl.glGetIntegerv(Gl.GL_SAMPLES, out iNumSamples);
+            if (iNumSamples == 0)
+            {
+                Gl.glEnable(Gl.GL_DEPTH_TEST);
+                Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
+                Gl.glShadeModel(Gl.GL_SMOOTH);
+            }
+            else
+            {
+                Gl.glEnable(Gl.GL_MULTISAMPLE);
+                Gl.glHint(Gl.GL_MULTISAMPLE_FILTER_HINT_NV, Gl.GL_NICEST);
+                Gl.glEnable(Gl.GL_SAMPLE_ALPHA_TO_ONE);
+            }
+
+            Gl.glEnable(Gl.GL_LIGHTING);
+            Gl.glEnable(Gl.GL_NORMALIZE);
+
+            for (int i = 0, j = 0; i < m.FaceCount; ++i, j += 3)
+            {
+                int vidx1 = m.FaceVertexIndex[j];
+                int vidx2 = m.FaceVertexIndex[j + 1];
+                int vidx3 = m.FaceVertexIndex[j + 2];
+                Vector3d v1 = new Vector3d(
+                    m.VertexPos[vidx1 * 3], m.VertexPos[vidx1 * 3 + 1], m.VertexPos[vidx1 * 3 + 2]);
+                Vector3d v2 = new Vector3d(
+                    m.VertexPos[vidx2 * 3], m.VertexPos[vidx2 * 3 + 1], m.VertexPos[vidx2 * 3 + 2]);
+                Vector3d v3 = new Vector3d(
+                    m.VertexPos[vidx3 * 3], m.VertexPos[vidx3 * 3 + 1], m.VertexPos[vidx3 * 3 + 2]);
+                Color fc = Color.FromArgb(m.FaceColor[i * 3], m.FaceColor[i * 3 + 1], m.FaceColor[i * 3 + 2]);
+                Gl.glColor3ub(fc.R, fc.G, fc.B);
+                Gl.glBegin(Gl.GL_TRIANGLES);
+                //Vector3d centroid = (v1 + v2 + v3) / 3;
+                //Vector3d normal = new Vector3d(m.FaceNormal[i * 3], m.FaceNormal[i * 3 + 1], m.FaceNormal[i * 3 + 2]);
+                //if ((centroid - new Vector3d(0, 0, 1.5)).Dot(normal) > 0)
+                //{
+                //    normal *= -1.0;
+                //}
+                //normal *= -1;
+                //Gl.glNormal3dv(normal.ToArray());
+                Vector3d n1 = new Vector3d(m.VertexNormal[vidx1 * 3], m.VertexNormal[vidx1 * 3 + 1], m.VertexNormal[vidx1 * 3 + 2]);
+                Gl.glNormal3dv(n1.ToArray());
+                Gl.glVertex3d(v1.x, v1.y, v1.z);
+                Vector3d n2 = new Vector3d(m.VertexNormal[vidx2 * 3], m.VertexNormal[vidx2 * 3 + 1], m.VertexNormal[vidx2 * 3 + 2]);
+                Gl.glNormal3dv(n2.ToArray());
+                Gl.glVertex3d(v2.x, v2.y, v2.z);
+                Vector3d n3 = new Vector3d(m.VertexNormal[vidx3 * 3], m.VertexNormal[vidx3 * 3 + 1], m.VertexNormal[vidx3 * 3 + 2]);
+                Gl.glNormal3dv(n3.ToArray());
+                Gl.glVertex3d(v3.x, v3.y, v3.z);
+                Gl.glEnd();
+            }
+
+            if (iNumSamples == 0)
+            {
+                //Gl.glDisable(Gl.GL_BLEND);
+                //Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
+                //Gl.glDepthMask(Gl.GL_TRUE);
+                Gl.glDisable(Gl.GL_DEPTH_TEST);
+                Gl.glEnable(Gl.GL_CULL_FACE);
+            }
+            else
+            {
+                Gl.glDisable(Gl.GL_MULTISAMPLE);
+            }
+
+            Gl.glDisable(Gl.GL_LIGHTING);
+            Gl.glDisable(Gl.GL_NORMALIZE);
+            Gl.glPopAttrib();
+        }
+
         public static void drawMeshFace(Mesh m, Color c, bool useMeshColor)
         {
             if (m == null) return;
@@ -634,7 +769,7 @@ namespace FameBase
                         m.VertexPos[vidx2 * 3], m.VertexPos[vidx2 * 3 + 1], m.VertexPos[vidx2 * 3 + 2]);
                     Vector3d v3 = new Vector3d(
                         m.VertexPos[vidx3 * 3], m.VertexPos[vidx3 * 3 + 1], m.VertexPos[vidx3 * 3 + 2]);
-                    Color fc = Color.FromArgb(m.FaceColor[i * 4 + 3], m.FaceColor[i * 4], m.FaceColor[i * 4 + 1], m.FaceColor[i * 4 + 2]);
+                    Color fc = Color.FromArgb(m.FaceColor[i * 3], m.FaceColor[i * 3 + 1], m.FaceColor[i * 3 + 2]);
                     Gl.glColor4ub(fc.R, fc.G, fc.B, fc.A);
                     Gl.glBegin(Gl.GL_TRIANGLES);
                     //Vector3d centroid = (v1 + v2 + v3) / 3;
