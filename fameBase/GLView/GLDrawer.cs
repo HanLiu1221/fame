@@ -39,10 +39,10 @@ namespace FameBase
 
         public static Color GradientColor_0 = Color.FromArgb(254, 204, 92);
         public static Color GradientColor_1 = Color.FromArgb(189, 0, 38);
-        public static Color GradientColor_2 = Color.FromArgb(209, 229, 240);
-        public static Color GradientColor_3 = Color.FromArgb(33, 102, 172);
-        public static Color GradientColor_4 = Color.FromArgb(217, 239, 139);
-        public static Color GradientColor_5 = Color.FromArgb(26, 152, 80);
+        public static Color GradientColor_2 = Color.FromArgb(178, 226, 226);
+        public static Color GradientColor_3 = Color.FromArgb(0, 109, 44);
+        public static Color GradientColor_4 = Color.FromArgb(251, 180, 185);
+        public static Color GradientColor_5 = Color.FromArgb(122, 1, 119);
         public static Color GradientColor_6 = Color.FromArgb(231, 212, 232);
         public static Color GradientColor_7 = Color.FromArgb(118, 42, 131);
 
