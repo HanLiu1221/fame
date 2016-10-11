@@ -882,7 +882,8 @@ namespace Geometry
         public Vector3d[] computePointPCA()
         {
             // return eigen values (1 vec) and eigen vectors (3 vecs)
-            Vector3d[] pcaInfo = new Vector3d[this.vertexCount * 4];
+            int dim = Common._PCA_FEAT_DIM;
+            Vector3d[] pcaInfo = new Vector3d[this.vertexCount * dim];
             for (int i = 0; i < this.vertexCount; ++i)
             {
                 // geodescic neighborhood
@@ -898,20 +899,20 @@ namespace Geometry
                 pca.Compute();
                 if (pca.Components.Count < 3)
                 {
-                    pcaInfo[i * 4] = new Vector3d(1, 1, 1).normalize();
-                    pcaInfo[i * 4 + 1] = Vector3d.XCoord;
-                    pcaInfo[i * 4 + 2] = Vector3d.YCoord;
-                    pcaInfo[i * 4 + 3] = Vector3d.ZCoord;
+                    pcaInfo[i * dim] = new Vector3d(1, 1, 1).normalize();
+                    pcaInfo[i * dim + 1] = Vector3d.XCoord;
+                    pcaInfo[i * dim + 2] = Vector3d.YCoord;
+                    pcaInfo[i * dim + 3] = Vector3d.ZCoord;
                 }
                 else
                 {
-                    pcaInfo[i * 4] = new Vector3d(
+                    pcaInfo[i * dim] = new Vector3d(
                         pca.Components[0].Eigenvalue,
                         pca.Components[1].Eigenvalue,
                         pca.Components[2].Eigenvalue);
                     for (int j = 0; j < 3; ++j)
                     {
-                        pcaInfo[i * 4 + j + 1] = new Vector3d(
+                        pcaInfo[i * dim + j + 1] = new Vector3d(
                             pca.Components[j].Eigenvector[0],
                             pca.Components[j].Eigenvector[1],
                             pca.Components[j].Eigenvector[2]);
@@ -987,6 +988,73 @@ namespace Geometry
             }
             return neigPoints.ToArray();
         }// getNeighborPoints
+
+        public double[] computeRayDist()
+        {
+            // dist & angle
+            int dim = Common._RAY_FEAT_DIM;
+            double[] rayDists = new double[this.vertexCount * dim];
+            double maxdist = double.MinValue;
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                Vector3d ivec = getVertexPos(i);
+                Vector3d inor = getVertexNormal(i);
+                int fidx = -1;
+                Vector3d hitpos = closestIntersectionPoint(ivec, inor, out fidx);
+                double dist = (ivec - hitpos).Length();
+                if (fidx == -1)
+                {
+                    rayDists[i * dim] = 1;
+                }
+                else
+                {
+                    rayDists[i * dim] = dist;
+                    if (dist < maxdist)
+                    {
+                        maxdist = dist;
+                    }
+                }
+                double cosv = inor.Dot(Common.uprightVec);
+                cosv = Common.cutoff(cosv, -1.0, 1.0);
+                double angle = Math.Acos(cosv) / Math.PI;
+                rayDists[i * dim + 1] = Common.cutoff(angle, 0.0, 1.0);
+            }
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                rayDists[i * dim] /= maxdist;
+            }
+            return rayDists;
+        }// computeRadDist
+
+        public Vector3d closestIntersectionPoint(Vector3d ray_origin, Vector3d ray_dir, out int faceIdx)
+        {
+            faceIdx = -1;
+            double minDistance = double.MaxValue;
+            Vector3d hitpoint = new Vector3d();
+            for (int i = 0; i < this.faceCount; ++i)
+            {
+                int fv1 = this.faceVertexIndex[i * 3];
+                int fv2 = this.faceVertexIndex[i * 3 + 1];
+                int fv3 = this.faceVertexIndex[i * 3 + 2];
+                Vector3d v1 = getVertexPos(fv1);
+                Vector3d v2 = getVertexPos(fv2);
+                Vector3d v3 = getVertexPos(fv3);
+                double hitDist = 0;
+                bool hit = Common.isRayIntersectTriangle(ray_origin, ray_dir, v1, v2, v3, out hitDist);
+
+                // find the nearest intersection point
+                if (hit)
+                {
+                    if (hitDist < minDistance)
+                    {
+                        minDistance = hitDist;
+                        hitpoint = ray_origin + (ray_dir * hitDist);
+                        faceIdx = i;
+                    }
+                }
+            }
+            return hitpoint;
+        }// closestIntersectionPoint
 
         private int[] getNeighborPointsIndex(int vertexIdx)
         {

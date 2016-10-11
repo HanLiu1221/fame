@@ -23,6 +23,12 @@ namespace Geometry
         public static double _max_scale = 3.0;
         public static int _max_edge_contacts = 2; // max number of contacts between two nodes
 
+        public static int _POINT_FEAT_DIM = 3;
+        public static int _CURV_FEAT_DIM = 1;
+        public static int _PCA_FEAT_DIM = 4;
+        public static int _RAY_FEAT_DIM = 2;
+        public static int _CONVEXHULL_FEAT_DIM = 2;
+
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
@@ -55,6 +61,75 @@ namespace Geometry
         {
             return (!double.IsNaN(x) && !double.IsInfinity(x));
         }// isValidNumber
+
+        public static double PointDistToPlane(Vector3d pos, Vector3d center, Vector3d normal)
+        {
+            double d = (pos - center).Dot(normal) / normal.Length();
+            return Math.Abs(d);
+        }
+
+        public static bool isRayIntersectTriangle(Vector3d origin, Vector3d ray, Vector3d v1, Vector3d v2, Vector3d v3, out double hitDist)
+        {
+            bool isHit = false;
+            hitDist = 0;
+            Vector3d edge1 = v2 - v1;
+            Vector3d edge2 = v3 - v1;
+
+            // determinant
+            Vector3d directionCrossEdge2 = ray.Cross(edge2);
+            double determinant = directionCrossEdge2.Dot(edge1);
+
+            // If the ray is parallel to the triangle plane, there is no collision.
+            if (Math.Abs(determinant) < Common._thresh)
+            {
+                return false;
+            }
+            double inverseDeterminant = 1.0 / determinant;
+
+            // Calculate the U parameter of the intersection point.
+            Vector3d distVector = origin - v1;
+            double triangleU = distVector.Dot(directionCrossEdge2);
+            triangleU *= inverseDeterminant;
+
+            // Make sure it is inside the triangle.
+            if (triangleU < 0 - Common._thresh || triangleU > 1 + Common._thresh)
+                return false;
+
+            // Calculate the V parameter of the intersection point.
+            Vector3d distanceCrossEdge1 = distVector.Cross(edge1);
+            double triangleV = ray.Dot(distanceCrossEdge1);
+            triangleV *= inverseDeterminant;
+
+            // Make sure it is inside the triangle.
+            if (triangleV < 0 - Common._thresh || triangleU + triangleV > 1 + Common._thresh)
+                return false;
+
+            // Compute the distance along the ray to the triangle.
+            double rayDistance = edge2.Dot(distanceCrossEdge1);
+            rayDistance *= inverseDeterminant;
+
+            // Is the triangle behind the ray origin?
+            if (rayDistance < 0)
+                return false;
+
+            isHit = true;
+            hitDist = rayDistance;
+
+            return isHit;
+        }// isRayIntersectTriangle
+
+        public static double cutoff(double val, double lower, double upper)
+        {
+            if (val < lower)
+            {
+                return lower;
+            }
+            if (val > upper)
+            {
+                return upper;
+            }
+            return val;
+        }// cutoff
     }// Common
 
     public class Contact
