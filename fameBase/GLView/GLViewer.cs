@@ -4798,7 +4798,191 @@ namespace FameBase
         //######### end-Part-based #########//
 
         //######### Data & feature from ICON2 paper #########//
-        public void loadPointWeight(string filename)
+        public void loadPatchInfo(string foldername)
+        {
+            string sampleFolder = foldername + "\\samples";
+            string weightFolder = foldername + "\\weights";
+            string meshFolder = foldername + "\\models";
+            if (!Directory.Exists(sampleFolder) || !Directory.Exists(weightFolder))
+            {
+                return;
+            }
+            string[] sampleFiles = Directory.GetFiles(sampleFolder, "*.poisson");
+            string[] weightFiles = Directory.GetFiles(weightFolder, "*.csv");
+            string[] meshFiles = Directory.GetFiles(meshFolder, "*.obj");
+            int nfile = 0;
+            int start_mesh = 0;
+            foreach (string samplefile in sampleFiles)
+            {
+                Mesh mesh = null;
+                double[] samplePoints;
+                int[] faceIndex = loadSamplePoints(samplefile, out samplePoints);
+                string model_name = Path.GetFileName(samplefile);
+                string category = model_name.Substring(0, model_name.LastIndexOf('_'));
+                model_name = model_name.Substring(0, model_name.LastIndexOf('.')) + "_";
+                string model_mesh_name = model_name + "1.obj";
+                string meshFile = null;
+                for (int i = start_mesh; i < meshFiles.Length; ++i)
+                {
+                    string mesh_name = Path.GetFileName(meshFiles[i]);
+                    if (mesh_name.Equals(model_mesh_name))
+                    {
+                        start_mesh = i + 1;
+                        meshFile = meshFiles[i];
+                        break;
+                    }
+                }
+                if (meshFile != null)
+                {
+                    mesh = new Mesh(meshFile, false);
+                }
+                List<string> cur_wfiles = new List<string>();
+                for (int i = 0; i < weightFiles.Length; ++i)
+                {
+                    string weight_name = Path.GetFileName(weightFiles[i]);
+                    //if (!weight_name.StartsWith(category))
+                    //{
+                    //    break; 
+                    //}
+                    if (weight_name.Contains(model_name))
+                    {
+                        cur_wfiles.Add(weightFiles[i]);
+                    }
+                }
+                if (mesh == null)
+                {
+                    continue;
+                }
+                // load patch weights
+                int npatch = 0;
+                byte[] sampleColors = new byte[samplePoints.Length];
+                for (int i = 0; i < sampleColors.Length; ++i)
+                {
+                    sampleColors[i] = 255;
+                }
+                    foreach (string wfile in cur_wfiles)
+                    {
+                        double minw;
+                        double maxw;
+                        double[] weights = loadPatchWeight(wfile, out minw, out maxw);
+                        if (weights == null || weights.Length != faceIndex.Length)
+                        {
+                            continue;
+                        }
+                        double wdiff = maxw - minw;
+                        for (int i = 0; i < weights.Length; ++i)
+                        {
+                            double ratio = (weights[i] - minw) / wdiff;
+                            if (ratio < Common._thresh)
+                            {
+                                continue;
+                            }
+                            Color color = GLDrawer.getColorGradient(ratio, npatch);
+                            //mesh.setVertexColor(GLDrawer.getColorArray(color), i);
+                            byte[] color_array = GLDrawer.getColorArray(color);
+                            mesh.setFaceColor(color_array, faceIndex[i]);
+                            sampleColors[i * 3] = color_array[0];
+                            sampleColors[i * 3 + 1] = color_array[1];
+                            sampleColors[i * 3 + 2] = color_array[2];
+                        }
+                        mesh.samplePoints = samplePoints;
+                        mesh.sampleColors = sampleColors;
+                        ++npatch;
+                    }
+                mesh.normalize();
+                this.meshClasses.Add(new MeshClass(mesh));
+                ++nfile;
+                if (nfile > 45)
+                {
+                    break;
+                }
+            }
+            if (this.meshClasses.Count > 0)
+            {
+                this.currMeshClass = this.meshClasses[0];
+            }
+            //this.drawVertex = true;
+            //this.drawFace = false;
+            this.Refresh();
+        }// loadPatchInfo
+
+        private int[] loadSamplePoints(string filename, out double[] samplePoints)
+        {
+            samplePoints = new double[0];
+            if (!File.Exists(filename))
+            {
+                return null;
+            }
+            List<int> faceIndex = new List<int>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+                List<double> points = new List<double>();
+                List<double> normals = new List<double>();
+                int nline = 0;
+                while (sr.Peek() > -1)
+                {
+                    ++nline;
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separators);
+                    if (strs.Length < 7)
+                    {
+                        MessageBox.Show("Wrong format at line " + nline.ToString());
+                        return null;
+                    }
+                    // pos
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        double p = double.Parse(strs[i]);
+                        points.Add(p);
+                    }
+                    // normal
+                    for (int i = 3; i < 6; ++i)
+                    {
+                        double pn = double.Parse(strs[i]);
+                        normals.Add(pn);
+                    }
+                    int fidx = int.Parse(strs[6]);
+                    faceIndex.Add(fidx);
+                }
+                samplePoints = points.ToArray();
+            }
+            return faceIndex.ToArray();
+        }// loadSamplePoints
+
+        private double[] loadPatchWeight(string filename, out double minw, out double maxw)
+        {
+            minw = double.MaxValue;
+            maxw = double.MinValue;
+            if (!File.Exists(filename))
+            {
+                return null;
+            }
+            List<double> weights = new List<double>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+                int nline = 0;
+                while (sr.Peek() > -1)
+                {
+                    ++nline;
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separators);
+                    if (strs.Length == 0)
+                    {
+                        MessageBox.Show("Wrong format at line " + nline.ToString());
+                        return null;
+                    }
+                    double w = double.Parse(strs[0]);
+                    weights.Add(w);
+                    minw = minw < w ? minw : w;
+                    maxw = maxw > w ? maxw : w;
+                }
+            }
+            return weights.ToArray();
+        }// loadPatchWeight
+
+        public void loadPointWeight_0(string filename)
         {
             if (_currModel == null)
             {
@@ -5081,11 +5265,11 @@ namespace FameBase
 
         private void drawCurrentMesh()
         {
-            if (this.meshClasses.Count > 0)
-            {
-                this.drawAllMeshes();
-                return;
-            }
+            //if (this.meshClasses.Count > 0)
+            //{
+            //    this.drawAllMeshes();
+            //    return;
+            //}
             if (this.currMeshClass == null || _currModel != null)
             {
                 return;
@@ -5094,7 +5278,9 @@ namespace FameBase
             {
                 if (this.drawFace)
                 {
-                    GLDrawer.drawMeshFace(currMeshClass.Mesh, GLDrawer.MeshColor, false);
+                    GLDrawer.drawMeshFace(currMeshClass.Mesh, Color.White, false);
+                    //GLDrawer.drawMeshFace(currMeshClass.Mesh, GLDrawer.MeshColor, false);
+                    //GLDrawer.drawMeshFace(currMeshClass.Mesh);
                 }
                 if (this.drawEdge)
                 {
@@ -5111,6 +5297,7 @@ namespace FameBase
                         currMeshClass.renderVertices();
                     }
                 }
+                currMeshClass.drawSamplePoints();
                 currMeshClass.drawSelectedVertex();
                 currMeshClass.drawSelectedEdges();
                 currMeshClass.drawSelectedFaces();

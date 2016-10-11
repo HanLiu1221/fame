@@ -73,6 +73,8 @@ namespace Geometry
         int[][] _vf; // vertex-face
         public HalfEdge edgeIter = null;
         alglib.kdtree _kdtree;
+        public double[] samplePoints;
+        public byte[] sampleColors;
 		
 		public Mesh()
 		{ }
@@ -148,6 +150,16 @@ namespace Geometry
             this.vertexCount = vPos.Length / 3;
             this.vertexPos = vPos;
             this.vertexColor = color;
+        }
+
+        public Mesh(double[] vPos, double[] vNormals)
+        {
+            // point clound
+            this.vertexCount = vPos.Length / 3;
+            this.vertexPos = vPos;
+            this.vertexColor = new byte[this.vertexCount * 3];
+            this.vertexNormal = vNormals;
+            this.normalize();
         }
 
 		public Mesh(string meshFileName, bool normalize)
@@ -808,8 +820,9 @@ namespace Geometry
             }
 		}//calculateFaceVertexNormal
 
-        private void normalize()
+        public void normalize()
         {
+            this.getBoundary();
             Vector3d c = (this._maxCoord + this._minCoord) / 2;
             Vector3d d = this._maxCoord - this._minCoord;
             double scale = d.x > d.y ? d.x : d.y;
@@ -824,6 +837,17 @@ namespace Geometry
                     this.vertexPos[j + k] /= scale;
                 }
             }
+            if (this.samplePoints != null)
+            {
+                for (int i = 0; i < this.samplePoints.Length; i += 3)
+                {
+                    for (int k = 0; k < 3; ++k)
+                    {
+                        this.samplePoints[i + k] -= c[k];
+                        this.samplePoints[i + k] /= scale;
+                    }
+                }
+            }
         }
 
         public void normalize(Vector3d center, double scale)
@@ -834,6 +858,17 @@ namespace Geometry
                 {
                     this.vertexPos[j + k] /= scale;
                     this.vertexPos[j + k] -= center[k];
+                }
+            }
+            if (this.samplePoints != null)
+            {
+                for (int i = 0; i < this.samplePoints.Length; i += 3)
+                {
+                    for (int k = 0; k < 3; ++k)
+                    {
+                        this.samplePoints[i + k] /= scale;
+                        this.samplePoints[i + k] -= center[k];
+                    }
                 }
             }
             this.afterUpdatePos();
@@ -877,6 +912,27 @@ namespace Geometry
             this.vertexColor = colors;
             this.initializeColor();
         }
+
+        public void setVertexColor(byte[] color, int idx)
+        {
+            if (this.vertexColor == null) {
+                this.vertexColor = new byte[this.vertexCount * 3];
+            }
+            this.vertexColor[idx * 3] = color[0];
+            this.vertexColor[idx * 3 + 1] = color[1];
+            this.vertexColor[idx * 3 + 2] = color[2];
+        }// setVertexColor
+
+        public void setFaceColor(byte[] color, int idx)
+        {
+            if (this.faceColor == null)
+            {
+                this.faceColor = new byte[this.faceCount * 3];
+            }
+            this.faceColor[idx * 3] = color[0];
+            this.faceColor[idx * 3 + 1] = color[1];
+            this.faceColor[idx * 3 + 2] = color[2];
+        }// setVertexColor
 
         // Shape2Pose & ICON features
         public Vector3d[] computePointPCA()

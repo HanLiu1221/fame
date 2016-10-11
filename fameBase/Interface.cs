@@ -684,16 +684,12 @@ namespace FameBase
 
         private void loadIconPatchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-           var dialog = new OpenFileDialog()
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data" };
+            if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
             {
-                Title = "Open a ICON point cloud",
-                DefaultExt = ".patch",
-                Filter = "Point Cloud (*.patch)|*.patch"
-            };
-           if (dialog.ShowDialog() == DialogResult.OK)
-           {
-               this.glViewer.loadPointWeight(dialog.FileName);
-           }
+                string foldername = dialog.SelectedPath;
+                this.glViewer.loadPatchInfo(foldername);
+            }
         }
 
         private void loadFunctionlityModelToolStripMenuItem_Click(object sender, EventArgs e)
