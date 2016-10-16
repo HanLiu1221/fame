@@ -541,7 +541,8 @@ namespace Geometry
                 else if (array[0] == "f")
                 {
                     List<int> currFaceArray = new List<int>();
-                    for (int i = 1; i < array.Length; ++i)
+                    int nvidx = Math.Min(array.Length, 4);
+                    for (int i = 1; i < nvidx; ++i)
                     {
                         if (array[i] == "") continue;
                         string idStr = array[i];
@@ -550,7 +551,14 @@ namespace Geometry
                             // extract only the vertex index
                             idStr = array[i].Substring(0, array[i].IndexOf('/'));
                         }
-                        currFaceArray.Add(int.Parse(idStr) - 1); // face index from 1
+                        if (array.Length > 4)
+                        {
+                            currFaceArray.Add(int.Parse(idStr));
+                        }
+                        else
+                        {
+                            currFaceArray.Add(int.Parse(idStr) - 1); // face index from 1
+                        }
                     }
                     faceArray.AddRange(currFaceArray);
                     ++faceCount;

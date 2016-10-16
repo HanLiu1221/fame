@@ -51,7 +51,7 @@ namespace FameBase
 
         private void initializeVariables()
         {
-            this.meshClasses = new List<MeshClass>();
+            this._meshClasses = new List<MeshClass>();
             this._currModelTransformMatrix = Matrix4d.IdentityMatrix();
             this.arcBall = new ArcBall(this.Width, this.Height);
             this.camera = new Camera();
@@ -146,7 +146,7 @@ namespace FameBase
         private Vector2d prevMousePos;
         private Vector2d currMousePos;
         private bool isMouseDown = false;
-        private List<MeshClass> meshClasses = new List<MeshClass>();
+        private List<MeshClass> _meshClasses = new List<MeshClass>();
         private MeshClass currMeshClass;
         private Quad2d highlightQuad;
         private Camera camera;
@@ -322,7 +322,7 @@ namespace FameBase
             _models.Clear();
             _ancesterModelViewers.Clear();
             _currHumanPose = null;
-            this.meshClasses.Clear();
+            this._meshClasses.Clear();
             _humanposes.Clear();
         }
 
@@ -339,10 +339,10 @@ namespace FameBase
         public void loadMesh(string filename)
         {
             this.clearContext();
-
+            _unitifyMesh = false;
             Mesh m = new Mesh(filename, _unitifyMesh);
             MeshClass mc = new MeshClass(m);
-            this.meshClasses.Add(mc);
+            this._meshClasses.Add(mc);
             this.currMeshClass = mc;
             _currModel = new Model(m);
             _models = new List<Model>();
@@ -354,7 +354,7 @@ namespace FameBase
             // if import multiple meshes, do not unify each mesh
             Mesh m = new Mesh(filename, multiple ? false : _unitifyMesh);
             MeshClass mc = new MeshClass(m);
-            this.meshClasses.Add(mc);
+            this._meshClasses.Add(mc);
             this.currMeshClass = mc;
         }// importMesh
 
@@ -401,7 +401,7 @@ namespace FameBase
 
             this.clearContext();
             MeshClass mc = new MeshClass();
-            this.meshClasses.Add(mc);
+            this._meshClasses.Add(mc);
             this.currMeshClass = mc;
             this.Refresh();
         }// loadTriMesh
@@ -515,7 +515,7 @@ namespace FameBase
                 MessageBox.Show("Directory does not exist!");
                 return;
             }
-            if (this.meshClasses == null)
+            if (this._meshClasses == null)
             {
                 return;
             }
@@ -523,7 +523,7 @@ namespace FameBase
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 int start = 0;
-                foreach (MeshClass mc in this.meshClasses)
+                foreach (MeshClass mc in this._meshClasses)
                 {
                     Mesh mesh = mc.Mesh;
 
@@ -884,7 +884,7 @@ namespace FameBase
             int idx = 0;
             int max_idx = 1;
             string points_name = foldername.Substring(foldername.LastIndexOf('\\') + 1);
-            this.meshClasses = new List<MeshClass>();
+            this._meshClasses = new List<MeshClass>();
             foreach (String file in points_files)
             {
                 if (!file.EndsWith(".pts"))
@@ -911,7 +911,7 @@ namespace FameBase
                 {
                     this.currMeshClass = new MeshClass(m);
                     this.currMeshClass._MESHNAME = mesh_name;
-                    this.meshClasses.Add(this.currMeshClass);
+                    this._meshClasses.Add(this.currMeshClass);
                     ++idx;
                 }
                 if (idx >= max_idx)
@@ -919,9 +919,9 @@ namespace FameBase
                     break;
                 }
             }
-            if (this.meshClasses.Count > 0)
+            if (this._meshClasses.Count > 0)
             {
-                this.currMeshClass = this.meshClasses[0];
+                this.currMeshClass = this._meshClasses[0];
             }
             // only points
             this.setRenderOption(1);
@@ -1025,28 +1025,28 @@ namespace FameBase
 
         public string nextMeshClass()
         {
-            if (this.meshClasses.Count == 0)
+            if (this._meshClasses.Count == 0)
             {
                 return "0/0";
             }
-            this.meshIdx = (this.meshIdx + 1) % this.meshClasses.Count;
-            this.currMeshClass = this.meshClasses[this.meshIdx];
+            this.meshIdx = (this.meshIdx + 1) % this._meshClasses.Count;
+            this.currMeshClass = this._meshClasses[this.meshIdx];
             this.Refresh();
-            string str = (this.meshIdx + 1).ToString() + "\\" + this.meshClasses.Count.ToString() + ": ";
+            string str = (this.meshIdx + 1).ToString() + "\\" + this._meshClasses.Count.ToString() + ": ";
             str += this.currMeshClass._MESHNAME;
             return str;
         }
 
         public string prevMeshClass()
         {
-            if (this.meshClasses.Count == 0)
+            if (this._meshClasses.Count == 0)
             {
                 return "0/0";
             }
-            this.meshIdx = (this.meshIdx - 1 + this.meshClasses.Count) % this.meshClasses.Count;
-            this.currMeshClass = this.meshClasses[this.meshIdx];
+            this.meshIdx = (this.meshIdx - 1 + this._meshClasses.Count) % this._meshClasses.Count;
+            this.currMeshClass = this._meshClasses[this.meshIdx];
             this.Refresh();
-            string str = (this.meshIdx + 1).ToString() + "\\" + this.meshClasses.Count.ToString() + ": ";
+            string str = (this.meshIdx + 1).ToString() + "\\" + this._meshClasses.Count.ToString() + ": ";
             str += this.currMeshClass._MESHNAME;
             return str;
         }
@@ -1908,7 +1908,15 @@ namespace FameBase
             Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
             Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
 
+            // CALL MATLAB
+            MLApp.MLApp matlab = new MLApp.MLApp();
+            matlab.Execute(@"cd E:\Projects\fame\externalCLR\code_for_prediction_only");
+            Object matlabOutput = null;
+            matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
+            Object[] res = matlabOutput as Object[];
+            double[,] results = res[0] as double[,];
             // for capturing screen
+            
             this.reloadView();
 
             List<Model> parents = new List<Model>();
@@ -1951,6 +1959,8 @@ namespace FameBase
                         cur_kids = runGrowth(cur_par, _currIter, rand, imageFolder_g, start);
                         break;
                 }
+                // functionality test
+
                 //start += _currGen.Count;
                 parents.AddRange(cur_kids);
                 _currGen.AddRange(cur_kids);
@@ -4890,16 +4900,16 @@ namespace FameBase
                         ++npatch;
                     }
                 mesh.normalize();
-                this.meshClasses.Add(new MeshClass(mesh));
+                this._meshClasses.Add(new MeshClass(mesh));
                 ++nfile;
                 if (nfile > 45)
                 {
                     break;
                 }
             }
-            if (this.meshClasses.Count > 0)
+            if (this._meshClasses.Count > 0)
             {
-                this.currMeshClass = this.meshClasses[0];
+                this.currMeshClass = this._meshClasses[0];
             }
             //this.drawVertex = true;
             //this.drawFace = false;
@@ -5212,7 +5222,7 @@ namespace FameBase
             }
 
             // Draw all meshes
-            if (_currModel != null)
+            if (_currModel != null && _meshClasses.Count == 0)
             {
                 this.drawParts();
                 if (_currModel._GRAPH != null && this.isDrawGraph)
@@ -5222,6 +5232,8 @@ namespace FameBase
             }
 
             this.drawCurrentMesh();
+
+            this.drawImportMeshes();
 
             this.drawHumanPose();
 
@@ -5265,7 +5277,7 @@ namespace FameBase
 
         private void drawCurrentMesh()
         {
-            //if (this.meshClasses.Count > 0)
+            //if (this._meshClasses.Count > 0)
             //{
             //    this.drawAllMeshes();
             //    return;
@@ -5310,7 +5322,7 @@ namespace FameBase
             {
                 return;
             }
-            foreach (MeshClass mc in this.meshClasses)
+            foreach (MeshClass mc in this._meshClasses)
             {
                 if (this.drawFace)
                 {
@@ -5336,6 +5348,27 @@ namespace FameBase
                 mc.drawSelectedFaces();
             }
         }// drawAllMeshes
+
+        private void drawImportMeshes()
+        {
+            int i = 0;
+            foreach (MeshClass mc in this._meshClasses)
+            {
+                Color ic = GLDrawer.ColorSet[i];
+                Color c = ic;
+                if (i > 0)
+                {
+                    c = Color.FromArgb(50, 0, 0, 255);
+                    GLDrawer.drawMeshFace(mc.Mesh, c);
+                }
+                else
+                {
+                    GLDrawer.drawMeshFace(mc.Mesh, c, false);
+                }
+                //GLDrawer.drawMeshFace(mc.Mesh, c, false);
+                ++i;
+            }
+        }
 
         private void drawParts()
         {

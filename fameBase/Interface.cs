@@ -196,8 +196,8 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\mix_4" };
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\mix_0" }; 
+            //var dialog = new FolderBrowserDialog() { SelectedPath = @"C:\scratch\HLiu\Fame\data_sets\mix_4" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\mix_0" }; 
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;

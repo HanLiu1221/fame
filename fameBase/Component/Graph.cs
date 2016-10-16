@@ -45,7 +45,7 @@ namespace Component
             computeCenterOfMass();
             computeConvexHull();
             analyzeOriginFeatures();
-            computeFeatures();
+            //computeFeatures();
         }// init
 
         private void computeConvexHull()
