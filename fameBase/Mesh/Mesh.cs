@@ -654,7 +654,19 @@ namespace Geometry
 
         private void buildKdtree()
         {
-
+            double[,] xy = new double[this.vertexCount, 3];
+            int[] tags = new int[this.vertexCount];
+            for (int i = 0, j = 0; i < this.vertexCount; ++i)
+            {
+                xy[i, 0] = this.vertexPos[j++];
+                xy[i, 1] = this.vertexPos[j++];
+                xy[i, 2] = this.vertexPos[j++];
+                tags[i] = i;
+            }
+            int nx = 3;
+            int ny = 0;
+            int normtype = 2;
+            alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out _kdtree);
         }// buildKdtree
 
         public void afterUpdatePos()

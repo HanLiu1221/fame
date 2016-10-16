@@ -114,6 +114,7 @@ namespace FameBase
         private bool isDrawGraph = true;
         private bool isDrawAxes = false;
         private bool isDrawQuad = false;
+        private bool isDrawFuncSpace = false;
 
         public bool enableDepthTest = true;
         public bool showVanishingLines = true;
@@ -339,7 +340,6 @@ namespace FameBase
         public void loadMesh(string filename)
         {
             this.clearContext();
-            _unitifyMesh = false;
             Mesh m = new Mesh(filename, _unitifyMesh);
             MeshClass mc = new MeshClass(m);
             this._meshClasses.Add(mc);
@@ -555,81 +555,10 @@ namespace FameBase
         {
             foreach (Part p in _selectedParts)
             {
-                Mesh pm = p._MESH;
-                for (int i = 0, j = 0; i < pm.VertexCount; i++, j += 3)
-                {
-                    double x = pm.VertexPos[j];
-                    double y = pm.VertexPos[j + 1];
-                    double z = pm.VertexPos[j + 2];
-                    if (mode == 1)
-                    {
-                        pm.setVertextPos(i, new Vector3d(-y, x, z));
-                    }
-                    else if (mode == 2)
-                    {
-                        pm.setVertextPos(i, new Vector3d(-z, y, x));
-                    }
-                    else
-                    {
-                        pm.setVertextPos(i, new Vector3d(x, -z, y));
-                    }
-                }
-                pm.afterUpdatePos();
+                Common.switchXYZ_mesh(p._MESH, mode);
                 p.fitProxy(-1);
                 p.updateOriginPos();
             }
-
-            //foreach (Model md in _models)
-            //{
-            //    Mesh m = md._MESH;
-            //    if (m != null)
-            //    {
-            //        for (int i = 0, j = 0; i < m.VertexCount; i++, j += 3)
-            //        {
-            //            double x = m.VertexPos[j];
-            //            double y = m.VertexPos[j + 1];
-            //            double z = m.VertexPos[j + 2];
-            //            if (mode == 1)
-            //            {
-            //                m.setVertextPos(i, new Vector3d(-y, x, z));
-            //            }
-            //            else if (mode == 2)
-            //            {
-            //                m.setVertextPos(i, new Vector3d(-z, y, x));
-            //            }
-            //            else
-            //            {
-            //                m.setVertextPos(i, new Vector3d(x, -z, y));
-            //            }
-            //        }
-            //        m.afterUpdatePos();
-            //        md.setMesh(m);
-            //    }
-            //    foreach (Part p in md._PARTS)
-            //    {
-            //        Mesh pm = p._MESH;
-            //        for (int i = 0, j = 0; i < pm.VertexCount; i++, j += 3)
-            //        {
-            //            double x = pm.VertexPos[j];
-            //            double y = pm.VertexPos[j + 1];
-            //            double z = pm.VertexPos[j + 2];
-            //            if (mode == 1)
-            //            {
-            //                pm.setVertextPos(i, new Vector3d(-y, x, z));
-            //            }
-            //            else if (mode == 2)
-            //            {
-            //                pm.setVertextPos(i, new Vector3d(-z, y, x));
-            //            }
-            //            else
-            //            {
-            //                pm.setVertextPos(i, new Vector3d(x, -z, y));
-            //            }
-            //        }
-            //        pm.afterUpdatePos();
-            //        p.calculateBbox();
-            //    }// each part
-            //}// each model
             this.Refresh();
         }// switchXYZ
 
@@ -792,6 +721,10 @@ namespace FameBase
             this.foldername = Path.GetDirectoryName(filename);
             this.clearHighlights();
             _currModel = this.loadOnePartBasedModel(filename);
+            if (_currModel == null)
+            {
+                return;
+            }
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
             if (!File.Exists(graphName))
             {
@@ -1022,6 +955,34 @@ namespace FameBase
             return m;
         }// loadPointCloud
         /******************** End - Load & Save ********************/
+
+        public string nextModel()
+        {
+            if (_models.Count == 0)
+            {
+                return "0/0";
+            }
+            this.meshIdx = (this.meshIdx + 1) % this._models.Count;
+            this._currModel = this._models[this.meshIdx];
+            this.Refresh();
+            string str = (this.meshIdx + 1).ToString() + "\\" + this._models.Count.ToString() + ": ";
+            str += this._currModel._model_name;
+            return str;
+        }
+
+        public string prevModel()
+        {
+            if (_models.Count == 0)
+            {
+                return "0/0";
+            }
+            this.meshIdx = (this.meshIdx - 1 + this._models.Count) % this._models.Count;
+            this._currModel = this._models[this.meshIdx];
+            this.Refresh();
+            string str = (this.meshIdx + 1).ToString() + "\\" + this._models.Count.ToString() + ": ";
+            str += this._currModel._model_name;
+            return str;
+        }
 
         public string nextMeshClass()
         {
@@ -3635,6 +3596,9 @@ namespace FameBase
                 case 5:
                     this.isDrawGraph = !this.isDrawGraph;
                     break;
+                case 6:
+                    this.isDrawFuncSpace = !this.isDrawFuncSpace;
+                    break;
                 case 3:
                 default:
                     this.drawFace = !this.drawFace;
@@ -4810,115 +4774,194 @@ namespace FameBase
         //######### Data & feature from ICON2 paper #########//
         public void loadPatchInfo(string foldername)
         {
-            string sampleFolder = foldername + "\\samples";
-            string weightFolder = foldername + "\\weights";
-            string meshFolder = foldername + "\\models";
-            if (!Directory.Exists(sampleFolder) || !Directory.Exists(weightFolder))
+            string modelFolder = foldername + "\\models\\";
+            string sampleFolder = foldername + "\\samples\\";
+            string weightFolder = foldername + "\\weights\\";
+            string funcSpaceFolder = foldername + "\\funcSpace\\";
+
+            if (!Directory.Exists(sampleFolder) || !Directory.Exists(weightFolder) ||
+                !Directory.Exists(modelFolder) || !Directory.Exists(funcSpaceFolder))
             {
+                MessageBox.Show("Lack data folder.");
                 return;
             }
+
+            string[] modelFiles = Directory.GetFiles(modelFolder, "*.obj");
             string[] sampleFiles = Directory.GetFiles(sampleFolder, "*.poisson");
             string[] weightFiles = Directory.GetFiles(weightFolder, "*.csv");
-            string[] meshFiles = Directory.GetFiles(meshFolder, "*.obj");
+            string[] funspaceFiles = Directory.GetFiles(funcSpaceFolder, "*.fs");
+
+            _models = new List<Model>();
+
             int nfile = 0;
-            int start_mesh = 0;
-            foreach (string samplefile in sampleFiles)
+            // re-normalize all meshes w.r.t func space
+            // make sure meshes, sample points, func space in the same scale
+            foreach (string modelstr in modelFiles)
             {
-                Mesh mesh = null;
-                double[] samplePoints;
-                int[] faceIndex = loadSamplePoints(samplefile, out samplePoints);
-                string model_name = Path.GetFileName(samplefile);
+                // model
+                string model_name = Path.GetFileName(modelstr);
+                model_name = model_name.Substring(0, model_name.LastIndexOf('_'));
+                Mesh mesh = new Mesh(modelstr, false);
+                // category name
                 string category = model_name.Substring(0, model_name.LastIndexOf('_'));
-                model_name = model_name.Substring(0, model_name.LastIndexOf('.')) + "_";
-                string model_mesh_name = model_name + "1.obj";
-                string meshFile = null;
-                for (int i = start_mesh; i < meshFiles.Length; ++i)
+                // sample points
+                string sample_name = sampleFolder + model_name + ".poisson";
+                SamplePoints sp = loadSamplePoints(sample_name);           
+                // weights
+                List<string> cur_wfiles = new List<string>();
+                // in case the order of files are not the same in diff folders
+                int fid = 0;
+                while (fid < weightFiles.Length)
                 {
-                    string mesh_name = Path.GetFileName(meshFiles[i]);
-                    if (mesh_name.Equals(model_mesh_name))
+                    string weight_name = Path.GetFileName(weightFiles[fid]);
+                    if (weight_name.StartsWith(model_name))
                     {
-                        start_mesh = i + 1;
-                        meshFile = meshFiles[i];
+                        // locate the weight files
+                        while (weight_name.StartsWith(model_name))
+                        {
+                            cur_wfiles.Add(weightFiles[fid++]);
+                            if (fid >= weightFiles.Length)
+                            {
+                                break;
+                            }
+                            weight_name = Path.GetFileName(weightFiles[fid]);
+                        }
                         break;
                     }
-                }
-                if (meshFile != null)
-                {
-                    mesh = new Mesh(meshFile, false);
-                }
-                List<string> cur_wfiles = new List<string>();
-                for (int i = 0; i < weightFiles.Length; ++i)
-                {
-                    string weight_name = Path.GetFileName(weightFiles[i]);
-                    //if (!weight_name.StartsWith(category))
-                    //{
-                    //    break; 
-                    //}
-                    if (weight_name.Contains(model_name))
-                    {
-                        cur_wfiles.Add(weightFiles[i]);
-                    }
-                }
-                if (mesh == null)
-                {
-                    continue;
+                    ++fid;
                 }
                 // load patch weights
                 int npatch = 0;
-                byte[] sampleColors = new byte[samplePoints.Length];
-                for (int i = 0; i < sampleColors.Length; ++i)
+                int nFaceFromSP = sp._faceIdx.Length;
+                // multiple weights file w.r.t. patches
+                double[,] weights_patches = new double[cur_wfiles.Count, nFaceFromSP];
+                Color[,] colors_patches = new Color[cur_wfiles.Count, nFaceFromSP];
+                foreach (string wfile in cur_wfiles)
                 {
-                    sampleColors[i] = 255;
-                }
-                    foreach (string wfile in cur_wfiles)
+                    double minw;
+                    double maxw;
+                    double[] weights = loadPatchWeight(wfile, out minw, out maxw);
+                    if (weights == null || weights.Length != nFaceFromSP)
                     {
-                        double minw;
-                        double maxw;
-                        double[] weights = loadPatchWeight(wfile, out minw, out maxw);
-                        if (weights == null || weights.Length != faceIndex.Length)
+                        MessageBox.Show("Weight file does not match sample file: " + Path.GetFileName(wfile));
+                        continue;
+                    }
+                    double wdiff = maxw - minw;
+                    for (int i = 0; i < weights.Length; ++i)
+                    {
+                        weights_patches[npatch, i] = weights[i];
+                        double ratio = (weights[i] - minw) / wdiff;
+                        if (ratio < Common._thresh)
                         {
                             continue;
                         }
-                        double wdiff = maxw - minw;
-                        for (int i = 0; i < weights.Length; ++i)
-                        {
-                            double ratio = (weights[i] - minw) / wdiff;
-                            if (ratio < Common._thresh)
-                            {
-                                continue;
-                            }
-                            Color color = GLDrawer.getColorGradient(ratio, npatch);
-                            //mesh.setVertexColor(GLDrawer.getColorArray(color), i);
-                            byte[] color_array = GLDrawer.getColorArray(color);
-                            mesh.setFaceColor(color_array, faceIndex[i]);
-                            sampleColors[i * 3] = color_array[0];
-                            sampleColors[i * 3 + 1] = color_array[1];
-                            sampleColors[i * 3 + 2] = color_array[2];
-                        }
-                        mesh.samplePoints = samplePoints;
-                        mesh.sampleColors = sampleColors;
-                        ++npatch;
+                        Color color = GLDrawer.getColorGradient(ratio, npatch);
+                        //mesh.setVertexColor(GLDrawer.getColorArray(color), i);
+                        byte[] color_array = GLDrawer.getColorArray(color);
+                        mesh.setFaceColor(color_array, sp._faceIdx[i]);
+                        colors_patches[npatch, i] = GLDrawer.getColorRGB(color_array);
                     }
-                mesh.normalize();
-                this._meshClasses.Add(new MeshClass(mesh));
-                ++nfile;
-                if (nfile > 45)
-                {
-                    break;
+                    ++npatch;
                 }
+                // weights & colors
+                sp._weights = weights_patches;
+                sp._colors = colors_patches;
+                // functional space
+                fid = 0;
+                List<string> fspaceFiles = new List<string>();
+                while (fid < funspaceFiles.Length)
+                {
+                    string func_name = Path.GetFileName(funspaceFiles[fid]);
+                    if (func_name.StartsWith(model_name))
+                    {
+                        // locate the weight files
+                        while (func_name.StartsWith(model_name))
+                        {
+                            fspaceFiles.Add(funspaceFiles[fid++]);
+                            if (fid >= funspaceFiles.Length)
+                            {
+                                break;
+                            }
+                            func_name = Path.GetFileName(funspaceFiles[fid]);
+                        }
+                        break;
+                    }
+                    ++fid;
+                }
+                if (fspaceFiles.Count != npatch)
+                {
+                    MessageBox.Show("#Functional space file does not match weight file.");
+                    return;
+                }
+                FuncSpace[] fss = new FuncSpace[npatch];
+                int nfs = 0;
+                foreach (String fsfile in fspaceFiles)
+                {
+                    FuncSpace fs = loadFunctionSpace(fsfile);
+                    if (fs == null)
+                    {
+                        MessageBox.Show("Functional space file error: " + Path.GetFileName(fsfile));
+                        return;
+                    }
+                    fss[nfs++] = fs;
+                }
+                sp.funcSpaces = fss;
+
+                Model model = new Model(mesh, sp);
+                _models.Add(model);
+
+                ++nfile;
+                //if (nfile > 1)
+                //{
+                //    // TEST
+                //    break;
+                //}
             }
-            if (this._meshClasses.Count > 0)
+            if (_models.Count > 0)
             {
-                this.currMeshClass = this._meshClasses[0];
+                _currModel = _models[0];
             }
-            //this.drawVertex = true;
-            //this.drawFace = false;
             this.Refresh();
         }// loadPatchInfo
 
-        private int[] loadSamplePoints(string filename, out double[] samplePoints)
+        private FuncSpace loadFunctionSpace(string filename)
         {
-            samplePoints = new double[0];
+            if (!File.Exists(filename))
+            {
+                return null;
+            }
+            // load mesh
+            Mesh mesh = new Mesh(filename, false); // not normalize
+            double[] weights = new double[mesh.FaceCount];
+            // weights
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                // read only weights
+                char[] separators = { ' ', '\\', '\t' };
+                int faceid = 0;
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separators);
+                    if (strs[0] == "v")
+                    {
+                        continue;
+                    }
+                    if (strs.Length < 5)
+                    {
+                        MessageBox.Show("Functional space file error: " + Path.GetFileName(filename));
+                        continue;
+                    }
+                    double w = double.Parse(strs[4]);
+                    weights[faceid++] = w;
+                }
+                FuncSpace fs = new FuncSpace(mesh, weights);
+                return fs;
+            }
+        }// loadFunctionSpace
+
+        private SamplePoints loadSamplePoints(string filename)
+        {
             if (!File.Exists(filename))
             {
                 return null;
@@ -4927,8 +4970,8 @@ namespace FameBase
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separators = { ' ', '\\', '\t' };
-                List<double> points = new List<double>();
-                List<double> normals = new List<double>();
+                List<Vector3d> points = new List<Vector3d>();
+                List<Vector3d> normals = new List<Vector3d>();
                 int nline = 0;
                 while (sr.Peek() > -1)
                 {
@@ -4941,23 +4984,19 @@ namespace FameBase
                         return null;
                     }
                     // pos
-                    for (int i = 0; i < 3; ++i)
-                    {
-                        double p = double.Parse(strs[i]);
-                        points.Add(p);
-                    }
+                    points.Add(new Vector3d(double.Parse(strs[0]),
+                        double.Parse(strs[1]),
+                        double.Parse(strs[2])));
                     // normal
-                    for (int i = 3; i < 6; ++i)
-                    {
-                        double pn = double.Parse(strs[i]);
-                        normals.Add(pn);
-                    }
+                    normals.Add(new Vector3d(double.Parse(strs[3]),
+                        double.Parse(strs[4]),
+                        double.Parse(strs[5])));
                     int fidx = int.Parse(strs[6]);
                     faceIndex.Add(fidx);
                 }
-                samplePoints = points.ToArray();
+                SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(), faceIndex.ToArray());
+                return sp;
             }
-            return faceIndex.ToArray();
         }// loadSamplePoints
 
         private double[] loadPatchWeight(string filename, out double minw, out double maxw)
@@ -5224,7 +5263,7 @@ namespace FameBase
             // Draw all meshes
             if (_currModel != null && _meshClasses.Count == 0)
             {
-                this.drawParts();
+                this.drawModel();
                 if (_currModel._GRAPH != null && this.isDrawGraph)
                 {
                     this.drawGraph(_currModel._GRAPH);
@@ -5370,14 +5409,37 @@ namespace FameBase
             }
         }
 
-        private void drawParts()
+        private void drawModel()
         {
-            if (this._currModel == null || this._currModel._PARTS == null)
+            if (_currModel == null)
             {
                 return;
             }
+            // draw mesh
+            if (_currModel._MESH != null && _currModel._NPARTS == 0)
+            {
+                GLDrawer.drawMeshFace(_currModel._MESH, GLDrawer.MeshColor, false);
+            }
+            // draw functional space
+            if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._SP.funcSpaces != null)
+            {
+                int nfs = 1;// _currModel._SP.funcSpaces.Length;
+                for (int i = 0; i < nfs; ++i )
+                {
+                    FuncSpace fs = _currModel._SP.funcSpaces[i];
+                    GLDrawer.drawMeshFace(fs._mesh, GLDrawer.FunctionalSpaceColor);
+                }
+            }
+            // draw parts
+            if (_currModel._PARTS != null)
+            {
+                drawParts(_currModel._PARTS);
+            }
+        }// drawModel
 
-            foreach (Part part in this._currModel._PARTS)
+        private void drawParts(List<Part> parts)
+        {
+            foreach (Part part in parts)
             {
                 if (_selectedParts.Contains(part))
                 {

@@ -674,12 +674,14 @@ namespace FameBase
 
         private void next_mesh_Click(object sender, EventArgs e)
         {
-            this.mesh_name.Text = this.glViewer.nextMeshClass();
+            //this.mesh_name.Text = this.glViewer.nextMeshClass();
+            this.mesh_name.Text = this.glViewer.nextModel();
         }
 
         private void prev_mesh_Click(object sender, EventArgs e)
         {
-            this.mesh_name.Text = this.glViewer.prevMeshClass();
+            //this.mesh_name.Text = this.glViewer.prevMeshClass();
+            this.mesh_name.Text = this.glViewer.prevModel();
         }
 
         private void loadIconPatchToolStripMenuItem_Click(object sender, EventArgs e)
@@ -700,6 +702,12 @@ namespace FameBase
                 string foldername = dialog.SelectedPath;
                 this.glViewer.loadFunctionalityModelsFromIcon2(foldername);
             }
+        }
+
+        private void functionalSpaceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.functionalSpaceToolStripMenuItem.Checked = !this.functionalSpaceToolStripMenuItem.Checked;
+            this.glViewer.setRenderOption(6);
         }
 
 	}// Interface

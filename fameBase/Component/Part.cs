@@ -376,6 +376,7 @@ namespace Component
         List<Part> _parts;
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
+        public SamplePoints _SP;
 
         public string _path = "";
         public string _model_name = "";
@@ -393,6 +394,16 @@ namespace Component
         public Model(Mesh mesh)
         {
             _mesh = mesh;
+            this.initializeParts();
+            //this.mergeNearbyParts();
+        }
+
+        public Model(Mesh mesh, SamplePoints sp)
+        {
+            _mesh = mesh;
+            _SP = sp;
+            this.swithXYZ();
+            this.unifyMeshFuncSpace();
             this.initializeParts();
             //this.mergeNearbyParts();
         }
@@ -441,6 +452,86 @@ namespace Component
                 p.Transform(Q);
             }
         }// unify
+
+        private void swithXYZ()
+        {
+            if (_mesh == null)
+            {
+                return;
+            }
+            Common.switchXYZ_mesh(_mesh, 2);
+            Common.switchXYZ_mesh(_mesh, 2);
+            Common.switchXYZ_mesh(_mesh, 2);
+            Common.switchXYZ_mesh(_mesh, 1);
+            Common.switchXYZ_mesh(_mesh, 2);
+            Common.switchXYZ_mesh(_mesh, 2);
+            if (_SP != null && _SP.funcSpaces != null)
+            {
+                foreach (FuncSpace fs in _SP.funcSpaces)
+                {
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                    Common.switchXYZ_mesh(fs._mesh, 1);
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                }
+            }
+        }// swithXYZ
+
+        private void unifyMeshFuncSpace()
+        {
+            if (_mesh == null)
+            {
+                return;
+            }
+            Vector3d maxCoord = _mesh.MaxCoord;
+            Vector3d minCoord = _mesh.MinCoord;
+            //foreach (FuncSpace fs in _SP.funcSpaces)
+            //{
+            //    maxCoord = Vector3d.Max(maxCoord, fs._mesh.MaxCoord);
+            //    minCoord = Vector3d.Min(minCoord, fs._mesh.MinCoord);
+            //}
+            Vector3d center = (maxCoord + minCoord) / 2;
+            Vector3d scale = maxCoord - minCoord;
+            double maxS = scale.x > scale.y ? scale.x : scale.y;
+            maxS = maxS > scale.z ? maxS : scale.z;
+            maxS = 1.0 / maxS;
+            //center.y = minCoord.y;
+            Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d(0, 0, 0));
+            Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
+            Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            this.Transform(Q);
+        }// unifyMeshFuncSpace
+
+        private void Transform(Matrix4d T)
+        {
+            if (_mesh != null)
+            {
+                _mesh.Transform(T);
+            }
+            if (_SP != null)
+            {
+                for (int i = 0; i < _SP._points.Length; ++i)
+                {
+                    Vector3d ori = _SP._points[i];
+                    _SP._points[i] = (T * new Vector4d(ori, 1)).ToVector3D();
+                    ori = _SP._normals[i];
+                    _SP._normals[i] = (T * new Vector4d(ori, 1)).ToVector3D();
+                }
+                foreach (FuncSpace fs in _SP.funcSpaces)
+                {
+                    fs._mesh.Transform(T);
+                }
+            }
+            if (_parts != null)
+            {
+                foreach (Part p in _parts)
+                {
+                    p.Transform(T);
+                }
+            }
+        }// Transform
 
         public void setPart(Part p, int idx)
         {
@@ -802,4 +893,33 @@ namespace Component
             }
         }
     }// FunctionalityModel
+
+    public class SamplePoints
+    {
+        public Vector3d[] _points;
+        public Vector3d[] _normals;
+        public int[] _faceIdx;
+        public double[,] _weights; // w.r.t. npatches
+        public Color[,] _colors;
+        public FuncSpace[] funcSpaces;
+
+        public SamplePoints(Vector3d[] points, Vector3d[] normals, int[] faceIdxs)
+        {
+            _points = points;
+            _normals = normals;
+            _faceIdx = faceIdxs;
+        }
+    }// SamplePoint
+
+    public class FuncSpace
+    {
+        public Mesh _mesh;
+        public double[] _weights; // w.r.t. faces
+
+        public FuncSpace(Mesh mesh, double[] weights)
+        {
+            _mesh = mesh;
+            _weights = weights;
+        }
+    }// FuncSpace
 }

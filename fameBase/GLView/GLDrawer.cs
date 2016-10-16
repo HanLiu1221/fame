@@ -46,6 +46,8 @@ namespace FameBase
         public static Color GradientColor_6 = Color.FromArgb(231, 212, 232);
         public static Color GradientColor_7 = Color.FromArgb(118, 42, 131);
 
+        public static Color FunctionalSpaceColor = Color.FromArgb(100, 49, 130, 189);
+
         public static int _NSlices = 40;
 
         public static Color getColorGradient(double ratio, int npatch)
@@ -87,6 +89,11 @@ namespace FameBase
         public static Color getColorRGB(Vector3d v)
         {
             return Color.FromArgb((byte)(v.x * 255), (byte)(v.y * 255), (byte)(v.z * 255)); 
+        }
+
+        public static Color getColorRGB(byte[] arr)
+        {
+            return Color.FromArgb(arr[0], arr[1], arr[2]);
         }
 
         public static byte[] getColorArray(Color c)

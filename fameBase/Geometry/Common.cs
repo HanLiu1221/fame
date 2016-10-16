@@ -68,6 +68,29 @@ namespace Geometry
             return Math.Abs(d);
         }
 
+        public static void switchXYZ_mesh(Mesh mesh, int mode)
+        {
+            for (int i = 0, j = 0; i < mesh.VertexCount; i++, j += 3)
+            {
+                double x = mesh.VertexPos[j];
+                double y = mesh.VertexPos[j + 1];
+                double z = mesh.VertexPos[j + 2];
+                if (mode == 1)
+                {
+                    mesh.setVertextPos(i, new Vector3d(-y, x, z));
+                }
+                else if (mode == 2)
+                {
+                    mesh.setVertextPos(i, new Vector3d(-z, y, x));
+                }
+                else
+                {
+                    mesh.setVertextPos(i, new Vector3d(x, -z, y));
+                }
+            }
+            mesh.afterUpdatePos();
+        }// switchXYZ
+
         public static bool isRayIntersectTriangle(Vector3d origin, Vector3d ray, Vector3d v1, Vector3d v2, Vector3d v3, out double hitDist)
         {
             bool isHit = false;
@@ -117,6 +140,23 @@ namespace Geometry
 
             return isHit;
         }// isRayIntersectTriangle
+
+        public static double[] vectorArrayToDoubleArray(Vector3d[] vecs)
+        {
+            if (vecs == null)
+            {
+                return null;
+            }
+            int n = vecs.Length;
+            double[] res = new double[n * 3];
+            for (int i = 0; i < n; ++i)
+            {
+                res[i * 3] = vecs[i].x;
+                res[i * 3 + 1] = vecs[i].y;
+                res[i * 3 + 2] = vecs[i].z;
+            }
+            return res;
+        }// vectorArrayToDoubleArray
 
         public static double cutoff(double val, double lower, double upper)
         {
