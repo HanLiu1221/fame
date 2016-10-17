@@ -24,6 +24,8 @@ namespace Component
         int[] _faceVIndexInParentMesh;
         double[] _vertexPosInParentMesh;
         Vector3d[] axes;
+        
+        public SamplePoints _SP;
 
         public Color _COLOR = Color.LightBlue;
 
@@ -377,6 +379,7 @@ namespace Component
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
         public SamplePoints _SP;
+        public FuncSpace[] _funcSpaces;
 
         public string _path = "";
         public string _model_name = "";
@@ -465,9 +468,9 @@ namespace Component
             Common.switchXYZ_mesh(_mesh, 1);
             Common.switchXYZ_mesh(_mesh, 2);
             Common.switchXYZ_mesh(_mesh, 2);
-            if (_SP != null && _SP.funcSpaces != null)
+            if (_SP != null && _funcSpaces != null)
             {
-                foreach (FuncSpace fs in _SP.funcSpaces)
+                foreach (FuncSpace fs in _funcSpaces)
                 {
                     Common.switchXYZ_mesh(fs._mesh, 2);
                     Common.switchXYZ_mesh(fs._mesh, 2);
@@ -519,7 +522,7 @@ namespace Component
                     ori = _SP._normals[i];
                     _SP._normals[i] = (T * new Vector4d(ori, 1)).ToVector3D();
                 }
-                foreach (FuncSpace fs in _SP.funcSpaces)
+                foreach (FuncSpace fs in _funcSpaces)
                 {
                     fs._mesh.Transform(T);
                 }
@@ -901,7 +904,6 @@ namespace Component
         public int[] _faceIdx;
         public double[,] _weights; // w.r.t. npatches
         public Color[,] _colors;
-        public FuncSpace[] funcSpaces;
 
         public SamplePoints(Vector3d[] points, Vector3d[] normals, int[] faceIdxs)
         {

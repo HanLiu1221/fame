@@ -619,6 +619,41 @@ namespace FameBase
             }
         }// saveAPartBasedModel
 
+        private void saveSamplePointsInfo(string filename)
+        {
+            if (_currModel == null || _currModel._NPARTS == 0)
+            {
+                return;
+            }
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                for (int i = 0; i < _currModel._NPARTS; ++i)
+                {
+                    sw.WriteLine("% Part #" + i.ToString());
+                    Part ipart = _currModel._PARTS[i];
+                    if (ipart._SP == null || ipart._SP._points == null || ipart._SP._normals == null)
+                    {
+                        return;
+                    }
+                    for (int j = 0; j < ipart._SP._points.Length; ++j)
+                    {
+                        Vector3d vpos = ipart._SP._points[j];
+                        sw.Write(vector3dToString(vpos, true));
+                        Vector3d vnor = ipart._SP._normals[j];
+                        sw.Write(vector3dToString(vnor, true));
+                        sw.WriteLine(ipart._SP._faceIdx[j].ToString());
+                    }
+                }
+            }
+        }// saveSamplePointsInfo
+
+        private void saveCurrModelWithFuncInfo()
+        {
+            string foldername = this.foldername + "\\models\\";
+            string model_name = foldername + _currModel._model_name + ".pam";
+            this.saveAPartBasedModel(model_name);
+        }
+
         private string vector3dToString(Vector3d v, bool tailSpace)
         {
             StringBuilder sb = new StringBuilder();
@@ -4774,7 +4809,8 @@ namespace FameBase
         //######### Data & feature from ICON2 paper #########//
         public void loadPatchInfo(string foldername)
         {
-            string modelFolder = foldername + "\\models\\";
+            this.foldername = foldername;
+            string modelFolder = foldername + "\\meshes\\";
             string sampleFolder = foldername + "\\samples\\";
             string weightFolder = foldername + "\\weights\\";
             string funcSpaceFolder = foldername + "\\funcSpace\\";
@@ -4905,9 +4941,9 @@ namespace FameBase
                     }
                     fss[nfs++] = fs;
                 }
-                sp.funcSpaces = fss;
 
                 Model model = new Model(mesh, sp);
+                model._funcSpaces = fss;
                 _models.Add(model);
 
                 ++nfile;
@@ -5421,12 +5457,12 @@ namespace FameBase
                 GLDrawer.drawMeshFace(_currModel._MESH, GLDrawer.MeshColor, false);
             }
             // draw functional space
-            if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._SP.funcSpaces != null)
+            if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._funcSpaces != null)
             {
                 int nfs = 1;// _currModel._SP.funcSpaces.Length;
                 for (int i = 0; i < nfs; ++i )
                 {
-                    FuncSpace fs = _currModel._SP.funcSpaces[i];
+                    FuncSpace fs = _currModel._funcSpaces[i];
                     GLDrawer.drawMeshFace(fs._mesh, GLDrawer.FunctionalSpaceColor);
                 }
             }
