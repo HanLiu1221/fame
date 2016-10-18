@@ -567,7 +567,7 @@ namespace FameBase
             this.Refresh();
         }// switchXYZ
 
-        public void saveAPartBasedModel(Model model, string filename)
+        public void saveAPartBasedModel(Model model, string filename, bool isOriginalModel)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
             {
@@ -604,31 +604,28 @@ namespace FameBase
                     Part ipart = model._PARTS[i];
                     foreach (Vector3d v in ipart._BOUNDINGBOX._POINTS3D)
                     {
-                        sw.Write(vector3dToString(v, true));
+                        sw.Write(vector3dToString(v, " ", " "));
                     }
                     sw.WriteLine();
                     // principal axes
-                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.x, true));
-                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.y, true));
-                    sw.WriteLine(vector3dToString(ipart._BOUNDINGBOX.coordSys.z, false));
+                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.x, " ", " "));
+                    sw.Write(vector3dToString(ipart._BOUNDINGBOX.coordSys.y, " ", " "));
+                    sw.WriteLine(vector3dToString(ipart._BOUNDINGBOX.coordSys.z, " ", ""));
                     // save mesh
                     string meshName = "part_" + i.ToString() + ".obj";
                     this.saveObj(ipart._MESH, meshDir + meshName, ipart._COLOR);
                     sw.WriteLine(modelName + "\\" + meshName);
-                    // part mesh index info
-                    string partMeshIndexName = "part_" + i.ToString() + ".mi";
-                    //this.savePartMeshIndexInfo(ipart, meshDir + partMeshIndexName);
                 }
                 if (model._GRAPH != null)
                 {
                     string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
                     saveAGraph(graphName);
                 }
-                saveModelInfo(model, meshDir, modelName);
+                saveModelInfo(model, meshDir, modelName, isOriginalModel);
             }
         }// saveAPartBasedModel
 
-        private void saveModelInfo(Model model, string foldername, string model_name)
+        private void saveModelInfo(Model model, string foldername, string model_name, bool isOriginalModel)
         {
             if (model == null)
             {
@@ -640,8 +637,11 @@ namespace FameBase
                 MessageBox.Show("Mesh is null.");
                 return;
             }
-            string meshName = foldername + model_name + ".obj";
-            this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
+            if (isOriginalModel)
+            {
+                string meshName = foldername + model_name + ".obj";
+                this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
+            }
             // save mesh sample points & normals & faceindex
             if (model._SP != null)
             {
@@ -658,6 +658,13 @@ namespace FameBase
                 }
                 string partSPname = foldername + "part_" + i.ToString() + ".sp";
                 this.saveSamplePointsInfo(ipart._partSP, partSPname);
+                // part mesh index info
+                if (isOriginalModel)
+                {
+                    // Note - this is not necessary for new shapes
+                    string partMeshIndexName = foldername + "part_" + i.ToString() + ".mi";
+                    this.savePartMeshIndexInfo(ipart, partMeshIndexName);
+                }
             }
         }// saveModelInfo
 
@@ -669,9 +676,9 @@ namespace FameBase
                 for (int j = 0; j < sp._points.Length; ++j)
                 {
                     Vector3d vpos = sp._points[j];
-                    sw.Write(vector3dToString(vpos, true));
+                    sw.Write(vector3dToString(vpos, " ", " "));
                     Vector3d vnor = sp._normals[j];
-                    sw.Write(vector3dToString(vnor, true));
+                    sw.Write(vector3dToString(vnor, " ", " "));
                     sw.WriteLine(sp._faceIdx[j].ToString());
                 }
             }
@@ -730,16 +737,13 @@ namespace FameBase
             }
         }// loadPartMeshIndexInfo
 
-        private string vector3dToString(Vector3d v, bool tailSpace)
+        private string vector3dToString(Vector3d v, string sep, string tail)
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append(string.Format("{0:0.###}", v.x) + " " +
-                            string.Format("{0:0.###}", v.y) + " " +
+            sb.Append(string.Format("{0:0.###}", v.x) + sep +
+                            string.Format("{0:0.###}", v.y) + sep +
                             string.Format("{0:0.###}", v.z));
-            if (tailSpace)
-            {
-                sb.Append(" ");
-            }
+            sb.Append(tail);
             return sb.ToString();
         }// vector3dToString
 
@@ -1427,7 +1431,7 @@ namespace FameBase
                     sw.Write(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString() + " ");
                     foreach (Contact pnt in e._contacts)
                     {
-                        sw.Write(this.vector3dToString(pnt._pos3d, true));
+                        sw.Write(this.vector3dToString(pnt._pos3d, " ", " "));
                     }
                     sw.WriteLine();
                 }
@@ -2068,7 +2072,7 @@ namespace FameBase
                     List<string> filenames = new List<string>();
                     for (int j = 0; j < cur_kids.Count; ++j)
                     {
-                        filenames.Add(cur_kids[i]._model_name);
+                        filenames.Add(cur_kids[j]._model_name);
                         this.writeMatlabFile(cur_kids[j]);
                     }
                     writeToMatlabFolder(filenames);
@@ -2093,7 +2097,7 @@ namespace FameBase
 
         private void writeToMatlabFolder(List<string> strs)
         {
-            string filename = @"E:\Projects\fame\externalCLR\code_for_prediction_only\\";
+            string filename = @"E:\Projects\fame\externalCLR\code_for_prediction_only\\shapeFileNames.txt";
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 for (int i = 0; i < strs.Count; ++i)
@@ -2105,7 +2109,7 @@ namespace FameBase
 
         private void writeMatlabFile(Model model)
         {
-            string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\\";
+            string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
             string pois_file = folder + model._model_name + ".poisson";
             using (StreamWriter sw = new StreamWriter(pois_file))
             {
@@ -2115,9 +2119,9 @@ namespace FameBase
                     for (int j = 0; j < sp._points.Length; ++j)
                     {
                         Vector3d vpos = sp._points[j];
-                        sw.Write(vector3dToString(vpos, true));
+                        sw.Write(vector3dToString(vpos, " ", " "));
                         Vector3d vnor = sp._normals[j];
-                        sw.Write(vector3dToString(vnor, true));
+                        sw.Write(vector3dToString(vnor, " ", " "));
                         sw.WriteLine(sp._faceIdx[j].ToString());
                     }
                 }
@@ -2135,38 +2139,39 @@ namespace FameBase
                         for (int j = 0; j < d; ++j)
                         {
                             sb.Append(node.funcFeat._pointFeats[i * d + j]);
-                            sb.Append(" ");
+                            sb.Append(",");
                         }
                         d = Common._CURV_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
                             sb.Append(node.funcFeat._curvFeats[i * d + j]);
-                            sb.Append(" ");
+                            sb.Append(",");
                         }
                         d = Common._PCA_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
                             sb.Append(node.funcFeat._pcaFeats[i * d + j]);
-                            sb.Append(" ");
+                            sb.Append(",");
                         }
                         d = Common._RAY_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
                             sb.Append(node.funcFeat._rayFeats[i * d + j]);
-                            sb.Append(" ");
+                            sb.Append(",");
                         }
                         d = Common._CONVEXHULL_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
                             sb.Append(node.funcFeat._conhullFeats[i * d + j]);
-                            sb.Append(" ");
+                            sb.Append(",");
                         }
                         d = 1;
                         for (int j = 0; j < d; ++j)
                         {
                             sb.Append(node.funcFeat._cenOfMassFeats[i * d + j]);
-                            sb.Append(" ");
+                            sb.Append(",");
                         }
+                        sw.WriteLine(sb.ToString());
                     }
                 }
             }
@@ -2211,7 +2216,7 @@ namespace FameBase
                         this.setCurrentModel(model, -1);
                         Program.GetFormMain().updateStats();
                         this.captureScreen(imageFolder + model._model_name + ".png");
-                        saveAPartBasedModel(model, model._path + model._model_name + ".pam");
+                        saveAPartBasedModel(model, model._path + model._model_name + ".pam", false);
                         ++idx;
                     }
                 }
@@ -2492,7 +2497,7 @@ namespace FameBase
                     this.setCurrentModel(model, -1);
                     Program.GetFormMain().updateStats();
                     this.captureScreen(imageFolder + model._model_name + ".png");
-                    saveAPartBasedModel(model, model._path + model._model_name + ".pam");
+                    saveAPartBasedModel(model, model._path + model._model_name + ".pam", false);
                 }
             }
             return mutated;
@@ -2577,7 +2582,7 @@ namespace FameBase
                             this.setCurrentModel(m, -1);
                             Program.GetFormMain().updateStats();
                             this.captureScreen(imageFolder + m._model_name + ".png");
-                            saveAPartBasedModel(m, m._path + m._model_name + ".pam");
+                            saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                         }
                     }
                 }

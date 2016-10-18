@@ -1227,13 +1227,17 @@ namespace Component
         private bool isLoseOriginalFunctionality()
         {
             List<Common.Functionality> funs = this.getGraphFuncs();
-            foreach (Common.Functionality f in _origin_funcs)
+            if (funs.Count < _origin_funcs.Count)
             {
-                if (!funs.Contains(f))
-                {
-                    return true;
-                }
+                return true;
             }
+            //foreach (Common.Functionality f in _origin_funcs)
+            //{
+            //    if (!funs.Contains(f))
+            //    {
+            //        return true;
+            //    }
+            //}
             return false;
         }// isLoseOriginalFunctionality
 
@@ -1547,6 +1551,7 @@ namespace Component
         {
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
+            cloned._funcs = new List<Common.Functionality>(_funcs);
             cloned.funcFeat = funcFeat.clone() as FuncFeatures;
             return cloned;
         }// Clone
@@ -1556,6 +1561,7 @@ namespace Component
             Part p = _part.Clone() as Part;
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
+            cloned._funcs = new List<Common.Functionality>(_funcs);
             cloned.funcFeat = funcFeat.clone() as FuncFeatures;
             return cloned;
         }// Clone
