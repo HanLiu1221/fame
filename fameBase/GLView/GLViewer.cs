@@ -373,15 +373,15 @@ namespace FameBase
             sb.Append("#part:   ");
             sb.Append(_currModel._NPARTS.ToString());
 
-            if (_currModel._MESH != null)
-            {
-                sb.Append("\n#vertex:   ");
-                sb.Append(_currModel._MESH.VertexCount.ToString());
-                sb.Append("\n#edge:     ");
-                sb.Append(_currModel._MESH.Edges.Length.ToString());
-                sb.Append("\n#face:    ");
-                sb.Append(_currModel._MESH.FaceCount.ToString());
-            }
+            //if (_currModel._MESH != null)
+            //{
+            //    sb.Append("\n#vertex:   ");
+            //    sb.Append(_currModel._MESH.VertexCount.ToString());
+            //    sb.Append("\n#edge:     ");
+            //    sb.Append(_currModel._MESH.Edges.Length.ToString());
+            //    sb.Append("\n#face:    ");
+            //    sb.Append(_currModel._MESH.FaceCount.ToString());
+            //}
             sb.Append("\n#selected parts: ");
             sb.Append(_selectedParts.Count.ToString());
             sb.Append("\n#human poses: ");
@@ -617,7 +617,7 @@ namespace FameBase
                     sw.WriteLine(modelName + "\\" + meshName);
                     // part mesh index info
                     string partMeshIndexName = "part_" + i.ToString() + ".mi";
-                    this.savePartMeshIndexInfo(ipart, meshDir + partMeshIndexName);
+                    //this.savePartMeshIndexInfo(ipart, meshDir + partMeshIndexName);
                 }
                 if (model._GRAPH != null)
                 {
@@ -2008,9 +2008,9 @@ namespace FameBase
             MLApp.MLApp matlab = new MLApp.MLApp();
             matlab.Execute(@"cd E:\Projects\fame\externalCLR\code_for_prediction_only");
             Object matlabOutput = null;
-            matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
-            Object[] res = matlabOutput as Object[];
-            double[,] results = res[0] as double[,];
+            //matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
+            //Object[] res = matlabOutput as Object[];
+            //double[,] results = res[0] as double[,];
             // for capturing screen
             
             this.reloadView();
@@ -2031,32 +2031,51 @@ namespace FameBase
             parents.AddRange(_currGen);
 
             // 
-            int maxIter = 1;
+            int maxIter = 5;
             int start = 0;
             for (int i = 0; i < maxIter; ++i)
             {
                 Random rand = new Random();
                 _mutateOrCross = runMutateOrCrossover(rand);
-                _mutateOrCross = 2;
+                //_mutateOrCross = 2;
                 List<Model> cur_par = new List<Model>(parents);
                 List<Model> cur_kids = new List<Model>();
+                string runstr = "Run ";
                 switch (_mutateOrCross)
                 {
                     case 0:
                         // mutate
+                        runstr += "Mutate @iteration " + i.ToString();
+                        Program.GetFormMain().writeToConsole(runstr);
                         cur_kids = runMutate(cur_par, _currIter, imageFolder_m, start);
                         break;
-                    case 1:
-                        // crossover
-                        cur_kids = runCrossover(cur_par, _currIter, rand, imageFolder_c, start);
-                        break;
                     case 2:
-                    default:
+                        runstr += "Growth @iteration " + i.ToString();
+                        Program.GetFormMain().writeToConsole(runstr);
                         cur_kids = runGrowth(cur_par, _currIter, rand, imageFolder_g, start);
+                        break;
+                    case 1:
+                    default:
+                        // crossover
+                        runstr += "Crossover @iteration " + i.ToString();
+                        Program.GetFormMain().writeToConsole(runstr);
+                        cur_kids = runCrossover(cur_par, _currIter, rand, imageFolder_c, start);
                         break;
                 }
                 // functionality test
-
+                if (cur_kids.Count > 0)
+                {
+                    List<string> filenames = new List<string>();
+                    for (int j = 0; j < cur_kids.Count; ++j)
+                    {
+                        filenames.Add(cur_kids[i]._model_name);
+                        this.writeMatlabFile(cur_kids[j]);
+                    }
+                    writeToMatlabFolder(filenames);
+                    matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
+                    Object[] res = matlabOutput as Object[];
+                    double[,] results = res[0] as double[,];
+                }
                 //start += _currGen.Count;
                 parents.AddRange(cur_kids);
                 _currGen.AddRange(cur_kids);
@@ -2071,6 +2090,87 @@ namespace FameBase
             _currGen = new List<Model>(prev_parents); // for user selection
             return _currGenModelViewers;
         }// autoGenerate
+
+        private void writeToMatlabFolder(List<string> strs)
+        {
+            string filename = @"E:\Projects\fame\externalCLR\code_for_prediction_only\\";
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                for (int i = 0; i < strs.Count; ++i)
+                {
+                    sw.WriteLine(strs[i]);
+                }
+            }
+        }// writeToMatlabFolder
+
+        private void writeMatlabFile(Model model)
+        {
+            string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\\";
+            string pois_file = folder + model._model_name + ".poisson";
+            using (StreamWriter sw = new StreamWriter(pois_file))
+            {
+                foreach (Part part in model._PARTS)
+                {
+                    SamplePoints sp = part._partSP;
+                    for (int j = 0; j < sp._points.Length; ++j)
+                    {
+                        Vector3d vpos = sp._points[j];
+                        sw.Write(vector3dToString(vpos, true));
+                        Vector3d vnor = sp._normals[j];
+                        sw.Write(vector3dToString(vnor, true));
+                        sw.WriteLine(sp._faceIdx[j].ToString());
+                    }
+                }
+            }
+            string feat_file = folder + model._model_name + "_point_feature.csv";
+            using (StreamWriter sw = new StreamWriter(feat_file))
+            {
+                foreach (Node node in model._GRAPH._NODES)
+                {
+                    int n = node._PART._partSP._points.Length;
+                    for (int i = 0; i < n; ++i)
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        int d = Common._POINT_FEAT_DIM;
+                        for (int j = 0; j < d; ++j)
+                        {
+                            sb.Append(node.funcFeat._pointFeats[i * d + j]);
+                            sb.Append(" ");
+                        }
+                        d = Common._CURV_FEAT_DIM;
+                        for (int j = 0; j < d; ++j)
+                        {
+                            sb.Append(node.funcFeat._curvFeats[i * d + j]);
+                            sb.Append(" ");
+                        }
+                        d = Common._PCA_FEAT_DIM;
+                        for (int j = 0; j < d; ++j)
+                        {
+                            sb.Append(node.funcFeat._pcaFeats[i * d + j]);
+                            sb.Append(" ");
+                        }
+                        d = Common._RAY_FEAT_DIM;
+                        for (int j = 0; j < d; ++j)
+                        {
+                            sb.Append(node.funcFeat._rayFeats[i * d + j]);
+                            sb.Append(" ");
+                        }
+                        d = Common._CONVEXHULL_FEAT_DIM;
+                        for (int j = 0; j < d; ++j)
+                        {
+                            sb.Append(node.funcFeat._conhullFeats[i * d + j]);
+                            sb.Append(" ");
+                        }
+                        d = 1;
+                        for (int j = 0; j < d; ++j)
+                        {
+                            sb.Append(node.funcFeat._cenOfMassFeats[i * d + j]);
+                            sb.Append(" ");
+                        }
+                    }
+                }
+            }
+        }// writeMatlabFile
 
         private List<Model> runGrowth(List<Model> models, int gen, Random rand, string imageFolder, int start)
         {
@@ -5046,7 +5146,7 @@ namespace FameBase
                 _models.Add(model);
 
                 ++nfile;
-                if (nfile > 1)
+                if (nfile > 2)
                 {
                     // TEST
                     break;

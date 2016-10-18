@@ -114,6 +114,7 @@ namespace Component
             Prism prism = _boundingbox.Clone() as Prism;
             Part p = new Part(m, prism);
             p._COLOR = this._COLOR;
+            p._partSP = _partSP.clone() as SamplePoints;
             return p;
         }
 
@@ -591,6 +592,18 @@ namespace Component
                 parts.Add(p.Clone() as Part);
             }
             Model m = new Model(parts);
+            Mesh mesh = _mesh.Clone() as Mesh;
+            m.setMesh(mesh);
+            m._SP = _SP.clone() as SamplePoints;
+            if (_funcSpaces != null)
+            {
+                FuncSpace[] fss = new FuncSpace[_funcSpaces.Length];
+                for (int i = 0; i < _funcSpaces.Length; ++i)
+                {
+                    fss[i] = _funcSpaces[i].clone() as FuncSpace;
+                }
+                m._funcSpaces = fss;
+            }
             m._GRAPH = _GRAPH.Clone(parts) as Graph;
             return m;
         }
@@ -928,6 +941,7 @@ namespace Component
         public double[,] _weights; // w.r.t. npatches
         public Color[,] _colors;
         public int[] _fidxMap;
+        private int _totalNfaces = 0;
 
         public SamplePoints() { }
 
@@ -936,6 +950,7 @@ namespace Component
             _points = points;
             _normals = normals;
             _faceIdx = faceIdxs;
+            _totalNfaces = totalNFaces;
             buildFaceSamplePointsMap(totalNFaces);
         }
 
@@ -946,6 +961,15 @@ namespace Component
             {
                 _fidxMap[_faceIdx[i]] = i; // the map between face idx and sample points
             }
+        }
+
+        public Object clone()
+        {
+            Vector3d[] cpoints = _points.Clone() as Vector3d[];
+            Vector3d[] cnormals = _normals.Clone() as Vector3d[];
+            int[] cfaceIdx = _faceIdx.Clone() as int[];
+            SamplePoints sp = new SamplePoints(cpoints, cnormals, cfaceIdx, _totalNfaces);
+            return sp;
         }
     }// SamplePoint
 
@@ -958,6 +982,14 @@ namespace Component
         {
             _mesh = mesh;
             _weights = weights;
+        }
+
+        public Object clone()
+        {
+            Mesh cmesh = _mesh.Clone() as Mesh;
+            double[] cweights = _weights.Clone() as double[];
+            FuncSpace fs = new FuncSpace(cmesh, cweights);
+            return fs;
         }
     }// FuncSpace
 }

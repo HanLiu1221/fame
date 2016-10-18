@@ -1033,6 +1033,85 @@ namespace Geometry
             return curvs;
         }// computeCurvFeatures
 
+        public Vector3d[] computePointPCA(Vector3d[] vposes, Vector3d[] vnormals)
+        {
+            // return eigen values (1 vec) and eigen vectors (3 vecs)
+            int dim = Common._PCA_FEAT_DIM;
+            Vector3d[] pcaInfo = new Vector3d[vposes.Length * dim];
+            for (int i = 0; i < vposes.Length; ++i)
+            {
+                // geodescic neighborhood
+                Vector3d[] neigs = this.getNeighborPoints(vposes[i]);
+                double[,] vArray = new double[neigs.Length, 3];
+                for (int v = 0; v < neigs.Length; ++v)
+                {
+                    vArray[v, 0] = neigs[v].x;
+                    vArray[v, 1] = neigs[v].y;
+                    vArray[v, 2] = neigs[v].z;
+                }
+                PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
+                pca.Compute();
+                if (pca.Components.Count < 3)
+                {
+                    pcaInfo[i * dim] = new Vector3d(1, 1, 1).normalize();
+                    pcaInfo[i * dim + 1] = Vector3d.XCoord;
+                    pcaInfo[i * dim + 2] = Vector3d.YCoord;
+                    pcaInfo[i * dim + 3] = Vector3d.ZCoord;
+                }
+                else
+                {
+                    pcaInfo[i * dim] = new Vector3d(
+                        pca.Components[0].Eigenvalue,
+                        pca.Components[1].Eigenvalue,
+                        pca.Components[2].Eigenvalue);
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        pcaInfo[i * dim + j + 1] = new Vector3d(
+                            pca.Components[j].Eigenvector[0],
+                            pca.Components[j].Eigenvector[1],
+                            pca.Components[j].Eigenvector[2]);
+                    }
+                }
+            }
+            return pcaInfo;
+        }// computePointsPCA
+
+        public double[] computeCurvFeatures(Vector3d[] vposes, Vector3d[] vnormals,
+            out double minCurv, out double maxCurv, out double avgCurv)
+        {
+            double[] curvs = new double[vposes.Length];
+            minCurv = double.MaxValue;
+            maxCurv = double.MinValue;
+            avgCurv = 0;
+            for (int i = 0; i < vposes.Length; ++i)
+            {
+                Vector3d vpos = vposes[i];
+                Vector3d normal = vnormals[i];
+                int[] neigs = this.getNeighborPointsIndex(vpos);
+                Vector3d sum_offset = new Vector3d();
+                int num_offset = 0;
+                for (int j = 0; j < neigs.Length; ++j)
+                {
+                    Vector3d neig_vpos = getVertexPos(neigs[j]);
+                    Vector3d neig_nor = getVertexNormal(neigs[j]);
+                    if (neig_nor.Dot(normal) < 0) // ignore points on hidden side
+                    {
+                        neig_nor *= -1;
+                        continue;
+                    }
+                    Vector3d offset = (neig_vpos - vpos).normalize();
+                    sum_offset += offset;
+                    ++num_offset;
+                }
+                curvs[i] = num_offset > 0 ? Math.Abs(sum_offset.Dot(normal)) / num_offset : 0;
+                minCurv = minCurv < curvs[i] ? minCurv : curvs[i];
+                maxCurv = maxCurv > curvs[i] ? maxCurv : curvs[i];
+                avgCurv += curvs[i];
+            }
+            avgCurv /= this.vertexCount;
+            return curvs;
+        }// computeCurvFeatures
+
         private Vector3d[] getNeighborPoints(int vertexIdx)
         {
             if (_kdtree == null)
@@ -1061,6 +1140,40 @@ namespace Geometry
                 {
                     neigPoints.Add(nvec);
                 }
+            }
+            return neigPoints.ToArray();
+        }// getNeighborPoints
+
+        private Vector3d[] getNeighborPoints(Vector3d vvec)
+        {
+            if (_kdtree == null)
+            {
+                this.buildKdtree();
+            }
+
+            int k = 5; // maximum k nearest points
+            double maxdist = 0.05; // maximum distance to the point in the neighborhood
+            double[] vpos = new double[3];
+            vpos[0] = vvec.x;
+            vpos[1] = vvec.y;
+            vpos[2] = vvec.z;
+
+            int res = alglib.kdtreequeryknn(_kdtree, vpos, k, true); // true for overlapping points
+            int[] pointsIdxs = new int[k];
+            alglib.kdtreequeryresultstags(_kdtree, ref pointsIdxs);
+
+            List<Vector3d> neigPoints = new List<Vector3d>();
+            Vector3d ivec = new Vector3d(vpos);
+            for (int v = 0; v < pointsIdxs.Length; ++v)
+            {
+                int vidx = pointsIdxs[v];
+                Vector3d nvec = getVertexPos(vidx);
+                //double d = (nvec - ivec).Length();
+                //if (d < maxdist)
+                //{
+                //    neigPoints.Add(nvec);
+                //}
+                neigPoints.Add(nvec);
             }
             return neigPoints.ToArray();
         }// getNeighborPoints
@@ -1102,6 +1215,43 @@ namespace Geometry
             return rayDists;
         }// computeRadDist
 
+        public double[] computeRayDist(Vector3d[] vposes, Vector3d[] vnormals)
+        {
+            // dist & angle
+            int dim = Common._RAY_FEAT_DIM;
+            double[] rayDists = new double[vposes.Length * dim];
+            double maxdist = double.MinValue;
+            for (int i = 0; i < vposes.Length; ++i)
+            {
+                Vector3d ivec = vposes[i];
+                Vector3d inor = vnormals[i];
+                int fidx = -1;
+                Vector3d hitpos = closestIntersectionPoint(ivec, inor, out fidx);
+                double dist = (ivec - hitpos).Length();
+                if (fidx == -1)
+                {
+                    rayDists[i * dim] = 1;
+                }
+                else
+                {
+                    rayDists[i * dim] = dist;
+                    if (dist < maxdist)
+                    {
+                        maxdist = dist;
+                    }
+                }
+                double cosv = inor.Dot(Common.uprightVec);
+                cosv = Common.cutoff(cosv, -1.0, 1.0);
+                double angle = Math.Acos(cosv) / Math.PI;
+                rayDists[i * dim + 1] = Common.cutoff(angle, 0.0, 1.0);
+            }
+            for (int i = 0; i < vposes.Length; ++i)
+            {
+                rayDists[i * dim] /= maxdist;
+            }
+            return rayDists;
+        }// computeRadDist
+
         public Vector3d closestIntersectionPoint(Vector3d ray_origin, Vector3d ray_dir, out int faceIdx)
         {
             faceIdx = -1;
@@ -1131,6 +1281,23 @@ namespace Geometry
             }
             return hitpoint;
         }// closestIntersectionPoint
+
+        private int[] getNeighborPointsIndex(Vector3d vvec)
+        {
+            if (_kdtree == null)
+            {
+                this.buildKdtree();
+            }
+            int k = 5; // maximum k nearest points
+            double[] vpos = new double[3];
+            vpos[0] = vvec.x;
+            vpos[1] = vvec.y;
+            vpos[2] = vvec.z;
+            int res = alglib.kdtreequeryknn(_kdtree, vpos, k, true); // true for overlapping points
+            int[] pointsIdxs = new int[k];
+            alglib.kdtreequeryresultstags(_kdtree, ref pointsIdxs);
+            return pointsIdxs;
+        }
 
         private int[] getNeighborPointsIndex(int vertexIdx)
         {

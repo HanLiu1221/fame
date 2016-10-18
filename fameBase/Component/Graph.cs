@@ -38,6 +38,7 @@ namespace Component
             }
             markGroundTouchingNodes();
             buildGraph();
+            computeFeatures();
         }
 
         public void init()
@@ -45,7 +46,7 @@ namespace Component
             computeCenterOfMass();
             computeConvexHull();
             analyzeOriginFeatures();
-            //computeFeatures();
+            computeFeatures();
         }// init
 
         private void computeConvexHull()
@@ -1285,16 +1286,16 @@ namespace Component
             }
             foreach (Node node in _nodes)
             {
-                Mesh mesh = node._PART._MESH;
-                double[] pointFeats = new double[mesh.VertexCount * d];
-                for (int i = 0; i < mesh.VertexCount; ++i)
+                SamplePoints sp = node._PART._partSP;
+                double[] pointFeats = new double[sp._points.Length * d];
+                for (int i = 0; i < sp._points.Length; ++i)
                 {
-                    Vector3d v = mesh.getVertexPos(i);
+                    Vector3d v = sp._points[i];
                     // height - v project to the upright (unit) vector
                     double height = v.Dot(Common.uprightVec);
                     maxh = maxh > height ? maxh : height;
                     minh = minh < height ? minh : height;
-                    Vector3d nor = mesh.getVertexNormal(i);
+                    Vector3d nor = sp._normals[i];
                     // angle - normal vs. upright vector
                     double angle = Math.Acos(nor.Dot(Common.uprightVec)) / Math.PI;
                     angle = Common.cutoff(angle, 0, 1.0);
@@ -1311,8 +1312,8 @@ namespace Component
             double diffh = maxh - minh;
             foreach (Node node in _nodes)
             {
-                Mesh mesh = node._PART._MESH;
-                for (int i = 0, j = 0; i < mesh.VertexCount; ++i, j += 3)
+                SamplePoints sp = node._PART._partSP;
+                for (int i = 0; i < sp._points.Length; ++i)
                 {
                     double h = node.funcFeat._pointFeats[i * d + 1];
                     node.funcFeat._pointFeats[i * d + 1] = (h - minh) / diffh;
@@ -1329,7 +1330,8 @@ namespace Component
                 double minCurv;
                 double maxCurv;
                 double avgCurv;
-                node.funcFeat._curvFeats = mesh.computeCurvFeatures(out minCurv, out maxCurv, out avgCurv);
+                node.funcFeat._curvFeats = mesh.computeCurvFeatures(node._PART._partSP._points,
+                    node._PART._partSP._normals, out minCurv, out maxCurv, out avgCurv);
             }
         }// computeCurvatureFeatures
 
@@ -1338,7 +1340,9 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 Mesh mesh = node._PART._MESH;
-                Vector3d[] pcaInfo = mesh.computePointPCA();
+                Vector3d[] pcaInfo = mesh.computePointPCA(
+                    node._PART._partSP._points,
+                    node._PART._partSP._normals);
                 int n = pcaInfo.Length / 4; // #vertex
                 int d = 5;
                 node.funcFeat._pcaFeats = new double[n * d];
@@ -1369,21 +1373,25 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 Mesh mesh = node._PART._MESH;
-                node.funcFeat._rayFeats = mesh.computeRayDist();
+                node.funcFeat._rayFeats = mesh.computeRayDist(node._PART._partSP._points, node._PART._partSP._normals);
             }
         }// computeRayFeatures
 
         private void computeDistAndAngleToCenterOfConvexHull()
         {
+            if (_hull == null)
+            {
+                computeConvexHull();
+            }
             int dim = Common._CONVEXHULL_FEAT_DIM;
             double maxdist = double.MinValue;
             foreach (Node node in _nodes)
             {
-                Mesh mesh = node._PART._MESH;
-                node.funcFeat._conhullFeats = new double[dim * mesh.VertexCount];
-                for (int i = 0; i < mesh.VertexCount; ++i)
+                SamplePoints sp = node._PART._partSP;
+                node.funcFeat._conhullFeats = new double[dim * sp._points.Length];
+                for (int i = 0; i < sp._points.Length; ++i)
                 {
-                    Vector3d v = mesh.getVertexPos(i);
+                    Vector3d v = sp._points[i];
                     double dist = 0;
                     double angle = 0;
                     computeDistAndAngleToAnchorNormalized(v, _hull._center, out dist, out angle);
@@ -1407,11 +1415,11 @@ namespace Component
             double maxdist = double.MinValue;
             foreach (Node node in _nodes)
             {
-                Mesh mesh = node._PART._MESH;
-                node.funcFeat._cenOfMassFeats = new double[dim * mesh.VertexCount];
-                for (int i = 0; i < mesh.VertexCount; ++i)
+                SamplePoints sp = node._PART._partSP;
+                node.funcFeat._cenOfMassFeats = new double[dim * sp._points.Length];
+                for (int i = 0; i < sp._points.Length; ++i)
                 {
-                    Vector3d v = mesh.getVertexPos(i);
+                    Vector3d v = sp._points[i];
                     double dist = 0;
                     double angle = 0;
                     computeDistAndAngleToAnchorNormalized(v, _centerOfMass, out dist, out angle);
@@ -1539,7 +1547,7 @@ namespace Component
         {
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
-            cloned._funcs = new List<Common.Functionality>(_funcs);
+            cloned.funcFeat = funcFeat.clone() as FuncFeatures;
             return cloned;
         }// Clone
 
@@ -1548,7 +1556,7 @@ namespace Component
             Part p = _part.Clone() as Part;
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
-            cloned._funcs = new List<Common.Functionality>(_funcs);
+            cloned.funcFeat = funcFeat.clone() as FuncFeatures;
             return cloned;
         }// Clone
 
