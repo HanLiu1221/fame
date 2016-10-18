@@ -217,7 +217,7 @@ namespace FameBase
             };
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                this.glViewer.saveAPartBasedModel(dialog.FileName);
+                this.glViewer.saveAPartBasedModel(this.glViewer.getCurrModel(), dialog.FileName);
             }
         }
 

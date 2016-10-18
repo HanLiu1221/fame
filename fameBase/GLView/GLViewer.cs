@@ -224,6 +224,11 @@ namespace FameBase
             }
         }
 
+        public Model getCurrModel()
+        {
+            return _currModel;
+        }
+
         private void LoadTextures()					// load textures for canvas and brush
         {
             this.CreateTexture(@"data\pencil.png", out GLViewer.pencilTextureId);
@@ -562,14 +567,14 @@ namespace FameBase
             this.Refresh();
         }// switchXYZ
 
-        public void saveAPartBasedModel(string filename)
+        public void saveAPartBasedModel(Model model, string filename)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
             {
                 MessageBox.Show("Directory does not exist!");
                 return;
             }
-            if (this._currModel == null)
+            if (model == null)
             {
                 return;
             }
@@ -584,19 +589,19 @@ namespace FameBase
             // comments start with "%"
             string meshDir = filename.Substring(0, filename.LastIndexOf('.')) + "\\";
             int loc = filename.LastIndexOf('\\');
-            string meshFolder = filename.Substring(loc, filename.LastIndexOf('.') - loc);
+            string modelName = filename.Substring(loc, filename.LastIndexOf('.') - loc);
             if (!Directory.Exists(meshDir))
             {
                 Directory.CreateDirectory(meshDir);
             }
             using (StreamWriter sw = new StreamWriter(filename))
             {
-                sw.WriteLine(_currModel._NPARTS.ToString() + " parts");
-                for (int i = 0; i < _currModel._NPARTS; ++i)
+                sw.WriteLine(model._NPARTS.ToString() + " parts");
+                for (int i = 0; i < model._NPARTS; ++i)
                 {
                     sw.WriteLine("% Part #" + i.ToString());
                     // bounding box
-                    Part ipart = _currModel._PARTS[i];
+                    Part ipart = model._PARTS[i];
                     foreach (Vector3d v in ipart._BOUNDINGBOX._POINTS3D)
                     {
                         sw.Write(vector3dToString(v, true));
@@ -609,50 +614,121 @@ namespace FameBase
                     // save mesh
                     string meshName = "part_" + i.ToString() + ".obj";
                     this.saveObj(ipart._MESH, meshDir + meshName, ipart._COLOR);
-                    sw.WriteLine(meshFolder + "\\" + meshName);
+                    sw.WriteLine(modelName + "\\" + meshName);
+                    // part mesh index info
+                    string partMeshIndexName = "part_" + i.ToString() + ".mi";
+                    this.savePartMeshIndexInfo(ipart, meshDir + partMeshIndexName);
                 }
-                if (_currModel._GRAPH != null)
+                if (model._GRAPH != null)
                 {
                     string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
                     saveAGraph(graphName);
                 }
+                saveModelInfo(model, meshDir, modelName);
             }
         }// saveAPartBasedModel
 
-        private void saveSamplePointsInfo(string filename)
+        private void saveModelInfo(Model model, string foldername, string model_name)
         {
-            if (_currModel == null || _currModel._NPARTS == 0)
+            if (model == null)
             {
                 return;
             }
+            // save mesh
+            if (model._MESH == null)
+            {
+                MessageBox.Show("Mesh is null.");
+                return;
+            }
+            string meshName = foldername + model_name + ".obj";
+            this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
+            // save mesh sample points & normals & faceindex
+            if (model._SP != null)
+            {
+                string modelSPname = foldername + model_name + ".sp";
+                this.saveSamplePointsInfo(model._SP, modelSPname);
+            }
+            for (int i = 0; i < _currModel._NPARTS; ++i)
+            {
+                Part ipart = _currModel._PARTS[i];
+                if (ipart._partSP == null || ipart._partSP._points == null || ipart._partSP._normals == null)
+                {
+                    MessageBox.Show("No sample point in part #" + i.ToString());
+                    return;
+                }
+                string partSPname = foldername + "part_" + i.ToString() + ".sp";
+                this.saveSamplePointsInfo(ipart._partSP, partSPname);
+            }
+        }// saveModelInfo
+
+        private void saveSamplePointsInfo(SamplePoints sp, string filename)
+        {
             using (StreamWriter sw = new StreamWriter(filename))
             {
-                for (int i = 0; i < _currModel._NPARTS; ++i)
+                //sw.WriteLine(sp._points.Length.ToString());
+                for (int j = 0; j < sp._points.Length; ++j)
                 {
-                    sw.WriteLine("% Part #" + i.ToString());
-                    Part ipart = _currModel._PARTS[i];
-                    if (ipart._SP == null || ipart._SP._points == null || ipart._SP._normals == null)
-                    {
-                        return;
-                    }
-                    for (int j = 0; j < ipart._SP._points.Length; ++j)
-                    {
-                        Vector3d vpos = ipart._SP._points[j];
-                        sw.Write(vector3dToString(vpos, true));
-                        Vector3d vnor = ipart._SP._normals[j];
-                        sw.Write(vector3dToString(vnor, true));
-                        sw.WriteLine(ipart._SP._faceIdx[j].ToString());
-                    }
+                    Vector3d vpos = sp._points[j];
+                    sw.Write(vector3dToString(vpos, true));
+                    Vector3d vnor = sp._normals[j];
+                    sw.Write(vector3dToString(vnor, true));
+                    sw.WriteLine(sp._faceIdx[j].ToString());
                 }
             }
         }// saveSamplePointsInfo
 
-        private void saveCurrModelWithFuncInfo()
+        private void savePartMeshIndexInfo(Part part, string filename)
         {
-            string foldername = this.foldername + "\\models\\";
-            string model_name = foldername + _currModel._model_name + ".pam";
-            this.saveAPartBasedModel(model_name);
-        }
+            if (part._VERTEXINDEX == null || part._FACEVERTEXINDEX == null)
+            {
+                MessageBox.Show("The part lack index info from the model mesh.");
+                return;
+            }
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine(part._VERTEXINDEX.Length.ToString());
+                for (int i = 0; i < part._VERTEXINDEX.Length; ++i)
+                {
+                    sw.WriteLine(part._VERTEXINDEX[i].ToString());
+                }
+                sw.WriteLine(part._FACEVERTEXINDEX.Length.ToString());
+                for (int i = 0; i < part._FACEVERTEXINDEX.Length; ++i)
+                {
+                    sw.WriteLine(part._FACEVERTEXINDEX[i].ToString());
+                }
+            }
+        }// savePartMeshIndexInfo
+
+        private void loadPartMeshIndexInfo(string filename, out int[] vertexIndex, out int[] faceVertexIndex)
+        {
+            vertexIndex = null;
+            faceVertexIndex = null;
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+
+                string s = sr.ReadLine().Trim();
+                string[] strs = s.Split(separators);
+                int nv = int.Parse(strs[0]);
+                vertexIndex = new int[nv];
+                for (int i = 0; i < nv; ++i)
+                {
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separators);
+                    vertexIndex[i] = int.Parse(strs[0]);
+                }
+                s = sr.ReadLine().Trim();
+                strs = s.Split(separators);
+                int nf = int.Parse(strs[0]);
+                faceVertexIndex = new int[nf];
+                for (int i = 0; i < nf; ++i)
+                {
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separators);
+                    faceVertexIndex[i] = int.Parse(strs[0]);
+                }
+            }
+        }// loadPartMeshIndexInfo
 
         private string vector3dToString(Vector3d v, bool tailSpace)
         {
@@ -690,6 +766,19 @@ namespace FameBase
                 }
                 List<Part> parts = new List<Part>();
                 string folder = filename.Substring(0, filename.LastIndexOf('\\'));
+                string modelName = filename.Substring(filename.LastIndexOf('\\') + 1);
+                modelName = modelName.Substring(0, modelName.LastIndexOf('.'));
+                string partfolder = filename.Substring(0, filename.LastIndexOf('.'));
+                // load mesh
+                string meshName = partfolder + "\\" + modelName + ".obj";
+                Mesh modelMesh = null;
+                if (File.Exists(meshName))
+                {
+                    modelMesh = new Mesh(meshName, false);
+                }
+                // mesh sample points
+                string modelSPname = partfolder + "\\" + modelName + ".sp";
+                SamplePoints sp = this.loadSamplePoints(modelSPname, modelMesh == null ? 0 : modelMesh.FaceCount);
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -736,9 +825,20 @@ namespace FameBase
                     Mesh mesh = new Mesh(meshFile, false);
                     //Part part = new Part(mesh);
                     Part part = hasPrism ? new Part(mesh, prim) : new Part(mesh);
+                    string partSPname = partfolder + "\\part_" + i.ToString() + ".sp";
+                    part._partSP = loadSamplePoints(partSPname, mesh.FaceCount);
+                    // part mesh index
+                    string partMeshIndexInfoName = partfolder + "\\part_" + i.ToString() + ".mi";
+                    int[] vertexIndex;
+                    int[] faceVertexIndex;
+                    this.loadPartMeshIndexInfo(partMeshIndexInfoName, out vertexIndex, out faceVertexIndex);
+                    part._VERTEXINDEX = vertexIndex;
+                    part._FACEVERTEXINDEX = faceVertexIndex;
                     parts.Add(part);
                 }
                 Model model = new Model(parts);
+                model.setMesh(modelMesh);
+                model._SP = sp;
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 string name = filename.Substring(filename.LastIndexOf('\\') + 1);
                 model._model_name = name.Substring(0, name.LastIndexOf('.'));
@@ -2011,7 +2111,7 @@ namespace FameBase
                         this.setCurrentModel(model, -1);
                         Program.GetFormMain().updateStats();
                         this.captureScreen(imageFolder + model._model_name + ".png");
-                        saveAPartBasedModel(model._path + model._model_name + ".pam");
+                        saveAPartBasedModel(model, model._path + model._model_name + ".pam");
                         ++idx;
                     }
                 }
@@ -2292,7 +2392,7 @@ namespace FameBase
                     this.setCurrentModel(model, -1);
                     Program.GetFormMain().updateStats();
                     this.captureScreen(imageFolder + model._model_name + ".png");
-                    saveAPartBasedModel(model._path + model._model_name + ".pam");
+                    saveAPartBasedModel(model, model._path + model._model_name + ".pam");
                 }
             }
             return mutated;
@@ -2377,7 +2477,7 @@ namespace FameBase
                             this.setCurrentModel(m, -1);
                             Program.GetFormMain().updateStats();
                             this.captureScreen(imageFolder + m._model_name + ".png");
-                            saveAPartBasedModel(m._path + m._model_name + ".pam");
+                            saveAPartBasedModel(m, m._path + m._model_name + ".pam");
                         }
                     }
                 }
@@ -4842,7 +4942,7 @@ namespace FameBase
                 string category = model_name.Substring(0, model_name.LastIndexOf('_'));
                 // sample points
                 string sample_name = sampleFolder + model_name + ".poisson";
-                SamplePoints sp = loadSamplePoints(sample_name);           
+                SamplePoints sp = loadSamplePoints(sample_name, mesh.FaceCount);           
                 // weights
                 List<string> cur_wfiles = new List<string>();
                 // in case the order of files are not the same in diff folders
@@ -4942,16 +5042,15 @@ namespace FameBase
                     fss[nfs++] = fs;
                 }
 
-                Model model = new Model(mesh, sp);
-                model._funcSpaces = fss;
+                Model model = new Model(mesh, sp, fss);
                 _models.Add(model);
 
                 ++nfile;
-                //if (nfile > 1)
-                //{
-                //    // TEST
-                //    break;
-                //}
+                if (nfile > 1)
+                {
+                    // TEST
+                    break;
+                }
             }
             if (_models.Count > 0)
             {
@@ -4996,7 +5095,7 @@ namespace FameBase
             }
         }// loadFunctionSpace
 
-        private SamplePoints loadSamplePoints(string filename)
+        private SamplePoints loadSamplePoints(string filename, int totalNFaces)
         {
             if (!File.Exists(filename))
             {
@@ -5030,7 +5129,7 @@ namespace FameBase
                     int fidx = int.Parse(strs[6]);
                     faceIndex.Add(fidx);
                 }
-                SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(), faceIndex.ToArray());
+                SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(), faceIndex.ToArray(), totalNFaces);
                 return sp;
             }
         }// loadSamplePoints
