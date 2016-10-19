@@ -503,6 +503,16 @@ namespace Component
                     Common.switchXYZ_mesh(fs._mesh, 2);
                     Common.switchXYZ_mesh(fs._mesh, 2);
                 }
+                if (_SP._points != null)
+                {
+                    Common.switchXYZ_vectors(_SP._points, 2);
+                    Common.switchXYZ_vectors(_SP._points, 2);
+                    Common.switchXYZ_vectors(_SP._points, 2);
+                    Common.switchXYZ_vectors(_SP._points, 1);
+                    Common.switchXYZ_vectors(_SP._points, 2);
+                    Common.switchXYZ_vectors(_SP._points, 2);
+                }
+                _SP.updateNormals(_mesh);
             }
         }// swithXYZ
 
@@ -962,6 +972,21 @@ namespace Component
                 _fidxMap[_faceIdx[i]] = i; // the map between face idx and sample points
             }
         }
+
+        public void updateNormals(Mesh mesh)
+        {
+            if (_points == null || _faceIdx == null || mesh == null)
+            {
+                return;
+            }
+            int n = _points.Length;
+            _normals = new Vector3d[n];
+            for (int i = 0; i < n; ++i)
+            {
+                int fid = _faceIdx[i];
+                _normals[i] = mesh.getFaceNormal(fid);
+            }
+        }// updateNormals
 
         public Object clone()
         {

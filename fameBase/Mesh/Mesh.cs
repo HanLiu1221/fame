@@ -1036,7 +1036,7 @@ namespace Geometry
         public Vector3d[] computePointPCA(Vector3d[] vposes, Vector3d[] vnormals)
         {
             // return eigen values (1 vec) and eigen vectors (3 vecs)
-            int dim = Common._PCA_FEAT_DIM;
+            int dim = 4;
             Vector3d[] pcaInfo = new Vector3d[vposes.Length * dim];
             for (int i = 0; i < vposes.Length; ++i)
             {
@@ -1076,24 +1076,100 @@ namespace Geometry
             return pcaInfo;
         }// computePointsPCA
 
-        public double[] computeCurvFeatures(Vector3d[] vposes, Vector3d[] vnormals,
-            out double minCurv, out double maxCurv, out double avgCurv)
+        private double computeCurvatureAtPoint(Vector3d pos, Vector3d nor)
         {
-            double[] curvs = new double[vposes.Length];
-            minCurv = double.MaxValue;
-            maxCurv = double.MinValue;
-            avgCurv = 0;
+            int nneigs = 5;
+            int[] neigs = this.getNeighborPointsIndex(pos, nneigs);
+            Vector3d sum_offset = new Vector3d();
+            int num_offset = 0;
+            for (int j = 0; j < neigs.Length; ++j)
+            {
+                Vector3d neig_vpos = getVertexPos(neigs[j]);
+                Vector3d neig_nor = getVertexNormal(neigs[j]);
+                if (neig_nor.Dot(nor) < 0) // ignore points on hidden side
+                {
+                    neig_nor *= -1;
+                    continue;
+                }
+                Vector3d offset = (neig_vpos - pos).normalize();
+                sum_offset += offset;
+                ++num_offset;
+            }
+            double curvature = num_offset > 0 ? Math.Abs(sum_offset.Dot(nor)) / num_offset : 0;
+            return curvature;
+        }// computeCurvatureAtPoint
+
+        public double[] computeCurvFeatures(Vector3d[] vposes, Vector3d[] vnormals)
+        {
+            int dim = Common._CURV_FEAT_DIM;
+            double[] curvs = new double[vposes.Length * dim];
             for (int i = 0; i < vposes.Length; ++i)
             {
                 Vector3d vpos = vposes[i];
                 Vector3d normal = vnormals[i];
-                int[] neigs = this.getNeighborPointsIndex(vpos);
+                int nneigs = 5;
+                int[] neigs = this.getNeighborPointsIndex(vpos, nneigs);
+                double curv = computeCurvatureAtPoint(vpos, normal);
+                // neighbors
+                double maxc = double.MinValue;
+                double minc = double.MaxValue;
+                double avgc = 0;
+                for (int j = 0; j < nneigs; ++j)
+                {
+                    Vector3d vj = this.getVertexPos(neigs[j]);
+                    Vector3d nj = this.getVertexNormal(neigs[j]);
+                    double cj = computeCurvatureAtPoint(vj, nj);
+                    maxc = maxc > cj ? maxc : cj;
+                    minc = minc < cj ? minc : cj;
+                    avgc += cj;
+                }
+                avgc /= nneigs;
+                curvs[dim * i] = curv;
+                curvs[dim * i + 2] = maxc;
+                curvs[dim * i + 3] = minc;
+            }
+            return curvs;
+        }// computeCurvFeatures
+
+        private int getNearestPointInArray(Vector3d[] vposes, Vector3d v)
+        {
+            int id = -1;
+            double mind = double.MaxValue;
+            for (int i = 0; i < vposes.Length; ++i)
+            {
+                double d = (v - vposes[i]).Length();
+                if (d < mind)
+                {
+                    mind = d;
+                    id = i;
+                }
+            }
+            return id;
+        }// getNearestPointInArray
+
+        public double[] computeAvgCurvFeatures(Vector3d[] vposes, Vector3d[] vnormals)
+        {
+            double[] curvs = new double[vposes.Length];
+            int[] closedPointsIndex = new int[this.vertexCount];
+            for (int i = 0; i < vposes.Length; ++i)
+            {
+                Vector3d vpos = vposes[i];
+                Vector3d normal = vnormals[i];
+                int[] neigs = this.getNeighborPointsIndex(vpos, 1);
+                closedPointsIndex[neigs[0]] = i; 
+            }
+            int nneigs = 5;
+            for (int i = 0; i < vposes.Length; ++i)
+            {
+                Vector3d vpos = vposes[i];
+                Vector3d normal = vnormals[i];
+                int[] neigs = this.getNeighborPointsIndex(vpos, nneigs);
                 Vector3d sum_offset = new Vector3d();
                 int num_offset = 0;
                 for (int j = 0; j < neigs.Length; ++j)
                 {
-                    Vector3d neig_vpos = getVertexPos(neigs[j]);
-                    Vector3d neig_nor = getVertexNormal(neigs[j]);
+                    Vector3d neig_vpos = vposes[closedPointsIndex[neigs[j]]];
+                    Vector3d neig_nor = vnormals[closedPointsIndex[neigs[j]]];
                     if (neig_nor.Dot(normal) < 0) // ignore points on hidden side
                     {
                         neig_nor *= -1;
@@ -1103,12 +1179,9 @@ namespace Geometry
                     sum_offset += offset;
                     ++num_offset;
                 }
-                curvs[i] = num_offset > 0 ? Math.Abs(sum_offset.Dot(normal)) / num_offset : 0;
-                minCurv = minCurv < curvs[i] ? minCurv : curvs[i];
-                maxCurv = maxCurv > curvs[i] ? maxCurv : curvs[i];
-                avgCurv += curvs[i];
+                double curvature = num_offset > 0 ? Math.Abs(sum_offset.Dot(normal)) / num_offset : 0;
+                curvs[i] = curvature;
             }
-            avgCurv /= this.vertexCount;
             return curvs;
         }// computeCurvFeatures
 
@@ -1282,13 +1355,13 @@ namespace Geometry
             return hitpoint;
         }// closestIntersectionPoint
 
-        private int[] getNeighborPointsIndex(Vector3d vvec)
+        private int[] getNeighborPointsIndex(Vector3d vvec, int k)
         {
             if (_kdtree == null)
             {
                 this.buildKdtree();
             }
-            int k = 5; // maximum k nearest points
+            // maximum k nearest points
             double[] vpos = new double[3];
             vpos[0] = vvec.x;
             vpos[1] = vvec.y;

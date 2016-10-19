@@ -561,6 +561,11 @@ namespace FameBase
             foreach (Part p in _selectedParts)
             {
                 Common.switchXYZ_mesh(p._MESH, mode);
+                if (p._partSP != null)
+                {
+                    Common.switchXYZ_vectors(p._partSP._points, mode);
+                    p._partSP.updateNormals(_currModel._MESH);
+                }
                 p.fitProxy(-1);
                 p.updateOriginPos();
             }
@@ -2079,6 +2084,18 @@ namespace FameBase
                     matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
                     Object[] res = matlabOutput as Object[];
                     double[,] results = res[0] as double[,];
+                    // save the scores
+                    for (int j = 0; j < cur_kids.Count; ++j)
+                    {
+                        string filename = cur_kids[j]._path + cur_kids[j]._model_name + ".score";
+                        int ncat = results.GetLength(1);
+                        double[] scores = new double[ncat];
+                        for (int k = 0; k < ncat; ++k)
+                        {
+                            scores[k] = results[j, k];
+                        }
+                        this.saveScoreFile(filename,scores);
+                    }
                 }
                 //start += _currGen.Count;
                 parents.AddRange(cur_kids);
@@ -2107,6 +2124,33 @@ namespace FameBase
             }
         }// writeToMatlabFolder
 
+        private void saveScoreFile(string filename, double[] scores)
+        {
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int max_idx = -1;
+                double max_score = 0;
+                for (int i = 0; i < scores.Length; ++i)
+                {
+                    sw.WriteLine(scores[i].ToString());
+                    if (scores[i] > max_score)
+                    {
+                        max_score = scores[i];
+                        max_idx = i;
+                    }
+                }
+                sw.WriteLine(Common.Categories[max_idx]);
+            }
+        }
+
+        private double temp(double val)
+        {
+            if (double.IsNaN(val) || double.IsInfinity(val))
+            {
+                return 0;
+            }
+            return val;
+        }
         private void writeMatlabFile(Model model)
         {
             string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
@@ -2138,38 +2182,40 @@ namespace FameBase
                         int d = Common._POINT_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(node.funcFeat._pointFeats[i * d + j]);
+                            sb.Append(temp(node.funcFeat._pointFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._CURV_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(node.funcFeat._curvFeats[i * d + j]);
+                            sb.Append(temp(node.funcFeat._curvFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._PCA_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(node.funcFeat._pcaFeats[i * d + j]);
+                            sb.Append(temp(node.funcFeat._pcaFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._RAY_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(node.funcFeat._rayFeats[i * d + j]);
+                            sb.Append(temp(node.funcFeat._rayFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._CONVEXHULL_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(node.funcFeat._conhullFeats[i * d + j]);
+                            sb.Append(temp(node.funcFeat._conhullFeats[i * d + j]));
                             sb.Append(",");
                         }
-                        d = 1;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(node.funcFeat._cenOfMassFeats[i * d + j]);
-                            sb.Append(",");
+                            sb.Append(temp(node.funcFeat._cenOfMassFeats[i * d + j]));
+                            if (j < d - 1)
+                            {
+                                sb.Append(",");
+                            }
                         }
                         sw.WriteLine(sb.ToString());
                     }
@@ -2211,6 +2257,7 @@ namespace FameBase
                     if (model != null && model._GRAPH != null && model._GRAPH.isValid())
                     {
                         model._GRAPH.reset();
+                        model._GRAPH.recomputeSPnormals();
                         growth.Add(model);
                         // screenshot
                         this.setCurrentModel(model, -1);
@@ -2998,8 +3045,12 @@ namespace FameBase
 
         private int runMutateOrCrossover(Random rand)
         {
-            int n = 3;
+            int n = 5;
             int r = rand.Next(n);
+            if (r >= 3)
+            {
+                r = 2;
+            }
             return r;
         }// runMutateOrCrossover
 
@@ -5052,13 +5103,14 @@ namespace FameBase
                 List<string> cur_wfiles = new List<string>();
                 // in case the order of files are not the same in diff folders
                 int fid = 0;
+                string model_name_filter = model_name + "_";
                 while (fid < weightFiles.Length)
                 {
                     string weight_name = Path.GetFileName(weightFiles[fid]);
-                    if (weight_name.StartsWith(model_name))
+                    if (weight_name.StartsWith(model_name_filter))
                     {
                         // locate the weight files
-                        while (weight_name.StartsWith(model_name))
+                        while (weight_name.StartsWith(model_name_filter))
                         {
                             cur_wfiles.Add(weightFiles[fid++]);
                             if (fid >= weightFiles.Length)
@@ -5113,10 +5165,10 @@ namespace FameBase
                 while (fid < funspaceFiles.Length)
                 {
                     string func_name = Path.GetFileName(funspaceFiles[fid]);
-                    if (func_name.StartsWith(model_name))
+                    if (func_name.StartsWith(model_name_filter))
                     {
                         // locate the weight files
-                        while (func_name.StartsWith(model_name))
+                        while (func_name.StartsWith(model_name_filter))
                         {
                             fspaceFiles.Add(funspaceFiles[fid++]);
                             if (fid >= funspaceFiles.Length)
@@ -5151,11 +5203,11 @@ namespace FameBase
                 _models.Add(model);
 
                 ++nfile;
-                if (nfile > 2)
-                {
-                    // TEST
-                    break;
-                }
+                //if (nfile > 2)
+                //{
+                //    // TEST
+                //    break;
+                //}
             }
             if (_models.Count > 0)
             {

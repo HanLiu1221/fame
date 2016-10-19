@@ -24,8 +24,8 @@ namespace Geometry
         public static int _max_edge_contacts = 2; // max number of contacts between two nodes
 
         public static int _POINT_FEAT_DIM = 3;
-        public static int _CURV_FEAT_DIM = 1;
-        public static int _PCA_FEAT_DIM = 4;
+        public static int _CURV_FEAT_DIM = 4;
+        public static int _PCA_FEAT_DIM = 5;
         public static int _RAY_FEAT_DIM = 2;
         public static int _CONVEXHULL_FEAT_DIM = 2;
 
@@ -34,6 +34,11 @@ namespace Geometry
         public enum NodeRelationType { Orthogonal, Parallel, None };
 
         public enum Functionality { GROUND_TOUCHING, HUMAN_BACK, HUMAN_HIP, HAND_HOLD, HAND_PLACE, SUPPORT };
+
+
+        public static string[] Categories = {"Backpack", "Basket", "Bicycle", "Chair", "Desk", "DryingRack",
+                                         "Handcart", "Hanger", "Hook", "Shelf", "Stand", "Stroller", "Table", 
+                                         "TvBench", "Vase"};
 
         public Common() { }
 
@@ -89,6 +94,28 @@ namespace Geometry
                 }
             }
             mesh.afterUpdatePos();
+        }// switchXYZ
+
+        public static void switchXYZ_vectors(Vector3d[] vecs, int mode)
+        {
+            for (int i = 0; i < vecs.Length; ++i )
+            {
+                double x = vecs[i].x;
+                double y = vecs[i].y;
+                double z = vecs[i].z;
+                if (mode == 1)
+                {
+                    vecs[i] = new Vector3d(-y, x, z);
+                }
+                else if (mode == 2)
+                {
+                    vecs[i] = new Vector3d(-z, y, x);
+                }
+                else
+                {
+                    vecs[i] = new Vector3d(x, -z, y);
+                }
+            }
         }// switchXYZ
 
         public static bool isRayIntersectTriangle(Vector3d origin, Vector3d ray, Vector3d v1, Vector3d v2, Vector3d v3, out double hitDist)

@@ -1016,13 +1016,23 @@ namespace Component
             {
                 minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
             }
-       
-                Vector3d t = new Vector3d() - center;
-                t.y = -minCoord.y;
-                T = Matrix4d.TranslationMatrix(t);
-                this.transformAll(T);
-            
+
+            Vector3d t = new Vector3d() - center;
+            t.y = -minCoord.y;
+            T = Matrix4d.TranslationMatrix(t);
+            this.transformAll(T);
+
+            recomputeSPnormals();
         }// unify
+
+        public void recomputeSPnormals()
+        {
+            // recompute sample points normals
+            foreach (Node node in _nodes)
+            {
+                node._PART._partSP.updateNormals(node._PART._MESH);
+            }
+        }
 
         private void transformAll(Matrix4d T)
         {
@@ -1328,19 +1338,25 @@ namespace Component
 
         private void computeCurvatureFeatures()
         {
+            int dim = Common._CURV_FEAT_DIM;
             foreach (Node node in _nodes)
             {
                 Mesh mesh = node._PART._MESH;
-                double minCurv;
-                double maxCurv;
-                double avgCurv;
-                node.funcFeat._curvFeats = mesh.computeCurvFeatures(node._PART._partSP._points,
-                    node._PART._partSP._normals, out minCurv, out maxCurv, out avgCurv);
+                node.funcFeat._curvFeats = mesh.computeCurvFeatures(node._PART._partSP._points, node._PART._partSP._normals);
+                // 
+                double[] curvatures = mesh.computeAvgCurvFeatures(node._PART._partSP._points, node._PART._partSP._normals);
+                int n = node.funcFeat._curvFeats.Length / dim;
+                for (int i = 0; i < n; ++i)
+                {
+                    node.funcFeat._curvFeats[dim * i + 1] = curvatures[i];
+                }
             }
         }// computeCurvatureFeatures
 
         private void computePCAFeatures()
         {
+            int dim = Common._PCA_FEAT_DIM;
+            int d = 4;
             foreach (Node node in _nodes)
             {
                 Mesh mesh = node._PART._MESH;
@@ -1348,26 +1364,25 @@ namespace Component
                     node._PART._partSP._points,
                     node._PART._partSP._normals);
                 int n = pcaInfo.Length / 4; // #vertex
-                int d = 5;
-                node.funcFeat._pcaFeats = new double[n * d];
+                node.funcFeat._pcaFeats = new double[n * dim];
                 for (int i = 0; i < n; ++i)
                 {
-                    double lamda1 = pcaInfo[i * 4].x;
-                    double lamda2 = pcaInfo[i * 4].y;
-                    double lamda3 = pcaInfo[i * 4].z;
+                    double lamda1 = pcaInfo[i * d].x;
+                    double lamda2 = pcaInfo[i * d].y;
+                    double lamda3 = pcaInfo[i * d].z;
                     double sum = lamda1 + lamda2 + lamda3;
                     double L = (lamda1 - lamda2) / sum; // linear-shaped
                     double P = 2 * (lamda2 - lamda3) / sum; // planar-shaped
                     double S = 3 * lamda3 / sum; // spherical-shaped
-                    Vector3d axis_0 = pcaInfo[i * 4 + 1];
-                    Vector3d axis_2 = pcaInfo[i * 4 + 3];
+                    Vector3d axis_0 = pcaInfo[i * d + 1];
+                    Vector3d axis_2 = pcaInfo[i * d + 3];
                     double alpha_0 = Math.Acos(axis_0.Dot(Common.uprightVec));
                     double alpha_2 = Math.Acos(axis_2.Dot(Common.uprightVec));
-                    node.funcFeat._pcaFeats[i * d] = L;
-                    node.funcFeat._pcaFeats[i * d + 1] = P;
-                    node.funcFeat._pcaFeats[i * d + 2] = S;
-                    node.funcFeat._pcaFeats[i * d + 3] = alpha_2;
-                    node.funcFeat._pcaFeats[i * d + 4] = alpha_0;
+                    node.funcFeat._pcaFeats[i * dim] = L;
+                    node.funcFeat._pcaFeats[i * dim + 1] = P;
+                    node.funcFeat._pcaFeats[i * dim + 2] = S;
+                    node.funcFeat._pcaFeats[i * dim + 3] = alpha_2;
+                    node.funcFeat._pcaFeats[i * dim + 4] = alpha_0;
                 }
             }
         }// computePCAFeatures
