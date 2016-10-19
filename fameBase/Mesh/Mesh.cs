@@ -1425,6 +1425,14 @@ namespace Geometry
             }
         }
 
+        public int EdgeCount
+        {
+            get
+            {
+                return singleHalfEdges == null ? 0 : singleHalfEdges.Length; ;
+            }
+        }
+
         public int FaceCount
         {
             get

@@ -373,15 +373,15 @@ namespace FameBase
             sb.Append("#part:   ");
             sb.Append(_currModel._NPARTS.ToString());
 
-            //if (_currModel._MESH != null)
-            //{
-            //    sb.Append("\n#vertex:   ");
-            //    sb.Append(_currModel._MESH.VertexCount.ToString());
-            //    sb.Append("\n#edge:     ");
-            //    sb.Append(_currModel._MESH.Edges.Length.ToString());
-            //    sb.Append("\n#face:    ");
-            //    sb.Append(_currModel._MESH.FaceCount.ToString());
-            //}
+            if (_currModel._MESH != null)
+            {
+                sb.Append("\n#vertex:   ");
+                sb.Append(_currModel._MESH.VertexCount.ToString());
+                sb.Append("\n#edge:     ");
+                sb.Append(_currModel._MESH.EdgeCount.ToString());
+                sb.Append("\n#face:    ");
+                sb.Append(_currModel._MESH.FaceCount.ToString());
+            }
             sb.Append("\n#selected parts: ");
             sb.Append(_selectedParts.Count.ToString());
             sb.Append("\n#human poses: ");
@@ -2046,7 +2046,11 @@ namespace FameBase
             {
                 Random rand = new Random();
                 _mutateOrCross = runMutateOrCrossover(rand);
-                //_mutateOrCross = 2;
+                //if (i == 0)
+                //{
+                //    _mutateOrCross = 1;
+                //}
+                _mutateOrCross = 1;
                 List<Model> cur_par = new List<Model>(parents);
                 List<Model> cur_kids = new List<Model>();
                 string runstr = "Run ";
@@ -2072,32 +2076,32 @@ namespace FameBase
                         break;
                 }
                 // functionality test
-                if (cur_kids.Count > 0)
-                {
-                    List<string> filenames = new List<string>();
-                    for (int j = 0; j < cur_kids.Count; ++j)
-                    {
-                        filenames.Add(cur_kids[j]._model_name);
-                        this.writeMatlabFile(cur_kids[j]);
-                    }
-                    writeToMatlabFolder(filenames);
-                    matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
-                    Object[] res = matlabOutput as Object[];
-                    double[,] results = res[0] as double[,];
-                    // save the scores
-                    for (int j = 0; j < cur_kids.Count; ++j)
-                    {
-                        string filename = cur_kids[j]._path + cur_kids[j]._model_name + ".score";
-                        int ncat = results.GetLength(1);
-                        double[] scores = new double[ncat];
-                        for (int k = 0; k < ncat; ++k)
-                        {
-                            scores[k] = results[j, k];
-                        }
-                        this.saveScoreFile(filename,scores);
-                    }
-                }
-                //start += _currGen.Count;
+                //if (cur_kids.Count > 0)
+                //{
+                //    List<string> filenames = new List<string>();
+                //    for (int j = 0; j < cur_kids.Count; ++j)
+                //    {
+                //        filenames.Add(cur_kids[j]._model_name);
+                //        this.writeMatlabFile(cur_kids[j]);
+                //    }
+                //    writeToMatlabFolder(filenames);
+                //    matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
+                //    Object[] res = matlabOutput as Object[];
+                //    double[,] results = res[0] as double[,];
+                //    // save the scores
+                //    for (int j = 0; j < cur_kids.Count; ++j)
+                //    {
+                //        string filename = cur_kids[j]._path + cur_kids[j]._model_name + ".score";
+                //        int ncat = results.GetLength(1);
+                //        double[] scores = new double[ncat];
+                //        for (int k = 0; k < ncat; ++k)
+                //        {
+                //            scores[k] = results[j, k];
+                //        }
+                //        this.saveScoreFile(filename,scores);
+                //    }
+                //}
+                start = _currGen.Count;
                 parents.AddRange(cur_kids);
                 _currGen.AddRange(cur_kids);
                 ++_currIter;
@@ -2235,7 +2239,7 @@ namespace FameBase
             {
                 Directory.CreateDirectory(path);
             }
-            for (int i = 0; i < models.Count; ++i)
+            for (int i = start; i < models.Count; ++i)
             {
                 Model m1 = models[i];
                 // jump those have already been visited
@@ -2245,8 +2249,21 @@ namespace FameBase
                     j = 0;
                 }
                 int idx = 0;
-                for (; j < models.Count; ++j)
+                int randomj = rand.Next(models.Count - j);
+                int maxw = 5;
+                int w = 0;
+                while (randomj == i && w < maxw)
                 {
+                    randomj = rand.Next(models.Count - j);
+                    ++w;
+                }
+                j = randomj;
+                if (j == i)
+                {
+                    continue;
+                }
+                //for (; j < models.Count; ++j)
+                //{
                     if (i == j)
                     {
                         continue;
@@ -2266,7 +2283,7 @@ namespace FameBase
                         saveAPartBasedModel(model, model._path + model._model_name + ".pam", false);
                         ++idx;
                     }
-                }
+                //}
             }
             return growth;
         }// runGrowth

@@ -1236,6 +1236,7 @@ namespace Component
 
         private bool isLoseOriginalFunctionality()
         {
+            return false;
             List<Common.Functionality> funs = this.getGraphFuncs();
             if (funs.Count < _origin_funcs.Count)
             {
