@@ -710,5 +710,10 @@ namespace FameBase
             this.glViewer.setRenderOption(6);
         }
 
+        private void savePointFeatureToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.savePointFeature();
+        }
+
 	}// Interface
 }// namespace
