@@ -673,6 +673,16 @@ namespace FameBase
             }
         }// saveModelInfo
 
+        public void savePointFeature()
+        {
+            if (_currModel == null || _currModel._GRAPH == null)
+            {
+                return;
+            }
+            _currModel._GRAPH.computeFeatures();
+            this.writeMatlabFile(this._currModel);
+        }
+
         private void saveSamplePointsInfo(SamplePoints sp, string filename)
         {
             using (StreamWriter sw = new StreamWriter(filename))
@@ -2014,14 +2024,11 @@ namespace FameBase
             Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
 
             // CALL MATLAB
-            MLApp.MLApp matlab = new MLApp.MLApp();
-            matlab.Execute(@"cd E:\Projects\fame\externalCLR\code_for_prediction_only");
-            Object matlabOutput = null;
-            //matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
-            //Object[] res = matlabOutput as Object[];
-            //double[,] results = res[0] as double[,];
-            // for capturing screen
-            
+            //MLApp.MLApp matlab = new MLApp.MLApp();
+            //matlab.Execute(@"cd E:\Projects\fame\externalCLR\code_for_prediction_only");
+            //Object matlabOutput = null;
+
+            // for capturing screen            
             this.reloadView();
 
             List<Model> parents = new List<Model>();
@@ -2076,15 +2083,15 @@ namespace FameBase
                         break;
                 }
                 // functionality test
-                //if (cur_kids.Count > 0)
-                //{
-                //    List<string> filenames = new List<string>();
-                //    for (int j = 0; j < cur_kids.Count; ++j)
-                //    {
-                //        filenames.Add(cur_kids[j]._model_name);
-                //        this.writeMatlabFile(cur_kids[j]);
-                //    }
-                //    writeToMatlabFolder(filenames);
+                if (cur_kids.Count > 0)
+                {
+                    List<string> filenames = new List<string>();
+                    for (int j = 0; j < cur_kids.Count; ++j)
+                    {
+                        filenames.Add(cur_kids[j]._model_name);
+                        this.writeMatlabFile(cur_kids[j]);
+                    }
+                    writeToMatlabFolder(filenames);
                 //    matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
                 //    Object[] res = matlabOutput as Object[];
                 //    double[,] results = res[0] as double[,];
@@ -2098,9 +2105,9 @@ namespace FameBase
                 //        {
                 //            scores[k] = results[j, k];
                 //        }
-                //        this.saveScoreFile(filename,scores);
+                //        this.saveScoreFile(filename, scores);
                 //    }
-                //}
+                }
                 start = _currGen.Count;
                 parents.AddRange(cur_kids);
                 _currGen.AddRange(cur_kids);
@@ -2155,8 +2162,13 @@ namespace FameBase
             }
             return val;
         }
+
         private void writeMatlabFile(Model model)
         {
+            if (model == null)
+            {
+                return;
+            }
             string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
             string pois_file = folder + model._model_name + ".poisson";
             using (StreamWriter sw = new StreamWriter(pois_file))
@@ -2642,6 +2654,7 @@ namespace FameBase
                         {
                             m._GRAPH.unify();
                             crossed.Add(m);
+                            if (crossed.Count > 15) { return crossed; }
                             // screenshot
                             this.setCurrentModel(m, -1);
                             Program.GetFormMain().updateStats();
