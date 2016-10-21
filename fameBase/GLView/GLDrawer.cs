@@ -832,6 +832,23 @@ namespace FameBase
             Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         }// drawMeshVertices_color
 
+        public static void drawPoints(Vector3d[] points, Color[] colors)
+        {
+            Gl.glEnable(Gl.GL_POINT_SMOOTH);
+            Gl.glPointSize(4.0f);
+            Gl.glBegin(Gl.GL_POINTS);
+            for (int i = 0; i < points.Length; ++i)
+            {
+                Color c = colors[i];
+                Gl.glColor3ub(c.R, c.G, c.B);
+                Gl.glVertex3d(points[i].x, points[i].y, points[i].z);
+            }
+            Gl.glEnd();
+            Gl.glDisable(Gl.GL_POINT_SMOOTH);
+            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        }// drawMeshVertices_color
+
+
         public static void drawMeshEdge(Mesh m)
         {
             if (m == null) return;

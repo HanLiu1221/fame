@@ -115,6 +115,7 @@ namespace FameBase
         private bool isDrawAxes = false;
         private bool isDrawQuad = false;
         private bool isDrawFuncSpace = false;
+        public bool isDrawSamplePoints = false;
 
         public bool enableDepthTest = true;
         public bool showVanishingLines = true;
@@ -556,6 +557,49 @@ namespace FameBase
             }
         }// saveMergedObj
 
+        public void saveMeshForModel(Model model, string filename)
+        {
+            if (!Directory.Exists(Path.GetDirectoryName(filename)))
+            {
+                MessageBox.Show("Directory does not exist!");
+                return;
+            }
+            if (model == null || model._GRAPH == null)
+            {
+                return;
+            }
+
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int start = 0;
+                foreach (Node node in model._GRAPH._NODES)
+                {
+                    Mesh mesh = node._PART._MESH;
+
+                    // vertex
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                    {
+                        s = "v";
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        sw.WriteLine(s);
+                    }
+                    // face
+                    for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                    {
+                        s = "f";
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        sw.WriteLine(s);
+                    }
+                    start += mesh.VertexCount;
+                }
+            }
+        }// saveMeshForModel
+
         public void switchXYZ(int mode)
         {
             foreach (Part p in _selectedParts)
@@ -652,6 +696,8 @@ namespace FameBase
             {
                 string modelSPname = foldername + model_name + ".sp";
                 this.saveSamplePointsInfo(model._SP, modelSPname);
+                string spColorname = foldername + model_name + ".color";
+                this.saveSamplePointsColor(model._SP.blendColors, spColorname);
             }
             for (int i = 0; i < _currModel._NPARTS; ++i)
             {
@@ -663,6 +709,8 @@ namespace FameBase
                 }
                 string partSPname = foldername + "part_" + i.ToString() + ".sp";
                 this.saveSamplePointsInfo(ipart._partSP, partSPname);
+                string spColorname = foldername + "part_" + i.ToString() + ".color";
+                this.saveSamplePointsColor(ipart._partSP.blendColors, spColorname);
                 // part mesh index info
                 if (isOriginalModel)
                 {
@@ -698,6 +746,22 @@ namespace FameBase
                 }
             }
         }// saveSamplePointsInfo
+
+        private void saveSamplePointsColor(Color[] colors, string filename)
+        {
+            if (colors == null || colors.Length == 0)
+            {
+                return;
+            }
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                for (int j = 0; j < colors.Length; ++j)
+                {
+                    Color c = colors[j];
+                    sw.WriteLine(c.R.ToString() + " " + c.G.ToString() + " " + c.B.ToString());
+                }
+            }
+        }// saveSamplePointsColor
 
         private void savePartMeshIndexInfo(Part part, string filename)
         {
@@ -798,6 +862,8 @@ namespace FameBase
                 // mesh sample points
                 string modelSPname = partfolder + "\\" + modelName + ".sp";
                 SamplePoints sp = this.loadSamplePoints(modelSPname, modelMesh == null ? 0 : modelMesh.FaceCount);
+                string spColorname = partfolder + "\\" + modelName + ".color";
+                sp.blendColors = this.loadSamplePointsColors(spColorname);
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -2169,10 +2235,15 @@ namespace FameBase
             {
                 return;
             }
-            string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
+            string meshFileName = this.foldername + "\\" + model._model_name + ".obj";
+            this.saveMeshForModel(model, meshFileName);
+
+            //string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
+            string folder = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
             string pois_file = folder + model._model_name + ".poisson";
             using (StreamWriter sw = new StreamWriter(pois_file))
             {
+                int start = 0;
                 foreach (Part part in model._PARTS)
                 {
                     SamplePoints sp = part._partSP;
@@ -2182,10 +2253,13 @@ namespace FameBase
                         sw.Write(vector3dToString(vpos, " ", " "));
                         Vector3d vnor = sp._normals[j];
                         sw.Write(vector3dToString(vnor, " ", " "));
-                        sw.WriteLine(sp._faceIdx[j].ToString());
+                        int fidx = start + sp._faceIdx[j];
+                        sw.WriteLine(fidx.ToString());
                     }
+                    start += part._MESH.FaceCount;
                 }
             }
+
             string feat_file = folder + model._model_name + "_point_feature.csv";
             using (StreamWriter sw = new StreamWriter(feat_file))
             {
@@ -5159,6 +5233,11 @@ namespace FameBase
                 // multiple weights file w.r.t. patches
                 double[,] weights_patches = new double[cur_wfiles.Count, nFaceFromSP];
                 Color[,] colors_patches = new Color[cur_wfiles.Count, nFaceFromSP];
+                sp.blendColors = new Color[nFaceFromSP];
+                for (int c = 0; c < nFaceFromSP; ++c)
+                {
+                    sp.blendColors[c] = Color.White;
+                }
                 foreach (string wfile in cur_wfiles)
                 {
                     double minw;
@@ -5183,6 +5262,10 @@ namespace FameBase
                         byte[] color_array = GLDrawer.getColorArray(color);
                         mesh.setFaceColor(color_array, sp._faceIdx[i]);
                         colors_patches[npatch, i] = GLDrawer.getColorRGB(color_array);
+                        if (weights[i] > 0.0001)
+                        {
+                            sp.blendColors[i] = colors_patches[npatch, i];
+                        }
                     }
                     ++npatch;
                 }
@@ -5229,7 +5312,7 @@ namespace FameBase
                     fss[nfs++] = fs;
                 }
 
-                Model model = new Model(mesh, sp, fss);
+                Model model = new Model(mesh, sp, fss, nfile == 0);
                 _models.Add(model);
 
                 ++nfile;
@@ -5352,6 +5435,33 @@ namespace FameBase
             }
             return weights.ToArray();
         }// loadPatchWeight
+
+        private Color[] loadSamplePointsColors(string filename)
+        {
+            if (!File.Exists(filename))
+            {
+                MessageBox.Show("Sample point color file does not exist.");
+                return null;
+            }
+            List<Color> colors = new List<Color>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separators);
+                    if (strs.Length < 3)
+                    {
+                        MessageBox.Show("Wrong color file");
+                        return null;
+                    }
+                    Color c = Color.FromArgb(byte.Parse(strs[0]), byte.Parse(strs[1]), byte.Parse(strs[2]));
+                    colors.Add(c);
+                }
+                return colors.ToArray();
+            }
+        }// loadSamplePointsColors
 
         public void loadPointWeight_0(string filename)
         {
@@ -5757,6 +5867,10 @@ namespace FameBase
             {
                 drawParts(_currModel._PARTS);
             }
+            if (this.isDrawSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
+            {
+                GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP.blendColors);
+            }
         }// drawModel
 
         private void drawParts(List<Part> parts)
@@ -5811,6 +5925,10 @@ namespace FameBase
                         GLDrawer.drawBoundingboxEdges(part._BOUNDINGBOX, part._COLOR);
                     }
                 }
+                //if (this.isDrawSamplePoints && part._partSP != null && part._partSP._points != null)
+                //{
+                //    GLDrawer.drawPoints(part._partSP._points, part._partSP.blendColors);
+                //}
             }
         }//drawParts
 

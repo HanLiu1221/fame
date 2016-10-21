@@ -686,7 +686,7 @@ namespace FameBase
 
         private void loadIconPatchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\patch data" };
             if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
             {
                 string foldername = dialog.SelectedPath;
@@ -713,6 +713,12 @@ namespace FameBase
         private void savePointFeatureToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.savePointFeature();
+        }
+
+        private void samplePointsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.samplePointsToolStripMenuItem.Checked = !this.samplePointsToolStripMenuItem.Checked;
+            this.glViewer.isDrawSamplePoints = this.samplePointsToolStripMenuItem.Checked;
         }
 
 	}// Interface

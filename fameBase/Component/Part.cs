@@ -73,7 +73,8 @@ namespace Component
             setRandomColorToNodes();
             this.fitProxy(-1);
             // build SP
-            this.buildSamplePoints(fIndex, sp);
+            //this.buildSamplePoints(fIndex, sp);
+            _partSP = sp;
         }
 
         public Part(Mesh m, Prism bbox, bool fit)
@@ -96,11 +97,11 @@ namespace Component
             for (int i = 0; i < fIndex.Length; ++i)
             {
                 int fid = fIndex[i]; // the face index in the model mesh
-                if (sp._fidxMap[fid] == -1) {
+                if (sp._fidxMapSPid[fid] == -1) {
                     // no sample point on this face
                     continue;
                 }
-                int spidx = sp._fidxMap[fid]; // the index of sample/normal points of the given index
+                int spidx = sp._fidxMapSPid[fid]; // the index of sample/normal points of the given index
                 samplePoints.Add(sp._points[spidx]);
                 normals.Add(sp._normals[spidx]);
                 inPartFaceIndex.Add(i); // map to the new face index of the part mesh
@@ -424,13 +425,16 @@ namespace Component
             //this.mergeNearbyParts();
         }
 
-        public Model(Mesh mesh, SamplePoints sp, FuncSpace[] fss)
+        public Model(Mesh mesh, SamplePoints sp, FuncSpace[] fss, bool transfer)
         {
             _mesh = mesh;
             _SP = sp;
             _funcSpaces = fss;
-            this.swithXYZ();
-            this.unifyMeshFuncSpace();
+            if (transfer)
+            {
+                this.swithXYZ();
+                this.unifyMeshFuncSpace();
+            }
             this.initializeParts();
             //this.mergeNearbyParts();
         }
@@ -705,8 +709,26 @@ namespace Component
                     {
                         fIndex.Add(f);
                     }
+                }                
+                List<Vector3d> samplePnts = new List<Vector3d>();
+                List<Vector3d> samplePntsNormals = new List<Vector3d>();
+                List<int> samplePntsFaceIdxs = new List<int>();
+                int[] faceIdxs = fIndex.ToArray();
+                if (_SP != null && _SP._fidxMapSPid != null)
+                {
+                    for (int f = 0; f < fIndex.Count; ++f)
+                    {
+                        int spId = _SP._fidxMapSPid[faceIdxs[f]];
+                        if (spId != -1)
+                        {
+                            samplePnts.Add(_SP._points[spId]);
+                            samplePntsNormals.Add(_SP._normals[spId]);
+                            samplePntsFaceIdxs.Add(f);
+                        }
+                    }
                 }
-                Part part = new Part(_mesh, vIndex.ToArray(), vPos, fIndex.ToArray(), _SP);
+                SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), samplePntsFaceIdxs.ToArray(), faceIdxs.Length);
+                Part part = new Part(_mesh, vIndex.ToArray(), vPos, faceIdxs, sp);
                 _parts.Add(part);
             }
         }// initializeParts
@@ -819,10 +841,40 @@ namespace Component
                 fIndex.AddRange(part._FACEVERTEXINDEX.ToList());
                 _parts.Remove(part);
             }
-            Part newPart = new Part(_mesh, vIndex.ToArray(), vPos.ToArray(), fIndex.ToArray(), _SP);
+            SamplePoints sp = groupSamplePoints(parts);
+            Part newPart = new Part(_mesh, vIndex.ToArray(), vPos.ToArray(), fIndex.ToArray(), sp);
             _parts.Add(newPart);
             return newPart;
         }// group parts
+
+        private SamplePoints groupSamplePoints(List<Part> parts)
+        {
+            int start = 0;
+            List<Vector3d> samplePnts = new List<Vector3d>();
+            List<Vector3d> samplePntsNormals = new List<Vector3d>();
+            List<int> samplePntsFaceIdxs = new List<int>();
+            foreach (Part part in parts)
+            {
+                if (part._partSP == null)
+                {
+                    return null;
+                }
+
+                if (part._partSP != null && part._partSP._fidxMapSPid != null)
+                {
+                    samplePnts.AddRange(part._partSP._points);
+                    samplePntsNormals.AddRange(part._partSP._normals);
+                    for (int f = 0; f < part._partSP._faceIdx.Length; ++f)
+                    {
+                        int fid = part._partSP._faceIdx[f];
+                        samplePntsFaceIdxs.Add(start + fid);
+                    }
+                }
+                start += part._MESH.FaceCount;
+            }
+            SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), samplePntsFaceIdxs.ToArray(), start + 1);
+            return sp;
+        }// groupSamplePoints
 
         public Part groupPartsSeparately(List<Part> parts)
         {
@@ -950,7 +1002,8 @@ namespace Component
         public int[] _faceIdx; // assoicated with the mesh in a model or part
         public double[,] _weights; // w.r.t. npatches
         public Color[,] _colors;
-        public int[] _fidxMap;
+        public Color[] blendColors;
+        public int[] _fidxMapSPid;
         private int _totalNfaces = 0;
 
         public SamplePoints() { }
@@ -966,10 +1019,14 @@ namespace Component
 
         private void buildFaceSamplePointsMap(int totalFaces)
         {
-            _fidxMap = new int[totalFaces];
+            _fidxMapSPid = new int[totalFaces];
+            for (int i = 0; i < totalFaces; ++i)
+            {
+                _fidxMapSPid[i] = -1;
+            }
             for (int i = 0; i < _faceIdx.Length; ++i)
             {
-                _fidxMap[_faceIdx[i]] = i; // the map between face idx and sample points
+                _fidxMapSPid[_faceIdx[i]] = i; // the map between face idx and sample points
             }
         }
 
