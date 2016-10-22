@@ -62,6 +62,11 @@ namespace Geometry
             return minv;
         }// getMinCoord
 
+        public static Vector3d transformVector(Vector3d v, Matrix4d T)
+        {
+            return (T * new Vector4d(v, 1)).ToVector3D();
+        }// transformVector
+
         public static bool isValidNumber(double x)
         {
             return (!double.IsNaN(x) && !double.IsInfinity(x));

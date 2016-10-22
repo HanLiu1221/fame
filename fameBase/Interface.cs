@@ -686,7 +686,8 @@ namespace FameBase
 
         private void loadIconPatchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\patch data" };
+            //var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\patch data" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data" };
             if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
             {
                 string foldername = dialog.SelectedPath;

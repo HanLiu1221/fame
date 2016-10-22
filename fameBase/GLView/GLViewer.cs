@@ -697,7 +697,7 @@ namespace FameBase
                 string modelSPname = foldername + model_name + ".sp";
                 this.saveSamplePointsInfo(model._SP, modelSPname);
                 string spColorname = foldername + model_name + ".color";
-                this.saveSamplePointsColor(model._SP.blendColors, spColorname);
+                this.saveSamplePointsColor(model._SP._blendColors, spColorname);
             }
             for (int i = 0; i < _currModel._NPARTS; ++i)
             {
@@ -710,7 +710,7 @@ namespace FameBase
                 string partSPname = foldername + "part_" + i.ToString() + ".sp";
                 this.saveSamplePointsInfo(ipart._partSP, partSPname);
                 string spColorname = foldername + "part_" + i.ToString() + ".color";
-                this.saveSamplePointsColor(ipart._partSP.blendColors, spColorname);
+                this.saveSamplePointsColor(ipart._partSP._blendColors, spColorname);
                 // part mesh index info
                 if (isOriginalModel)
                 {
@@ -863,7 +863,7 @@ namespace FameBase
                 string modelSPname = partfolder + "\\" + modelName + ".sp";
                 SamplePoints sp = this.loadSamplePoints(modelSPname, modelMesh == null ? 0 : modelMesh.FaceCount);
                 string spColorname = partfolder + "\\" + modelName + ".color";
-                sp.blendColors = this.loadSamplePointsColors(spColorname);
+                sp._blendColors = this.loadSamplePointsColors(spColorname);
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -2238,8 +2238,8 @@ namespace FameBase
             string meshFileName = this.foldername + "\\" + model._model_name + ".obj";
             this.saveMeshForModel(model, meshFileName);
 
-            //string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
-            string folder = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+            string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
+            //string folder = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
             string pois_file = folder + model._model_name + ".poisson";
             using (StreamWriter sw = new StreamWriter(pois_file))
             {
@@ -5233,10 +5233,10 @@ namespace FameBase
                 // multiple weights file w.r.t. patches
                 double[,] weights_patches = new double[cur_wfiles.Count, nFaceFromSP];
                 Color[,] colors_patches = new Color[cur_wfiles.Count, nFaceFromSP];
-                sp.blendColors = new Color[nFaceFromSP];
+                sp._blendColors = new Color[nFaceFromSP];
                 for (int c = 0; c < nFaceFromSP; ++c)
                 {
-                    sp.blendColors[c] = Color.White;
+                    sp._blendColors[c] = Color.White;
                 }
                 foreach (string wfile in cur_wfiles)
                 {
@@ -5264,7 +5264,7 @@ namespace FameBase
                         colors_patches[npatch, i] = GLDrawer.getColorRGB(color_array);
                         if (weights[i] > 0.0001)
                         {
-                            sp.blendColors[i] = colors_patches[npatch, i];
+                            sp._blendColors[i] = colors_patches[npatch, i];
                         }
                     }
                     ++npatch;
@@ -5399,7 +5399,12 @@ namespace FameBase
                     int fidx = int.Parse(strs[6]);
                     faceIndex.Add(fidx);
                 }
-                SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(), faceIndex.ToArray(), totalNFaces);
+                // colors
+                string colorName = filename.Substring(0, filename.LastIndexOf("."));
+                colorName += ".color";
+                Color[] colors = loadSamplePointsColors(colorName);
+                SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(),
+                    faceIndex.ToArray(), colors, totalNFaces);
                 return sp;
             }
         }// loadSamplePoints
@@ -5867,10 +5872,10 @@ namespace FameBase
             {
                 drawParts(_currModel._PARTS);
             }
-            if (this.isDrawSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
-            {
-                GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP.blendColors);
-            }
+            //if (this.isDrawSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
+            //{
+            //    GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP._blendColors);
+            //}
         }// drawModel
 
         private void drawParts(List<Part> parts)
@@ -5925,10 +5930,10 @@ namespace FameBase
                         GLDrawer.drawBoundingboxEdges(part._BOUNDINGBOX, part._COLOR);
                     }
                 }
-                //if (this.isDrawSamplePoints && part._partSP != null && part._partSP._points != null)
-                //{
-                //    GLDrawer.drawPoints(part._partSP._points, part._partSP.blendColors);
-                //}
+                if (this.isDrawSamplePoints && part._partSP != null && part._partSP._points != null)
+                {
+                    GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors);
+                }
             }
         }//drawParts
 

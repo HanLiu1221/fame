@@ -94,6 +94,7 @@ namespace Component
             List<Vector3d> samplePoints = new List<Vector3d>();
             List<Vector3d> normals = new List<Vector3d>();
             List<int> inPartFaceIndex = new List<int>();
+            List<Color> colors = new List<Color>();
             for (int i = 0; i < fIndex.Length; ++i)
             {
                 int fid = fIndex[i]; // the face index in the model mesh
@@ -105,8 +106,10 @@ namespace Component
                 samplePoints.Add(sp._points[spidx]);
                 normals.Add(sp._normals[spidx]);
                 inPartFaceIndex.Add(i); // map to the new face index of the part mesh
+                colors.Add(sp._blendColors[spidx]);
             }
-            _partSP = new SamplePoints(samplePoints.ToArray(), normals.ToArray(), inPartFaceIndex.ToArray(), fIndex.Length);
+            _partSP = new SamplePoints(samplePoints.ToArray(), normals.ToArray(), inPartFaceIndex.ToArray(), 
+                colors.ToArray(), fIndex.Length);
         }// extractSamplePoints
 
         public Object Clone()
@@ -301,6 +304,14 @@ namespace Component
             _mesh.Transform(T);
             _boundingbox.setMaxMinScaleFromMesh(_mesh.MaxCoord, _mesh.MinCoord);
             _boundingbox.Transform(T);
+            if (_partSP != null)
+            {
+                for (int i = 0; i < _partSP._points.Length; ++i)
+                {
+                    _partSP._points[i] = Common.transformVector(_partSP._points[i], T);
+                    _partSP._normals[i] = Common.transformVector(_partSP._normals[i], T);
+                }
+            }
         }
 
         public void TransformFromOrigin(Matrix4d T)
@@ -713,6 +724,7 @@ namespace Component
                 List<Vector3d> samplePnts = new List<Vector3d>();
                 List<Vector3d> samplePntsNormals = new List<Vector3d>();
                 List<int> samplePntsFaceIdxs = new List<int>();
+                List<Color> samplePntsColors = new List<Color>();
                 int[] faceIdxs = fIndex.ToArray();
                 if (_SP != null && _SP._fidxMapSPid != null)
                 {
@@ -724,12 +736,20 @@ namespace Component
                             samplePnts.Add(_SP._points[spId]);
                             samplePntsNormals.Add(_SP._normals[spId]);
                             samplePntsFaceIdxs.Add(f);
+                            samplePntsColors.Add(_SP._blendColors[spId]);
                         }
                     }
                 }
-                SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), samplePntsFaceIdxs.ToArray(), faceIdxs.Length);
+                SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), 
+                    samplePntsFaceIdxs.ToArray(), samplePntsColors.ToArray(), faceIdxs.Length);
                 Part part = new Part(_mesh, vIndex.ToArray(), vPos, faceIdxs, sp);
                 _parts.Add(part);
+            }
+            // test
+            int nsps = 0;
+            foreach (Part part in _parts)
+            {
+                nsps += part._partSP._points.Length;
             }
         }// initializeParts
 
@@ -853,6 +873,7 @@ namespace Component
             List<Vector3d> samplePnts = new List<Vector3d>();
             List<Vector3d> samplePntsNormals = new List<Vector3d>();
             List<int> samplePntsFaceIdxs = new List<int>();
+            List<Color> samplePntsColors = new List<Color>();
             foreach (Part part in parts)
             {
                 if (part._partSP == null)
@@ -864,6 +885,7 @@ namespace Component
                 {
                     samplePnts.AddRange(part._partSP._points);
                     samplePntsNormals.AddRange(part._partSP._normals);
+                    samplePntsColors.AddRange(part._partSP._blendColors);
                     for (int f = 0; f < part._partSP._faceIdx.Length; ++f)
                     {
                         int fid = part._partSP._faceIdx[f];
@@ -872,7 +894,8 @@ namespace Component
                 }
                 start += part._MESH.FaceCount;
             }
-            SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), samplePntsFaceIdxs.ToArray(), start + 1);
+            SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), 
+                samplePntsFaceIdxs.ToArray(), samplePntsColors.ToArray(), start + 1);
             return sp;
         }// groupSamplePoints
 
@@ -1002,18 +1025,20 @@ namespace Component
         public int[] _faceIdx; // assoicated with the mesh in a model or part
         public double[,] _weights; // w.r.t. npatches
         public Color[,] _colors;
-        public Color[] blendColors;
+        public Color[] _blendColors;
         public int[] _fidxMapSPid;
         private int _totalNfaces = 0;
 
         public SamplePoints() { }
 
-        public SamplePoints(Vector3d[] points, Vector3d[] normals, int[] faceIdxs, int totalNFaces)
+        public SamplePoints(Vector3d[] points, Vector3d[] normals, int[] faceIdxs,
+            Color[] blendColors, int totalNFaces)
         {
             _points = points;
             _normals = normals;
             _faceIdx = faceIdxs;
             _totalNfaces = totalNFaces;
+            _blendColors = blendColors;
             buildFaceSamplePointsMap(totalNFaces);
         }
 
@@ -1027,6 +1052,15 @@ namespace Component
             for (int i = 0; i < _faceIdx.Length; ++i)
             {
                 _fidxMapSPid[_faceIdx[i]] = i; // the map between face idx and sample points
+            }
+            // test 
+            int n = 0;
+            for (int i = 0; i < totalFaces; ++i)
+            {
+                if (_fidxMapSPid[i] != -1)
+                {
+                    ++n;
+                }
             }
         }
 
@@ -1050,7 +1084,8 @@ namespace Component
             Vector3d[] cpoints = _points.Clone() as Vector3d[];
             Vector3d[] cnormals = _normals.Clone() as Vector3d[];
             int[] cfaceIdx = _faceIdx.Clone() as int[];
-            SamplePoints sp = new SamplePoints(cpoints, cnormals, cfaceIdx, _totalNfaces);
+            Color[] ccolors = _blendColors.Clone() as Color[];
+            SamplePoints sp = new SamplePoints(cpoints, cnormals, cfaceIdx, ccolors, _totalNfaces);
             return sp;
         }
     }// SamplePoint
