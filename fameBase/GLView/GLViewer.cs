@@ -638,7 +638,7 @@ namespace FameBase
             // comments start with "%"
             string meshDir = filename.Substring(0, filename.LastIndexOf('.')) + "\\";
             int loc = filename.LastIndexOf('\\');
-            string modelName = filename.Substring(loc, filename.LastIndexOf('.') - loc);
+            string modelName = filename.Substring(loc + 1, filename.LastIndexOf('.') - loc - 1);
             if (!Directory.Exists(meshDir))
             {
                 Directory.CreateDirectory(meshDir);
@@ -663,7 +663,7 @@ namespace FameBase
                     // save mesh
                     string meshName = "part_" + i.ToString() + ".obj";
                     this.saveObj(ipart._MESH, meshDir + meshName, ipart._COLOR);
-                    sw.WriteLine(modelName + "\\" + meshName);
+                    sw.WriteLine("\\" + modelName + "\\" + meshName);
                 }
                 if (model._GRAPH != null)
                 {
@@ -686,11 +686,16 @@ namespace FameBase
                 MessageBox.Show("Mesh is null.");
                 return;
             }
-            if (isOriginalModel)
+            string meshName = foldername + model_name + ".obj";
+            if (model._NPARTS > 0)
             {
-                string meshName = foldername + model_name + ".obj";
+                this.saveObj(null, meshName, GLDrawer.MeshColor);
+            }
+            else
+            {
                 this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
             }
+            this.saveObj(null, meshName, GLDrawer.MeshColor);
             // save mesh sample points & normals & faceindex
             if (model._SP != null)
             {
@@ -2090,9 +2095,9 @@ namespace FameBase
             Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
 
             // CALL MATLAB
-            //MLApp.MLApp matlab = new MLApp.MLApp();
-            //matlab.Execute(@"cd E:\Projects\fame\externalCLR\code_for_prediction_only");
-            //Object matlabOutput = null;
+            MLApp.MLApp matlab = new MLApp.MLApp();
+            matlab.Execute(@"cd E:\Projects\fame\externalCLR\code_for_prediction_only");
+            Object matlabOutput = null;
 
             // for capturing screen            
             this.reloadView();
@@ -2158,21 +2163,21 @@ namespace FameBase
                         this.writeMatlabFile(cur_kids[j]);
                     }
                     writeToMatlabFolder(filenames);
-                //    matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
-                //    Object[] res = matlabOutput as Object[];
-                //    double[,] results = res[0] as double[,];
-                //    // save the scores
-                //    for (int j = 0; j < cur_kids.Count; ++j)
-                //    {
-                //        string filename = cur_kids[j]._path + cur_kids[j]._model_name + ".score";
-                //        int ncat = results.GetLength(1);
-                //        double[] scores = new double[ncat];
-                //        for (int k = 0; k < ncat; ++k)
-                //        {
-                //            scores[k] = results[j, k];
-                //        }
-                //        this.saveScoreFile(filename, scores);
-                //    }
+                    matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
+                    Object[] res = matlabOutput as Object[];
+                    double[,] results = res[0] as double[,];
+                    // save the scores
+                    for (int j = 0; j < cur_kids.Count; ++j)
+                    {
+                        string filename = cur_kids[j]._path + cur_kids[j]._model_name + ".score";
+                        int ncat = results.GetLength(1);
+                        double[] scores = new double[ncat];
+                        for (int k = 0; k < ncat; ++k)
+                        {
+                            scores[k] = results[j, k];
+                        }
+                        this.saveScoreFile(filename, scores);
+                    }
                 }
                 start = _currGen.Count;
                 parents.AddRange(cur_kids);
@@ -2220,15 +2225,6 @@ namespace FameBase
             }
         }
 
-        private double temp(double val)
-        {
-            if (double.IsNaN(val) || double.IsInfinity(val))
-            {
-                return 0;
-            }
-            return val;
-        }
-
         private void writeMatlabFile(Model model)
         {
             if (model == null)
@@ -2263,45 +2259,47 @@ namespace FameBase
             string feat_file = folder + model._model_name + "_point_feature.csv";
             using (StreamWriter sw = new StreamWriter(feat_file))
             {
+                int npnts = 0;
                 foreach (Node node in model._GRAPH._NODES)
                 {
                     int n = node._PART._partSP._points.Length;
+                    npnts += n;
                     for (int i = 0; i < n; ++i)
                     {
                         StringBuilder sb = new StringBuilder();
                         int d = Common._POINT_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(temp(node.funcFeat._pointFeats[i * d + j]));
+                            sb.Append(Common.correct(node.funcFeat._pointFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._CURV_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(temp(node.funcFeat._curvFeats[i * d + j]));
+                            sb.Append(Common.correct(node.funcFeat._curvFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._PCA_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(temp(node.funcFeat._pcaFeats[i * d + j]));
+                            sb.Append(Common.correct(node.funcFeat._pcaFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._RAY_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(temp(node.funcFeat._rayFeats[i * d + j]));
+                            sb.Append(Common.correct(node.funcFeat._rayFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._CONVEXHULL_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(temp(node.funcFeat._conhullFeats[i * d + j]));
+                            sb.Append(Common.correct(node.funcFeat._conhullFeats[i * d + j]));
                             sb.Append(",");
                         }
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(temp(node.funcFeat._cenOfMassFeats[i * d + j]));
+                            sb.Append(Common.correct(node.funcFeat._cenOfMassFeats[i * d + j]));
                             if (j < d - 1)
                             {
                                 sb.Append(",");
@@ -5167,7 +5165,7 @@ namespace FameBase
         //######### end-Part-based #########//
 
         //######### Data & feature from ICON2 paper #########//
-        public void loadPatchInfo(string foldername)
+        public void loadPatchInfo(string foldername, bool isOriginal)
         {
             this.foldername = foldername;
             string modelFolder = foldername + "\\meshes\\";
@@ -5196,7 +5194,14 @@ namespace FameBase
             {
                 // model
                 string model_name = Path.GetFileName(modelstr);
-                model_name = model_name.Substring(0, model_name.LastIndexOf('_'));
+                if (isOriginal)
+                {
+                    model_name = model_name.Substring(0, model_name.LastIndexOf('_'));
+                }
+                else
+                {
+                    model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
+                }
                 Mesh mesh = new Mesh(modelstr, false);
                 // category name
                 string category = model_name.Substring(0, model_name.LastIndexOf('_'));
@@ -5253,7 +5258,7 @@ namespace FameBase
                     {
                         weights_patches[npatch, i] = weights[i];
                         double ratio = (weights[i] - minw) / wdiff;
-                        if (ratio < Common._thresh)
+                        if (ratio < 0.4)
                         {
                             continue;
                         }
@@ -5262,10 +5267,7 @@ namespace FameBase
                         byte[] color_array = GLDrawer.getColorArray(color);
                         mesh.setFaceColor(color_array, sp._faceIdx[i]);
                         colors_patches[npatch, i] = GLDrawer.getColorRGB(color_array);
-                        if (weights[i] > 0.0001)
-                        {
-                            sp._blendColors[i] = colors_patches[npatch, i];
-                        }
+                        sp._blendColors[i] = colors_patches[npatch, i];
                     }
                     ++npatch;
                 }
@@ -5312,7 +5314,7 @@ namespace FameBase
                     fss[nfs++] = fs;
                 }
 
-                Model model = new Model(mesh, sp, fss, nfile == 0);
+                Model model = new Model(mesh, sp, fss, isOriginal);
                 _models.Add(model);
 
                 ++nfile;
@@ -5445,7 +5447,7 @@ namespace FameBase
         {
             if (!File.Exists(filename))
             {
-                MessageBox.Show("Sample point color file does not exist.");
+                //MessageBox.Show("Sample point color file does not exist.");
                 return null;
             }
             List<Color> colors = new List<Color>();
@@ -5930,9 +5932,16 @@ namespace FameBase
                         GLDrawer.drawBoundingboxEdges(part._BOUNDINGBOX, part._COLOR);
                     }
                 }
-                if (this.isDrawSamplePoints && part._partSP != null && part._partSP._points != null)
+                
+            }
+            if (this.isDrawSamplePoints)
+            {
+                foreach (Part part in parts)
                 {
-                    GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors);
+                    if (part._partSP != null && part._partSP._points != null)
+                    {
+                        GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors);
+                    }
                 }
             }
         }//drawParts

@@ -98,15 +98,18 @@ namespace Component
             for (int i = 0; i < fIndex.Length; ++i)
             {
                 int fid = fIndex[i]; // the face index in the model mesh
-                if (sp._fidxMapSPid[fid] == -1) {
+                if (!sp._fidxMapSPid.ContainsKey(fid)) {
                     // no sample point on this face
                     continue;
                 }
-                int spidx = sp._fidxMapSPid[fid]; // the index of sample/normal points of the given index
-                samplePoints.Add(sp._points[spidx]);
-                normals.Add(sp._normals[spidx]);
-                inPartFaceIndex.Add(i); // map to the new face index of the part mesh
-                colors.Add(sp._blendColors[spidx]);
+                List<int> spidxs = sp._fidxMapSPid[fid]; // the index of sample/normal points of the given index
+                foreach (int spid in spidxs)
+                {
+                    samplePoints.Add(sp._points[spid]);
+                    normals.Add(sp._normals[spid]);
+                    inPartFaceIndex.Add(i); // map to the new face index of the part mesh
+                    colors.Add(sp._blendColors[spid]);
+                }
             }
             _partSP = new SamplePoints(samplePoints.ToArray(), normals.ToArray(), inPartFaceIndex.ToArray(), 
                 colors.ToArray(), fIndex.Length);
@@ -436,12 +439,12 @@ namespace Component
             //this.mergeNearbyParts();
         }
 
-        public Model(Mesh mesh, SamplePoints sp, FuncSpace[] fss, bool transfer)
+        public Model(Mesh mesh, SamplePoints sp, FuncSpace[] fss, bool needNormalize)
         {
             _mesh = mesh;
             _SP = sp;
             _funcSpaces = fss;
-            if (transfer)
+            if (needNormalize)
             {
                 this.swithXYZ();
                 this.unifyMeshFuncSpace();
@@ -569,7 +572,7 @@ namespace Component
                     Vector3d ori = _SP._points[i];
                     _SP._points[i] = (T * new Vector4d(ori, 1)).ToVector3D();
                     ori = _SP._normals[i];
-                    _SP._normals[i] = (T * new Vector4d(ori, 1)).ToVector3D();
+                    _SP._normals[i] = (T * new Vector4d(ori, 1)).ToVector3D().normalize();
                 }
                 foreach (FuncSpace fs in _funcSpaces)
                 {
@@ -730,13 +733,17 @@ namespace Component
                 {
                     for (int f = 0; f < fIndex.Count; ++f)
                     {
-                        int spId = _SP._fidxMapSPid[faceIdxs[f]];
-                        if (spId != -1)
+                        if (!_SP._fidxMapSPid.ContainsKey(faceIdxs[f]))
                         {
-                            samplePnts.Add(_SP._points[spId]);
-                            samplePntsNormals.Add(_SP._normals[spId]);
+                            continue;
+                        }
+                        List<int> spIds = _SP._fidxMapSPid[faceIdxs[f]];
+                        foreach(int spid in spIds)
+                        {
+                            samplePnts.Add(_SP._points[spid]);
+                            samplePntsNormals.Add(_SP._normals[spid]);
                             samplePntsFaceIdxs.Add(f);
-                            samplePntsColors.Add(_SP._blendColors[spId]);
+                            samplePntsColors.Add(_SP._blendColors[spid]);
                         }
                     }
                 }
@@ -1026,7 +1033,7 @@ namespace Component
         public double[,] _weights; // w.r.t. npatches
         public Color[,] _colors;
         public Color[] _blendColors;
-        public int[] _fidxMapSPid;
+        public Dictionary<int, List<int>> _fidxMapSPid;
         private int _totalNfaces = 0;
 
         public SamplePoints() { }
@@ -1044,23 +1051,15 @@ namespace Component
 
         private void buildFaceSamplePointsMap(int totalFaces)
         {
-            _fidxMapSPid = new int[totalFaces];
-            for (int i = 0; i < totalFaces; ++i)
-            {
-                _fidxMapSPid[i] = -1;
-            }
+            // a face can have multiple sample points, or no sample point
+            _fidxMapSPid = new Dictionary<int,List<int>>();
             for (int i = 0; i < _faceIdx.Length; ++i)
             {
-                _fidxMapSPid[_faceIdx[i]] = i; // the map between face idx and sample points
-            }
-            // test 
-            int n = 0;
-            for (int i = 0; i < totalFaces; ++i)
-            {
-                if (_fidxMapSPid[i] != -1)
+                if (!_fidxMapSPid.ContainsKey(_faceIdx[i]))
                 {
-                    ++n;
+                    _fidxMapSPid.Add(_faceIdx[i], new List<int>());
                 }
+                _fidxMapSPid[_faceIdx[i]].Add(i); // the map between face idx and sample points
             }
         }
 
@@ -1075,7 +1074,10 @@ namespace Component
             for (int i = 0; i < n; ++i)
             {
                 int fid = _faceIdx[i];
-                _normals[i] = mesh.getFaceNormal(fid);
+                Vector3d A = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3]);
+                Vector3d B = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3 + 1]);
+                Vector3d C = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3 + 2]);
+                _normals[i] = Common.getBarycentricCoord(A, B, C, _points[i]).normalize();
             }
         }// updateNormals
 

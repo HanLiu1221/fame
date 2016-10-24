@@ -67,9 +67,42 @@ namespace Geometry
             return (T * new Vector4d(v, 1)).ToVector3D();
         }// transformVector
 
+        public static Vector3d getBarycentricCoord(Vector3d A, Vector3d B, Vector3d C, Vector3d P)
+        {
+            Vector3d v0 = C - A;
+            Vector3d v1 = B - A;
+            Vector3d v2 = P - A;
+
+            double d00 = v0.Dot(v0);
+            double d01 = v0.Dot(v1);
+            double d02 = v0.Dot(v2);
+            double d11 = v1.Dot(v1);
+            double d12 = v1.Dot(v2);
+
+            double invDenom = 1.0 / (d00 * d11 - d01 * d01);
+            double u = (d11 * d02 - d01 * d12) * invDenom;
+            double v = (d00 * d12 - d01 * d02) * invDenom;
+            double w = 1 - u - v;
+
+            //// Check if point is in triangle
+            //return (u >= 0) && (v >= 0) && (u + v <= 1)
+
+            Vector3d coord = (w * A + u * B + v * C) / 3;
+            return coord;
+        }// getBarycentricCoord
+
         public static bool isValidNumber(double x)
         {
             return (!double.IsNaN(x) && !double.IsInfinity(x));
+        }// isValidNumber
+
+        public static double correct(double x)
+        {
+            if (!isValidNumber(x))
+            {
+                x = 0;
+            }
+            return x;
         }// isValidNumber
 
         public static double PointDistToPlane(Vector3d pos, Vector3d center, Vector3d normal)

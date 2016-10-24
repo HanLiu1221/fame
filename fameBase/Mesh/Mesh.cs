@@ -1101,32 +1101,12 @@ namespace Geometry
 
         public double[] computeCurvFeatures(Vector3d[] vposes, Vector3d[] vnormals)
         {
-            int dim = Common._CURV_FEAT_DIM;
-            double[] curvs = new double[vposes.Length * dim];
+            double[] curvs = new double[vposes.Length];
             for (int i = 0; i < vposes.Length; ++i)
             {
                 Vector3d vpos = vposes[i];
                 Vector3d normal = vnormals[i];
-                int nneigs = 5;
-                int[] neigs = this.getNeighborPointsIndex(vpos, nneigs);
-                double curv = computeCurvatureAtPoint(vpos, normal);
-                // neighbors
-                double maxc = double.MinValue;
-                double minc = double.MaxValue;
-                double avgc = 0;
-                for (int j = 0; j < nneigs; ++j)
-                {
-                    Vector3d vj = this.getVertexPos(neigs[j]);
-                    Vector3d nj = this.getVertexNormal(neigs[j]);
-                    double cj = computeCurvatureAtPoint(vj, nj);
-                    maxc = maxc > cj ? maxc : cj;
-                    minc = minc < cj ? minc : cj;
-                    avgc += cj;
-                }
-                avgc /= nneigs;
-                curvs[dim * i] = curv;
-                curvs[dim * i + 2] = maxc;
-                curvs[dim * i + 3] = minc;
+                curvs[i] = computeCurvatureAtPoint(vpos, normal);
             }
             return curvs;
         }// computeCurvFeatures
@@ -1147,9 +1127,9 @@ namespace Geometry
             return id;
         }// getNearestPointInArray
 
-        public double[] computeAvgCurvFeatures(Vector3d[] vposes, Vector3d[] vnormals)
+        public double[] computeAvgCurvFeatures(Vector3d[] vposes, Vector3d[] vnormals, double[] curvatures, int dim)
         {
-            double[] curvs = new double[vposes.Length];
+            double[] curvs = new double[vposes.Length * dim];
             int[] closedPointsIndex = new int[this.vertexCount];
             for (int i = 0; i < vposes.Length; ++i)
             {
@@ -1161,26 +1141,20 @@ namespace Geometry
             int nneigs = 5;
             for (int i = 0; i < vposes.Length; ++i)
             {
-                Vector3d vpos = vposes[i];
-                Vector3d normal = vnormals[i];
-                int[] neigs = this.getNeighborPointsIndex(vpos, nneigs);
-                Vector3d sum_offset = new Vector3d();
-                int num_offset = 0;
+                double maxc = double.MinValue;
+                double minc = double.MaxValue;
+                double avgc = 0;
+                int[] neigs = this.getNeighborPointsIndex(vposes[i], nneigs);
                 for (int j = 0; j < neigs.Length; ++j)
                 {
-                    Vector3d neig_vpos = vposes[closedPointsIndex[neigs[j]]];
-                    Vector3d neig_nor = vnormals[closedPointsIndex[neigs[j]]];
-                    if (neig_nor.Dot(normal) < 0) // ignore points on hidden side
-                    {
-                        neig_nor *= -1;
-                        continue;
-                    }
-                    Vector3d offset = (neig_vpos - vpos).normalize();
-                    sum_offset += offset;
-                    ++num_offset;
+                    double jcurv = curvatures[closedPointsIndex[neigs[j]]];
+                    maxc = maxc > jcurv ? maxc : jcurv;
+                    minc = minc < jcurv ? minc : jcurv;
+                    avgc += jcurv;
                 }
-                double curvature = num_offset > 0 ? Math.Abs(sum_offset.Dot(normal)) / num_offset : 0;
-                curvs[i] = curvature;
+                curvs[i * dim] = avgc / neigs.Length;
+                curvs[i * dim + 1] = maxc;
+                curvs[i * dim + 2] = minc;
             }
             return curvs;
         }// computeCurvFeatures
@@ -1294,10 +1268,14 @@ namespace Geometry
             int dim = Common._RAY_FEAT_DIM;
             double[] rayDists = new double[vposes.Length * dim];
             double maxdist = double.MinValue;
+            double distThres = 0.01;
+            // using the maximum dist of the mesh
+            double maxMeshDist = getMaxdist();
             for (int i = 0; i < vposes.Length; ++i)
             {
                 Vector3d ivec = vposes[i];
                 Vector3d inor = vnormals[i];
+                //ivec = ivec + distThres * inor;
                 int fidx = -1;
                 Vector3d hitpos = closestIntersectionPoint(ivec, inor, out fidx);
                 double dist = (ivec - hitpos).Length();
@@ -1307,23 +1285,43 @@ namespace Geometry
                 }
                 else
                 {
-                    rayDists[i * dim] = dist;
-                    if (dist < maxdist)
-                    {
-                        maxdist = dist;
-                    }
+                    rayDists[i * dim] = dist / maxMeshDist;
+                    //rayDists[i * dim] = dist;
+                    //if (dist < maxdist)
+                    //{
+                    //    maxdist = dist;
+                    //}
                 }
                 double cosv = inor.Dot(Common.uprightVec);
                 cosv = Common.cutoff(cosv, -1.0, 1.0);
                 double angle = Math.Acos(cosv) / Math.PI;
                 rayDists[i * dim + 1] = Common.cutoff(angle, 0.0, 1.0);
             }
-            for (int i = 0; i < vposes.Length; ++i)
-            {
-                rayDists[i * dim] /= maxdist;
-            }
+            //for (int i = 0; i < vposes.Length; ++i)
+            //{
+            //    if (rayDists[i * dim] <= maxdist)
+            //    {
+            //        rayDists[i * dim] /= maxdist;
+            //    }
+            //}
             return rayDists;
         }// computeRadDist
+
+        private double getMaxdist()
+        {
+            double maxd = double.MinValue;
+            for (int i = 0; i < this.vertexCount - 1; ++i)
+            {
+                Vector3d ipos = this.getVertexPos(i);
+                for (int j = i + 1; j < this.vertexCount; ++j)
+                {
+                    Vector3d jpos = this.getVertexPos(j);
+                    double d = (ipos - jpos).Length();
+                    maxd = maxd > d ? maxd : d;
+                }
+            }
+            return maxd;
+        }// getMaxdist
 
         public Vector3d closestIntersectionPoint(Vector3d ray_origin, Vector3d ray_dir, out int faceIdx)
         {

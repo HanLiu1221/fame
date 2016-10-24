@@ -196,8 +196,8 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\mixer_4" };
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data\models" }; 
+            //var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\mixer_4" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data\models" }; 
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -655,11 +655,13 @@ namespace FameBase
         private void refitcyToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.refit_by_cylinder();
+            this.glViewer.Refresh();
         }
 
         private void refitcbToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.refit_by_cuboid();
+            this.glViewer.Refresh();
         }
 
         private void importShapeNetToolStripMenuItem_Click(object sender, EventArgs e)
@@ -682,17 +684,6 @@ namespace FameBase
         {
             //this.mesh_name.Text = this.glViewer.prevMeshClass();
             this.mesh_name.Text = this.glViewer.prevModel();
-        }
-
-        private void loadIconPatchToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\patch data" };
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data" };
-            if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
-            {
-                string foldername = dialog.SelectedPath;
-                this.glViewer.loadPatchInfo(foldername);
-            }
         }
 
         private void loadFunctionlityModelToolStripMenuItem_Click(object sender, EventArgs e)
@@ -720,6 +711,29 @@ namespace FameBase
         {
             this.samplePointsToolStripMenuItem.Checked = !this.samplePointsToolStripMenuItem.Checked;
             this.glViewer.isDrawSamplePoints = this.samplePointsToolStripMenuItem.Checked;
+            this.glViewer.Refresh();
+        }
+
+        private void loadOriPatchToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            //var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\patch data" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data" };
+            if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
+            {
+                string foldername = dialog.SelectedPath;
+                this.glViewer.loadPatchInfo(foldername, true);
+            }
+        }
+
+        private void loadOptPatchToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            //var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\patch data" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data" };
+            if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
+            {
+                string foldername = dialog.SelectedPath;
+                this.glViewer.loadPatchInfo(foldername, false);
+            }
         }
 
 	}// Interface
