@@ -395,7 +395,7 @@ namespace FameBase
                 sb.Append(_currModel._GRAPH._NEdges.ToString());
             }
             sb.Append("\n#iter: " + _currIter.ToString() + " ");
-            string mc = _mutateOrCross == 0 ? "mutate" : (_mutateOrCross == 1 ? "crossover" : "growth");
+            string mc = _mutateOrCross == -1 ? "" : (_mutateOrCross == 0 ? "mutate" : (_mutateOrCross == 1 ? "crossover" : "growth"));
             sb.Append(mc);
             return sb.ToString();
         }// getStats
@@ -686,7 +686,7 @@ namespace FameBase
                 MessageBox.Show("Mesh is null.");
                 return;
             }
-            string meshName = foldername + model_name + ".obj";
+            string meshName = model._path + "\\" + model_name + ".obj";
             if (model._NPARTS > 0)
             {
                 this.saveObj(null, meshName, GLDrawer.MeshColor);
@@ -695,7 +695,6 @@ namespace FameBase
             {
                 this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
             }
-            this.saveObj(null, meshName, GLDrawer.MeshColor);
             // save mesh sample points & normals & faceindex
             if (model._SP != null)
             {
@@ -1000,12 +999,14 @@ namespace FameBase
             this.clearHighlights();
             string[] files = Directory.GetFiles(segfolder);
             int idx = 0;
+            Program.writeToConsole("Loading all " + files.Length.ToString() + " models...");
             foreach (string file in files)
             {
                 if (!file.EndsWith("pam"))
                 {
                     continue;
                 }
+                Program.writeToConsole("Loading Model info @" + (idx+1).ToString() + "...");
                 Model m = loadOnePartBasedModel(file);
                 if (m != null)
                 {
@@ -2096,8 +2097,10 @@ namespace FameBase
 
             // CALL MATLAB
             MLApp.MLApp matlab = new MLApp.MLApp();
-            matlab.Execute(@"cd E:\Projects\fame\externalCLR\code_for_prediction_only");
+            string exeStr = "cd " + Interface.MATLAB_PATH;
+            matlab.Execute(exeStr);
             Object matlabOutput = null;
+            matlab.Feval("clearData", 0, out matlabOutput);
 
             // for capturing screen            
             this.reloadView();
@@ -2110,6 +2113,7 @@ namespace FameBase
                 parents.Add(mv._MODEL);
             }
             _currGenModelViewers.Clear();
+
             // add user selected models
             if (_currIter > 0)
             {
@@ -2117,7 +2121,6 @@ namespace FameBase
             }
             parents.AddRange(_currGen);
 
-            // 
             int maxIter = 5;
             int start = 0;
             for (int i = 0; i < maxIter; ++i)
@@ -2196,7 +2199,7 @@ namespace FameBase
 
         private void writeToMatlabFolder(List<string> strs)
         {
-            string filename = @"E:\Projects\fame\externalCLR\code_for_prediction_only\\shapeFileNames.txt";
+            string filename = Interface.MATLAB_PATH + "\\shapeFileNames.txt";
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 for (int i = 0; i < strs.Count; ++i)
@@ -2210,18 +2213,13 @@ namespace FameBase
         {
             using (StreamWriter sw = new StreamWriter(filename))
             {
-                int max_idx = -1;
-                double max_score = 0;
                 for (int i = 0; i < scores.Length; ++i)
                 {
                     sw.WriteLine(scores[i].ToString());
-                    if (scores[i] > max_score)
-                    {
-                        max_score = scores[i];
-                        max_idx = i;
-                    }
                 }
-                sw.WriteLine(Common.Categories[max_idx]);
+                string tops = Common.getTopPredictedCategories(scores);
+                sw.WriteLine(tops);
+                Program.writeToConsole(tops);
             }
         }
 
@@ -2231,11 +2229,10 @@ namespace FameBase
             {
                 return;
             }
-            string meshFileName = this.foldername + "\\" + model._model_name + ".obj";
+            string meshFileName = model._path + model._model_name + ".obj";
             this.saveMeshForModel(model, meshFileName);
 
-            string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
-            //string folder = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+            string folder = Interface.MATLAB_INPUT_PATH;
             string pois_file = folder + model._model_name + ".poisson";
             using (StreamWriter sw = new StreamWriter(pois_file))
             {
@@ -5895,8 +5892,11 @@ namespace FameBase
                     {
                         GLDrawer.drawMeshFace(part._MESH, GLDrawer.HighlightBboxColor, false);
                     }
-                    else
+                    else if (this.isDrawSamplePoints)
                     {
+                        GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
+                    } 
+                    else {
                         GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
                     }
                     //GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);

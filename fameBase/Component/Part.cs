@@ -487,7 +487,7 @@ namespace Component
             maxS = maxS > scale.z ? maxS : scale.z;
             maxS = 1.0 / maxS;
             Vector3d center = (maxCoord + minCoord) / 2;
-            center.y = minCoord.y;
+            center.y = 0;
             center = new Vector3d() - center;
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
