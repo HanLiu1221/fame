@@ -695,7 +695,6 @@ namespace FameBase
             {
                 this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
             }
-            this.saveObj(null, meshName, GLDrawer.MeshColor);
             // save mesh sample points & normals & faceindex
             if (model._SP != null)
             {
@@ -2110,6 +2109,9 @@ namespace FameBase
                 parents.Add(mv._MODEL);
             }
             _currGenModelViewers.Clear();
+
+            _currIter = 0;
+
             // add user selected models
             if (_currIter > 0)
             {
@@ -2231,7 +2233,7 @@ namespace FameBase
             {
                 return;
             }
-            string meshFileName = this.foldername + "\\" + model._model_name + ".obj";
+            string meshFileName = model._path + model._model_name + ".obj";
             this.saveMeshForModel(model, meshFileName);
 
             string folder = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
