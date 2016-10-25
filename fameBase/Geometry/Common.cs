@@ -223,6 +223,26 @@ namespace Geometry
             return res;
         }// vectorArrayToDoubleArray
 
+        public static string getTopPredictedCategories(double[] scores)
+        {
+            int n = scores.Length;
+            int mtop = 4;
+            int[] index = new int[n];
+            for (int i = 0; i < n; ++i)
+            {
+                index[i] = i;
+            }
+            Array.Sort(index, (a, b) => scores[a].CompareTo(scores[b]));
+            StringBuilder sb = new StringBuilder();
+
+            for (int i = 0; i < mtop; ++i)
+            {
+                sb.Append(Categories[index[i]]);
+                sb.Append(" ");
+            }
+            return sb.ToString();
+        }// getTopPredictedCategories
+
         public static double cutoff(double val, double lower, double upper)
         {
             if (val < lower)

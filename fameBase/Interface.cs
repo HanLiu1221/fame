@@ -20,6 +20,17 @@ namespace FameBase
 		}
 
         /*********Var**********/
+        // test paths
+        //private string MODLES_PATH = @"E:\Projects\fame\data_sets\patch data\models";
+        //private string PATCH_PATH = @"E:\Projects\fame\data_sets\patch data";
+        //private string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only";
+        //public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
+
+        public static string MODLES_PATH = @"D:\fame\data_sets\patch data\models";
+        public static string PATCH_PATH = @"D:\fame\data_sets\patch data";
+        public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only";
+        public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+
         private void open3D_Click(object sender, EventArgs e)
         {
             // clear existing models and load a new one
@@ -196,8 +207,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\mixer_4" };
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data\models" }; 
+            var dialog = new FolderBrowserDialog() { SelectedPath = MODLES_PATH };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -716,8 +726,7 @@ namespace FameBase
 
         private void loadOriPatchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\patch data" };
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = PATCH_PATH };
             if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
             {
                 string foldername = dialog.SelectedPath;
@@ -727,8 +736,7 @@ namespace FameBase
 
         private void loadOptPatchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //var dialog = new FolderBrowserDialog() { SelectedPath = @"D:\fame\data_sets\patch data" };
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch data" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = PATCH_PATH };
             if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
             {
                 string foldername = dialog.SelectedPath;
