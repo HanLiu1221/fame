@@ -88,6 +88,7 @@ namespace Component
             }
         }
 
+
         private void buildSamplePoints(int[] fIndex, SamplePoints sp)
         {
             int nsamples = fIndex.Length;
@@ -430,6 +431,7 @@ namespace Component
         public Model(List<Part> parts)
         {
             _parts = parts;
+            composeMesh();
         }
 
         public Model(Mesh mesh)
@@ -497,6 +499,35 @@ namespace Component
                 p.Transform(Q);
             }
         }// unify
+
+        private void composeMesh()
+        {
+            List<double> vertexPos = new List<double>();
+            List<int> faceIndex = new List<int>();
+            int start = 0;
+            foreach (Part part in _parts)
+            {
+                Mesh mesh = part._MESH;
+
+                // vertex
+                for (int i = 0; i < mesh.VertexCount; ++i)
+                {
+                    Vector3d ipos = mesh.getVertexPos(i);
+                    vertexPos.Add(ipos.x);
+                    vertexPos.Add(ipos.y);
+                    vertexPos.Add(ipos.z);
+                }
+                // face
+                for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                {
+                    faceIndex.Add(mesh.FaceVertexIndex[j++]);
+                    faceIndex.Add(mesh.FaceVertexIndex[j++]);
+                    faceIndex.Add(mesh.FaceVertexIndex[j++]);
+                }
+                start += mesh.VertexCount;
+            }
+            _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
+        }
 
         private void swithXYZ()
         {

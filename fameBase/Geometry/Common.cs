@@ -348,8 +348,22 @@ namespace Geometry
                 funcs.Add(Functionality.HAND_PLACE);
                 funcs.Add(Functionality.GROUND_TOUCHING);
             }
+            if (cat == Category.Stand)
+            {
+                funcs.Add(Functionality.GROUND_TOUCHING);
+            }
             return funcs;
         }// getFunctionalityFromCategory
+
+        public static List<Functionality> getFunctionalityFromCategories(List<Category> cats)
+        {
+            List<Functionality> funcs = new List<Functionality>();
+            foreach (Category cat in cats)
+            {
+                funcs.AddRange(getFunctionalityFromCategory(cat));
+            }
+            return funcs;
+        }// getFunctionalityFromCategories
 
         public static double cutoff(double val, double lower, double upper)
         {

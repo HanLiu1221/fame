@@ -599,6 +599,45 @@ namespace FameBase
             }
         }// saveMeshForModel
 
+        public void saveMeshForModel(List<Node> nodes, string filename)
+        {
+            if (!Directory.Exists(Path.GetDirectoryName(filename)))
+            {
+                MessageBox.Show("Directory does not exist!");
+                return;
+            }
+
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int start = 0;
+                foreach (Node node in nodes)
+                {
+                    Mesh mesh = node._PART._MESH;
+
+                    // vertex
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                    {
+                        s = "v";
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        sw.WriteLine(s);
+                    }
+                    // face
+                    for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                    {
+                        s = "f";
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        sw.WriteLine(s);
+                    }
+                    start += mesh.VertexCount;
+                }
+            }
+        }// saveMeshForModel
+
         public void switchXYZ(int mode)
         {
             foreach (Part p in _selectedParts)
@@ -680,7 +719,7 @@ namespace FameBase
                 return;
             }
             // save mesh
-            string meshName = model._path + "\\" + model_name + ".obj";
+            string meshName = model._path +  model_name + "\\" + model_name + ".obj";
             if (model._NPARTS > 0)
             {
                 this.saveObj(null, meshName, GLDrawer.MeshColor);
@@ -2146,11 +2185,11 @@ namespace FameBase
             {
                 Random rand = new Random();
                 _mutateOrCross = runMutateOrCrossover(rand);
-                //if (i == 0)
-                //{
-                //    _mutateOrCross = 1;
-                //}
-                _mutateOrCross = 1;
+                if (i == 2)
+                {
+                    _mutateOrCross = 1;
+                }
+                //_mutateOrCross = 1;
                 List<Model> cur_par = new List<Model>(parents);
                 List<Model> cur_kids = new List<Model>();
                 string runstr = "Run ";
@@ -2185,6 +2224,7 @@ namespace FameBase
                         this.writeMatlabFile(cur_kids[j]);
                     }
                     writeToMatlabFolder(filenames);
+                    matlabOutput = null;
                     matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
                     Object[] res = matlabOutput as Object[];
                     double[,] results = res[0] as double[,];
@@ -2234,7 +2274,7 @@ namespace FameBase
             {
                 for (int i = 0; i < scores.Length; ++i)
                 {
-                    sw.WriteLine(scores[i].ToString());
+                    sw.WriteLine(Common.getCategoryName(i) + " " + scores[i].ToString());
                 }
                 string tops = Common.getTopPredictedCategories(scores);
                 sw.WriteLine(tops);
@@ -2248,17 +2288,32 @@ namespace FameBase
             {
                 return;
             }
+            // select those patches with certain functioanlity for a category
+            List<Common.Functionality> funcs = Common.getFunctionalityFromCategories(model._GRAPH._ff._cats);
+            List<Node> testPatches = new List<Node>();
+            foreach (Node node in model._GRAPH._NODES)
+            {
+                List<Common.Functionality> funcs_node = node._funcs;
+                foreach (Common.Functionality f in funcs_node)
+                {
+                    if (funcs.Contains(f))
+                    {
+                        testPatches.Add(node);
+                        break;
+                    }
+                }
+            }
             string meshFileName = model._path + model._model_name + ".obj";
-            this.saveMeshForModel(model, meshFileName);
+            this.saveMeshForModel(testPatches, meshFileName);
 
             string folder = Interface.MATLAB_INPUT_PATH;
             string pois_file = folder + model._model_name + ".poisson";
             using (StreamWriter sw = new StreamWriter(pois_file))
             {
                 int start = 0;
-                foreach (Part part in model._PARTS)
+                foreach (Node node in testPatches)
                 {
-                    SamplePoints sp = part._partSP;
+                    SamplePoints sp = node._PART._partSP;
                     for (int j = 0; j < sp._points.Length; ++j)
                     {
                         Vector3d vpos = sp._points[j];
@@ -2268,7 +2323,7 @@ namespace FameBase
                         int fidx = start + sp._faceIdx[j];
                         sw.WriteLine(fidx.ToString());
                     }
-                    start += part._MESH.FaceCount;
+                    start += node._PART._MESH.FaceCount;
                 }
             }
 
@@ -2276,7 +2331,7 @@ namespace FameBase
             using (StreamWriter sw = new StreamWriter(feat_file))
             {
                 int npnts = 0;
-                foreach (Node node in model._GRAPH._NODES)
+                foreach (Node node in testPatches)
                 {
                     int n = node._PART._partSP._points.Length;
                     npnts += n;
