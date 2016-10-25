@@ -153,13 +153,12 @@ namespace FameBase
         private Quad2d highlightQuad;
         private Camera camera;
         private Shader shader;
-        public static uint pencilTextureId, crayonTextureId, inkTextureId, waterColorTextureId, charcoalTextureId,
-            brushTextureId;
+        public static uint pencilTextureId, crayonTextureId, inkTextureId, waterColorTextureId, charcoalTextureId, brushTextureId;
 
         private List<Model> _crossOverBasket = new List<Model>();
         private int _selectedModelIndex = -1;
 
-        public string foldername = ".\\mix_4";
+        public string foldername = "";
         private Vector3d objectCenter = new Vector3d();
         private enum Depthtype
         {
@@ -681,11 +680,6 @@ namespace FameBase
                 return;
             }
             // save mesh
-            if (model._MESH == null)
-            {
-                MessageBox.Show("Mesh is null.");
-                return;
-            }
             string meshName = model._path + "\\" + model_name + ".obj";
             if (model._NPARTS > 0)
             {
@@ -1467,6 +1461,21 @@ namespace FameBase
                         g.addAnEdge(g._NODES[j], g._NODES[k]);
                     }
                 }
+                g._ff = null;
+                List<Common.Category> cats = new List<Common.Category>();
+                List<double> funvals = new List<double>();
+                while (sr.Peek() > -1)
+                {
+                    // functionality
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    cats.Add(Common.getCategory(strs[0]));
+                    funvals.Add(double.Parse(strs[1]));
+                }
+                if (cats.Count > 0)
+                {
+                    g._ff = new FunctionalityFeatures(cats, funvals);
+                }
                 if (unify)
                 {
                     g.unify();
@@ -1482,6 +1491,7 @@ namespace FameBase
             {
                 return;
             }
+            Graph  g = _currModel._GRAPH;
             // node:
             // idx, isGroundTouching, Color, Sym (-1: no sym, idx)
             using (StreamWriter sw = new StreamWriter(filename))
@@ -1521,6 +1531,13 @@ namespace FameBase
                         sw.Write(this.vector3dToString(pnt._pos3d, " ", " "));
                     }
                     sw.WriteLine();
+                }
+                if (g._ff != null && g._ff._cats.Count > 0)
+                {
+                    for (int i = 0; i < g._ff._cats.Count; ++i)
+                    {
+                        sw.WriteLine(g._ff._cats[i] + " " + g._ff._funvals[i].ToString());
+                    }
                 }
             }
         }// saveAGraph
@@ -1859,6 +1876,8 @@ namespace FameBase
                     return Common.Functionality.HAND_PLACE;
                 case 5:
                     return Common.Functionality.SUPPORT;
+                case 6:
+                    return Common.Functionality.HANG;
                 case 0:
                 default:
                     return Common.Functionality.GROUND_TOUCHING;
@@ -2356,6 +2375,7 @@ namespace FameBase
                     {
                         model._GRAPH.reset();
                         model._GRAPH.recomputeSPnormals();
+                        model._GRAPH._ff = this.addFF(m1._GRAPH._ff, m2._GRAPH._ff);
                         growth.Add(model);
                         // screenshot
                         this.setCurrentModel(model, -1);
@@ -2634,6 +2654,7 @@ namespace FameBase
                 mutateANode(updateNode, rand);
                 deformPropagation(model._GRAPH, updateNode);
                 model._GRAPH.resetUpdateStatus();
+                model._GRAPH._ff = iModel._GRAPH._ff.clone() as FunctionalityFeatures;
                 if (model._GRAPH.isValid())
                 {
                     model._GRAPH.unify();
@@ -2722,6 +2743,7 @@ namespace FameBase
                         if (m._GRAPH.isValid())
                         {
                             m._GRAPH.unify();
+                            m._GRAPH._ff = this.addFF(m1._GRAPH._ff, m2._GRAPH._ff);
                             crossed.Add(m);
                             if (crossed.Count > 15) { return crossed; }
                             // screenshot
@@ -2735,6 +2757,23 @@ namespace FameBase
             }
             return crossed;
         }// runCrossover
+
+        public FunctionalityFeatures addFF(FunctionalityFeatures f1, FunctionalityFeatures f2)
+        {
+            List<Common.Category> cats = new List<Common.Category>(f1._cats);
+            List<double> vals = new List<double>(f1._funvals);
+            for (int i = 0; i < f2._cats.Count; ++i) 
+            {
+                Common.Category cat = f2._cats[i];
+                if (!cats.Contains(cat))
+                {
+                    cats.Add(cat);
+                    vals.Add(f2._funvals[i]);
+                }
+            }            
+            FunctionalityFeatures added = new FunctionalityFeatures(cats, vals);
+            return added;
+        }// addFF
 
         private bool selectNodesForCrossover(Graph g1, Graph g2, Random rand)
         {

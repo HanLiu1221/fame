@@ -21,15 +21,15 @@ namespace FameBase
 
         /*********Var**********/
         // test paths
-        //private string MODLES_PATH = @"E:\Projects\fame\data_sets\patch data\models";
-        //private string PATCH_PATH = @"E:\Projects\fame\data_sets\patch data";
-        //private string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only";
-        //public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
+        public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch data\models";
+        public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch data";
+        public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only";
+        public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
 
-        public static string MODLES_PATH = @"D:\fame\data_sets\patch data\models";
-        public static string PATCH_PATH = @"D:\fame\data_sets\patch data";
-        public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only";
-        public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        //public static string MODLES_PATH = @"D:\fame\data_sets\patch data\models";
+        //public static string PATCH_PATH = @"D:\fame\data_sets\patch data";
+        //public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only";
+        //public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
 
         private void open3D_Click(object sender, EventArgs e)
         {
@@ -645,6 +645,11 @@ namespace FameBase
         private void supportToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.markFunctionPart(5);
+        }
+
+        private void hangToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(6);
         }
 
         private void groundtouchingToolStripMenuItem_Click(object sender, EventArgs e)

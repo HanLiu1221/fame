@@ -33,12 +33,9 @@ namespace Geometry
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
 
-        public enum Functionality { GROUND_TOUCHING, HUMAN_BACK, HUMAN_HIP, HAND_HOLD, HAND_PLACE, SUPPORT };
+        public enum Functionality { GROUND_TOUCHING, HUMAN_BACK, HUMAN_HIP, HAND_HOLD, HAND_PLACE, SUPPORT, HANG };
 
-
-        public static string[] Categories = {"Backpack", "Basket", "Bicycle", "Chair", "Desk", "DryingRack",
-                                         "Handcart", "Hanger", "Hook", "Shelf", "Stand", "Stroller", "Table", 
-                                         "TvBench", "Vase"};
+        public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Shelf, Stand, Stroller, Table, TvBench, Vase, None };
 
         public Common() { }
 
@@ -237,11 +234,122 @@ namespace Geometry
 
             for (int i = 0; i < mtop; ++i)
             {
-                sb.Append(Categories[index[i]]);
+                sb.Append(getCategoryName(index[i]));
                 sb.Append(" ");
             }
             return sb.ToString();
         }// getTopPredictedCategories
+
+        public static string getCategoryName(int index)
+        {
+            switch (index)
+            {
+                case 0:
+                    return "Backpack";
+                case 1:
+                    return "Basket";
+                case 2:
+                    return "Bicycle";
+                case 3:
+                    return "Chair";
+                case 4:
+                    return "Desk";
+                case 5:
+                    return "DryingRack";
+                case 6:
+                    return "Handcart";
+                case 7:
+                    return "Hanger";
+                case 8:
+                    return "Hook";
+                case 9:
+                    return "Shelf";
+                case 10:
+                    return "Stand";
+                case 11:
+                    return "Stroller";
+                case 12:
+                    return "Table";
+                case 13:
+                    return "TvBench";
+                case 14:
+                    return "Vase";
+                default:
+                    return "None";
+            }
+        }// getCategoryName
+
+        public static Category getCategory(string str)
+        {
+            switch (str)
+            {
+                case "Backpack":
+                    return Category.Backpack;
+                case "Basket":
+                    return Category.Basket;
+                case "Bicycle":
+                    return Category.Bicycle;
+                case "Chair":
+                    return Category.Chair;
+                case "Desk":
+                    return Category.Desk;
+                case "DryingRack":
+                    return Category.DryingRack;
+                case "Handcart":
+                    return Category.Handcart;
+                case "Hanger":
+                    return Category.Hanger;
+                case "Hook":
+                    return Category.Hook;
+                case "Shelf":
+                    return Category.Shelf;
+                case "Stand":
+                    return Category.Stand;
+                case "Stroller":
+                    return Category.Stroller;
+                case "Table":
+                    return Category.Table;
+                case "TvBench":
+                    return Category.TvBench;
+                case "Vase":
+                    return Category.Vase;
+                default:
+                    return Category.None;
+            }
+        }// getCategory
+
+        public static List<Functionality> getFunctionalityFromCategory(Category cat)
+        {
+            List<Functionality> funcs = new List<Functionality>();
+            if (cat == Category.Chair)
+            {
+                funcs.Add(Functionality.HUMAN_HIP);
+                funcs.Add(Functionality.GROUND_TOUCHING);
+                funcs.Add(Functionality.HUMAN_BACK);
+            }
+            if (cat == Category.Handcart)
+            {
+                funcs.Add(Functionality.HAND_HOLD);
+                funcs.Add(Functionality.GROUND_TOUCHING);
+                funcs.Add(Functionality.HAND_PLACE);
+            }
+            if (cat == Category.Basket)
+            {
+                funcs.Add(Functionality.HAND_HOLD);
+                funcs.Add(Functionality.GROUND_TOUCHING);
+            }
+            if (cat == Category.Shelf)
+            {
+                funcs.Add(Functionality.HAND_PLACE);
+                funcs.Add(Functionality.GROUND_TOUCHING);
+            }
+            if (cat == Category.DryingRack)
+            {
+                funcs.Add(Functionality.HAND_PLACE);
+                funcs.Add(Functionality.GROUND_TOUCHING);
+            }
+            return funcs;
+        }// getFunctionalityFromCategory
 
         public static double cutoff(double val, double lower, double upper)
         {

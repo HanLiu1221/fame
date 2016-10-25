@@ -51,9 +51,10 @@
             this.saveMergedMeshToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.unitifyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.importShapeNetToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.loadOriPatchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadFunctionlityModelToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadOriPatchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.savePointFeatureToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadOptPatchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tools = new System.Windows.Forms.ToolStripDropDownButton();
             this.viewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.resetViewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -127,7 +128,7 @@
             this.supportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundtouchingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.removeallToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.loadOptPatchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.hangToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -329,13 +330,6 @@
             this.importShapeNetToolStripMenuItem.Text = "Import ShapeNet";
             this.importShapeNetToolStripMenuItem.Click += new System.EventHandler(this.importShapeNetToolStripMenuItem_Click);
             // 
-            // loadOriPatchToolStripMenuItem
-            // 
-            this.loadOriPatchToolStripMenuItem.Name = "loadOriPatchToolStripMenuItem";
-            this.loadOriPatchToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.loadOriPatchToolStripMenuItem.Text = "Load ori patch";
-            this.loadOriPatchToolStripMenuItem.Click += new System.EventHandler(this.loadOriPatchToolStripMenuItem_Click);
-            // 
             // loadFunctionlityModelToolStripMenuItem
             // 
             this.loadFunctionlityModelToolStripMenuItem.Name = "loadFunctionlityModelToolStripMenuItem";
@@ -343,12 +337,26 @@
             this.loadFunctionlityModelToolStripMenuItem.Text = "Load functionlity model";
             this.loadFunctionlityModelToolStripMenuItem.Click += new System.EventHandler(this.loadFunctionlityModelToolStripMenuItem_Click);
             // 
+            // loadOriPatchToolStripMenuItem
+            // 
+            this.loadOriPatchToolStripMenuItem.Name = "loadOriPatchToolStripMenuItem";
+            this.loadOriPatchToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.loadOriPatchToolStripMenuItem.Text = "Load ori patch";
+            this.loadOriPatchToolStripMenuItem.Click += new System.EventHandler(this.loadOriPatchToolStripMenuItem_Click);
+            // 
             // savePointFeatureToolStripMenuItem
             // 
             this.savePointFeatureToolStripMenuItem.Name = "savePointFeatureToolStripMenuItem";
             this.savePointFeatureToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
             this.savePointFeatureToolStripMenuItem.Text = "Save point feature";
             this.savePointFeatureToolStripMenuItem.Click += new System.EventHandler(this.savePointFeatureToolStripMenuItem_Click);
+            // 
+            // loadOptPatchToolStripMenuItem
+            // 
+            this.loadOptPatchToolStripMenuItem.Name = "loadOptPatchToolStripMenuItem";
+            this.loadOptPatchToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.loadOptPatchToolStripMenuItem.Text = "Load opt patch";
+            this.loadOptPatchToolStripMenuItem.Click += new System.EventHandler(this.loadOptPatchToolStripMenuItem_Click);
             // 
             // tools
             // 
@@ -916,33 +924,33 @@
             this.selectToolStripMenuItem,
             this.functionalityToolStripMenuItem});
             this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(144, 114);
+            this.partRelatedTools.Size = new System.Drawing.Size(153, 136);
             // 
             // groupToolStripMenuItem
             // 
             this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
             // addEdgeToolStripMenuItem
             // 
             this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.addEdgeToolStripMenuItem.Text = "Add edge";
             this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // delEdgeToolStripMenuItem
             // 
             this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.delEdgeToolStripMenuItem.Text = "Del edge";
             this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // selectToolStripMenuItem
             // 
             this.selectToolStripMenuItem.Name = "selectToolStripMenuItem";
-            this.selectToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.selectToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
@@ -955,9 +963,10 @@
             this.handplaceToolStripMenuItem,
             this.supportToolStripMenuItem,
             this.groundtouchingToolStripMenuItem,
+            this.hangToolStripMenuItem,
             this.removeallToolStripMenuItem});
             this.functionalityToolStripMenuItem.Name = "functionalityToolStripMenuItem";
-            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.functionalityToolStripMenuItem.Text = "Functionality";
             // 
             // humanbackToolStripMenuItem
@@ -1008,12 +1017,12 @@
             this.removeallToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
             this.removeallToolStripMenuItem.Text = "remove_all";
             // 
-            // loadOptPatchToolStripMenuItem
+            // hangToolStripMenuItem
             // 
-            this.loadOptPatchToolStripMenuItem.Name = "loadOptPatchToolStripMenuItem";
-            this.loadOptPatchToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.loadOptPatchToolStripMenuItem.Text = "Load opt patch";
-            this.loadOptPatchToolStripMenuItem.Click += new System.EventHandler(this.loadOptPatchToolStripMenuItem_Click);
+            this.hangToolStripMenuItem.Name = "hangToolStripMenuItem";
+            this.hangToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+            this.hangToolStripMenuItem.Text = "hang";
+            this.hangToolStripMenuItem.Click += new System.EventHandler(this.hangToolStripMenuItem_Click);
             // 
             // Interface
             // 
@@ -1142,6 +1151,7 @@
         private System.Windows.Forms.ToolStripMenuItem savePointFeatureToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem samplePointsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadOptPatchToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem hangToolStripMenuItem;
 	}
 }
 

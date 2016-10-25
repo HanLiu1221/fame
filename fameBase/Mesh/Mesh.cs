@@ -1287,10 +1287,10 @@ namespace Geometry
                 {
                     rayDists[i * dim] = dist / maxMeshDist;
                     //rayDists[i * dim] = dist;
-                    //if (dist < maxdist)
-                    //{
-                    //    maxdist = dist;
-                    //}
+                    if (dist < maxdist)
+                    {
+                        maxdist = dist;
+                    }
                 }
                 double cosv = inor.Dot(Common.uprightVec);
                 cosv = Common.cutoff(cosv, -1.0, 1.0);

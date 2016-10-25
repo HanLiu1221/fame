@@ -12,6 +12,7 @@ namespace Component
         List<Edge> _edges = new List<Edge>();
         public int _NNodes = 0;
         public int _NEdges = 0;
+        public FunctionalityFeatures _ff = null;
 
         double _maxNodeBboxScale; // max scale of a box
         double _minNodeBboxScale; // min scale of a box
@@ -60,7 +61,6 @@ namespace Component
                 Mesh mesh = node._PART._MESH;
 
                 // vertex
-                string s = "";
                 for (int i = 0; i < mesh.VertexCount; ++i)
                 {
                     Vector3d ipos = mesh.getVertexPos(i);
@@ -1834,5 +1834,28 @@ namespace Component
             FuncFeatures ff = new FuncFeatures(pointFeats_c, curvFeats_c, pcaFeats_c, rayFeats_c, conhullFeats_c, cenMassFeats_c);
             return ff;
         }
-    }
+    }// FuncFeatures
+
+    public class FunctionalityFeatures
+    {
+        public List<Common.Category> _cats = new List<Common.Category>();
+        public List<double> _funvals = new List<double>();
+
+        public FunctionalityFeatures() { }
+
+        public FunctionalityFeatures(List<Common.Category> cats, List<double> vals)
+        {
+            _cats = cats;
+            _funvals = vals;
+        }
+
+        public Object clone()
+        {
+            List<Common.Category> cats = new List<Common.Category>(_cats);
+            List<double> vals = new List<double>(_funvals);
+            FunctionalityFeatures ff = new FunctionalityFeatures(cats, vals);
+            return ff;
+        }
+    }// FunctionalityFeatures
+
 }// namespace
