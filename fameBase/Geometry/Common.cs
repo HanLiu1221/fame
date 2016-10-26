@@ -229,7 +229,7 @@ namespace Geometry
             {
                 index[i] = i;
             }
-            Array.Sort(index, (a, b) => scores[a].CompareTo(scores[b]));
+            Array.Sort(index, (a, b) => scores[b].CompareTo(scores[a]));
             StringBuilder sb = new StringBuilder();
 
             for (int i = 0; i < mtop; ++i)
