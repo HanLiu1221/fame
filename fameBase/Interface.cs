@@ -21,25 +21,25 @@ namespace FameBase
 
         /*********Var**********/
         // test paths
-        //public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch data\models";
-        //public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch data";
-        //public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only";
-        //public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
-        // // FOR showing predicted results
-        //public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch data\meshes\";
-        //public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch data\samples\";
-        //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch data\point feature\";
-        //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch data\weights\";
-
-        public static string MODLES_PATH = @"D:\fame\data_sets\patch data\models";
-        public static string PATCH_PATH = @"D:\fame\data_sets\patch data";
-        public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only";
-        public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch data\models";
+        public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch data";
+        public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only";
+        public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
         // FOR showing predicted results
-        public static string MESH_PATH = @"D:\fame\data_sets\patch data\meshes\";
-        public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch data\samples\";
-        public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch data\point feature\";
-        public static string WEIGHT_PATH = @"D:\fame\data_sets\patch data\weights\";
+        public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch data\meshes\";
+        public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch data\samples\";
+        public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch data\point feature\";
+        public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch data\weights\";
+
+        //public static string MODLES_PATH = @"D:\fame\data_sets\patch data\models";
+        //public static string PATCH_PATH = @"D:\fame\data_sets\patch data";
+        //public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only";
+        //public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        //// FOR showing predicted results
+        //public static string MESH_PATH = @"D:\fame\data_sets\patch data\meshes\";
+        //public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch data\samples\";
+        //public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch data\point feature\";
+        //public static string WEIGHT_PATH = @"D:\fame\data_sets\patch data\weights\";
 
         private void open3D_Click(object sender, EventArgs e)
         {
@@ -703,12 +703,14 @@ namespace FameBase
         {
             //this.mesh_name.Text = this.glViewer.nextMeshClass();
             this.mesh_name.Text = this.glViewer.nextModel();
+            this.updateStats();
         }
 
         private void prev_mesh_Click(object sender, EventArgs e)
         {
             //this.mesh_name.Text = this.glViewer.prevMeshClass();
             this.mesh_name.Text = this.glViewer.prevModel();
+            this.updateStats();
         }
 
         private void loadFunctionlityModelToolStripMenuItem_Click(object sender, EventArgs e)
@@ -756,6 +758,7 @@ namespace FameBase
             {
                 string foldername = dialog.SelectedPath;
                 this.glViewer.loadPatchInfo(foldername, false);
+                this.updateStats();
             }
         }
 
