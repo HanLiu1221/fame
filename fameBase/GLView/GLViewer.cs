@@ -370,6 +370,9 @@ namespace FameBase
                 return "";
             }
             StringBuilder sb = new StringBuilder();
+
+            sb.Append(_currModel._model_name + "\n");
+
             sb.Append("#part:   ");
             sb.Append(_currModel._NPARTS.ToString());
 
@@ -765,7 +768,7 @@ namespace FameBase
                 return;
             }
             _currModel._GRAPH.computeFeatures();
-            this.writeMatlabFile(this._currModel);
+            this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
         }
 
         private void saveSamplePointsInfo(SamplePoints sp, string filename)
@@ -1030,15 +1033,11 @@ namespace FameBase
             this.foldername = segfolder;
             this.clearContext();
             this.clearHighlights();
-            string[] files = Directory.GetFiles(segfolder);
+            string[] files = Directory.GetFiles(segfolder, "*.pam");
             int idx = 0;
             Program.writeToConsole("Loading all " + files.Length.ToString() + " models...");
             foreach (string file in files)
             {
-                if (!file.EndsWith("pam"))
-                {
-                    continue;
-                }
                 Program.writeToConsole("Loading Model info @" + (idx+1).ToString() + "...");
                 Model m = loadOnePartBasedModel(file);
                 if (m != null)
@@ -2172,6 +2171,7 @@ namespace FameBase
             }
             _currGenModelViewers.Clear();
 
+            _currIter = 0;
             // add user selected models
             if (_currIter > 0)
             {
@@ -2185,7 +2185,7 @@ namespace FameBase
             {
                 Random rand = new Random();
                 _mutateOrCross = runMutateOrCrossover(rand);
-                if (i == 2)
+                if (i == 0)
                 {
                     _mutateOrCross = 1;
                 }
@@ -2220,10 +2220,11 @@ namespace FameBase
                     List<string> filenames = new List<string>();
                     for (int j = 0; j < cur_kids.Count; ++j)
                     {
-                        filenames.Add(cur_kids[j]._model_name);
-                        this.writeMatlabFile(cur_kids[j]);
+                        //filenames.Add(cur_kids[j]._model_name);
+                        List<string> patchFileNames = this.useSelectedSubsetPatchesForPrediction(cur_kids[j]);
+                        filenames.AddRange(patchFileNames);
                     }
-                    writeToMatlabFolder(filenames);
+                    writeFileNamesForPredictToMatlabFolder(filenames);
                     matlabOutput = null;
                     matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
                     Object[] res = matlabOutput as Object[];
@@ -2256,7 +2257,7 @@ namespace FameBase
             return _currGenModelViewers;
         }// autoGenerate
 
-        private void writeToMatlabFolder(List<string> strs)
+        private void writeFileNamesForPredictToMatlabFolder(List<string> strs)
         {
             string filename = Interface.MATLAB_PATH + "\\shapeFileNames.txt";
             using (StreamWriter sw = new StreamWriter(filename))
@@ -2266,7 +2267,7 @@ namespace FameBase
                     sw.WriteLine(strs[i]);
                 }
             }
-        }// writeToMatlabFolder
+        }// writeFileNamesForPredictToMatlabFolder
 
         private void saveScoreFile(string filename, double[] scores)
         {
@@ -2280,38 +2281,62 @@ namespace FameBase
                 sw.WriteLine(tops);
                 Program.writeToConsole(tops);
             }
-        }
+        }// saveScoreFile
 
-        private void writeMatlabFile(Model model)
+        private List<string> useSelectedSubsetPatchesForPrediction(Model model)
         {
             if (model == null)
             {
-                return;
+                return null;
             }
+            List<string> patchFileNamesForPredictions = new List<string>();
             // select those patches with certain functioanlity for a category
-            List<Common.Functionality> funcs = Common.getFunctionalityFromCategories(model._GRAPH._ff._cats);
-            List<Node> testPatches = new List<Node>();
-            foreach (Node node in model._GRAPH._NODES)
+            foreach (Common.Category cat in model._GRAPH._ff._cats)
             {
-                List<Common.Functionality> funcs_node = node._funcs;
-                foreach (Common.Functionality f in funcs_node)
+                List<Common.Functionality> funcs = Common.getFunctionalityFromCategory(cat);
+                List<Node> subPatches = new List<Node>();
+                foreach (Node node in model._GRAPH._NODES)
                 {
-                    if (funcs.Contains(f))
+                    List<Common.Functionality> funcs_node = node._funcs;
+                    foreach (Common.Functionality f in funcs_node)
                     {
-                        testPatches.Add(node);
-                        break;
+                        if (funcs.Contains(f))
+                        {
+                            subPatches.Add(node);
+                            break;
+                        }
                     }
                 }
+                // save 
+                string subsetStr = "_subPatches_" + cat;
+                string patchFileName = model._model_name + subsetStr;
+                patchFileNamesForPredictions.Add(patchFileName);
+                writeSampleFeatureFilesForPrediction(subPatches, model, subsetStr);
+
+                // test the whole shape
+                subPatches = model._GRAPH._NODES;
+                subsetStr = "_wholeShape_" + cat;
+                patchFileName = model._model_name + subsetStr;
+                patchFileNamesForPredictions.Add(patchFileName);
+                writeSampleFeatureFilesForPrediction(subPatches, model, subsetStr);
             }
-            string meshFileName = model._path + model._model_name + ".obj";
-            this.saveMeshForModel(testPatches, meshFileName);
+            return patchFileNamesForPredictions;
+        }// useSelectedSubsetPatchesForPrediction
+
+        private void writeSampleFeatureFilesForPrediction(List<Node> subPatches, Model model, string subsetStr)
+        {
+            string meshFileName = model._model_name + subsetStr + ".obj";
+            string mesh_file = model._path + meshFileName;
+            this.saveMeshForModel(subPatches, mesh_file);
+            File.Copy(mesh_file, Interface.MESH_PATH + meshFileName, true);
 
             string folder = Interface.MATLAB_INPUT_PATH;
-            string pois_file = folder + model._model_name + ".poisson";
+            string possionFilename = model._model_name + subsetStr + ".poisson";
+            string pois_file = folder + possionFilename;
             using (StreamWriter sw = new StreamWriter(pois_file))
             {
                 int start = 0;
-                foreach (Node node in testPatches)
+                foreach (Node node in subPatches)
                 {
                     SamplePoints sp = node._PART._partSP;
                     for (int j = 0; j < sp._points.Length; ++j)
@@ -2326,12 +2351,14 @@ namespace FameBase
                     start += node._PART._MESH.FaceCount;
                 }
             }
+            File.Copy(pois_file, Interface.POINT_SAMPLE_PATH + possionFilename, true);
 
-            string feat_file = folder + model._model_name + "_point_feature.csv";
+            string featureFileName = model._model_name + subsetStr + "_point_feature.csv";
+            string feat_file = folder + featureFileName;
             using (StreamWriter sw = new StreamWriter(feat_file))
             {
                 int npnts = 0;
-                foreach (Node node in testPatches)
+                foreach (Node node in subPatches)
                 {
                     int n = node._PART._partSP._points.Length;
                     npnts += n;
@@ -2380,7 +2407,8 @@ namespace FameBase
                     }
                 }
             }
-        }// writeMatlabFile
+            File.Copy(feat_file, Interface.POINT_FEATURE_PATH + featureFileName, true);
+        }// writeSampleFeatureFilesForPrediction
 
         private List<Model> runGrowth(List<Model> models, int gen, Random rand, string imageFolder, int start)
         {
@@ -5365,46 +5393,47 @@ namespace FameBase
                 // weights & colors
                 sp._weights = weights_patches;
                 sp._colors = colors_patches;
-                // functional space
-                fid = 0;
-                List<string> fspaceFiles = new List<string>();
-                while (fid < funspaceFiles.Length)
-                {
-                    string func_name = Path.GetFileName(funspaceFiles[fid]);
-                    if (func_name.StartsWith(model_name_filter))
-                    {
-                        // locate the weight files
-                        while (func_name.StartsWith(model_name_filter))
-                        {
-                            fspaceFiles.Add(funspaceFiles[fid++]);
-                            if (fid >= funspaceFiles.Length)
-                            {
-                                break;
-                            }
-                            func_name = Path.GetFileName(funspaceFiles[fid]);
-                        }
-                        break;
-                    }
-                    ++fid;
-                }
-                if (fspaceFiles.Count != npatch)
-                {
-                    MessageBox.Show("#Functional space file does not match weight file.");
-                    return;
-                }
-                FuncSpace[] fss = new FuncSpace[npatch];
-                int nfs = 0;
-                foreach (String fsfile in fspaceFiles)
-                {
-                    FuncSpace fs = loadFunctionSpace(fsfile);
-                    if (fs == null)
-                    {
-                        MessageBox.Show("Functional space file error: " + Path.GetFileName(fsfile));
-                        return;
-                    }
-                    fss[nfs++] = fs;
-                }
+                //// functional space
+                //fid = 0;
+                //List<string> fspaceFiles = new List<string>();
+                //while (fid < funspaceFiles.Length)
+                //{
+                //    string func_name = Path.GetFileName(funspaceFiles[fid]);
+                //    if (func_name.StartsWith(model_name_filter))
+                //    {
+                //        // locate the weight files
+                //        while (func_name.StartsWith(model_name_filter))
+                //        {
+                //            fspaceFiles.Add(funspaceFiles[fid++]);
+                //            if (fid >= funspaceFiles.Length)
+                //            {
+                //                break;
+                //            }
+                //            func_name = Path.GetFileName(funspaceFiles[fid]);
+                //        }
+                //        break;
+                //    }
+                //    ++fid;
+                //}
+                //if (fspaceFiles.Count != npatch)
+                //{
+                //    MessageBox.Show("#Functional space file does not match weight file.");
+                //    return;
+                //}
+                //FuncSpace[] fss = new FuncSpace[npatch];
+                //int nfs = 0;
+                //foreach (String fsfile in fspaceFiles)
+                //{
+                //    FuncSpace fs = loadFunctionSpace(fsfile);
+                //    if (fs == null)
+                //    {
+                //        MessageBox.Show("Functional space file error: " + Path.GetFileName(fsfile));
+                //        return;
+                //    }
+                //    fss[nfs++] = fs;
+                //}
 
+                FuncSpace[] fss = null;
                 Model model = new Model(mesh, sp, fss, isOriginal);
                 _models.Add(model);
 
