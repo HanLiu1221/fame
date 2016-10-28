@@ -254,6 +254,12 @@ namespace Geometry
             this.calclulateCenterNormal();
         }
 
+        public Polygon3D(Vector3d c, Vector3d nor)
+        {
+            center = c;
+            normal = nor;
+        }
+
         private void calclulateCenterNormal()
         {
             if (this.Npoints == 0) return;
