@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 using Geometry;
 
@@ -1318,6 +1319,57 @@ namespace Component
             // 6. center of mass features
             computeDistAndAngleToCenterOfMass();
         }// computeFeatures
+
+        public void computeShape2PoseFeatures(string path, string model_name, string exePath, string shape2poseDataFolder)
+        {
+            string computeLocalFeatureExe = exePath + "ComputeLocalFeatures.exe";
+            string shape2poseMeshFile = path + model_name + ".off";
+            string shape2poseSampleFile = path + model_name + ".pts";
+
+            string msh2plnCmd = exePath + "msh2pln.exe ";
+            string prstOutputFile1 = shape2poseDataFolder + model_name + "_msh.planes.txt";
+            string prstOutputFile2 = shape2poseDataFolder + model_name + "_msh.arff";
+            string prstCmdPara = shape2poseMeshFile + " " + prstOutputFile1 +
+                              " -v -input_points " + shape2poseSampleFile + " -output_point_properties " + prstOutputFile2 +
+                              " -in_plane_vector 0 0 1 -min_value 0.9 -min_weight 128";
+            Process.Start(msh2plnCmd, prstCmdPara);
+            System.Threading.Thread.Sleep(2000);
+
+            // metric
+            string metricOutputFile = shape2poseDataFolder + model_name + ".metric";
+            string metricCmd = exePath + "Metric.exe ";
+            string metricCmdPara = "-mesh " + shape2poseMeshFile + " -pnts " + shape2poseSampleFile +
+                            " -dist geodGraph -writeDist " + metricOutputFile;
+            Process.Start(metricCmd, metricCmdPara);
+            System.Threading.Thread.Sleep(2000);
+
+            string computelocalfeatureCmd = exePath + "ComputeLocalFeatures.exe ";
+            // oriented geodesic PCA
+            string ogPCAOutputFile = shape2poseDataFolder + model_name + "_og.arff";
+            string ogPCACmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
+                               " -radius 0.1 -outfile " + ogPCAOutputFile + " -feat OrientedGeodesicPCA -densePoints " + shape2poseSampleFile +
+                               " -metricFile " + metricOutputFile + " -randseed -1";
+            //ProcessStartInfo startInfo = new ProcessStartInfo(computelocalfeatureCmd);
+            //startInfo.Arguments = ogPCACmdPara;
+            //Process.Start(startInfo);
+            Process.Start(computelocalfeatureCmd, ogPCACmdPara);
+            System.Threading.Thread.Sleep(2000);
+
+            // abs curv
+            string absCurvOutputFile = shape2poseDataFolder + model_name + "_absCurv.arff";
+            string absCurvCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
+                " -radius -1 -outfile " + absCurvOutputFile + " -feat AbsCurv -densePoints " + shape2poseSampleFile +
+                " -metricFile " + metricOutputFile + " -randseed -1";
+            //Process.Start(computelocalfeatureCmd, absCurvCmdPara);
+
+            // abs curv geodesic
+            string absCurvGeoAvgOutputFile = shape2poseDataFolder + model_name + "_absCga.arff";
+            string absCurvGeoAvgCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
+                " -radius 0.1 -outfile " + absCurvGeoAvgOutputFile + " -feat AbsCurvGeodesicAvg -densePoints " + shape2poseSampleFile +
+                " -metricFile " + metricOutputFile + " -randseed -1";
+            //Process.Start(computelocalfeatureCmd, absCurvGeoAvgCmdPara);
+
+        }// computeShape2PoseFeatures
 
         private void computePointFeatures()
         {

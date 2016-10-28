@@ -668,6 +668,7 @@ namespace Geometry
             //alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out _kdtree);
 		}//loadOffMesh
 
+
         private void getVertexFaceIndex()
         {
             this.vertexFaceIndex = new List<List<int>>();

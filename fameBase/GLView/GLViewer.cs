@@ -486,7 +486,7 @@ namespace FameBase
             }
             if (mesh == null)
             {
-                mesh = _currModel._MESH;
+                saveModelOff(filename);
             }
             using (StreamWriter sw = new StreamWriter(filename))
             {
@@ -511,7 +511,54 @@ namespace FameBase
                     sw.WriteLine(s);
                 }
             }
-        }// saveObj
+        }// saveOffFile
+
+        private void saveModelOff(string filename)
+        {
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine("OFF");
+                int vertexCount = 0;
+                int faceCount = 0;
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+                    vertexCount += mesh.VertexCount;
+                    faceCount += mesh.FaceCount;
+                }
+                sw.WriteLine(vertexCount.ToString() + " " + faceCount.ToString() + "  0");
+                
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+                    // vertex
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                    {
+                        s = mesh.VertexPos[j++].ToString() + " "
+                        + mesh.VertexPos[j++].ToString() + " "
+                        + mesh.VertexPos[j++].ToString();
+                        sw.WriteLine(s);
+                    }
+                }
+                int start = 0;
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+                    // face
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                    {
+                        s = "3";
+                        s += " " + (start + mesh.FaceVertexIndex[j++] + 1).ToString();
+                        s += " " + (start + mesh.FaceVertexIndex[j++] + 1).ToString();
+                        s += " " + (start + mesh.FaceVertexIndex[j++] + 1).ToString();
+                        sw.WriteLine(s);
+                    }
+                    start += mesh.VertexCount;
+                }
+            }
+        }// saveModelOff
 
         private string colorToString(Color c, bool space)
         {
@@ -548,7 +595,12 @@ namespace FameBase
                         s += " " + mesh.VertexPos[j++].ToString();
                         sw.WriteLine(s);
                     }
+                }
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
                     // face
+                    string s = "";
                     for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
                     {
                         s = "f";
@@ -813,9 +865,44 @@ namespace FameBase
             {
                 return;
             }
-            _currModel._GRAPH.computeFeatures();
-            this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
+            // save .off file & .pts file for shape2pose
+            string offname = _currModel._path + _currModel._model_name + ".off";
+            string ptsname = _currModel._path + _currModel._model_name + ".pts";
+            this.saveModelOff(offname);
+            this.saveModelSamplePoints(ptsname);
+            string shape2poseDataFolder = _currModel._path + "shape2pose\\";
+            if (!Directory.Exists(shape2poseDataFolder))
+            {
+                Directory.CreateDirectory(shape2poseDataFolder);
+            }
+            string exeFolder = @"..\..\external\";
+            string exePath = Path.GetFullPath(exeFolder);
+            _currModel._GRAPH.computeShape2PoseFeatures(_currModel._path, _currModel._model_name, exePath, shape2poseDataFolder);
+            //_currModel._GRAPH.computeFeatures();
+            //this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
         }
+
+        private void saveModelSamplePoints(string filename)
+        {
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int start = 0;
+                foreach (Node node in _currModel._GRAPH._NODES)
+                {
+                    SamplePoints sp = node._PART._partSP;
+                    for (int j = 0; j < sp._points.Length; ++j)
+                    {
+                        Vector3d vpos = sp._points[j];
+                        sw.Write(vector3dToString(vpos, " ", " "));
+                        Vector3d vnor = sp._normals[j];
+                        sw.Write(vector3dToString(vnor, " ", " "));
+                        int fidx = start + sp._faceIdx[j];
+                        sw.WriteLine(fidx.ToString());
+                    }
+                    start += node._PART._MESH.FaceCount;
+                }
+            }
+        }// saveModelSamplePoints
 
         private void saveSamplePointsInfo(SamplePoints sp, string filename)
         {
