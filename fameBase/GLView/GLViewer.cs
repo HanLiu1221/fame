@@ -477,6 +477,42 @@ namespace FameBase
             }
         }// saveObj
 
+        public void saveOffFile(Mesh mesh, string filename)
+        {
+            if (!Directory.Exists(Path.GetDirectoryName(filename)))
+            {
+                MessageBox.Show("Directory does not exist!");
+                return;
+            }
+            if (mesh == null)
+            {
+                mesh = _currModel._MESH;
+            }
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine("OFF");
+                sw.WriteLine(mesh.VertexCount.ToString() + " " + mesh.FaceCount.ToString() + "  0");
+                // vertex
+                string s = "";
+                for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                {
+                    s = mesh.VertexPos[j++].ToString() + " " 
+                        + mesh.VertexPos[j++].ToString() + " " 
+                        + mesh.VertexPos[j++].ToString();
+                    sw.WriteLine(s);
+                }
+                // face
+                for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                {
+                    s = "3";
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    sw.WriteLine(s);
+                }
+            }
+        }// saveObj
+
         private string colorToString(Color c, bool space)
         {
             double r = (double)c.R / 255.0;
@@ -839,6 +875,10 @@ namespace FameBase
         {
             vertexIndex = null;
             faceVertexIndex = null;
+            if (!File.Exists(filename))
+            {
+                return;
+            }
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separators = { ' ', '\\', '\t' };

@@ -129,18 +129,6 @@ namespace Geometry
             this.faceCount = fIndex.Length / 3; // tri mesh
             this.faceVertexIndex = fIndex;
             this.vertexPos = vPos;
-            this.vertexFaceIndex = new List<List<int>>();
-            for (int i = 0; i < this.vertexCount; ++i)
-            {
-                this.vertexFaceIndex.Add(new List<int>());
-            }
-            for (int i = 0, j = 0; i < this.faceCount; ++i)
-            {
-                this.vertexFaceIndex[fIndex[j++]].Add(i);
-                this.vertexFaceIndex[fIndex[j++]].Add(i);
-                this.vertexFaceIndex[fIndex[j++]].Add(i);
-            }
-            //this.buildHalfEdge();
             this.collectMeshInfo();
         }
 
@@ -626,23 +614,78 @@ namespace Geometry
 
         private void loadOffMesh(StreamReader sr, bool normalize)
 		{
-            double[,] xy = new double[this.VertexCount, 3];
-            int[] tags = new int[this.VertexCount];
-            for (int i = 0, j = 0; i < this.VertexCount; ++i)
-            {
-                xy[i, 0] = this.VertexPos[j++];
-                xy[i, 1] = this.VertexPos[j++];
-                xy[i, 2] = this.VertexPos[j++];
-                tags[i] = i;
+            char[] separator = new char[] { ' ', '\t', '\\' };
+
+            List<double> vertexArray = new List<double>();
+            List<int> faceArray = new List<int>();
+
+            if (sr.Peek() > -1){
+                sr.ReadLine();
             }
-            int nx = 3;
-            int ny = 0;
-            int normtype = 2;
-            alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out _kdtree);
+            if (sr.Peek() > -1)
+            {
+                string line = sr.ReadLine().Trim();
+                string[] array = line.Split(separator);
+                this.vertexCount = int.Parse(array[0]);
+                this.faceCount = int.Parse(array[1]);
+            }
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                string line = sr.ReadLine().Trim();
+                string[] array = line.Split(separator);
+                for (int j = 0; j < 3; ++j)
+                {
+                    vertexArray.Add(double.Parse(array[j]));
+                }
+            }
+            for (int i = 0; i < this.faceCount; ++i)
+            {
+                string line = sr.ReadLine().Trim();
+                string[] array = line.Split(separator);
+                for (int j = 1; j < 4; ++j)
+                {
+                    faceArray.Add(int.Parse(array[j]) - 1);
+                }
+            }
+            this.vertexPos = vertexArray.ToArray();
+            this.faceVertexIndex = faceArray.ToArray();
+            if (normalize)
+            {
+                this.normalize();
+            }
+            //double[,] xy = new double[this.VertexCount, 3];
+            //int[] tags = new int[this.VertexCount];
+            //for (int i = 0, j = 0; i < this.VertexCount; ++i)
+            //{
+            //    xy[i, 0] = this.VertexPos[j++];
+            //    xy[i, 1] = this.VertexPos[j++];
+            //    xy[i, 2] = this.VertexPos[j++];
+            //    tags[i] = i;
+            //}
+            //int nx = 3;
+            //int ny = 0;
+            //int normtype = 2;
+            //alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out _kdtree);
 		}//loadOffMesh
+
+        private void getVertexFaceIndex()
+        {
+            this.vertexFaceIndex = new List<List<int>>();
+            for (int i = 0; i < this.vertexCount; ++i)
+            {
+                this.vertexFaceIndex.Add(new List<int>());
+            }
+            for (int i = 0, j = 0; i < this.faceCount; ++i)
+            {
+                this.vertexFaceIndex[this.faceVertexIndex[j++]].Add(i);
+                this.vertexFaceIndex[faceVertexIndex[j++]].Add(i);
+                this.vertexFaceIndex[faceVertexIndex[j++]].Add(i);
+            }
+        }
 
         private void collectMeshInfo()
         {
+            getVertexFaceIndex();
             this.buildHalfEdge();
             this.buildKdtree();
             _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();

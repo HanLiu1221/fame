@@ -762,5 +762,15 @@ namespace FameBase
             }
         }
 
+        private void saveoffFileToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog dialog = new SaveFileDialog();
+            dialog.Filter = "3D model (*.off;)|*.off;";
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                this.glViewer.saveOffFile(null, dialog.FileName);
+            }
+        }
+
 	}// Interface
 }// namespace
