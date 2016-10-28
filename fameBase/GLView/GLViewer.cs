@@ -372,6 +372,16 @@ namespace FameBase
             StringBuilder sb = new StringBuilder();
 
             sb.Append(_currModel._model_name + "\n");
+            if (_currModel._GRAPH != null && _currModel._GRAPH._ff._cats.Count > 0)
+            {
+                string catStr = "";
+                foreach (Common.Category cat in _currModel._GRAPH._ff._cats)
+                {
+                    catStr += cat + " ";
+                }
+                catStr += "\n";
+                sb.Append(catStr);
+            }
 
             sb.Append("#part:   ");
             sb.Append(_currModel._NPARTS.ToString());
@@ -467,6 +477,89 @@ namespace FameBase
             }
         }// saveObj
 
+        public void saveOffFile(Mesh mesh, string filename)
+        {
+            if (!Directory.Exists(Path.GetDirectoryName(filename)))
+            {
+                MessageBox.Show("Directory does not exist!");
+                return;
+            }
+            if (mesh == null)
+            {
+                saveModelOff(filename);
+            }
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine("OFF");
+                sw.WriteLine(mesh.VertexCount.ToString() + " " + mesh.FaceCount.ToString() + "  0");
+                // vertex
+                string s = "";
+                for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                {
+                    s = mesh.VertexPos[j++].ToString() + " " 
+                        + mesh.VertexPos[j++].ToString() + " " 
+                        + mesh.VertexPos[j++].ToString();
+                    sw.WriteLine(s);
+                }
+                // face
+                for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                {
+                    s = "3";
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    sw.WriteLine(s);
+                }
+            }
+        }// saveOffFile
+
+        private void saveModelOff(string filename)
+        {
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine("OFF");
+                int vertexCount = 0;
+                int faceCount = 0;
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+                    vertexCount += mesh.VertexCount;
+                    faceCount += mesh.FaceCount;
+                }
+                sw.WriteLine(vertexCount.ToString() + " " + faceCount.ToString() + "  0");
+                
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+                    // vertex
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                    {
+                        s = mesh.VertexPos[j++].ToString() + " "
+                        + mesh.VertexPos[j++].ToString() + " "
+                        + mesh.VertexPos[j++].ToString();
+                        sw.WriteLine(s);
+                    }
+                }
+                int start = 0;
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+                    // face
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                    {
+                        s = "3";
+                        s += " " + (start + mesh.FaceVertexIndex[j++] + 1).ToString();
+                        s += " " + (start + mesh.FaceVertexIndex[j++] + 1).ToString();
+                        s += " " + (start + mesh.FaceVertexIndex[j++] + 1).ToString();
+                        sw.WriteLine(s);
+                    }
+                    start += mesh.VertexCount;
+                }
+            }
+        }// saveModelOff
+
         private string colorToString(Color c, bool space)
         {
             double r = (double)c.R / 255.0;
@@ -502,7 +595,12 @@ namespace FameBase
                         s += " " + mesh.VertexPos[j++].ToString();
                         sw.WriteLine(s);
                     }
+                }
+                foreach (Part p in _currModel._PARTS)
+                {
+                    Mesh mesh = p._MESH;
                     // face
+                    string s = "";
                     for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
                     {
                         s = "f";
@@ -767,9 +865,44 @@ namespace FameBase
             {
                 return;
             }
-            _currModel._GRAPH.computeFeatures();
-            this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
+            // save .off file & .pts file for shape2pose
+            string offname = _currModel._path + _currModel._model_name + ".off";
+            string ptsname = _currModel._path + _currModel._model_name + ".pts";
+            this.saveModelOff(offname);
+            this.saveModelSamplePoints(ptsname);
+            string shape2poseDataFolder = _currModel._path + "shape2pose\\";
+            if (!Directory.Exists(shape2poseDataFolder))
+            {
+                Directory.CreateDirectory(shape2poseDataFolder);
+            }
+            string exeFolder = @"..\..\external\";
+            string exePath = Path.GetFullPath(exeFolder);
+            _currModel._GRAPH.computeShape2PoseFeatures(_currModel._path, _currModel._model_name, exePath, shape2poseDataFolder);
+            //_currModel._GRAPH.computeFeatures();
+            //this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
         }
+
+        private void saveModelSamplePoints(string filename)
+        {
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int start = 0;
+                foreach (Node node in _currModel._GRAPH._NODES)
+                {
+                    SamplePoints sp = node._PART._partSP;
+                    for (int j = 0; j < sp._points.Length; ++j)
+                    {
+                        Vector3d vpos = sp._points[j];
+                        sw.Write(vector3dToString(vpos, " ", " "));
+                        Vector3d vnor = sp._normals[j];
+                        sw.Write(vector3dToString(vnor, " ", " "));
+                        int fidx = start + sp._faceIdx[j];
+                        sw.WriteLine(fidx.ToString());
+                    }
+                    start += node._PART._MESH.FaceCount;
+                }
+            }
+        }// saveModelSamplePoints
 
         private void saveSamplePointsInfo(SamplePoints sp, string filename)
         {
@@ -829,6 +962,10 @@ namespace FameBase
         {
             vertexIndex = null;
             faceVertexIndex = null;
+            if (!File.Exists(filename))
+            {
+                return;
+            }
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separators = { ' ', '\\', '\t' };
@@ -5323,7 +5460,7 @@ namespace FameBase
                 }
                 Mesh mesh = new Mesh(modelstr, false);
                 // category name
-                string category = model_name.Substring(0, model_name.LastIndexOf('_'));
+                string category = model_name.Substring(model_name.LastIndexOf('_') + 1);
                 // sample points
                 string sample_name = sampleFolder + model_name + ".poisson";
                 SamplePoints sp = loadSamplePoints(sample_name, mesh.FaceCount);           
@@ -5332,13 +5469,14 @@ namespace FameBase
                 // in case the order of files are not the same in diff folders
                 int fid = 0;
                 string model_name_filter = model_name + "_";
+                string model_wight_name_filter = model_name_filter + "predict_" + category + "_";
                 while (fid < weightFiles.Length)
                 {
                     string weight_name = Path.GetFileName(weightFiles[fid]);
-                    if (weight_name.StartsWith(model_name_filter))
+                    if (weight_name.StartsWith(model_wight_name_filter))
                     {
                         // locate the weight files
-                        while (weight_name.StartsWith(model_name_filter))
+                        while (weight_name.StartsWith(model_wight_name_filter))
                         {
                             cur_wfiles.Add(weightFiles[fid++]);
                             if (fid >= weightFiles.Length)
@@ -5360,7 +5498,7 @@ namespace FameBase
                 sp._blendColors = new Color[nFaceFromSP];
                 for (int c = 0; c < nFaceFromSP; ++c)
                 {
-                    sp._blendColors[c] = Color.White;
+                    sp._blendColors[c] = Color.LightGray;
                 }
                 foreach (string wfile in cur_wfiles)
                 {
@@ -5435,6 +5573,7 @@ namespace FameBase
 
                 FuncSpace[] fss = null;
                 Model model = new Model(mesh, sp, fss, isOriginal);
+                model._model_name = model_name;
                 _models.Add(model);
 
                 ++nfile;
@@ -5584,6 +5723,10 @@ namespace FameBase
                         return null;
                     }
                     Color c = Color.FromArgb(byte.Parse(strs[0]), byte.Parse(strs[1]), byte.Parse(strs[2]));
+                    if (c.R == 255 && c.G == 255 && c.B == 255)
+                    {
+                        c = Color.LightGray; // GLDrawer.MeshColor;
+                    }
                     colors.Add(c);
                 }
                 return colors.ToArray();
@@ -6063,7 +6206,12 @@ namespace FameBase
                 {
                     if (part._partSP != null && part._partSP._points != null)
                     {
-                        GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors);
+                        GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
+                        //for (int i = 0; i < part._partSP._points.Length; ++i)
+                        //{
+                        //    Vector3d v = part._partSP._points[i];
+                        //    GLDrawer.drawSphere(v, 0.005, part._partSP._blendColors[i]);
+                        //}
                     }
                 }
             }
