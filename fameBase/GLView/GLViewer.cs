@@ -5,6 +5,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.IO;
 using System.Drawing;
+using System.Diagnostics;
 
 using Tao.OpenGl;
 using Tao.Platform.Windows;
@@ -870,17 +871,230 @@ namespace FameBase
             string ptsname = _currModel._path + _currModel._model_name + ".pts";
             this.saveModelOff(offname);
             this.saveModelSamplePoints(ptsname);
-            string shape2poseDataFolder = _currModel._path + "shape2pose\\";
+            
+            this.computeShape2PoseFeatures(_currModel);
+            //_currModel._GRAPH.computeFeatures();
+            //this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
+        }
+
+        public void computeShape2PoseFeatures(Model model)
+        {
+            string path = _currModel._path;
+            string model_name = _currModel._model_name;
+            string shape2poseDataFolder = _currModel._path + "shape2pose\\" + _currModel._model_name + "\\";
             if (!Directory.Exists(shape2poseDataFolder))
             {
                 Directory.CreateDirectory(shape2poseDataFolder);
             }
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
-            _currModel._GRAPH.computeShape2PoseFeatures(_currModel._path, _currModel._model_name, exePath, shape2poseDataFolder);
-            //_currModel._GRAPH.computeFeatures();
-            //this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
-        }
+
+            string computeLocalFeatureExe = exePath + "ComputeLocalFeatures.exe";
+            string shape2poseMeshFile = path + model_name + ".off";
+            string shape2poseSampleFile = path + model_name + ".pts";
+
+            string msh2plnCmd = exePath + "msh2pln.exe ";
+            string prstOutputFile1 = shape2poseDataFolder + model_name + "_msh.planes.txt";
+            string prstOutputFile2 = shape2poseDataFolder + model_name + "_msh.arff";
+            string prstCmdPara = shape2poseMeshFile + " " + prstOutputFile1 +
+                              " -v -input_points " + shape2poseSampleFile + " -output_point_properties " + prstOutputFile2 +
+                              " -in_plane_vector 0 0 1 -min_value 0.9 -min_weight 128";
+            //Process.Start(msh2plnCmd, prstCmdPara);
+
+            // WaitForExit(); block the program from responding
+
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = msh2plnCmd;
+            startInfo.Arguments = prstCmdPara;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+
+            // metric
+            string metricOutputFile = shape2poseDataFolder + model_name + ".metric";
+            string metricCmd = exePath + "Metric.exe ";
+            string metricCmdPara = "-mesh " + shape2poseMeshFile + " -pnts " + shape2poseSampleFile +
+                            " -dist geodGraph -writeDist " + metricOutputFile;
+            //Process.Start(metricCmd, metricCmdPara).WaitForExit();
+
+            process = new Process();
+            startInfo = new ProcessStartInfo();
+            startInfo.FileName = metricCmd;
+            startInfo.Arguments = metricCmdPara;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+
+            string computelocalfeatureCmd = exePath + "ComputeLocalFeatures.exe ";
+            // oriented geodesic PCA
+            string ogPCAOutputFile = shape2poseDataFolder + model_name + "_og.arff";
+            string ogPCACmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
+                               " -radius 0.1 -outfile " + ogPCAOutputFile + " -feat OrientedGeodesicPCA -densePoints " + shape2poseSampleFile +
+                               " -metricFile " + metricOutputFile + " -randseed -1";
+            //Process.Start(computelocalfeatureCmd, ogPCACmdPara).WaitForExit();
+
+            process = new Process();
+            startInfo = new ProcessStartInfo();
+            startInfo.FileName = computelocalfeatureCmd;
+            startInfo.Arguments = ogPCACmdPara;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+
+            // abs curv
+            string absCurvOutputFile = shape2poseDataFolder + model_name + "_absCurv.arff";
+            string absCurvCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
+                " -radius -1 -outfile " + absCurvOutputFile + " -feat AbsCurv -densePoints " + shape2poseSampleFile +
+                " -metricFile " + metricOutputFile + " -randseed -1";
+            //Process.Start(computelocalfeatureCmd, absCurvCmdPara).WaitForExit();
+
+            process = new Process();
+            startInfo = new ProcessStartInfo();
+            startInfo.FileName = computelocalfeatureCmd;
+            startInfo.Arguments = absCurvCmdPara;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+
+            // abs curv geodesic
+            string absCurvGeoAvgOutputFile = shape2poseDataFolder + model_name + "_absCga.arff";
+            string absCurvGeoAvgCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
+                " -radius 0.1 -outfile " + absCurvGeoAvgOutputFile + " -feat AbsCurvGeodesicAvg -densePoints " + shape2poseSampleFile +
+                " -metricFile " + metricOutputFile + " -randseed -1";
+            //Process.Start(computelocalfeatureCmd, absCurvGeoAvgCmdPara);
+
+            process = new Process();
+            startInfo = new ProcessStartInfo();
+            startInfo.FileName = computelocalfeatureCmd;
+            startInfo.Arguments = absCurvGeoAvgCmdPara;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+
+            string[] cmds = new string[5] { msh2plnCmd, metricCmd, computelocalfeatureCmd, computelocalfeatureCmd, computelocalfeatureCmd };
+            string[] paras = new string[5] { prstCmdPara, metricCmdPara, ogPCACmdPara, absCurvCmdPara, absCurvGeoAvgCmdPara };
+
+            // load features
+            model._GRAPH.checkInSamplePoints();
+            model._GRAPH._funcFeat = new FuncFeatures();
+            model._GRAPH._funcFeat._pcaFeats = loadShape2Pose_OrientedGeodesicPCAFeatures(ogPCAOutputFile);
+            // load sym plane
+            Vector3d[] centers;
+            Vector3d[] normals;
+            this.loadShape2Pose_SymPlane(prstOutputFile1, out centers, out normals);
+            model._GRAPH.findBestSymPlane(centers, normals);
+            model._GRAPH.computeSamplePointsFeatures();
+
+            double[] absCurv = this.loadShape2Pose_OneDimFeatures(absCurvOutputFile);
+            double[] absCurvGeo = this.loadShape2Pose_OneDimFeatures(absCurvGeoAvgOutputFile);
+            //model._GRAPH._funcFeat._curvFeats = new double[]
+
+        }// computeShape2PoseFeatures
+
+        private double[] loadShape2Pose_OrientedGeodesicPCAFeatures(string filename)
+        {
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t', ',' };
+                List<double> pcas = new List<double>();
+                while (sr.Peek() > 0)
+                {
+                    string s = sr.ReadLine().Trim();
+                    if (s[0] == '@')
+                    {
+                        continue;
+                    }
+                    string[] strs = s.Split(separators);                   
+                    if (strs.Length != 5)
+                    {
+                        MessageBox.Show("Wrong data format - Oriented Geodesic PCA.");
+                        return null;
+                    }
+                    for (int i = 0; i < strs.Length; ++i)
+                    {
+                        pcas.Add(double.Parse(strs[i]));
+                    }
+                }
+                return pcas.ToArray();
+            }
+        }// loadShape2Pose_OrientedGeodesicPCAFeatures
+
+        private double[] loadShape2Pose_OneDimFeatures(string filename)
+        {
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+                List<double> feats = new List<double>();
+                while (sr.Peek() > 0)
+                {
+                    string s = sr.ReadLine().Trim();
+                    if (s[0] == '@')
+                    {
+                        continue;
+                    }
+                    string[] strs = s.Split(separators);
+                    feats.Add(double.Parse(strs[0]));
+                }
+                return feats.ToArray();
+            }
+        }// loadShape2Pose_OneDimFeatures
+
+        private void loadShape2Pose_SymPlane(string filename, out Vector3d[] centers, out Vector3d[] normals)
+        {
+            centers = null;
+            normals = null;
+            List<Vector3d> cs = new List<Vector3d>();
+            List<Vector3d> ns = new List<Vector3d>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t', ',' };
+                while (sr.Peek() > 0)
+                {
+                    string s = sr.ReadLine().Trim();
+                    string[] strs = s.Split(separators);
+                    if (strs.Length < 6)
+                    {
+                        continue;
+                    }
+                    double[] vecs = new double[3];
+                    int i = -1;
+                    int j = 0;
+                    while (++i < strs.Length)
+                    {
+                        if (strs[i] == "")
+                        {
+                            continue;
+                        }
+                        if (j == 3)
+                        {
+                            break;
+                        }
+                        vecs[j++] = double.Parse(strs[i]);
+                    }
+                    Vector3d center = new Vector3d(vecs);
+                    j = 0;
+                    --i;
+                    while (++i < strs.Length)
+                    {
+                        if (strs[i] == "")
+                        {
+                            continue;
+                        }
+                        if (j == 3)
+                        {
+                            break;
+                        }
+                        vecs[j++] = double.Parse(strs[i]);
+                    }
+                    Vector3d normal = new Vector3d(vecs);
+                    cs.Add(center);
+                    ns.Add(normal);
+                }
+                centers = cs.ToArray();
+                normals = ns.ToArray();
+            }
+        }// loadShape2Pose_SymPlane
 
         private void saveModelSamplePoints(string filename)
         {
@@ -2505,36 +2719,36 @@ namespace FameBase
                         int d = Common._POINT_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(Common.correct(node.funcFeat._pointFeats[i * d + j]));
+                            sb.Append(Common.correct(node._funcFeat._pointFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._CURV_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(Common.correct(node.funcFeat._curvFeats[i * d + j]));
+                            sb.Append(Common.correct(node._funcFeat._curvFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._PCA_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(Common.correct(node.funcFeat._pcaFeats[i * d + j]));
+                            sb.Append(Common.correct(node._funcFeat._pcaFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._RAY_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(Common.correct(node.funcFeat._rayFeats[i * d + j]));
+                            sb.Append(Common.correct(node._funcFeat._rayFeats[i * d + j]));
                             sb.Append(",");
                         }
                         d = Common._CONVEXHULL_FEAT_DIM;
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(Common.correct(node.funcFeat._conhullFeats[i * d + j]));
+                            sb.Append(Common.correct(node._funcFeat._conhullFeats[i * d + j]));
                             sb.Append(",");
                         }
                         for (int j = 0; j < d; ++j)
                         {
-                            sb.Append(Common.correct(node.funcFeat._cenOfMassFeats[i * d + j]));
+                            sb.Append(Common.correct(node._funcFeat._cenOfMassFeats[i * d + j]));
                             if (j < d - 1)
                             {
                                 sb.Append(",");

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 using Geometry;
 
@@ -14,6 +13,8 @@ namespace Component
         public int _NNodes = 0;
         public int _NEdges = 0;
         public FunctionalityFeatures _ff = null;
+        public FuncFeatures _funcFeat = null;
+        public SamplePoints _sp = null;
 
         double _maxNodeBboxScale; // max scale of a box
         double _minNodeBboxScale; // min scale of a box
@@ -1303,6 +1304,25 @@ namespace Component
             return v1_min.x > v2_max.x || v1_min.y > v2_max.y || v1_min.z > v2_max.z;
         }// isTwoPolyOverlap
 
+        public void checkInSamplePoints()
+        {
+            if (_sp != null)
+            {
+                return;
+            }
+            _sp = new SamplePoints();
+            List<Vector3d> points = new List<Vector3d>();
+            List<Vector3d> normals = new List<Vector3d>();
+            foreach (Node node in _nodes)
+            {
+                SamplePoints sp = node._PART._partSP;
+                points.AddRange(sp._points);
+                normals.AddRange(sp._normals);
+            }
+            _sp._points = points.ToArray();
+            _sp._normals = normals.ToArray();
+        }// checkInSamplePoints
+
         // Functionality features
         public void computeFeatures()
         {
@@ -1320,112 +1340,105 @@ namespace Component
             computeDistAndAngleToCenterOfMass();
         }// computeFeatures
 
-        public void computeShape2PoseFeatures(string path, string model_name, string exePath, string shape2poseDataFolder)
+        public void computeSamplePointsFeatures()
         {
-            string computeLocalFeatureExe = exePath + "ComputeLocalFeatures.exe";
-            string shape2poseMeshFile = path + model_name + ".off";
-            string shape2poseSampleFile = path + model_name + ".pts";
-
-            string msh2plnCmd = exePath + "msh2pln.exe ";
-            string prstOutputFile1 = shape2poseDataFolder + model_name + "_msh.planes.txt";
-            string prstOutputFile2 = shape2poseDataFolder + model_name + "_msh.arff";
-            string prstCmdPara = shape2poseMeshFile + " " + prstOutputFile1 +
-                              " -v -input_points " + shape2poseSampleFile + " -output_point_properties " + prstOutputFile2 +
-                              " -in_plane_vector 0 0 1 -min_value 0.9 -min_weight 128";
-            //System.Diagnostics.Process.Start(msh2plnCmd, prstCmdPara).WaitForExit();
-
-            // WaitForExit(); block the program from responding
-
-            Process process = new Process();
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.FileName = msh2plnCmd;
-            startInfo.Arguments = prstCmdPara;
-            process.StartInfo = startInfo;
-            process.Start();
-            process.WaitForExit();
-
-            // metric
-            string metricOutputFile = shape2poseDataFolder + model_name + ".metric";
-            string metricCmd = exePath + "Metric.exe ";
-            string metricCmdPara = "-mesh " + shape2poseMeshFile + " -pnts " + shape2poseSampleFile +
-                            " -dist geodGraph -writeDist " + metricOutputFile;
-            //Process.Start(metricCmd, metricCmdPara);
-
-            //Process process_metric = new Process();
-            //ProcessStartInfo startInfo_metric = new ProcessStartInfo();
-            //startInfo_metric.FileName = metricCmd;
-            //startInfo_metric.Arguments = metricCmdPara;
-            //process_metric.StartInfo = startInfo_metric;
-            //process_metric.Start();
-            //process_metric.WaitForExit();
-
-
-            string computelocalfeatureCmd = exePath + "ComputeLocalFeatures.exe ";
-            // oriented geodesic PCA
-            string ogPCAOutputFile = shape2poseDataFolder + model_name + "_og.arff";
-            string ogPCACmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
-                               " -radius 0.1 -outfile " + ogPCAOutputFile + " -feat OrientedGeodesicPCA -densePoints " + shape2poseSampleFile +
-                               " -metricFile " + metricOutputFile + " -randseed -1";
-            //Process.Start(computelocalfeatureCmd, ogPCACmdPara);
-
-            //Process process_clf = new Process();
-            //startInfo = new ProcessStartInfo();
-            //startInfo.FileName = computelocalfeatureCmd;
-            //startInfo.Arguments = ogPCACmdPara;
-            //process_clf.StartInfo = startInfo;
-            //process_clf.Start();
-            //process_clf.WaitForExit();
-
-            // abs curv
-            string absCurvOutputFile = shape2poseDataFolder + model_name + "_absCurv.arff";
-            string absCurvCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
-                " -radius -1 -outfile " + absCurvOutputFile + " -feat AbsCurv -densePoints " + shape2poseSampleFile +
-                " -metricFile " + metricOutputFile + " -randseed -1";
-            //Process.Start(computelocalfeatureCmd, absCurvCmdPara);
-
-            //process = new Process();
-            //startInfo = new ProcessStartInfo();
-            //startInfo.FileName = computelocalfeatureCmd;
-            //startInfo.Arguments = absCurvCmdPara;
-            //process.StartInfo = startInfo;
-            //process.Start();
-            //process.WaitForExit();
-
-            // abs curv geodesic
-            string absCurvGeoAvgOutputFile = shape2poseDataFolder + model_name + "_absCga.arff";
-            string absCurvGeoAvgCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
-                " -radius 0.1 -outfile " + absCurvGeoAvgOutputFile + " -feat AbsCurvGeodesicAvg -densePoints " + shape2poseSampleFile +
-                " -metricFile " + metricOutputFile + " -randseed -1";
-            //Process.Start(computelocalfeatureCmd, absCurvGeoAvgCmdPara);
-
-            //process = new Process();
-            //startInfo = new ProcessStartInfo();
-            //startInfo.FileName = computelocalfeatureCmd;
-            //startInfo.Arguments = absCurvGeoAvgCmdPara;
-            //process.StartInfo = startInfo;
-            //process.Start();
-            //process.WaitForExit();
-
-            string[] cmds = new string[5] { msh2plnCmd, metricCmd, computelocalfeatureCmd, computelocalfeatureCmd, computelocalfeatureCmd };
-            string[] paras = new string[5] { prstCmdPara, metricCmdPara, ogPCACmdPara, absCurvCmdPara, absCurvGeoAvgCmdPara };
-            //runProcess(cmds, paras, 0);
-        }// computeShape2PoseFeatures
-
-        private void runProcess(string[] cmds, string[] paras, int n)
-        {
-            if (n >= cmds.Length)
+            if (_sp == null)
             {
+                this.checkInSamplePoints();
+            }
+            if (_symPlane == null)
+            {
+                computeCenterOfMass();
+            }
+            int n = _sp._points.Length;
+            int dim = Common._POINT_FEAT_DIM;
+            this._funcFeat._pointFeats = new double[n * dim];
+            double maxh = double.MinValue;
+            double minh = double.MaxValue;
+            double maxd = double.MinValue;
+            double mind = double.MaxValue;
+            for (int i = 0; i < n; ++i)
+            {
+                Vector3d v = _sp._points[i];
+                Vector3d nor = _sp._normals[i];
+                // height - v project to the upright (unit) vector
+                double height = v.Dot(Common.uprightVec);
+                maxh = maxh > height ? maxh : height;
+                minh = minh < height ? minh : height;
+                // angle - normal vs. upright vector
+                double angle = Math.Acos(nor.Dot(Common.uprightVec));
+                angle /= Math.PI;
+                angle = Common.cutoff(angle, 0, 1.0);
+                // dist to center of hull - reflection plane
+                double dist = (v - _symPlane.center).Dot(_symPlane.normal);
+                dist = Math.Abs(dist);
+                maxd = maxd > dist ? maxd : dist;
+                mind = mind < dist ? mind : dist;
+                _funcFeat._pointFeats[i * dim] = angle;
+                _funcFeat._pointFeats[i * dim + 1] = height;
+                _funcFeat._pointFeats[i * dim + 2] = dist;
+            }
+            // normalize
+            double diffh = maxh - minh; 
+            double diffd = maxd - mind;
+            for (int i = 0; i < n; ++i)
+            {
+                double h = _funcFeat._pointFeats[i * dim + 1];
+                _funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
+                double d = _funcFeat._pointFeats[i * dim + 2];
+                _funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+            }
+        }// computeSamplePointsFeatures
+
+        public void findBestSymPlane(Vector3d[] centers, Vector3d[] normals)
+        {
+            if (centers.Length == 1)
+            {
+                _symPlane = new Polygon3D(centers[0], normals[0]);
                 return;
             }
-            Process process = new Process();            
-            process.Exited += (sender, e) => runProcess(cmds, paras, n + 1);
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.FileName = cmds[n];
-            startInfo.Arguments = paras[n];
-            process.StartInfo = startInfo;
-            process.Start();
-        }
+            alglib.kdtree kdt;
+            int n = _sp._points.Length;
+            double[,] xy = new double[n, 3];
+            int[] tags = new int[n];
+            for (int i = 0; i < n; ++i)
+            {
+                xy[i, 0] = _sp._points[i].x;
+                xy[i, 1] = _sp._points[i].y;
+                xy[i, 2] = _sp._points[i].z;
+                tags[i] = i;
+            }
+            int nx = 3;
+            int ny = 0;
+            int normtype = 2;
+            alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out kdt);
 
+            double mind = double.MaxValue;
+            int bestPlaneIdx = -1;
+            for (int i = 0; i < centers.Length; ++i)
+            {
+                double sumd = 0;
+                for (int j = 0; j < n; ++j)
+                {
+                    Vector3d pt = _sp._points[j];
+                    double prj = 2 * (pt - centers[i]).Dot(normals[i]);
+                    Vector3d sympt = pt - prj * normals[i];
+
+                    int res = alglib.kdtreequeryknn(kdt, sympt.ToArray(), 1, true); // true for overlapping points
+                    int[] nearestIds = new int[1];
+                    alglib.kdtreequeryresultstags(kdt, ref nearestIds);
+                    double d = (_sp._points[nearestIds[0]] - sympt).Length();
+                    sumd += d;
+                }
+                if (sumd < mind)
+                {
+                    mind = sumd;
+                    bestPlaneIdx = i;
+                }
+            }
+            _symPlane = new Polygon3D(centers[bestPlaneIdx], normals[bestPlaneIdx]);
+        }// findBestSymPlane
+        
         private void computePointFeatures()
         {
             // normalize height, angle to [0.0, 1.0]
@@ -1464,7 +1477,7 @@ namespace Component
                     maxd = maxd > dist ? maxd : dist;
                     mind = mind < dist ? mind : dist;
                 }
-                node.funcFeat._pointFeats = pointFeats;
+                node._funcFeat._pointFeats = pointFeats;
             }
             // normalize
             double diffh = maxh - minh; //**TBD**
@@ -1474,10 +1487,10 @@ namespace Component
                 SamplePoints sp = node._PART._partSP;
                 for (int i = 0; i < sp._points.Length; ++i)
                 {
-                    double h = node.funcFeat._pointFeats[i * dim + 1];
-                    node.funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
-                    double d = node.funcFeat._pointFeats[i * dim + 2];
-                    node.funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+                    double h = node._funcFeat._pointFeats[i * dim + 1];
+                    node._funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
+                    double d = node._funcFeat._pointFeats[i * dim + 2];
+                    node._funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
                 }
             }
 
@@ -1492,16 +1505,16 @@ namespace Component
             int dim1 = dim - 1;
             foreach (Node node in _nodes)
             {
-                node.funcFeat._curvFeats = new double[node._PART._partSP._points.Length * dim];
+                node._funcFeat._curvFeats = new double[node._PART._partSP._points.Length * dim];
                 double[] curvatures = _mesh.computeCurvFeatures(node._PART._partSP._points, node._PART._partSP._normals);
                 double[] avgCurvs = _mesh.computeAvgCurvFeatures(node._PART._partSP._points, node._PART._partSP._normals, curvatures, dim1);
-                int n = node.funcFeat._curvFeats.Length / dim;
+                int n = node._funcFeat._curvFeats.Length / dim;
                 for (int i = 0; i < node._PART._partSP._points.Length; ++i)
                 {
-                    node.funcFeat._curvFeats[dim * i] = curvatures[i];
-                    node.funcFeat._curvFeats[dim * i + 1] = avgCurvs[i * dim1];
-                    node.funcFeat._curvFeats[dim * i + 2] = avgCurvs[i * dim1 + 1];
-                    node.funcFeat._curvFeats[dim * i + 3] = avgCurvs[i * dim1 + 2];
+                    node._funcFeat._curvFeats[dim * i] = curvatures[i];
+                    node._funcFeat._curvFeats[dim * i + 1] = avgCurvs[i * dim1];
+                    node._funcFeat._curvFeats[dim * i + 2] = avgCurvs[i * dim1 + 1];
+                    node._funcFeat._curvFeats[dim * i + 3] = avgCurvs[i * dim1 + 2];
                 }
             }
         }// computeCurvatureFeatures
@@ -1516,7 +1529,7 @@ namespace Component
                     node._PART._partSP._points,
                     node._PART._partSP._normals);
                 int n = pcaInfo.Length / 4; // #vertex
-                node.funcFeat._pcaFeats = new double[n * dim];
+                node._funcFeat._pcaFeats = new double[n * dim];
                 for (int i = 0; i < n; ++i)
                 {
                     // lamda1 > lamda2 > lamda3
@@ -1546,11 +1559,11 @@ namespace Component
                     }
                     double alpha_0 = Math.Acos(Math.Abs(axis_0.Dot(Common.uprightVec))) / Math.PI;
                     double alpha_2 = 1 - Math.Acos(axis_2.Dot(Common.uprightVec)) / Math.PI;
-                    node.funcFeat._pcaFeats[i * dim] = L;
-                    node.funcFeat._pcaFeats[i * dim + 1] = P;
-                    node.funcFeat._pcaFeats[i * dim + 2] = S;
-                    node.funcFeat._pcaFeats[i * dim + 3] = alpha_2;
-                    node.funcFeat._pcaFeats[i * dim + 4] = alpha_0;
+                    node._funcFeat._pcaFeats[i * dim] = L;
+                    node._funcFeat._pcaFeats[i * dim + 1] = P;
+                    node._funcFeat._pcaFeats[i * dim + 2] = S;
+                    node._funcFeat._pcaFeats[i * dim + 3] = alpha_2;
+                    node._funcFeat._pcaFeats[i * dim + 4] = alpha_0;
                 }
             }
         }// computePCAFeatures
@@ -1559,7 +1572,7 @@ namespace Component
         {
             foreach (Node node in _nodes)
             {
-                node.funcFeat._rayFeats = _mesh.computeRayDist(node._PART._partSP._points, node._PART._partSP._normals);
+                node._funcFeat._rayFeats = _mesh.computeRayDist(node._PART._partSP._points, node._PART._partSP._normals);
             }
         }// computeRayFeatures
 
@@ -1574,23 +1587,23 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 SamplePoints sp = node._PART._partSP;
-                node.funcFeat._conhullFeats = new double[dim * sp._points.Length];
+                node._funcFeat._conhullFeats = new double[dim * sp._points.Length];
                 for (int i = 0; i < sp._points.Length; ++i)
                 {
                     Vector3d v = sp._points[i];
                     double dist = 0;
                     double angle = 0;
                     computeDistAndAngleToAnchorNormalized(v, _hull._center, out dist, out angle);
-                    node.funcFeat._conhullFeats[i * dim] = dist;
-                    node.funcFeat._conhullFeats[i * dim + 1] = angle;
+                    node._funcFeat._conhullFeats[i * dim] = dist;
+                    node._funcFeat._conhullFeats[i * dim + 1] = angle;
                     maxdist = maxdist > dist ? maxdist : dist;
                 }
             }
             foreach (Node node in _nodes)
             {
-                for (int i = 0; i < node.funcFeat._conhullFeats.Length; i += dim)
+                for (int i = 0; i < node._funcFeat._conhullFeats.Length; i += dim)
                 {
-                    node.funcFeat._conhullFeats[i] /= maxdist;
+                    node._funcFeat._conhullFeats[i] /= maxdist;
                 }
             }
         }// computeDistAndAngleToCenterOfConvexHull
@@ -1602,23 +1615,23 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 SamplePoints sp = node._PART._partSP;
-                node.funcFeat._cenOfMassFeats = new double[dim * sp._points.Length];
+                node._funcFeat._cenOfMassFeats = new double[dim * sp._points.Length];
                 for (int i = 0; i < sp._points.Length; ++i)
                 {
                     Vector3d v = sp._points[i];
                     double dist = 0;
                     double angle = 0;
                     computeDistAndAngleToAnchorNormalized(v, _centerOfMass, out dist, out angle);
-                    node.funcFeat._cenOfMassFeats[i * dim] = dist;
-                    node.funcFeat._cenOfMassFeats[i * dim + 1] = angle;
+                    node._funcFeat._cenOfMassFeats[i * dim] = dist;
+                    node._funcFeat._cenOfMassFeats[i * dim + 1] = angle;
                     maxdist = maxdist > dist ? maxdist : dist;
                 }
             }
             foreach (Node node in _nodes)
             {
-                for (int i = 0; i < node.funcFeat._cenOfMassFeats.Length; i += dim)
+                for (int i = 0; i < node._funcFeat._cenOfMassFeats.Length; i += dim)
                 {
-                    node.funcFeat._cenOfMassFeats[i] /= maxdist;
+                    node._funcFeat._cenOfMassFeats[i] /= maxdist;
                 }
             }
         }// computeDistAndAngleToCenterOfMass
@@ -1663,7 +1676,7 @@ namespace Component
         public Node symmetry = null;
         public Symmetry symm = null;
         public List<Common.Functionality> _funcs = new List<Common.Functionality>();
-        public FuncFeatures funcFeat;
+        public FuncFeatures _funcFeat;
 
         public Node(Part p, int idx)
         {
@@ -1672,7 +1685,7 @@ namespace Component
             _edges = new List<Edge>();
             _adjNodes = new List<Node>();
             _pos = p._BOUNDINGBOX.CENTER;
-            funcFeat = new FuncFeatures();
+            _funcFeat = new FuncFeatures();
         }
 
         public void addAnEdge(Edge e)
@@ -1734,7 +1747,7 @@ namespace Component
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
             cloned._funcs = new List<Common.Functionality>(_funcs);
-            cloned.funcFeat = funcFeat.clone() as FuncFeatures;
+            cloned._funcFeat = _funcFeat.clone() as FuncFeatures;
             return cloned;
         }// Clone
 
@@ -1744,7 +1757,7 @@ namespace Component
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
             cloned._funcs = new List<Common.Functionality>(_funcs);
-            cloned.funcFeat = funcFeat.clone() as FuncFeatures;
+            cloned._funcFeat = _funcFeat.clone() as FuncFeatures;
             return cloned;
         }// Clone
 
