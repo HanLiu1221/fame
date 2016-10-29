@@ -1332,7 +1332,7 @@ namespace Component
             string prstCmdPara = shape2poseMeshFile + " " + prstOutputFile1 +
                               " -v -input_points " + shape2poseSampleFile + " -output_point_properties " + prstOutputFile2 +
                               " -in_plane_vector 0 0 1 -min_value 0.9 -min_weight 128";
-            //Process.Start(msh2plnCmd, prstCmdPara);
+            //System.Diagnostics.Process.Start(msh2plnCmd, prstCmdPara).WaitForExit();
 
             // WaitForExit(); block the program from responding
 
@@ -1349,15 +1349,16 @@ namespace Component
             string metricCmd = exePath + "Metric.exe ";
             string metricCmdPara = "-mesh " + shape2poseMeshFile + " -pnts " + shape2poseSampleFile +
                             " -dist geodGraph -writeDist " + metricOutputFile;
-            //Process.Start(metricCmd, metricCmdPara).WaitForExit();
+            //Process.Start(metricCmd, metricCmdPara);
 
-            process = new Process();
-            startInfo = new ProcessStartInfo();
-            startInfo.FileName = metricCmd;
-            startInfo.Arguments = metricCmdPara;
-            process.StartInfo = startInfo;
-            process.Start();
-            process.WaitForExit();
+            //Process process_metric = new Process();
+            //ProcessStartInfo startInfo_metric = new ProcessStartInfo();
+            //startInfo_metric.FileName = metricCmd;
+            //startInfo_metric.Arguments = metricCmdPara;
+            //process_metric.StartInfo = startInfo_metric;
+            //process_metric.Start();
+            //process_metric.WaitForExit();
+
 
             string computelocalfeatureCmd = exePath + "ComputeLocalFeatures.exe ";
             // oriented geodesic PCA
@@ -1365,30 +1366,30 @@ namespace Component
             string ogPCACmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
                                " -radius 0.1 -outfile " + ogPCAOutputFile + " -feat OrientedGeodesicPCA -densePoints " + shape2poseSampleFile +
                                " -metricFile " + metricOutputFile + " -randseed -1";
-            //Process.Start(computelocalfeatureCmd, ogPCACmdPara).WaitForExit();
+            //Process.Start(computelocalfeatureCmd, ogPCACmdPara);
 
-            process = new Process();
-            startInfo = new ProcessStartInfo();
-            startInfo.FileName = computelocalfeatureCmd;
-            startInfo.Arguments = ogPCACmdPara;
-            process.StartInfo = startInfo;
-            process.Start();
-            process.WaitForExit();
+            //Process process_clf = new Process();
+            //startInfo = new ProcessStartInfo();
+            //startInfo.FileName = computelocalfeatureCmd;
+            //startInfo.Arguments = ogPCACmdPara;
+            //process_clf.StartInfo = startInfo;
+            //process_clf.Start();
+            //process_clf.WaitForExit();
 
             // abs curv
             string absCurvOutputFile = shape2poseDataFolder + model_name + "_absCurv.arff";
             string absCurvCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
                 " -radius -1 -outfile " + absCurvOutputFile + " -feat AbsCurv -densePoints " + shape2poseSampleFile +
                 " -metricFile " + metricOutputFile + " -randseed -1";
-            //Process.Start(computelocalfeatureCmd, absCurvCmdPara).WaitForExit();
+            //Process.Start(computelocalfeatureCmd, absCurvCmdPara);
 
-            process = new Process();
-            startInfo = new ProcessStartInfo();
-            startInfo.FileName = computelocalfeatureCmd;
-            startInfo.Arguments = absCurvCmdPara;
-            process.StartInfo = startInfo;
-            process.Start();
-            process.WaitForExit();
+            //process = new Process();
+            //startInfo = new ProcessStartInfo();
+            //startInfo.FileName = computelocalfeatureCmd;
+            //startInfo.Arguments = absCurvCmdPara;
+            //process.StartInfo = startInfo;
+            //process.Start();
+            //process.WaitForExit();
 
             // abs curv geodesic
             string absCurvGeoAvgOutputFile = shape2poseDataFolder + model_name + "_absCga.arff";
@@ -1397,19 +1398,33 @@ namespace Component
                 " -metricFile " + metricOutputFile + " -randseed -1";
             //Process.Start(computelocalfeatureCmd, absCurvGeoAvgCmdPara);
 
-            process = new Process();
-            startInfo = new ProcessStartInfo();
-            startInfo.FileName = computelocalfeatureCmd;
-            startInfo.Arguments = absCurvGeoAvgCmdPara;
-            process.StartInfo = startInfo;
-            process.Start();
-            process.WaitForExit();
+            //process = new Process();
+            //startInfo = new ProcessStartInfo();
+            //startInfo.FileName = computelocalfeatureCmd;
+            //startInfo.Arguments = absCurvGeoAvgCmdPara;
+            //process.StartInfo = startInfo;
+            //process.Start();
+            //process.WaitForExit();
 
             string[] cmds = new string[5] { msh2plnCmd, metricCmd, computelocalfeatureCmd, computelocalfeatureCmd, computelocalfeatureCmd };
             string[] paras = new string[5] { prstCmdPara, metricCmdPara, ogPCACmdPara, absCurvCmdPara, absCurvGeoAvgCmdPara };
-
+            //runProcess(cmds, paras, 0);
         }// computeShape2PoseFeatures
 
+        private void runProcess(string[] cmds, string[] paras, int n)
+        {
+            if (n >= cmds.Length)
+            {
+                return;
+            }
+            Process process = new Process();            
+            process.Exited += (sender, e) => runProcess(cmds, paras, n + 1);
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = cmds[n];
+            startInfo.Arguments = paras[n];
+            process.StartInfo = startInfo;
+            process.Start();
+        }
 
         private void computePointFeatures()
         {
