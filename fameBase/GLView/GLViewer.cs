@@ -866,6 +866,10 @@ namespace FameBase
             {
                 return;
             }
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+            _currModel._GRAPH.checkInSamplePoints();
             // save .off file & .pts file for shape2pose
             string offname = _currModel._path + _currModel._model_name + ".off";
             string ptsname = _currModel._path + _currModel._model_name + ".pts";
@@ -876,13 +880,15 @@ namespace FameBase
             this.writeModelSampleFeatureFilesForPrediction(_currModel);
             //_currModel._GRAPH.computeFeatures();
             //this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
+            long secs = stopWatch.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time to compute features: " + secs.ToString());
         }
 
         public void computeShape2PoseAndIconFeatures(Model model)
         {
             string path = _currModel._path;
             string model_name = _currModel._model_name;
-            string shape2poseDataFolder = _currModel._path + "shape2pose\\" + _currModel._model_name + "\\";
+            string shape2poseDataFolder = _currModel._path + "shape2pose\\" + model_name + "\\";
             if (!Directory.Exists(shape2poseDataFolder))
             {
                 Directory.CreateDirectory(shape2poseDataFolder);
@@ -975,13 +981,20 @@ namespace FameBase
 
             // min & max curvature K1 K2
             string k1k2OutputFile = shape2poseDataFolder + model_name + "_K1K2.curvature";
-
+            string k1k2Cmd = exePath + "StyleSimilarity.exe ";
+            string k1k2CmdPara = k1k2OutputFile;
+            process = new Process();
+            startInfo = new ProcessStartInfo();
+            startInfo.FileName = k1k2Cmd;
+            startInfo.Arguments = shape2poseSampleFile;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
 
             string[] cmds = new string[5] { msh2plnCmd, metricCmd, computelocalfeatureCmd, computelocalfeatureCmd, computelocalfeatureCmd };
             string[] paras = new string[5] { prstCmdPara, metricCmdPara, ogPCACmdPara, absCurvCmdPara, absCurvGeoAvgCmdPara };
 
             // load features
-            model._GRAPH.checkInSamplePoints();
             int nSamplePoints = model._GRAPH._sp._points.Length;
 
             model._GRAPH._funcFeat = new FuncFeatures();
@@ -999,7 +1012,7 @@ namespace FameBase
             double[] k1k2Curv = this.loadShape2Pose_nDimFeatures(k1k2OutputFile, 2);
 
             int dim = Common._CURV_FEAT_DIM;
-            model._GRAPH._funcFeat._curvFeats = new double[dim];
+            model._GRAPH._funcFeat._curvFeats = new double[dim * nSamplePoints];
             for (int i = 0; i < nSamplePoints; ++i)
             {
                 model._GRAPH._funcFeat._curvFeats[i * dim] = absCurv[i];
@@ -1010,8 +1023,8 @@ namespace FameBase
             if (model._MESH == null)
             {
                 model.setMesh(model._GRAPH.composeMesh());
-                model._GRAPH._funcFeat._rayFeats = model._MESH.computeRayDist(model._GRAPH._sp._points, model._GRAPH._sp._normals);
             }
+            model._GRAPH._funcFeat._rayFeats = model._MESH.computeRayDist(model._GRAPH._sp._points, model._GRAPH._sp._normals);
             model._GRAPH.computeDistAndAngleToCenterOfConvexHull();
             model._GRAPH.computeDistAndAngleToCenterOfMass();
         }// computeShape2PoseAndIconFeatures

@@ -1338,14 +1338,17 @@ namespace Component
             _sp = new SamplePoints();
             List<Vector3d> points = new List<Vector3d>();
             List<Vector3d> normals = new List<Vector3d>();
+            List<int> faceIdxs = new List<int>();
             foreach (Node node in _nodes)
             {
                 SamplePoints sp = node._PART._partSP;
                 points.AddRange(sp._points);
                 normals.AddRange(sp._normals);
+                faceIdxs.AddRange(sp._faceIdx);
             }
             _sp._points = points.ToArray();
             _sp._normals = normals.ToArray();
+            _sp._faceIdx = faceIdxs.ToArray();
         }// checkInSamplePoints
 
         // Functionality features
