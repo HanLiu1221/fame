@@ -866,22 +866,29 @@ namespace FameBase
             {
                 return;
             }
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+            _currModel._GRAPH.checkInSamplePoints();
             // save .off file & .pts file for shape2pose
             string offname = _currModel._path + _currModel._model_name + ".off";
             string ptsname = _currModel._path + _currModel._model_name + ".pts";
             this.saveModelOff(offname);
             this.saveModelSamplePoints(ptsname);
-            
-            this.computeShape2PoseFeatures(_currModel);
+
+            this.computeShape2PoseAndIconFeatures(_currModel);
+            this.writeModelSampleFeatureFilesForPrediction(_currModel);
             //_currModel._GRAPH.computeFeatures();
             //this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
+            long secs = stopWatch.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time to compute features: " + secs.ToString());
         }
 
-        public void computeShape2PoseFeatures(Model model)
+        public void computeShape2PoseAndIconFeatures(Model model)
         {
             string path = _currModel._path;
             string model_name = _currModel._model_name;
-            string shape2poseDataFolder = _currModel._path + "shape2pose\\" + _currModel._model_name + "\\";
+            string shape2poseDataFolder = _currModel._path + "shape2pose\\" + model_name + "\\";
             if (!Directory.Exists(shape2poseDataFolder))
             {
                 Directory.CreateDirectory(shape2poseDataFolder);
@@ -972,11 +979,24 @@ namespace FameBase
             process.Start();
             process.WaitForExit();
 
+            // min & max curvature K1 K2
+            string k1k2OutputFile = shape2poseDataFolder + model_name + "_K1K2.curvature";
+            string k1k2Cmd = exePath + "StyleSimilarity.exe ";
+            string k1k2CmdPara = k1k2OutputFile;
+            process = new Process();
+            startInfo = new ProcessStartInfo();
+            startInfo.FileName = k1k2Cmd;
+            startInfo.Arguments = shape2poseSampleFile;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+
             string[] cmds = new string[5] { msh2plnCmd, metricCmd, computelocalfeatureCmd, computelocalfeatureCmd, computelocalfeatureCmd };
             string[] paras = new string[5] { prstCmdPara, metricCmdPara, ogPCACmdPara, absCurvCmdPara, absCurvGeoAvgCmdPara };
 
             // load features
-            model._GRAPH.checkInSamplePoints();
+            int nSamplePoints = model._GRAPH._sp._points.Length;
+
             model._GRAPH._funcFeat = new FuncFeatures();
             model._GRAPH._funcFeat._pcaFeats = loadShape2Pose_OrientedGeodesicPCAFeatures(ogPCAOutputFile);
             // load sym plane
@@ -985,15 +1005,36 @@ namespace FameBase
             this.loadShape2Pose_SymPlane(prstOutputFile1, out centers, out normals);
             model._GRAPH.findBestSymPlane(centers, normals);
             model._GRAPH.computeSamplePointsFeatures();
+            
+            double[] absCurv = this.loadShape2Pose_nDimFeatures(absCurvOutputFile, 1);
+            double[] absCurvGeo = this.loadShape2Pose_nDimFeatures(absCurvGeoAvgOutputFile, 1);
 
-            double[] absCurv = this.loadShape2Pose_OneDimFeatures(absCurvOutputFile);
-            double[] absCurvGeo = this.loadShape2Pose_OneDimFeatures(absCurvGeoAvgOutputFile);
-            //model._GRAPH._funcFeat._curvFeats = new double[]
+            double[] k1k2Curv = this.loadShape2Pose_nDimFeatures(k1k2OutputFile, 2);
 
-        }// computeShape2PoseFeatures
+            int dim = Common._CURV_FEAT_DIM;
+            model._GRAPH._funcFeat._curvFeats = new double[dim * nSamplePoints];
+            for (int i = 0; i < nSamplePoints; ++i)
+            {
+                model._GRAPH._funcFeat._curvFeats[i * dim] = absCurv[i];
+                model._GRAPH._funcFeat._curvFeats[i * dim + 1] = absCurvGeo[i];
+                model._GRAPH._funcFeat._curvFeats[i * dim + 2] = k1k2Curv[i * 2];
+                model._GRAPH._funcFeat._curvFeats[i * dim + 3] = k1k2Curv[i * 2 + 1];
+            }
+            if (model._MESH == null)
+            {
+                model.setMesh(model._GRAPH.composeMesh());
+            }
+            model._GRAPH._funcFeat._rayFeats = model._MESH.computeRayDist(model._GRAPH._sp._points, model._GRAPH._sp._normals);
+            model._GRAPH.computeDistAndAngleToCenterOfConvexHull();
+            model._GRAPH.computeDistAndAngleToCenterOfMass();
+        }// computeShape2PoseAndIconFeatures
 
         private double[] loadShape2Pose_OrientedGeodesicPCAFeatures(string filename)
         {
+            if (!File.Exists(filename))
+            {
+                return null;
+            }
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separators = { ' ', '\\', '\t', ',' };
@@ -1020,8 +1061,12 @@ namespace FameBase
             }
         }// loadShape2Pose_OrientedGeodesicPCAFeatures
 
-        private double[] loadShape2Pose_OneDimFeatures(string filename)
+        private double[] loadShape2Pose_nDimFeatures(string filename, int dim)
         {
+            if (!File.Exists(filename))
+            {
+                return null;
+            }
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separators = { ' ', '\\', '\t' };
@@ -1034,16 +1079,30 @@ namespace FameBase
                         continue;
                     }
                     string[] strs = s.Split(separators);
+                    if (strs.Length < dim)
+                    {
+                        MessageBox.Show("Wrong data format - ." + Path.GetFileName(filename));
+                        return null;
+                    }
                     feats.Add(double.Parse(strs[0]));
+                    if (dim == 2)
+                    {
+                        feats.Add(double.Parse(strs[1]));
+                    }
                 }
                 return feats.ToArray();
             }
-        }// loadShape2Pose_OneDimFeatures
+        }// loadShape2Pose_nDimFeatures
+
 
         private void loadShape2Pose_SymPlane(string filename, out Vector3d[] centers, out Vector3d[] normals)
         {
             centers = null;
             normals = null;
+            if (!File.Exists(filename))
+            {
+                return;
+            }
             List<Vector3d> cs = new List<Vector3d>();
             List<Vector3d> ns = new List<Vector3d>();
             using (StreamReader sr = new StreamReader(filename))
@@ -2673,6 +2732,84 @@ namespace FameBase
             }
             return patchFileNamesForPredictions;
         }// useSelectedSubsetPatchesForPrediction
+
+        private void writeModelSampleFeatureFilesForPrediction(Model model)
+        {
+            string meshFileName = model._model_name + ".obj";
+            string mesh_file = model._path + meshFileName;
+            this.saveMeshForModel(model, mesh_file);
+            File.Copy(mesh_file, Interface.MESH_PATH + meshFileName, true);
+
+            string folder = Interface.MATLAB_INPUT_PATH;
+            string possionFilename = model._model_name + ".poisson";
+            string pois_file = folder + possionFilename;
+            using (StreamWriter sw = new StreamWriter(pois_file))
+            {
+                SamplePoints sp = model._GRAPH._sp;
+                for (int j = 0; j < sp._points.Length; ++j)
+                {
+                    Vector3d vpos = sp._points[j];
+                    sw.Write(vector3dToString(vpos, " ", " "));
+                    Vector3d vnor = sp._normals[j];
+                    sw.Write(vector3dToString(vnor, " ", " "));
+                    int fidx = sp._faceIdx[j];
+                    sw.WriteLine(fidx.ToString());
+                }
+            }
+            File.Copy(pois_file, Interface.POINT_SAMPLE_PATH + possionFilename, true);
+
+            string featureFileName = model._model_name + "_point_feature.csv";
+            string feat_file = folder + featureFileName;
+            using (StreamWriter sw = new StreamWriter(feat_file))
+            {
+
+                int n = model._GRAPH._sp._points.Length;
+                for (int i = 0; i < n; ++i)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    int d = Common._POINT_FEAT_DIM;
+                    for (int j = 0; j < d; ++j)
+                    {
+                        sb.Append(Common.correct(model._GRAPH._funcFeat._pointFeats[i * d + j]));
+                        sb.Append(",");
+                    }
+                    d = Common._CURV_FEAT_DIM;
+                    for (int j = 0; j < d; ++j)
+                    {
+                        sb.Append(Common.correct(model._GRAPH._funcFeat._curvFeats[i * d + j]));
+                        sb.Append(",");
+                    }
+                    d = Common._PCA_FEAT_DIM;
+                    for (int j = 0; j < d; ++j)
+                    {
+                        sb.Append(Common.correct(model._GRAPH._funcFeat._pcaFeats[i * d + j]));
+                        sb.Append(",");
+                    }
+                    d = Common._RAY_FEAT_DIM;
+                    for (int j = 0; j < d; ++j)
+                    {
+                        sb.Append(Common.correct(model._GRAPH._funcFeat._rayFeats[i * d + j]));
+                        sb.Append(",");
+                    }
+                    d = Common._CONVEXHULL_FEAT_DIM;
+                    for (int j = 0; j < d; ++j)
+                    {
+                        sb.Append(Common.correct(model._GRAPH._funcFeat._conhullFeats[i * d + j]));
+                        sb.Append(",");
+                    }
+                    for (int j = 0; j < d; ++j)
+                    {
+                        sb.Append(Common.correct(model._GRAPH._funcFeat._cenOfMassFeats[i * d + j]));
+                        if (j < d - 1)
+                        {
+                            sb.Append(",");
+                        }
+                    }
+                    sw.WriteLine(sb.ToString());
+                }
+            }
+            File.Copy(feat_file, Interface.POINT_FEATURE_PATH + featureFileName, true);
+        }// writeModelSampleFeatureFilesForPrediction
 
         private void writeSampleFeatureFilesForPrediction(List<Node> subPatches, Model model, string subsetStr)
         {

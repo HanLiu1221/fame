@@ -24,8 +24,8 @@ namespace Component
         private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
         private ConvexHull _hull;
         private Vector3d _centerOfMass;
+        private Vector3d _centerOfConvexHull;
         private Polygon3D _symPlane;
-        private Mesh _mesh;
 
         // test
         public List<List<Node>> selectedNodePairs = new List<List<Node>>();
@@ -50,10 +50,10 @@ namespace Component
             computeCenterOfMass();
             computeConvexHull();
             analyzeOriginFeatures();
-            computeFeatures();
+            //computeFeatures();
         }// init
 
-        private void composeMesh()
+        public Mesh composeMesh()
         {
             List<double> vertexPos = new List<double>();
             List<int> faceIndex = new List<int>();
@@ -79,8 +79,8 @@ namespace Component
                 }
                 start += mesh.VertexCount;
             }
-            _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
-        }
+            return new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
+        }// composeMesh
 
         private void computeConvexHull()
         {
@@ -101,9 +101,10 @@ namespace Component
             Mesh merged = new Mesh(pos.ToArray(), findices.ToArray());
             // compute
             _hull = new ConvexHull(merged);
+            _centerOfConvexHull = _hull._center;
         }// computeConvexHull
 
-        private void computeCenterOfMass()
+        private void computeGraphBox()
         {
             _centerOfMass = new Vector3d();
             _NNodes = _nodes.Count;
@@ -126,6 +127,30 @@ namespace Component
             symPlaneVecs[2] = new Vector3d(_centerOfMass.x, maxCoord.y, maxCoord.z);
             symPlaneVecs[3] = new Vector3d(_centerOfMass.x, minCoord.y, maxCoord.z);
             _symPlane = new Polygon3D(symPlaneVecs);
+        }// computeGraphBox
+
+        private void computeCenterOfMass()
+        {
+            _centerOfMass = new Vector3d();
+            double totalVolume = 0;
+            foreach(Node node in _nodes)
+            {
+                Mesh mesh = node._PART._MESH;
+                for (int i = 0; i < mesh.FaceCount; ++i)
+                {
+                    int v1 = mesh.FaceVertexIndex[3*i];
+                    int v2 = mesh.FaceVertexIndex[3*i+1];
+                    int v3 = mesh.FaceVertexIndex[3*i+2];
+                    Vector3d pos1 = mesh.getVertexPos(v1);
+                    Vector3d pos2 = mesh.getVertexPos(v2);
+                    Vector3d pos3 = mesh.getVertexPos(v3);
+                    double volume = (pos1.x * pos1.y * pos3.z - pos1.x * pos3.y * pos2.z - pos2.x * pos1.y * pos3.z +
+                        pos2.x * pos3.y * pos1.z + pos3.x * pos1.y * pos2.z - pos3.x * pos1.y * pos1.z) / 6;
+                    _centerOfMass += (pos1 + pos2 + pos3) / 4 * volume;
+                    totalVolume += volume;
+                }
+            }
+            _centerOfMass /= totalVolume;
         }// computeCenterOfMass
 
         public List<Common.Functionality> getGraphFuncs()
@@ -1313,32 +1338,35 @@ namespace Component
             _sp = new SamplePoints();
             List<Vector3d> points = new List<Vector3d>();
             List<Vector3d> normals = new List<Vector3d>();
+            List<int> faceIdxs = new List<int>();
             foreach (Node node in _nodes)
             {
                 SamplePoints sp = node._PART._partSP;
                 points.AddRange(sp._points);
                 normals.AddRange(sp._normals);
+                faceIdxs.AddRange(sp._faceIdx);
             }
             _sp._points = points.ToArray();
             _sp._normals = normals.ToArray();
+            _sp._faceIdx = faceIdxs.ToArray();
         }// checkInSamplePoints
 
         // Functionality features
-        public void computeFeatures()
-        {
-            // 1. point featurs
-            computePointFeatures();
-            // 2. curvature features
-            computeCurvatureFeatures();
-            // 3. pca features
-            computePCAFeatures();
-            // 4. ray features
-            computeRayFeatures();
-            // 5. convex hull center features
-            computeDistAndAngleToCenterOfConvexHull();
-            // 6. center of mass features
-            computeDistAndAngleToCenterOfMass();
-        }// computeFeatures
+        //public void computeFeatures()
+        //{
+        //    // 1. point featurs
+        //    computePointFeatures();
+        //    // 2. curvature features
+        //    computeCurvatureFeatures();
+        //    // 3. pca features
+        //    computePCAFeatures();
+        //    // 4. ray features
+        //    computeRayFeatures();
+        //    // 5. convex hull center features
+        //    computeDistAndAngleToCenterOfConvexHull();
+        //    // 6. center of mass features
+        //    computeDistAndAngleToCenterOfMass();
+        //}// computeFeatures
 
         public void computeSamplePointsFeatures()
         {
@@ -1348,7 +1376,7 @@ namespace Component
             }
             if (_symPlane == null)
             {
-                computeCenterOfMass();
+                computeGraphBox();
             }
             int n = _sp._points.Length;
             int dim = Common._POINT_FEAT_DIM;
@@ -1449,7 +1477,7 @@ namespace Component
             int dim = Common._POINT_FEAT_DIM;
             if (_symPlane == null)
             {
-                computeCenterOfMass();
+                computeGraphBox();
             }
             foreach (Node node in _nodes)
             {
@@ -1493,90 +1521,9 @@ namespace Component
                     node._funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
                 }
             }
-
-            // **TBD**, in Icon2 codes -- this is not normalized to [0,1], otherwise the maximum height should be 1
-            //f -= Eigen::MatrixXd::Ones(pSamplesCnt, 1) * ground; // ground is the minimum height
-            //f /= f.maxCoeff();
         }// computePointFeatures
 
-        private void computeCurvatureFeatures()
-        {
-            int dim = Common._CURV_FEAT_DIM;
-            int dim1 = dim - 1;
-            foreach (Node node in _nodes)
-            {
-                node._funcFeat._curvFeats = new double[node._PART._partSP._points.Length * dim];
-                double[] curvatures = _mesh.computeCurvFeatures(node._PART._partSP._points, node._PART._partSP._normals);
-                double[] avgCurvs = _mesh.computeAvgCurvFeatures(node._PART._partSP._points, node._PART._partSP._normals, curvatures, dim1);
-                int n = node._funcFeat._curvFeats.Length / dim;
-                for (int i = 0; i < node._PART._partSP._points.Length; ++i)
-                {
-                    node._funcFeat._curvFeats[dim * i] = curvatures[i];
-                    node._funcFeat._curvFeats[dim * i + 1] = avgCurvs[i * dim1];
-                    node._funcFeat._curvFeats[dim * i + 2] = avgCurvs[i * dim1 + 1];
-                    node._funcFeat._curvFeats[dim * i + 3] = avgCurvs[i * dim1 + 2];
-                }
-            }
-        }// computeCurvatureFeatures
-
-        private void computePCAFeatures()
-        {
-            int dim = Common._PCA_FEAT_DIM;
-            int d = 4;
-            foreach (Node node in _nodes)
-            {
-                Vector3d[] pcaInfo = _mesh.computePointPCA(
-                    node._PART._partSP._points,
-                    node._PART._partSP._normals);
-                int n = pcaInfo.Length / 4; // #vertex
-                node._funcFeat._pcaFeats = new double[n * dim];
-                for (int i = 0; i < n; ++i)
-                {
-                    // lamda1 > lamda2 > lamda3
-                    double lamda1 = pcaInfo[i * d].x;
-                    double lamda2 = pcaInfo[i * d].y;
-                    double lamda3 = pcaInfo[i * d].z;
-                    // sort in case the order is not right
-                    List<double> arr = new List<double>();
-                    arr.Add(lamda1);
-                    arr.Add(lamda2);
-                    arr.Add(lamda3);
-                    arr.Sort();
-                    lamda1 = arr[2];
-                    lamda2 = arr[1];
-                    lamda3 = arr[0];
-                    double sum = lamda1 + lamda2 + lamda3;
-                    //double L = (lamda1 - lamda2) / sum; // linear-shaped
-                    //double P = 2 * (lamda2 - lamda3) / sum; // planar-shaped
-                    double L = 1 - lamda2 / lamda1; // linear-shaped
-                    double P = 1 - lamda3 / lamda1; // planar-shaped
-                    double S = 3 * lamda3 / sum; // spherical-shaped
-                    Vector3d axis_0 = pcaInfo[i * d + 1];
-                    Vector3d axis_2 = pcaInfo[i * d + 3];
-                    if (axis_2.Dot(Common.uprightVec) < 0)
-                    {
-                        axis_2 = -1.0 * axis_2;
-                    }
-                    double alpha_0 = Math.Acos(Math.Abs(axis_0.Dot(Common.uprightVec))) / Math.PI;
-                    double alpha_2 = 1 - Math.Acos(axis_2.Dot(Common.uprightVec)) / Math.PI;
-                    node._funcFeat._pcaFeats[i * dim] = L;
-                    node._funcFeat._pcaFeats[i * dim + 1] = P;
-                    node._funcFeat._pcaFeats[i * dim + 2] = S;
-                    node._funcFeat._pcaFeats[i * dim + 3] = alpha_2;
-                    node._funcFeat._pcaFeats[i * dim + 4] = alpha_0;
-                }
-            }
-        }// computePCAFeatures
-
-        private void computeRayFeatures()
-        {
-            foreach (Node node in _nodes)
-            {
-                node._funcFeat._rayFeats = _mesh.computeRayDist(node._PART._partSP._points, node._PART._partSP._normals);
-            }
-        }// computeRayFeatures
-
-        private void computeDistAndAngleToCenterOfConvexHull()
+        public void computeDistAndAngleToCenterOfConvexHull()
         {
             if (_hull == null)
             {
@@ -1584,55 +1531,41 @@ namespace Component
             }
             int dim = Common._CONVEXHULL_FEAT_DIM;
             double maxdist = double.MinValue;
-            foreach (Node node in _nodes)
+            _funcFeat._conhullFeats = new double[dim * _sp._points.Length];
+            for (int i = 0; i < _sp._points.Length; ++i)
             {
-                SamplePoints sp = node._PART._partSP;
-                node._funcFeat._conhullFeats = new double[dim * sp._points.Length];
-                for (int i = 0; i < sp._points.Length; ++i)
-                {
-                    Vector3d v = sp._points[i];
-                    double dist = 0;
-                    double angle = 0;
-                    computeDistAndAngleToAnchorNormalized(v, _hull._center, out dist, out angle);
-                    node._funcFeat._conhullFeats[i * dim] = dist;
-                    node._funcFeat._conhullFeats[i * dim + 1] = angle;
-                    maxdist = maxdist > dist ? maxdist : dist;
-                }
+                Vector3d v = _sp._points[i];
+                double dist = 0;
+                double angle = 0;
+                computeDistAndAngleToAnchorNormalized(v, _centerOfConvexHull, out dist, out angle);
+                _funcFeat._conhullFeats[i * dim] = dist;
+                _funcFeat._conhullFeats[i * dim + 1] = angle;
+                maxdist = maxdist > dist ? maxdist : dist;
             }
-            foreach (Node node in _nodes)
+            for (int i = 0; i < _funcFeat._conhullFeats.Length; i += dim)
             {
-                for (int i = 0; i < node._funcFeat._conhullFeats.Length; i += dim)
-                {
-                    node._funcFeat._conhullFeats[i] /= maxdist;
-                }
+                _funcFeat._conhullFeats[i] /= maxdist;
             }
         }// computeDistAndAngleToCenterOfConvexHull
 
-        private void computeDistAndAngleToCenterOfMass()
+        public void computeDistAndAngleToCenterOfMass()
         {
             int dim = Common._CONVEXHULL_FEAT_DIM;
             double maxdist = double.MinValue;
-            foreach (Node node in _nodes)
+            _funcFeat._cenOfMassFeats = new double[dim * _sp._points.Length];
+            for (int i = 0; i < _sp._points.Length; ++i)
             {
-                SamplePoints sp = node._PART._partSP;
-                node._funcFeat._cenOfMassFeats = new double[dim * sp._points.Length];
-                for (int i = 0; i < sp._points.Length; ++i)
-                {
-                    Vector3d v = sp._points[i];
-                    double dist = 0;
-                    double angle = 0;
-                    computeDistAndAngleToAnchorNormalized(v, _centerOfMass, out dist, out angle);
-                    node._funcFeat._cenOfMassFeats[i * dim] = dist;
-                    node._funcFeat._cenOfMassFeats[i * dim + 1] = angle;
-                    maxdist = maxdist > dist ? maxdist : dist;
-                }
+                Vector3d v = _sp._points[i];
+                double dist = 0;
+                double angle = 0;
+                computeDistAndAngleToAnchorNormalized(v, _centerOfMass, out dist, out angle);
+                _funcFeat._cenOfMassFeats[i * dim] = dist;
+                _funcFeat._cenOfMassFeats[i * dim + 1] = angle;
+                maxdist = maxdist > dist ? maxdist : dist;
             }
-            foreach (Node node in _nodes)
+            for (int i = 0; i < _funcFeat._cenOfMassFeats.Length; i += dim)
             {
-                for (int i = 0; i < node._funcFeat._cenOfMassFeats.Length; i += dim)
-                {
-                    node._funcFeat._cenOfMassFeats[i] /= maxdist;
-                }
+                _funcFeat._cenOfMassFeats[i] /= maxdist;
             }
         }// computeDistAndAngleToCenterOfMass
 
