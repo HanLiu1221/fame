@@ -456,15 +456,9 @@ namespace Component
             {
                 this.swithXYZ();
                 this.unifyMeshFuncSpace();
+                this.unify();
             }
             this.init();
-        }
-
-        public void initialize()
-        {
-            // process a new model without loaded graph info
-            unify();
-            initializeGraph();
         }
 
         private void init()
@@ -491,27 +485,22 @@ namespace Component
 
         public void unify()
         {
-            Vector3d maxCoord = Vector3d.MinCoord;
-            Vector3d minCoord = Vector3d.MaxCoord;
-            foreach (Part p in _parts)
+            if (_mesh == null)
             {
-                maxCoord = Vector3d.Max(maxCoord, p._MESH.MaxCoord);
-                minCoord = Vector3d.Min(minCoord, p._MESH.MinCoord);
+                return;
             }
+            Vector3d maxCoord = _mesh.MaxCoord;
+            Vector3d minCoord = _mesh.MinCoord;
             Vector3d scale = maxCoord - minCoord;
             double maxS = scale.x > scale.y ? scale.x : scale.y;
             maxS = maxS > scale.z ? maxS : scale.z;
             maxS = 1.0 / maxS;
             Vector3d center = (maxCoord + minCoord) / 2;
-            center.y = 0;
-            center = new Vector3d() - center;
+            center.y = 0.5; // unit box
             Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
-            Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
-            foreach (Part p in _parts)
-            {
-                p.Transform(Q);
-            }
+            Matrix4d Q = T * S;
+            this.Transform(Q);
         }// unify
 
         private void composeMesh()
@@ -577,42 +566,16 @@ namespace Component
 
         private void computeConvexHull()
         {
-            // merge meshes
-            int start = 0;
-            List<double> pos = new List<double>();
-            List<int> findices = new List<int>();
-            foreach (Part part in _parts)
-            {
-                Mesh mesh = part._MESH;
-                pos.AddRange(mesh.VertexPos);
-                for (int i = 0; i < mesh.FaceVertexIndex.Length; ++i)
-                {
-                    findices.Add(start + mesh.FaceVertexIndex[i]);
-                }
-                start += mesh.VertexCount;
-            }
-            Mesh merged = new Mesh(pos.ToArray(), findices.ToArray());
             // compute
-            _hull = new ConvexHull(merged);
-            _centerOfConvexHull = _hull._center;
+            _hull = new ConvexHull(_mesh);
+            _centerOfConvexHull = _hull._center;            
         }// computeConvexHull
 
         private void computeModeBox()
         {
-            _centerOfMass = new Vector3d();
-            Vector3d minCoord = Vector3d.MaxCoord;
-            Vector3d maxCoord = Vector3d.MinCoord;
-            foreach (Part part in _parts)
-            {
-                Vector3d v = part._BOUNDINGBOX.CENTER;
-                _centerOfMass += v;
-                foreach (Vector3d v3 in part._BOUNDINGBOX._POINTS3D)
-                {
-                    minCoord = Vector3d.Min(v3, minCoord);
-                    maxCoord = Vector3d.Max(v3, maxCoord);
-                }
-            }
-            _centerOfMass /= _parts.Count;
+            Vector3d minCoord = _mesh.MinCoord;
+            Vector3d maxCoord = _mesh.MaxCoord;
+            _centerOfMass = (minCoord + maxCoord) / 2;
             Vector3d[] symPlaneVecs = new Vector3d[4];
             // assume upright vec is y-axis, the shape is symmetry along the center plane
             symPlaneVecs[0] = new Vector3d(_centerOfMass.x, minCoord.y, minCoord.z);
@@ -626,22 +589,18 @@ namespace Component
         {
             _centerOfMass = new Vector3d();
             double totalVolume = 0;
-            foreach (Part part in _parts)
+            for (int i = 0; i < _mesh.FaceCount; ++i)
             {
-                Mesh mesh = part._MESH;
-                for (int i = 0; i < mesh.FaceCount; ++i)
-                {
-                    int v1 = mesh.FaceVertexIndex[3 * i];
-                    int v2 = mesh.FaceVertexIndex[3 * i + 1];
-                    int v3 = mesh.FaceVertexIndex[3 * i + 2];
-                    Vector3d pos1 = mesh.getVertexPos(v1);
-                    Vector3d pos2 = mesh.getVertexPos(v2);
-                    Vector3d pos3 = mesh.getVertexPos(v3);
-                    double volume = (pos1.x * pos1.y * pos3.z - pos1.x * pos3.y * pos2.z - pos2.x * pos1.y * pos3.z +
-                        pos2.x * pos3.y * pos1.z + pos3.x * pos1.y * pos2.z - pos3.x * pos1.y * pos1.z) / 6;
-                    _centerOfMass += (pos1 + pos2 + pos3) / 4 * volume;
-                    totalVolume += volume;
-                }
+                int v1 = _mesh.FaceVertexIndex[3 * i];
+                int v2 = _mesh.FaceVertexIndex[3 * i + 1];
+                int v3 = _mesh.FaceVertexIndex[3 * i + 2];
+                Vector3d pos1 = _mesh.getVertexPos(v1);
+                Vector3d pos2 = _mesh.getVertexPos(v2);
+                Vector3d pos3 = _mesh.getVertexPos(v3);
+                double volume = (pos1.x * pos1.y * pos3.z - pos1.x * pos3.y * pos2.z - pos2.x * pos1.y * pos3.z +
+                    pos2.x * pos3.y * pos1.z + pos3.x * pos1.y * pos2.z - pos3.x * pos1.y * pos1.z) / 6;
+                _centerOfMass += (pos1 + pos2 + pos3) / 4 * volume;
+                totalVolume += volume;
             }
             _centerOfMass /= totalVolume;
             if (_GRAPH != null)
@@ -695,8 +654,9 @@ namespace Component
             {
                 double h = _funcFeat._pointFeats[i * dim + 1];
                 _funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
-                double d = _funcFeat._pointFeats[i * dim + 2];
-                _funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+                //double d = _funcFeat._pointFeats[i * dim + 2];
+                //_funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+                _funcFeat._pointFeats[i * dim + 2] /= maxd;
             }
         }// computeSamplePointsFeatures
 
@@ -704,7 +664,7 @@ namespace Component
         {
             if (centers.Length == 1)
             {
-                _symPlane = new Polygon3D(centers[0], normals[0]);
+                _symPlane = new Polygon3D(centers[0], normals[0].normalize());
                 return;
             }
             alglib.kdtree kdt;
@@ -746,7 +706,7 @@ namespace Component
                     bestPlaneIdx = i;
                 }
             }
-            _symPlane = new Polygon3D(centers[bestPlaneIdx], normals[bestPlaneIdx]);
+            _symPlane = new Polygon3D(centers[bestPlaneIdx], normals[bestPlaneIdx].normalize());
         }// findBestSymPlane
 
         public void computeDistAndAngleToCenterOfConvexHull()
@@ -773,7 +733,8 @@ namespace Component
             double ddist = maxdist - mindist;
             for (int i = 0; i < _funcFeat._conhullFeats.Length; i += dim)
             {
-                _funcFeat._conhullFeats[i] = (_funcFeat._conhullFeats[i] - mindist) / ddist;
+                //_funcFeat._conhullFeats[i] = (_funcFeat._conhullFeats[i] - mindist) / ddist;
+                _funcFeat._conhullFeats[i] /= maxdist;
             }
         }// computeDistAndAngleToCenterOfConvexHull
 
@@ -797,7 +758,8 @@ namespace Component
             double ddist = maxdist - mindist;
             for (int i = 0; i < _funcFeat._cenOfMassFeats.Length; i += dim)
             {
-                _funcFeat._cenOfMassFeats[i] = (_funcFeat._cenOfMassFeats[i] - mindist) / ddist;
+                //_funcFeat._cenOfMassFeats[i] = (_funcFeat._cenOfMassFeats[i] - mindist) / ddist;
+                _funcFeat._cenOfMassFeats[i] /= maxdist;
             }
         }// computeDistAndAngleToCenterOfMass
 
@@ -824,17 +786,8 @@ namespace Component
             Common.switchXYZ_mesh(_mesh, 1);
             Common.switchXYZ_mesh(_mesh, 2);
             Common.switchXYZ_mesh(_mesh, 2);
-            if (_SP != null && _funcSpaces != null)
+            if (_SP != null)
             {
-                foreach (FuncSpace fs in _funcSpaces)
-                {
-                    Common.switchXYZ_mesh(fs._mesh, 2);
-                    Common.switchXYZ_mesh(fs._mesh, 2);
-                    Common.switchXYZ_mesh(fs._mesh, 2);
-                    Common.switchXYZ_mesh(fs._mesh, 1);
-                    Common.switchXYZ_mesh(fs._mesh, 2);
-                    Common.switchXYZ_mesh(fs._mesh, 2);
-                }
                 if (_SP._points != null)
                 {
                     Common.switchXYZ_vectors(_SP._points, 2);
@@ -845,6 +798,18 @@ namespace Component
                     Common.switchXYZ_vectors(_SP._points, 2);
                 }
                 _SP.updateNormals(_mesh);
+            }
+            if (_funcSpaces != null)
+            {
+                foreach (FuncSpace fs in _funcSpaces)
+                {
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                    Common.switchXYZ_mesh(fs._mesh, 1);
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                    Common.switchXYZ_mesh(fs._mesh, 2);
+                }
             }
         }// swithXYZ
 
@@ -888,9 +853,12 @@ namespace Component
                     ori = _SP._normals[i];
                     _SP._normals[i] = (T * new Vector4d(ori, 1)).ToVector3D().normalize();
                 }
-                foreach (FuncSpace fs in _funcSpaces)
+                if (_funcSpaces != null)
                 {
-                    fs._mesh.Transform(T);
+                    foreach (FuncSpace fs in _funcSpaces)
+                    {
+                        fs._mesh.Transform(T);
+                    }
                 }
             }
             if (_parts != null)
