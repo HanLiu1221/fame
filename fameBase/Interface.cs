@@ -28,7 +28,7 @@ namespace FameBase
         // FOR showing predicted results
         public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch_data\meshes\";
         public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch_data\samples\";
-        public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point feature\";
+        public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
         public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
 
         //public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models";
@@ -38,7 +38,7 @@ namespace FameBase
         //// FOR showing predicted results
         //public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
         //public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch_data\samples\";
-        //public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point feature\";
+        //public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point_feature\";
         //public static string WEIGHT_PATH = @"D:\fame\data_sets\patch_data\weights\";
 
         private void open3D_Click(object sender, EventArgs e)
@@ -743,7 +743,7 @@ namespace FameBase
 
         private void loadOriPatchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = PATCH_PATH };
+            var dialog = new FolderBrowserDialog() { SelectedPath = PATCH_PATH + "\\origin_data" };
             if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
             {
                 string foldername = dialog.SelectedPath;
