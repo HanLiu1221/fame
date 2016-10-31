@@ -1319,7 +1319,7 @@ namespace Geometry
             {
                 Vector3d ivec = vposes[i];
                 Vector3d inor = vnormals[i];
-                //ivec = ivec + distThres * inor;
+                ivec = ivec + distThres * inor;
                 int fidx = -1;
                 Vector3d hitpos = closestIntersectionPoint(ivec, inor, out fidx);
                 double dist = (ivec - hitpos).Length();

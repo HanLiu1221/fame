@@ -373,7 +373,7 @@ namespace FameBase
             StringBuilder sb = new StringBuilder();
 
             sb.Append(_currModel._model_name + "\n");
-            if (_currModel._GRAPH != null && _currModel._GRAPH._ff._cats.Count > 0)
+            if (_currModel._GRAPH != null && _currModel._GRAPH._ff != null &&_currModel._GRAPH._ff._cats.Count > 0)
             {
                 string catStr = "";
                 foreach (Common.Category cat in _currModel._GRAPH._ff._cats)
@@ -821,7 +821,7 @@ namespace FameBase
                 return;
             }
             // save mesh
-            string meshName = model._path +  model_name + "\\" + model_name + ".obj";
+            string meshName = foldername + model_name + ".obj";
             if (model._NPARTS > 0)
             {
                 this.saveObj(null, meshName, GLDrawer.MeshColor);
@@ -869,26 +869,17 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-            _currModel._GRAPH.checkInSamplePoints();
-            // save .off file & .pts file for shape2pose
-            string offname = _currModel._path + _currModel._model_name + ".off";
-            string ptsname = _currModel._path + _currModel._model_name + ".pts";
-            this.saveModelOff(offname);
-            this.saveModelSamplePoints(ptsname);
+            this.runFunctionalityTest(_currModel);
 
-            this.computeShape2PoseAndIconFeatures(_currModel);
-            this.writeModelSampleFeatureFilesForPrediction(_currModel);
-            //_currModel._GRAPH.computeFeatures();
-            //this.writeSampleFeatureFilesForPrediction(this._currModel._GRAPH._NODES, _currModel, "");
             long secs = stopWatch.ElapsedMilliseconds / 1000;
-            Program.writeToConsole("Time to compute features: " + secs.ToString());
+            Program.writeToConsole("Time to compute features: " + secs.ToString() + " senconds.");
         }
 
         public void computeShape2PoseAndIconFeatures(Model model)
         {
-            string path = _currModel._path;
-            string model_name = _currModel._model_name;
-            string shape2poseDataFolder = _currModel._path + "shape2pose\\" + model_name + "\\";
+            string path = model._path;
+            string model_name = model._model_name;
+            string shape2poseDataFolder = path + "shape2pose\\" + model_name + "\\";
             if (!Directory.Exists(shape2poseDataFolder))
             {
                 Directory.CreateDirectory(shape2poseDataFolder);
@@ -897,8 +888,8 @@ namespace FameBase
             string exePath = Path.GetFullPath(exeFolder);
 
             string computeLocalFeatureExe = exePath + "ComputeLocalFeatures.exe";
-            string shape2poseMeshFile = path + model_name + ".off";
-            string shape2poseSampleFile = path + model_name + ".pts";
+            string shape2poseMeshFile = shape2poseDataFolder + model_name + ".off";
+            string shape2poseSampleFile = shape2poseDataFolder + model_name + ".pts";
 
             string msh2plnCmd = exePath + "msh2pln.exe ";
             string prstOutputFile1 = shape2poseDataFolder + model_name + "_msh.planes.txt";
@@ -991,20 +982,17 @@ namespace FameBase
             process.Start();
             process.WaitForExit();
 
-            string[] cmds = new string[5] { msh2plnCmd, metricCmd, computelocalfeatureCmd, computelocalfeatureCmd, computelocalfeatureCmd };
-            string[] paras = new string[5] { prstCmdPara, metricCmdPara, ogPCACmdPara, absCurvCmdPara, absCurvGeoAvgCmdPara };
-
             // load features
-            int nSamplePoints = model._GRAPH._sp._points.Length;
+            int nSamplePoints = model._SP._points.Length;
 
-            model._GRAPH._funcFeat = new FuncFeatures();
-            model._GRAPH._funcFeat._pcaFeats = loadShape2Pose_OrientedGeodesicPCAFeatures(ogPCAOutputFile);
+            model._funcFeat = new FuncFeatures();
+            model._funcFeat._pcaFeats = loadShape2Pose_OrientedGeodesicPCAFeatures(ogPCAOutputFile);
             // load sym plane
             Vector3d[] centers;
             Vector3d[] normals;
             this.loadShape2Pose_SymPlane(prstOutputFile1, out centers, out normals);
-            model._GRAPH.findBestSymPlane(centers, normals);
-            model._GRAPH.computeSamplePointsFeatures();
+            model.findBestSymPlane(centers, normals);
+            model.computeSamplePointsFeatures();
             
             double[] absCurv = this.loadShape2Pose_nDimFeatures(absCurvOutputFile, 1);
             double[] absCurvGeo = this.loadShape2Pose_nDimFeatures(absCurvGeoAvgOutputFile, 1);
@@ -1012,21 +1000,23 @@ namespace FameBase
             double[] k1k2Curv = this.loadShape2Pose_nDimFeatures(k1k2OutputFile, 2);
 
             int dim = Common._CURV_FEAT_DIM;
-            model._GRAPH._funcFeat._curvFeats = new double[dim * nSamplePoints];
+            model._funcFeat._curvFeats = new double[dim * nSamplePoints];
             for (int i = 0; i < nSamplePoints; ++i)
             {
-                model._GRAPH._funcFeat._curvFeats[i * dim] = absCurv[i];
-                model._GRAPH._funcFeat._curvFeats[i * dim + 1] = absCurvGeo[i];
-                model._GRAPH._funcFeat._curvFeats[i * dim + 2] = k1k2Curv[i * 2];
-                model._GRAPH._funcFeat._curvFeats[i * dim + 3] = k1k2Curv[i * 2 + 1];
+                model._funcFeat._curvFeats[i * dim] = absCurv[i];
+                model._funcFeat._curvFeats[i * dim + 1] = absCurvGeo[i];
+                model._funcFeat._curvFeats[i * dim + 2] = k1k2Curv[i * 2];
+                model._funcFeat._curvFeats[i * dim + 3] = k1k2Curv[i * 2 + 1];
             }
             if (model._MESH == null)
             {
                 model.setMesh(model._GRAPH.composeMesh());
             }
-            model._GRAPH._funcFeat._rayFeats = model._MESH.computeRayDist(model._GRAPH._sp._points, model._GRAPH._sp._normals);
-            model._GRAPH.computeDistAndAngleToCenterOfConvexHull();
-            model._GRAPH.computeDistAndAngleToCenterOfMass();
+            model._funcFeat._rayFeats = model._MESH.computeRayDist(model._SP._points, model._SP._normals);
+            model.computeDistAndAngleToCenterOfConvexHull();
+            model.computeDistAndAngleToCenterOfMass();
+
+            this.writeModelSampleFeatureFilesForPrediction(model);
         }// computeShape2PoseAndIconFeatures
 
         private double[] loadShape2Pose_OrientedGeodesicPCAFeatures(string filename)
@@ -1373,7 +1363,7 @@ namespace FameBase
                 }
                 Model model = new Model(parts);
                 model.setMesh(modelMesh);
-                model._SP = sp;
+                model.checkInSamplePoints(sp);
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 string name = filename.Substring(filename.LastIndexOf('\\') + 1);
                 model._model_name = name.Substring(0, name.LastIndexOf('.'));
@@ -1398,7 +1388,7 @@ namespace FameBase
             string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
             if (!File.Exists(graphName))
             {
-                _currModel.initialize();
+                _currModel.initializeGraph();
             }
             else
             {
@@ -1429,7 +1419,7 @@ namespace FameBase
                 }
             }
             // rebuild the graph
-            _currModel.initialize();
+            _currModel.initializeGraph();
             this.Refresh();
         }// importPartBasedModel
 
@@ -2563,6 +2553,7 @@ namespace FameBase
             Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
 
             // CALL MATLAB
+            // clear folder
             MLApp.MLApp matlab = new MLApp.MLApp();
             string exeStr = "cd " + Interface.MATLAB_PATH;
             matlab.Execute(exeStr);
@@ -2625,36 +2616,22 @@ namespace FameBase
                         break;
                 }
                 // functionality test
-                if (cur_kids.Count > 0)
+                List<Model> filtered = new List<Model>();
+                foreach (Model kid in cur_kids)
                 {
-                    List<string> filenames = new List<string>();
-                    for (int j = 0; j < cur_kids.Count; ++j)
+                    bool isFuncValid = this.runFunctionalityTest(kid);
+                    if (isFuncValid)
                     {
-                        //filenames.Add(cur_kids[j]._model_name);
-                        List<string> patchFileNames = this.useSelectedSubsetPatchesForPrediction(cur_kids[j]);
-                        filenames.AddRange(patchFileNames);
-                    }
-                    writeFileNamesForPredictToMatlabFolder(filenames);
-                    matlabOutput = null;
-                    matlab.Feval("getFunctionalityScore", 1, out matlabOutput);
-                    Object[] res = matlabOutput as Object[];
-                    double[,] results = res[0] as double[,];
-                    // save the scores
-                    for (int j = 0; j < cur_kids.Count; ++j)
-                    {
-                        string filename = cur_kids[j]._path + cur_kids[j]._model_name + ".score";
-                        int ncat = results.GetLength(1);
-                        double[] scores = new double[ncat];
-                        for (int k = 0; k < ncat; ++k)
-                        {
-                            scores[k] = results[j, k];
-                        }
-                        this.saveScoreFile(filename, scores);
+                        filtered.Add(kid);
                     }
                 }
+                if (filtered.Count == 0)
+                {
+                    break;
+                }
                 start = _currGen.Count;
-                parents.AddRange(cur_kids);
-                _currGen.AddRange(cur_kids);
+                parents.AddRange(filtered);
+                _currGen.AddRange(filtered);
                 ++_currIter;
             }
             int n = _ancesterModelViewers.Count;
@@ -2666,6 +2643,53 @@ namespace FameBase
             _currGen = new List<Model>(prev_parents); // for user selection
             return _currGenModelViewers;
         }// autoGenerate
+
+        private bool runFunctionalityTest(Model model)
+        {
+            bool isValid = true; // has at least one functionality?
+            double thr = 0.9;
+
+            model.checkInSamplePoints();
+
+            string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
+            if (!Directory.Exists(shape2poseDataFolder))
+            {
+                Directory.CreateDirectory(shape2poseDataFolder);
+            }
+            // save .off file & .pts file for shape2pose feature computation
+            string offname = shape2poseDataFolder + model._model_name + ".off";
+            string ptsname = shape2poseDataFolder + model._model_name + ".pts";
+            this.saveModelOff(offname);
+            this.saveModelSamplePoints(ptsname);
+
+            this.computeShape2PoseAndIconFeatures(model);
+
+            MLApp.MLApp matlab = new MLApp.MLApp();
+            string exeStr = "cd " + Interface.MATLAB_PATH;
+            matlab.Execute(exeStr);
+            Object matlabOutput = null;
+
+            //List<string> patchFileNames = this.useSelectedSubsetPatchesForPrediction(model);
+
+            matlab.Feval("getSingleModelFunctionalityScore", 1, out matlabOutput, model._model_name);
+            Object[] res = matlabOutput as Object[];
+            double[,] results = res[0] as double[,];
+            // save the scores
+            string scoreFileName = shape2poseDataFolder + model._model_name + ".score";
+            double[] scores = new double[results.GetLength(1)];
+            for (int i = 0; i < results.GetLength(1); ++i)
+            {
+                scores[i] = results[0, i];
+            }
+            this.saveScoreFile(scoreFileName, scores);
+
+            if (scores[0] < thr)
+            {
+                // the largest functionality score is too low
+                isValid = false;
+            }
+            return isValid;
+        }// runFunctionalityTest
 
         private void writeFileNamesForPredictToMatlabFolder(List<string> strs)
         {
@@ -2745,7 +2769,7 @@ namespace FameBase
             string pois_file = folder + possionFilename;
             using (StreamWriter sw = new StreamWriter(pois_file))
             {
-                SamplePoints sp = model._GRAPH._sp;
+                SamplePoints sp = model._SP;
                 for (int j = 0; j < sp._points.Length; ++j)
                 {
                     Vector3d vpos = sp._points[j];
@@ -2763,43 +2787,43 @@ namespace FameBase
             using (StreamWriter sw = new StreamWriter(feat_file))
             {
 
-                int n = model._GRAPH._sp._points.Length;
+                int n = model._SP._points.Length;
                 for (int i = 0; i < n; ++i)
                 {
                     StringBuilder sb = new StringBuilder();
                     int d = Common._POINT_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._pointFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._pointFeats[i * d + j]));
                         sb.Append(",");
                     }
                     d = Common._CURV_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._curvFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._curvFeats[i * d + j]));
                         sb.Append(",");
                     }
                     d = Common._PCA_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._pcaFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._pcaFeats[i * d + j]));
                         sb.Append(",");
                     }
                     d = Common._RAY_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._rayFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._rayFeats[i * d + j]));
                         sb.Append(",");
                     }
                     d = Common._CONVEXHULL_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._conhullFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._conhullFeats[i * d + j]));
                         sb.Append(",");
                     }
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._cenOfMassFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._cenOfMassFeats[i * d + j]));
                         if (j < d - 1)
                         {
                             sb.Append(",");
@@ -5812,6 +5836,14 @@ namespace FameBase
                 Mesh mesh = new Mesh(modelstr, false);
                 // category name
                 string category = model_name.Substring(model_name.LastIndexOf('_') + 1);
+                if (nfile == 0)
+                {
+                    category = "Chair";
+                }
+                else
+                {
+                    category = "DryingRack";
+                }
                 // sample points
                 string sample_name = sampleFolder + model_name + ".poisson";
                 SamplePoints sp = loadSamplePoints(sample_name, mesh.FaceCount);           
@@ -5866,7 +5898,7 @@ namespace FameBase
                     {
                         weights_patches[npatch, i] = weights[i];
                         double ratio = (weights[i] - minw) / wdiff;
-                        if (ratio < 0.4)
+                        if (ratio < 0.1)
                         {
                             continue;
                         }
