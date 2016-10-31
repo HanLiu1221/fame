@@ -21,9 +21,9 @@ namespace FameBase
 
         /*********Var**********/
         // test paths
-        //public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models";
-        //public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data";
-        //public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only";
+        //public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
+        //public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
+        //public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
         //public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
         //// FOR showing predicted results
         //public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch_data\meshes\";
@@ -31,9 +31,9 @@ namespace FameBase
         //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
         //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
 
-        public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models";
-        public static string PATCH_PATH = @"D:\fame\data_sets\patch_data";
-        public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only";
+        public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models\";
+        public static string PATCH_PATH = @"D:\fame\data_sets\patch_data\";
+        public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only\";
         public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
         // FOR showing predicted results
         public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
@@ -743,11 +743,11 @@ namespace FameBase
 
         private void loadOriPatchToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = PATCH_PATH + "\\origin_data"};
+            var dialog = new FolderBrowserDialog() { SelectedPath = PATCH_PATH + "origin_data"};
             if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
             {
                 string foldername = dialog.SelectedPath;
-                this.glViewer.loadPatchInfo(foldername, true);
+                this.glViewer.loadPatchInfo_ori(foldername);
             }
         }
 
@@ -757,7 +757,7 @@ namespace FameBase
             if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
             {
                 string foldername = dialog.SelectedPath;
-                this.glViewer.loadPatchInfo(foldername, false);
+                this.glViewer.loadPatchInfo_opt(foldername);
                 this.updateStats();
             }
         }
@@ -768,7 +768,7 @@ namespace FameBase
             dialog.Filter = "3D model (*.off;)|*.off;";
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
-                this.glViewer.saveOffFile(null, dialog.FileName);
+                this.glViewer.saveModelOff(null, dialog.FileName);
             }
         }
 

@@ -478,16 +478,18 @@ namespace FameBase
             }
         }// saveObj
 
-        public void saveOffFile(Mesh mesh, string filename)
+        public void saveModelOff(Model model, string filename)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
             {
                 MessageBox.Show("Directory does not exist!");
                 return;
             }
+            Mesh mesh = model._MESH;
             if (mesh == null)
             {
-                saveModelOff(filename);
+                saveModelFromPartsOff(filename);
+                return;
             }
             using (StreamWriter sw = new StreamWriter(filename))
             {
@@ -514,7 +516,7 @@ namespace FameBase
             }
         }// saveOffFile
 
-        private void saveModelOff(string filename)
+        private void saveModelFromPartsOff(string filename)
         {
             using (StreamWriter sw = new StreamWriter(filename))
             {
@@ -559,7 +561,7 @@ namespace FameBase
                     start += mesh.VertexCount;
                 }
             }
-        }// saveModelOff
+        }// saveModelFromPartsOff
 
         private string colorToString(Color c, bool space)
         {
@@ -822,14 +824,7 @@ namespace FameBase
             }
             // save mesh
             string meshName = foldername + model_name + ".obj";
-            if (model._NPARTS > 0)
-            {
-                this.saveObj(null, meshName, GLDrawer.MeshColor);
-            }
-            else
-            {
-                this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
-            }
+            this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
             // save mesh sample points & normals & faceindex
             if (model._SP != null)
             {
@@ -868,6 +863,14 @@ namespace FameBase
             }
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
+
+            // CALL MATLAB
+            // clear folder
+            MLApp.MLApp matlab = new MLApp.MLApp();
+            string exeStr = "cd " + Interface.MATLAB_PATH;
+            matlab.Execute(exeStr);
+            Object matlabOutput = null;
+            matlab.Feval("clearData", 0, out matlabOutput);
 
             this.runFunctionalityTest(_currModel);
 
@@ -1145,7 +1148,28 @@ namespace FameBase
             }
         }// loadShape2Pose_SymPlane
 
-        private void saveModelSamplePoints(string filename)
+        private void saveModelSamplePoints(Model model, string filename)
+        {
+            if (model == null || model._SP == null)
+            {
+                return;
+            }
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                SamplePoints sp = model._SP;
+                for (int j = 0; j < sp._points.Length; ++j)
+                {
+                    Vector3d vpos = sp._points[j];
+                    sw.Write(vector3dToString(vpos, " ", " "));
+                    Vector3d vnor = sp._normals[j];
+                    sw.Write(vector3dToString(vnor, " ", " "));
+                    int fidx = sp._faceIdx[j];
+                    sw.WriteLine(fidx.ToString());
+                }
+            }
+        }// saveModelSamplePoints
+
+        private void saveModelSamplePointsFromParts(string filename)
         {
             using (StreamWriter sw = new StreamWriter(filename))
             {
@@ -2659,18 +2683,19 @@ namespace FameBase
             // save .off file & .pts file for shape2pose feature computation
             string offname = shape2poseDataFolder + model._model_name + ".off";
             string ptsname = shape2poseDataFolder + model._model_name + ".pts";
-            this.saveModelOff(offname);
-            this.saveModelSamplePoints(ptsname);
+            this.saveModelOff(model, offname);
+            this.saveModelSamplePoints(model, ptsname);
 
             this.computeShape2PoseAndIconFeatures(model);
 
             MLApp.MLApp matlab = new MLApp.MLApp();
             string exeStr = "cd " + Interface.MATLAB_PATH;
             matlab.Execute(exeStr);
-            Object matlabOutput = null;
+            
 
             //List<string> patchFileNames = this.useSelectedSubsetPatchesForPrediction(model);
-
+            // combination of patches
+            Object matlabOutput = null;
             matlab.Feval("getSingleModelFunctionalityScore", 1, out matlabOutput, model._model_name);
             Object[] res = matlabOutput as Object[];
             double[,] results = res[0] as double[,];
@@ -2759,10 +2784,19 @@ namespace FameBase
 
         private void writeModelSampleFeatureFilesForPrediction(Model model)
         {
-            string meshFileName = model._model_name + ".obj";
-            string mesh_file = model._path + meshFileName;
-            this.saveMeshForModel(model, mesh_file);
-            File.Copy(mesh_file, Interface.MESH_PATH + meshFileName, true);
+            string mesh_file = model._path + model._model_name + "\\" + model._model_name + ".obj";
+            if (!File.Exists(mesh_file))
+            {
+                MessageBox.Show("Mesh of model does not exist!");
+                return;
+            }
+
+            string copyFolder = Interface.MESH_PATH + model._model_name + "\\";
+            if (!Directory.Exists(copyFolder))
+            {
+                Directory.CreateDirectory(copyFolder);
+            }
+            File.Copy(mesh_file, copyFolder + model._model_name + ".obj", true);
 
             string folder = Interface.MATLAB_INPUT_PATH;
             string possionFilename = model._model_name + ".poisson";
@@ -2780,7 +2814,12 @@ namespace FameBase
                     sw.WriteLine(fidx.ToString());
                 }
             }
-            File.Copy(pois_file, Interface.POINT_SAMPLE_PATH + possionFilename, true);
+            copyFolder = Interface.POINT_SAMPLE_PATH + model._model_name + "\\";
+            if (!Directory.Exists(copyFolder))
+            {
+                Directory.CreateDirectory(copyFolder);
+            }
+            File.Copy(pois_file, copyFolder + possionFilename, true);
 
             string featureFileName = model._model_name + "_point_feature.csv";
             string feat_file = folder + featureFileName;
@@ -2832,7 +2871,12 @@ namespace FameBase
                     sw.WriteLine(sb.ToString());
                 }
             }
-            File.Copy(feat_file, Interface.POINT_FEATURE_PATH + featureFileName, true);
+            copyFolder = Interface.POINT_FEATURE_PATH + model._model_name + "\\";
+            if (!Directory.Exists(copyFolder))
+            {
+                Directory.CreateDirectory(copyFolder);
+            }
+            File.Copy(feat_file, copyFolder + featureFileName, true);
         }// writeModelSampleFeatureFilesForPrediction
 
         private void writeSampleFeatureFilesForPrediction(List<Node> subPatches, Model model, string subsetStr)
@@ -5796,7 +5840,7 @@ namespace FameBase
         //######### end-Part-based #########//
 
         //######### Data & feature from ICON2 paper #########//
-        public void loadPatchInfo(string foldername, bool isOriginal)
+        public void loadPatchInfo_ori(string foldername)
         {
             this.foldername = foldername;
             string modelFolder = foldername + "\\meshes\\";
@@ -5825,25 +5869,10 @@ namespace FameBase
             {
                 // model
                 string model_name = Path.GetFileName(modelstr);
-                if (isOriginal)
-                {
-                    model_name = model_name.Substring(0, model_name.LastIndexOf('_'));
-                }
-                else
-                {
-                    model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
-                }
+                model_name = model_name.Substring(0, model_name.LastIndexOf('_'));
                 Mesh mesh = new Mesh(modelstr, false);
                 // category name
-                string category = model_name.Substring(model_name.LastIndexOf('_') + 1);
-                if (nfile == 0)
-                {
-                    category = "Chair";
-                }
-                else
-                {
-                    category = "DryingRack";
-                }
+                string category = model_name.Substring(0, model_name.IndexOf('_'));
                 // sample points
                 string sample_name = sampleFolder + model_name + ".poisson";
                 SamplePoints sp = loadSamplePoints(sample_name, mesh.FaceCount);           
@@ -5955,7 +5984,7 @@ namespace FameBase
                 //}
 
                 FuncSpace[] fss = null;
-                Model model = new Model(mesh, sp, fss, isOriginal);
+                Model model = new Model(mesh, sp, fss, true);
                 model._model_name = model_name;
                 _models.Add(model);
 
@@ -5973,6 +6002,172 @@ namespace FameBase
             this.Refresh();
         }// loadPatchInfo
 
+        public void loadPatchInfo_opt(string foldername)
+        {
+            this.foldername = foldername;
+            string modelFolder = foldername + "\\meshes\\";
+            string sampleFolder = foldername + "\\samples\\";
+            string weightFolder = foldername + "\\weights\\";
+            string funcSpaceFolder = foldername + "\\funcSpace\\";
+
+            if (!Directory.Exists(sampleFolder) || !Directory.Exists(weightFolder) ||
+                !Directory.Exists(modelFolder) || !Directory.Exists(funcSpaceFolder))
+            {
+                MessageBox.Show("Lack data folder.");
+                return;
+            }
+
+            string[] subFolders = Directory.GetDirectories(modelFolder);
+            _models = new List<Model>();
+            int nfile = 0;
+            foreach (string subfolder in subFolders)
+            {
+                string subfolder_name = subfolder.Substring(subfolder.LastIndexOf('\\') + 1);
+                
+                string[] modelFiles = Directory.GetFiles(modelFolder + subfolder_name, "*.obj");
+                string[] sampleFiles = Directory.GetFiles(sampleFolder + subfolder_name, "*.poisson");
+                string[] weightFiles = Directory.GetFiles(weightFolder + subfolder_name, "*.csv");
+
+                // re-normalize all meshes w.r.t func space
+                // make sure meshes, sample points, func space in the same scale
+                foreach (string modelstr in modelFiles)
+                {
+                    string model_name = Path.GetFileName(modelstr);
+                    model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
+                    // model
+                    Mesh mesh = new Mesh(modelstr, false);
+                    // category name
+                    string category = model_name.Substring(model_name.LastIndexOf('_') + 1);
+                    category = "Chair";
+                    // sample points
+                    string sample_name = sampleFolder + subfolder_name + "\\" +  model_name + ".poisson";
+                    SamplePoints sp = loadSamplePoints(sample_name, mesh.FaceCount);
+                    // weights
+                    List<string> cur_wfiles = new List<string>();
+                    // in case the order of files are not the same in diff folders
+                    int fid = 0;
+                    string model_name_filter = model_name + "_";
+                    string model_wight_name_filter = model_name_filter + "predict_" + category + "_";
+                    while (fid < weightFiles.Length)
+                    {
+                        string weight_name = Path.GetFileName(weightFiles[fid]);
+                        if (weight_name.StartsWith(model_wight_name_filter))
+                        {
+                            // locate the weight files
+                            while (weight_name.StartsWith(model_wight_name_filter))
+                            {
+                                cur_wfiles.Add(weightFiles[fid++]);
+                                if (fid >= weightFiles.Length)
+                                {
+                                    break;
+                                }
+                                weight_name = Path.GetFileName(weightFiles[fid]);
+                            }
+                            break;
+                        }
+                        ++fid;
+                    }
+                    // load patch weights
+                    int npatch = 0;
+                    int nFaceFromSP = sp._faceIdx.Length;
+                    // multiple weights file w.r.t. patches
+                    double[,] weights_patches = new double[cur_wfiles.Count, nFaceFromSP];
+                    Color[,] colors_patches = new Color[cur_wfiles.Count, nFaceFromSP];
+                    sp._blendColors = new Color[nFaceFromSP];
+                    for (int c = 0; c < nFaceFromSP; ++c)
+                    {
+                        sp._blendColors[c] = Color.LightGray;
+                    }
+                    foreach (string wfile in cur_wfiles)
+                    {
+                        double minw;
+                        double maxw;
+                        double[] weights = loadPatchWeight(wfile, out minw, out maxw);
+                        if (weights == null || weights.Length != nFaceFromSP)
+                        {
+                            MessageBox.Show("Weight file does not match sample file: " + Path.GetFileName(wfile));
+                            continue;
+                        }
+                        double wdiff = maxw - minw;
+                        for (int i = 0; i < weights.Length; ++i)
+                        {
+                            weights_patches[npatch, i] = weights[i];
+                            double ratio = (weights[i] - minw) / wdiff;
+                            if (ratio < 0.1)
+                            {
+                                continue;
+                            }
+                            Color color = GLDrawer.getColorGradient(ratio, npatch);
+                            //mesh.setVertexColor(GLDrawer.getColorArray(color), i);
+                            byte[] color_array = GLDrawer.getColorArray(color);
+                            mesh.setFaceColor(color_array, sp._faceIdx[i]);
+                            colors_patches[npatch, i] = GLDrawer.getColorRGB(color_array);
+                            sp._blendColors[i] = colors_patches[npatch, i];
+                        }
+                        ++npatch;
+                    }
+                    // weights & colors
+                    sp._weights = weights_patches;
+                    sp._colors = colors_patches;
+                    //// functional space
+                    //fid = 0;
+                    //List<string> fspaceFiles = new List<string>();
+                    //while (fid < funspaceFiles.Length)
+                    //{
+                    //    string func_name = Path.GetFileName(funspaceFiles[fid]);
+                    //    if (func_name.StartsWith(model_name_filter))
+                    //    {
+                    //        // locate the weight files
+                    //        while (func_name.StartsWith(model_name_filter))
+                    //        {
+                    //            fspaceFiles.Add(funspaceFiles[fid++]);
+                    //            if (fid >= funspaceFiles.Length)
+                    //            {
+                    //                break;
+                    //            }
+                    //            func_name = Path.GetFileName(funspaceFiles[fid]);
+                    //        }
+                    //        break;
+                    //    }
+                    //    ++fid;
+                    //}
+                    //if (fspaceFiles.Count != npatch)
+                    //{
+                    //    MessageBox.Show("#Functional space file does not match weight file.");
+                    //    return;
+                    //}
+                    //FuncSpace[] fss = new FuncSpace[npatch];
+                    //int nfs = 0;
+                    //foreach (String fsfile in fspaceFiles)
+                    //{
+                    //    FuncSpace fs = loadFunctionSpace(fsfile);
+                    //    if (fs == null)
+                    //    {
+                    //        MessageBox.Show("Functional space file error: " + Path.GetFileName(fsfile));
+                    //        return;
+                    //    }
+                    //    fss[nfs++] = fs;
+                    //}
+
+                    FuncSpace[] fss = null;
+                    Model model = new Model(mesh, sp, fss, false);
+                    model._model_name = model_name;
+                    _models.Add(model);
+
+                    ++nfile;
+                    //if (nfile > 2)
+                    //{
+                    //    // TEST
+                    //    break;
+                    //}
+                }
+            }
+            if (_models.Count > 0)
+            {
+                _currModel = _models[0];
+            }
+            this.Refresh();
+        }// loadPatchInfo
         private FuncSpace loadFunctionSpace(string filename)
         {
             if (!File.Exists(filename))

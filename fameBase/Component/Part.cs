@@ -654,8 +654,9 @@ namespace Component
             {
                 double h = _funcFeat._pointFeats[i * dim + 1];
                 _funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
-                double d = _funcFeat._pointFeats[i * dim + 2];
-                _funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+                //double d = _funcFeat._pointFeats[i * dim + 2];
+                //_funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+                _funcFeat._pointFeats[i * dim + 2] /= maxd;
             }
         }// computeSamplePointsFeatures
 
@@ -663,7 +664,7 @@ namespace Component
         {
             if (centers.Length == 1)
             {
-                _symPlane = new Polygon3D(centers[0], normals[0]);
+                _symPlane = new Polygon3D(centers[0], normals[0].normalize());
                 return;
             }
             alglib.kdtree kdt;
@@ -705,7 +706,7 @@ namespace Component
                     bestPlaneIdx = i;
                 }
             }
-            _symPlane = new Polygon3D(centers[bestPlaneIdx], normals[bestPlaneIdx]);
+            _symPlane = new Polygon3D(centers[bestPlaneIdx], normals[bestPlaneIdx].normalize());
         }// findBestSymPlane
 
         public void computeDistAndAngleToCenterOfConvexHull()
