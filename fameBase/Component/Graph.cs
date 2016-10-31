@@ -13,8 +13,8 @@ namespace Component
         public int _NNodes = 0;
         public int _NEdges = 0;
         public FunctionalityFeatures _ff = null;
-        public FuncFeatures _funcFeat = null;
-        public SamplePoints _sp = null;
+
+        public Vector3d _centerOfMass;
 
         double _maxNodeBboxScale; // max scale of a box
         double _minNodeBboxScale; // min scale of a box
@@ -22,10 +22,6 @@ namespace Component
 
         public List<Node> selectedNodes = new List<Node>();
         private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
-        private ConvexHull _hull;
-        private Vector3d _centerOfMass;
-        private Vector3d _centerOfConvexHull;
-        private Polygon3D _symPlane;
 
         // test
         public List<List<Node>> selectedNodePairs = new List<List<Node>>();
@@ -47,8 +43,6 @@ namespace Component
         public void init()
         {
             composeMesh();
-            computeCenterOfMass();
-            computeConvexHull();
             analyzeOriginFeatures();
             //computeFeatures();
         }// init
@@ -80,78 +74,7 @@ namespace Component
                 start += mesh.VertexCount;
             }
             return new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
-        }// composeMesh
-
-        private void computeConvexHull()
-        {
-            // merge meshes
-            int start = 0;
-            List<double> pos = new List<double>();
-            List<int> findices = new List<int>();
-            foreach (Node node in _nodes)
-            {
-                Mesh mesh = node._PART._MESH;
-                pos.AddRange(mesh.VertexPos);
-                for (int i = 0; i < mesh.FaceVertexIndex.Length; ++i)
-                {
-                    findices.Add(start + mesh.FaceVertexIndex[i]);
-                }
-                start += mesh.VertexCount;
-            }
-            Mesh merged = new Mesh(pos.ToArray(), findices.ToArray());
-            // compute
-            _hull = new ConvexHull(merged);
-            _centerOfConvexHull = _hull._center;
-        }// computeConvexHull
-
-        private void computeGraphBox()
-        {
-            _centerOfMass = new Vector3d();
-            _NNodes = _nodes.Count;
-            Vector3d minCoord = Vector3d.MaxCoord;
-            Vector3d maxCoord = Vector3d.MinCoord;
-            foreach (Node node in _nodes)
-            {
-                Vector3d v = node._PART._BOUNDINGBOX.CENTER;
-                _centerOfMass += v;
-                foreach(Vector3d v3 in node._PART._BOUNDINGBOX._POINTS3D) {
-                    minCoord = Vector3d.Min(v3, minCoord);
-                    maxCoord = Vector3d.Max(v3, maxCoord);
-                }
-            }
-            _centerOfMass /= _NNodes;
-            Vector3d[] symPlaneVecs = new Vector3d[4];
-            // assume upright vec is y-axis, the shape is symmetry along the center plane
-            symPlaneVecs[0] = new Vector3d(_centerOfMass.x, minCoord.y, minCoord.z);
-            symPlaneVecs[1] = new Vector3d(_centerOfMass.x, maxCoord.y, minCoord.z);
-            symPlaneVecs[2] = new Vector3d(_centerOfMass.x, maxCoord.y, maxCoord.z);
-            symPlaneVecs[3] = new Vector3d(_centerOfMass.x, minCoord.y, maxCoord.z);
-            _symPlane = new Polygon3D(symPlaneVecs);
-        }// computeGraphBox
-
-        private void computeCenterOfMass()
-        {
-            _centerOfMass = new Vector3d();
-            double totalVolume = 0;
-            foreach(Node node in _nodes)
-            {
-                Mesh mesh = node._PART._MESH;
-                for (int i = 0; i < mesh.FaceCount; ++i)
-                {
-                    int v1 = mesh.FaceVertexIndex[3*i];
-                    int v2 = mesh.FaceVertexIndex[3*i+1];
-                    int v3 = mesh.FaceVertexIndex[3*i+2];
-                    Vector3d pos1 = mesh.getVertexPos(v1);
-                    Vector3d pos2 = mesh.getVertexPos(v2);
-                    Vector3d pos3 = mesh.getVertexPos(v3);
-                    double volume = (pos1.x * pos1.y * pos3.z - pos1.x * pos3.y * pos2.z - pos2.x * pos1.y * pos3.z +
-                        pos2.x * pos3.y * pos1.z + pos3.x * pos1.y * pos2.z - pos3.x * pos1.y * pos1.z) / 6;
-                    _centerOfMass += (pos1 + pos2 + pos3) / 4 * volume;
-                    totalVolume += volume;
-                }
-            }
-            _centerOfMass /= totalVolume;
-        }// computeCenterOfMass
+        }// composeMesh       
 
         public List<Common.Functionality> getGraphFuncs()
         {
@@ -1329,28 +1252,6 @@ namespace Component
             return v1_min.x > v2_max.x || v1_min.y > v2_max.y || v1_min.z > v2_max.z;
         }// isTwoPolyOverlap
 
-        public void checkInSamplePoints()
-        {
-            if (_sp != null)
-            {
-                return;
-            }
-            _sp = new SamplePoints();
-            List<Vector3d> points = new List<Vector3d>();
-            List<Vector3d> normals = new List<Vector3d>();
-            List<int> faceIdxs = new List<int>();
-            foreach (Node node in _nodes)
-            {
-                SamplePoints sp = node._PART._partSP;
-                points.AddRange(sp._points);
-                normals.AddRange(sp._normals);
-                faceIdxs.AddRange(sp._faceIdx);
-            }
-            _sp._points = points.ToArray();
-            _sp._normals = normals.ToArray();
-            _sp._faceIdx = faceIdxs.ToArray();
-        }// checkInSamplePoints
-
         // Functionality features
         //public void computeFeatures()
         //{
@@ -1368,217 +1269,7 @@ namespace Component
         //    computeDistAndAngleToCenterOfMass();
         //}// computeFeatures
 
-        public void computeSamplePointsFeatures()
-        {
-            if (_sp == null)
-            {
-                this.checkInSamplePoints();
-            }
-            if (_symPlane == null)
-            {
-                computeGraphBox();
-            }
-            int n = _sp._points.Length;
-            int dim = Common._POINT_FEAT_DIM;
-            this._funcFeat._pointFeats = new double[n * dim];
-            double maxh = double.MinValue;
-            double minh = double.MaxValue;
-            double maxd = double.MinValue;
-            double mind = double.MaxValue;
-            for (int i = 0; i < n; ++i)
-            {
-                Vector3d v = _sp._points[i];
-                Vector3d nor = _sp._normals[i];
-                // height - v project to the upright (unit) vector
-                double height = v.Dot(Common.uprightVec);
-                maxh = maxh > height ? maxh : height;
-                minh = minh < height ? minh : height;
-                // angle - normal vs. upright vector
-                double angle = Math.Acos(nor.Dot(Common.uprightVec));
-                angle /= Math.PI;
-                angle = Common.cutoff(angle, 0, 1.0);
-                // dist to center of hull - reflection plane
-                double dist = (v - _symPlane.center).Dot(_symPlane.normal);
-                dist = Math.Abs(dist);
-                maxd = maxd > dist ? maxd : dist;
-                mind = mind < dist ? mind : dist;
-                _funcFeat._pointFeats[i * dim] = angle;
-                _funcFeat._pointFeats[i * dim + 1] = height;
-                _funcFeat._pointFeats[i * dim + 2] = dist;
-            }
-            // normalize
-            double diffh = maxh - minh; 
-            double diffd = maxd - mind;
-            for (int i = 0; i < n; ++i)
-            {
-                double h = _funcFeat._pointFeats[i * dim + 1];
-                _funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
-                double d = _funcFeat._pointFeats[i * dim + 2];
-                _funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
-            }
-        }// computeSamplePointsFeatures
-
-        public void findBestSymPlane(Vector3d[] centers, Vector3d[] normals)
-        {
-            if (centers.Length == 1)
-            {
-                _symPlane = new Polygon3D(centers[0], normals[0]);
-                return;
-            }
-            alglib.kdtree kdt;
-            int n = _sp._points.Length;
-            double[,] xy = new double[n, 3];
-            int[] tags = new int[n];
-            for (int i = 0; i < n; ++i)
-            {
-                xy[i, 0] = _sp._points[i].x;
-                xy[i, 1] = _sp._points[i].y;
-                xy[i, 2] = _sp._points[i].z;
-                tags[i] = i;
-            }
-            int nx = 3;
-            int ny = 0;
-            int normtype = 2;
-            alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out kdt);
-
-            double mind = double.MaxValue;
-            int bestPlaneIdx = -1;
-            for (int i = 0; i < centers.Length; ++i)
-            {
-                double sumd = 0;
-                for (int j = 0; j < n; ++j)
-                {
-                    Vector3d pt = _sp._points[j];
-                    double prj = 2 * (pt - centers[i]).Dot(normals[i]);
-                    Vector3d sympt = pt - prj * normals[i];
-
-                    int res = alglib.kdtreequeryknn(kdt, sympt.ToArray(), 1, true); // true for overlapping points
-                    int[] nearestIds = new int[1];
-                    alglib.kdtreequeryresultstags(kdt, ref nearestIds);
-                    double d = (_sp._points[nearestIds[0]] - sympt).Length();
-                    sumd += d;
-                }
-                if (sumd < mind)
-                {
-                    mind = sumd;
-                    bestPlaneIdx = i;
-                }
-            }
-            _symPlane = new Polygon3D(centers[bestPlaneIdx], normals[bestPlaneIdx]);
-        }// findBestSymPlane
-        
-        private void computePointFeatures()
-        {
-            // normalize height, angle to [0.0, 1.0]
-            double maxh = double.MinValue;
-            double minh = double.MaxValue;
-            double maxd = double.MinValue;
-            double mind = double.MaxValue;
-            int dim = Common._POINT_FEAT_DIM;
-            if (_symPlane == null)
-            {
-                computeGraphBox();
-            }
-            foreach (Node node in _nodes)
-            {
-                SamplePoints sp = node._PART._partSP;
-                double[] pointFeats = new double[sp._points.Length * dim];
-                for (int i = 0; i < sp._points.Length; ++i)
-                {
-                    Vector3d v = sp._points[i];
-                    // height - v project to the upright (unit) vector
-                    double height = v.Dot(Common.uprightVec);
-                    maxh = maxh > height ? maxh : height;
-                    minh = minh < height ? minh : height;
-                    Vector3d nor = sp._normals[i];
-                    // angle - normal vs. upright vector
-                    double angle = Math.Acos(nor.Dot(Common.uprightVec));
-                    angle /= Math.PI;
-                    angle = Common.cutoff(angle, 0, 1.0);
-                    // dist to center of hull - reflection plane
-                    //double dist = Common.PointDistToPlane(v, _symPlane.center, _symPlane.normal);
-                    double dist = (v - _symPlane.center).Dot(_symPlane.normal);
-                    dist = Math.Abs(dist);
-                    pointFeats[i * dim] = angle;
-                    pointFeats[i * dim + 1] = height;
-                    pointFeats[i * dim + 2] = dist;
-                    maxd = maxd > dist ? maxd : dist;
-                    mind = mind < dist ? mind : dist;
-                }
-                node._funcFeat._pointFeats = pointFeats;
-            }
-            // normalize
-            double diffh = maxh - minh; //**TBD**
-            double diffd = maxd - mind;
-            foreach (Node node in _nodes)
-            {
-                SamplePoints sp = node._PART._partSP;
-                for (int i = 0; i < sp._points.Length; ++i)
-                {
-                    double h = node._funcFeat._pointFeats[i * dim + 1];
-                    node._funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
-                    double d = node._funcFeat._pointFeats[i * dim + 2];
-                    node._funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
-                }
-            }
-        }// computePointFeatures
-
-        public void computeDistAndAngleToCenterOfConvexHull()
-        {
-            if (_hull == null)
-            {
-                computeConvexHull();
-            }
-            int dim = Common._CONVEXHULL_FEAT_DIM;
-            double maxdist = double.MinValue;
-            _funcFeat._conhullFeats = new double[dim * _sp._points.Length];
-            for (int i = 0; i < _sp._points.Length; ++i)
-            {
-                Vector3d v = _sp._points[i];
-                double dist = 0;
-                double angle = 0;
-                computeDistAndAngleToAnchorNormalized(v, _centerOfConvexHull, out dist, out angle);
-                _funcFeat._conhullFeats[i * dim] = dist;
-                _funcFeat._conhullFeats[i * dim + 1] = angle;
-                maxdist = maxdist > dist ? maxdist : dist;
-            }
-            for (int i = 0; i < _funcFeat._conhullFeats.Length; i += dim)
-            {
-                _funcFeat._conhullFeats[i] /= maxdist;
-            }
-        }// computeDistAndAngleToCenterOfConvexHull
-
-        public void computeDistAndAngleToCenterOfMass()
-        {
-            int dim = Common._CONVEXHULL_FEAT_DIM;
-            double maxdist = double.MinValue;
-            _funcFeat._cenOfMassFeats = new double[dim * _sp._points.Length];
-            for (int i = 0; i < _sp._points.Length; ++i)
-            {
-                Vector3d v = _sp._points[i];
-                double dist = 0;
-                double angle = 0;
-                computeDistAndAngleToAnchorNormalized(v, _centerOfMass, out dist, out angle);
-                _funcFeat._cenOfMassFeats[i * dim] = dist;
-                _funcFeat._cenOfMassFeats[i * dim + 1] = angle;
-                maxdist = maxdist > dist ? maxdist : dist;
-            }
-            for (int i = 0; i < _funcFeat._cenOfMassFeats.Length; i += dim)
-            {
-                _funcFeat._cenOfMassFeats[i] /= maxdist;
-            }
-        }// computeDistAndAngleToCenterOfMass
-
-        private void computeDistAndAngleToAnchorNormalized(Vector3d v, Vector3d anchor, out double dist, out double angle)
-        {
-            Vector3d dir = (v - anchor).normalize();
-            dist = (v - anchor).Length();
-            double cosv = dir.Dot(Common.uprightVec);
-            cosv = Common.cutoff(cosv, -1.0, 1.0);
-            angle = Math.Acos(cosv) / Math.PI;
-            angle = Common.cutoff(angle, 0.0, 1.0);
-        }// computeDistAndAngleToAnchorNormalized
-
+       
         public List<Node> _NODES
         {
             get

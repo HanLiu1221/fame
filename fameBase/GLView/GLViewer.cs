@@ -869,7 +869,7 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-            _currModel._GRAPH.checkInSamplePoints();
+            _currModel.checkInSamplePoints();
             // save .off file & .pts file for shape2pose
             string offname = _currModel._path + _currModel._model_name + ".off";
             string ptsname = _currModel._path + _currModel._model_name + ".pts";
@@ -995,16 +995,16 @@ namespace FameBase
             string[] paras = new string[5] { prstCmdPara, metricCmdPara, ogPCACmdPara, absCurvCmdPara, absCurvGeoAvgCmdPara };
 
             // load features
-            int nSamplePoints = model._GRAPH._sp._points.Length;
+            int nSamplePoints = model._SP._points.Length;
 
-            model._GRAPH._funcFeat = new FuncFeatures();
-            model._GRAPH._funcFeat._pcaFeats = loadShape2Pose_OrientedGeodesicPCAFeatures(ogPCAOutputFile);
+            model._funcFeat = new FuncFeatures();
+            model._funcFeat._pcaFeats = loadShape2Pose_OrientedGeodesicPCAFeatures(ogPCAOutputFile);
             // load sym plane
             Vector3d[] centers;
             Vector3d[] normals;
             this.loadShape2Pose_SymPlane(prstOutputFile1, out centers, out normals);
-            model._GRAPH.findBestSymPlane(centers, normals);
-            model._GRAPH.computeSamplePointsFeatures();
+            model.findBestSymPlane(centers, normals);
+            model.computeSamplePointsFeatures();
             
             double[] absCurv = this.loadShape2Pose_nDimFeatures(absCurvOutputFile, 1);
             double[] absCurvGeo = this.loadShape2Pose_nDimFeatures(absCurvGeoAvgOutputFile, 1);
@@ -1012,21 +1012,21 @@ namespace FameBase
             double[] k1k2Curv = this.loadShape2Pose_nDimFeatures(k1k2OutputFile, 2);
 
             int dim = Common._CURV_FEAT_DIM;
-            model._GRAPH._funcFeat._curvFeats = new double[dim * nSamplePoints];
+            model._funcFeat._curvFeats = new double[dim * nSamplePoints];
             for (int i = 0; i < nSamplePoints; ++i)
             {
-                model._GRAPH._funcFeat._curvFeats[i * dim] = absCurv[i];
-                model._GRAPH._funcFeat._curvFeats[i * dim + 1] = absCurvGeo[i];
-                model._GRAPH._funcFeat._curvFeats[i * dim + 2] = k1k2Curv[i * 2];
-                model._GRAPH._funcFeat._curvFeats[i * dim + 3] = k1k2Curv[i * 2 + 1];
+                model._funcFeat._curvFeats[i * dim] = absCurv[i];
+                model._funcFeat._curvFeats[i * dim + 1] = absCurvGeo[i];
+                model._funcFeat._curvFeats[i * dim + 2] = k1k2Curv[i * 2];
+                model._funcFeat._curvFeats[i * dim + 3] = k1k2Curv[i * 2 + 1];
             }
             if (model._MESH == null)
             {
                 model.setMesh(model._GRAPH.composeMesh());
             }
-            model._GRAPH._funcFeat._rayFeats = model._MESH.computeRayDist(model._GRAPH._sp._points, model._GRAPH._sp._normals);
-            model._GRAPH.computeDistAndAngleToCenterOfConvexHull();
-            model._GRAPH.computeDistAndAngleToCenterOfMass();
+            model._funcFeat._rayFeats = model._MESH.computeRayDist(model._SP._points, model._SP._normals);
+            model.computeDistAndAngleToCenterOfConvexHull();
+            model.computeDistAndAngleToCenterOfMass();
         }// computeShape2PoseAndIconFeatures
 
         private double[] loadShape2Pose_OrientedGeodesicPCAFeatures(string filename)
@@ -1373,7 +1373,7 @@ namespace FameBase
                 }
                 Model model = new Model(parts);
                 model.setMesh(modelMesh);
-                model._SP = sp;
+                model.checkInSamplePoints(sp);
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 string name = filename.Substring(filename.LastIndexOf('\\') + 1);
                 model._model_name = name.Substring(0, name.LastIndexOf('.'));
@@ -2745,7 +2745,7 @@ namespace FameBase
             string pois_file = folder + possionFilename;
             using (StreamWriter sw = new StreamWriter(pois_file))
             {
-                SamplePoints sp = model._GRAPH._sp;
+                SamplePoints sp = model._SP;
                 for (int j = 0; j < sp._points.Length; ++j)
                 {
                     Vector3d vpos = sp._points[j];
@@ -2763,43 +2763,43 @@ namespace FameBase
             using (StreamWriter sw = new StreamWriter(feat_file))
             {
 
-                int n = model._GRAPH._sp._points.Length;
+                int n = model._SP._points.Length;
                 for (int i = 0; i < n; ++i)
                 {
                     StringBuilder sb = new StringBuilder();
                     int d = Common._POINT_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._pointFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._pointFeats[i * d + j]));
                         sb.Append(",");
                     }
                     d = Common._CURV_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._curvFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._curvFeats[i * d + j]));
                         sb.Append(",");
                     }
                     d = Common._PCA_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._pcaFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._pcaFeats[i * d + j]));
                         sb.Append(",");
                     }
                     d = Common._RAY_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._rayFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._rayFeats[i * d + j]));
                         sb.Append(",");
                     }
                     d = Common._CONVEXHULL_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._conhullFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._conhullFeats[i * d + j]));
                         sb.Append(",");
                     }
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._GRAPH._funcFeat._cenOfMassFeats[i * d + j]));
+                        sb.Append(Common.correct(model._funcFeat._cenOfMassFeats[i * d + j]));
                         if (j < d - 1)
                         {
                             sb.Append(",");

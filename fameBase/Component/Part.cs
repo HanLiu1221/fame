@@ -417,11 +417,18 @@ namespace Component
         List<Part> _parts;
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
-        public SamplePoints _SP;
+        
         public FuncSpace[] _funcSpaces;
 
         public string _path = "";
         public string _model_name = "";
+
+        public SamplePoints _SP;
+        public FuncFeatures _funcFeat = null;
+        private ConvexHull _hull;
+        private Vector3d _centerOfMass;
+        private Vector3d _centerOfConvexHull;
+        private Polygon3D _symPlane;
 
         public Model()
         {
@@ -431,14 +438,13 @@ namespace Component
         public Model(List<Part> parts)
         {
             _parts = parts;
-            composeMesh();
+            this.init();
         }
 
         public Model(Mesh mesh)
         {
             _mesh = mesh;
-            this.initializeParts();
-            //this.mergeNearbyParts();
+            this.init();
         }
 
         public Model(Mesh mesh, SamplePoints sp, FuncSpace[] fss, bool needNormalize)
@@ -451,8 +457,7 @@ namespace Component
                 this.swithXYZ();
                 this.unifyMeshFuncSpace();
             }
-            this.initializeParts();
-            //this.mergeNearbyParts();
+            this.init();
         }
 
         public void initialize()
@@ -460,6 +465,15 @@ namespace Component
             // process a new model without loaded graph info
             unify();
             initializeGraph();
+        }
+
+        private void init()
+        {
+            composeMesh();
+            computeCenterOfMass();
+            computeConvexHull();
+            this.initializeParts();
+            //this.mergeNearbyParts();
         }
 
         public void initializeGraph()
@@ -502,6 +516,10 @@ namespace Component
 
         private void composeMesh()
         {
+            if (_mesh != null)
+            {
+                return;
+            }
             List<double> vertexPos = new List<double>();
             List<int> faceIndex = new List<int>();
             int start = 0;
@@ -527,7 +545,272 @@ namespace Component
                 start += mesh.VertexCount;
             }
             _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
+        }// composeMesh
+
+        public void checkInSamplePoints(SamplePoints sp)
+        {
+            _SP = sp;
+            _SP.updateNormals(_mesh);
         }
+
+        public void checkInSamplePoints()
+        {
+            if (_SP != null)
+            {
+                return;
+            }
+            _SP = new SamplePoints();
+            List<Vector3d> points = new List<Vector3d>();
+            List<Vector3d> normals = new List<Vector3d>();
+            List<int> faceIdxs = new List<int>();
+            foreach (Node node in _GRAPH._NODES)
+            {
+                SamplePoints sp = node._PART._partSP;
+                points.AddRange(sp._points);
+                normals.AddRange(sp._normals);
+                faceIdxs.AddRange(sp._faceIdx);
+            }
+            _SP._points = points.ToArray();
+            _SP._normals = normals.ToArray();
+            _SP._faceIdx = faceIdxs.ToArray();
+        }// checkInSamplePoints
+
+        private void computeConvexHull()
+        {
+            // merge meshes
+            int start = 0;
+            List<double> pos = new List<double>();
+            List<int> findices = new List<int>();
+            foreach (Part part in _parts)
+            {
+                Mesh mesh = part._MESH;
+                pos.AddRange(mesh.VertexPos);
+                for (int i = 0; i < mesh.FaceVertexIndex.Length; ++i)
+                {
+                    findices.Add(start + mesh.FaceVertexIndex[i]);
+                }
+                start += mesh.VertexCount;
+            }
+            Mesh merged = new Mesh(pos.ToArray(), findices.ToArray());
+            // compute
+            _hull = new ConvexHull(merged);
+            _centerOfConvexHull = _hull._center;
+        }// computeConvexHull
+
+        private void computeModeBox()
+        {
+            _centerOfMass = new Vector3d();
+            Vector3d minCoord = Vector3d.MaxCoord;
+            Vector3d maxCoord = Vector3d.MinCoord;
+            foreach (Part part in _parts)
+            {
+                Vector3d v = part._BOUNDINGBOX.CENTER;
+                _centerOfMass += v;
+                foreach (Vector3d v3 in part._BOUNDINGBOX._POINTS3D)
+                {
+                    minCoord = Vector3d.Min(v3, minCoord);
+                    maxCoord = Vector3d.Max(v3, maxCoord);
+                }
+            }
+            _centerOfMass /= _parts.Count;
+            Vector3d[] symPlaneVecs = new Vector3d[4];
+            // assume upright vec is y-axis, the shape is symmetry along the center plane
+            symPlaneVecs[0] = new Vector3d(_centerOfMass.x, minCoord.y, minCoord.z);
+            symPlaneVecs[1] = new Vector3d(_centerOfMass.x, maxCoord.y, minCoord.z);
+            symPlaneVecs[2] = new Vector3d(_centerOfMass.x, maxCoord.y, maxCoord.z);
+            symPlaneVecs[3] = new Vector3d(_centerOfMass.x, minCoord.y, maxCoord.z);
+            _symPlane = new Polygon3D(symPlaneVecs);
+        }// computeModeBox
+
+        private void computeCenterOfMass()
+        {
+            _centerOfMass = new Vector3d();
+            double totalVolume = 0;
+            foreach (Part part in _parts)
+            {
+                Mesh mesh = part._MESH;
+                for (int i = 0; i < mesh.FaceCount; ++i)
+                {
+                    int v1 = mesh.FaceVertexIndex[3 * i];
+                    int v2 = mesh.FaceVertexIndex[3 * i + 1];
+                    int v3 = mesh.FaceVertexIndex[3 * i + 2];
+                    Vector3d pos1 = mesh.getVertexPos(v1);
+                    Vector3d pos2 = mesh.getVertexPos(v2);
+                    Vector3d pos3 = mesh.getVertexPos(v3);
+                    double volume = (pos1.x * pos1.y * pos3.z - pos1.x * pos3.y * pos2.z - pos2.x * pos1.y * pos3.z +
+                        pos2.x * pos3.y * pos1.z + pos3.x * pos1.y * pos2.z - pos3.x * pos1.y * pos1.z) / 6;
+                    _centerOfMass += (pos1 + pos2 + pos3) / 4 * volume;
+                    totalVolume += volume;
+                }
+            }
+            _centerOfMass /= totalVolume;
+            if (_GRAPH != null)
+            {
+                _GRAPH._centerOfMass = new Vector3d(_centerOfMass);
+            }
+        }// computeCenterOfMass
+
+        public void computeSamplePointsFeatures()
+        {
+            if (_SP == null)
+            {
+                this.checkInSamplePoints();
+            }
+            if (_symPlane == null)
+            {
+                computeModeBox();
+            }
+            int n = _SP._points.Length;
+            int dim = Common._POINT_FEAT_DIM;
+            this._funcFeat._pointFeats = new double[n * dim];
+            double maxh = double.MinValue;
+            double minh = double.MaxValue;
+            double maxd = double.MinValue;
+            double mind = double.MaxValue;
+            for (int i = 0; i < n; ++i)
+            {
+                Vector3d v = _SP._points[i];
+                Vector3d nor = _SP._normals[i];
+                // height - v project to the upright (unit) vector
+                double height = v.Dot(Common.uprightVec);
+                maxh = maxh > height ? maxh : height;
+                minh = minh < height ? minh : height;
+                // angle - normal vs. upright vector
+                double angle = Math.Acos(nor.Dot(Common.uprightVec));
+                angle /= Math.PI;
+                angle = Common.cutoff(angle, 0, 1.0);
+                // dist to center of hull - reflection plane
+                double dist = (v - _symPlane.center).Dot(_symPlane.normal);
+                dist = Math.Abs(dist);
+                maxd = maxd > dist ? maxd : dist;
+                mind = mind < dist ? mind : dist;
+                _funcFeat._pointFeats[i * dim] = angle;
+                _funcFeat._pointFeats[i * dim + 1] = height;
+                _funcFeat._pointFeats[i * dim + 2] = dist;
+            }
+            // normalize
+            double diffh = maxh - minh;
+            double diffd = maxd - mind;
+            for (int i = 0; i < n; ++i)
+            {
+                double h = _funcFeat._pointFeats[i * dim + 1];
+                _funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
+                double d = _funcFeat._pointFeats[i * dim + 2];
+                _funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+            }
+        }// computeSamplePointsFeatures
+
+        public void findBestSymPlane(Vector3d[] centers, Vector3d[] normals)
+        {
+            if (centers.Length == 1)
+            {
+                _symPlane = new Polygon3D(centers[0], normals[0]);
+                return;
+            }
+            alglib.kdtree kdt;
+            int n = _SP._points.Length;
+            double[,] xy = new double[n, 3];
+            int[] tags = new int[n];
+            for (int i = 0; i < n; ++i)
+            {
+                xy[i, 0] = _SP._points[i].x;
+                xy[i, 1] = _SP._points[i].y;
+                xy[i, 2] = _SP._points[i].z;
+                tags[i] = i;
+            }
+            int nx = 3;
+            int ny = 0;
+            int normtype = 2;
+            alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out kdt);
+
+            double mind = double.MaxValue;
+            int bestPlaneIdx = -1;
+            for (int i = 0; i < centers.Length; ++i)
+            {
+                double sumd = 0;
+                for (int j = 0; j < n; ++j)
+                {
+                    Vector3d pt = _SP._points[j];
+                    double prj = 2 * (pt - centers[i]).Dot(normals[i]);
+                    Vector3d sympt = pt - prj * normals[i];
+
+                    int res = alglib.kdtreequeryknn(kdt, sympt.ToArray(), 1, true); // true for overlapping points
+                    int[] nearestIds = new int[1];
+                    alglib.kdtreequeryresultstags(kdt, ref nearestIds);
+                    double d = (_SP._points[nearestIds[0]] - sympt).Length();
+                    sumd += d;
+                }
+                if (sumd < mind)
+                {
+                    mind = sumd;
+                    bestPlaneIdx = i;
+                }
+            }
+            _symPlane = new Polygon3D(centers[bestPlaneIdx], normals[bestPlaneIdx]);
+        }// findBestSymPlane
+
+        public void computeDistAndAngleToCenterOfConvexHull()
+        {
+            if (_hull == null)
+            {
+                computeConvexHull();
+            }
+            int dim = Common._CONVEXHULL_FEAT_DIM;
+            double maxdist = double.MinValue;
+            double mindist = double.MaxValue;
+            _funcFeat._conhullFeats = new double[dim * _SP._points.Length];
+            for (int i = 0; i < _SP._points.Length; ++i)
+            {
+                Vector3d v = _SP._points[i];
+                double dist = 0;
+                double angle = 0;
+                computeDistAndAngleToAnchorNormalized(v, _centerOfConvexHull, out dist, out angle);
+                _funcFeat._conhullFeats[i * dim] = dist;
+                _funcFeat._conhullFeats[i * dim + 1] = angle;
+                maxdist = maxdist > dist ? maxdist : dist;
+                mindist = mindist < dist ? mindist : dist;
+            }
+            double ddist = maxdist - mindist;
+            for (int i = 0; i < _funcFeat._conhullFeats.Length; i += dim)
+            {
+                _funcFeat._conhullFeats[i] = (_funcFeat._conhullFeats[i] - mindist) / ddist;
+            }
+        }// computeDistAndAngleToCenterOfConvexHull
+
+        public void computeDistAndAngleToCenterOfMass()
+        {
+            int dim = Common._CONVEXHULL_FEAT_DIM;
+            double maxdist = double.MinValue;
+            double mindist = double.MaxValue;
+            _funcFeat._cenOfMassFeats = new double[dim * _SP._points.Length];
+            for (int i = 0; i < _SP._points.Length; ++i)
+            {
+                Vector3d v = _SP._points[i];
+                double dist = 0;
+                double angle = 0;
+                computeDistAndAngleToAnchorNormalized(v, _centerOfMass, out dist, out angle);
+                _funcFeat._cenOfMassFeats[i * dim] = dist;
+                _funcFeat._cenOfMassFeats[i * dim + 1] = angle;
+                maxdist = maxdist > dist ? maxdist : dist;
+                mindist = mindist < dist ? mindist : dist;
+            }
+            double ddist = maxdist - mindist;
+            for (int i = 0; i < _funcFeat._cenOfMassFeats.Length; i += dim)
+            {
+                _funcFeat._cenOfMassFeats[i] = (_funcFeat._cenOfMassFeats[i] - mindist) / ddist;
+            }
+        }// computeDistAndAngleToCenterOfMass
+
+        private void computeDistAndAngleToAnchorNormalized(Vector3d v, Vector3d anchor, out double dist, out double angle)
+        {
+            Vector3d dir = (v - anchor).normalize();
+            dist = (v - anchor).Length();
+            double cosv = dir.Dot(Common.uprightVec);
+            cosv = Common.cutoff(cosv, -1.0, 1.0);
+            angle = Math.Acos(cosv) / Math.PI;
+            angle = Common.cutoff(angle, 0.0, 1.0);
+        }// computeDistAndAngleToAnchorNormalized
+
 
         private void swithXYZ()
         {
@@ -713,7 +996,10 @@ namespace Component
 
         private void initializeParts()
         {
-            if (_mesh == null) return;
+            if (_mesh == null || (_parts != null && _parts.Count > 0))
+            {
+                return;
+            }
             // find point cluster to form initial parts
             int n = _mesh.VertexCount;
             bool[] visited = new bool[n];
@@ -1108,7 +1394,13 @@ namespace Component
                 Vector3d A = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3]);
                 Vector3d B = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3 + 1]);
                 Vector3d C = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3 + 2]);
-                _normals[i] = Common.getBarycentricCoord(A, B, C, _points[i]).normalize();
+                //_normals[i] = Common.getBarycentricCoord(A, B, C, _points[i]).normalize();
+                Vector3d p = _points[i];
+                Vector3d nor1 = (p - A).normalize().Cross((p - B).normalize());
+                Vector3d nor2 = (p - B).normalize().Cross((p - C).normalize());
+                Vector3d nor3 = (p - C).normalize().Cross((p - A).normalize());
+                _normals[i] = (nor1 + nor2 + nor3) / 3;
+                _normals[i].normalize();
             }
         }// updateNormals
 
