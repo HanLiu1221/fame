@@ -407,6 +407,10 @@ namespace FameBase
                 sb.Append("\n#edges: ");
                 sb.Append(_currModel._GRAPH._NEdges.ToString());
             }
+            if (_currModel._SP != null && _currModel._SP._points != null)
+            {
+                sb.Append("\n#sample pointss: " + _currModel._SP._points.Length);
+            }
             sb.Append("\n#iter: " + _currIter.ToString() + " ");
             string mc = _mutateOrCross == -1 ? "" : (_mutateOrCross == 0 ? "mutate" : (_mutateOrCross == 1 ? "crossover" : "growth"));
             sb.Append(mc);
@@ -429,8 +433,7 @@ namespace FameBase
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
             {
-                MessageBox.Show("Directory does not exist!");
-                return;
+                Directory.CreateDirectory(Path.GetDirectoryName(filename));
             }
             if (mesh == null)
             {
@@ -873,7 +876,7 @@ namespace FameBase
             matlab.Feval("clearData", 0, out matlabOutput);
 
             //this.runFunctionalityTest(_currModel);
-            this.runFunctionalityTestWithPatchCombination(_currModel);
+            this.runFunctionalityTestWithPatchCombination(_currModel, 0);
 
             long secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to compute features: " + secs.ToString() + " senconds.");
@@ -2505,6 +2508,7 @@ namespace FameBase
         string mutateFolder;
         string crossoverFolder;
         string growthFolder;
+        string funcFolder;
         string imageFolder_m;
         string imageFolder_c;
         string imageFolder_g;
@@ -2526,6 +2530,7 @@ namespace FameBase
             mutateFolder = userFolder + "\\models\\mutate\\";
             crossoverFolder = userFolder + "\\models\\crossover\\";
             growthFolder = userFolder + "\\models\\growth\\";
+            funcFolder = userFolder + "\\models\\funcTest\\";
 
             createDirectory(mutateFolder);
             createDirectory(crossoverFolder);
@@ -2576,6 +2581,11 @@ namespace FameBase
                 this.registerANewUser();
             }
 
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+           
+
             this.isDrawBbox = false;
             this.isDrawGraph = false;
             this.isDrawGround = true;
@@ -2617,7 +2627,7 @@ namespace FameBase
             {
                 Random rand = new Random();
                 _mutateOrCross = runMutateOrCrossover(rand);
-                if (i == 0)
+                if (i < 3)
                 {
                     _mutateOrCross = 1;
                 }
@@ -2647,19 +2657,21 @@ namespace FameBase
                         break;
                 }
                 // functionality test
-                List<Model> filtered = new List<Model>();
-                foreach (Model kid in cur_kids)
-                {
-                    bool isFuncValid = this.runFunctionalityTest(kid);
-                    if (isFuncValid)
-                    {
-                        filtered.Add(kid);
-                    }
-                }
-                if (filtered.Count == 0)
-                {
-                    break;
-                }
+                List<Model> filtered = new List<Model>(cur_kids);
+                //List<Model> filtered = new List<Model>();
+                //foreach (Model kid in cur_kids)
+                //{
+                //    //bool isFuncValid = this.runFunctionalityTest(kid);
+                //    bool isFuncValid = this.runFunctionalityTestWithPatchCombination(kid, _currIter);
+                //    if (isFuncValid)
+                //    {
+                //        filtered.Add(kid);
+                //    }
+                //}
+                //if (filtered.Count == 0)
+                //{
+                //    break;
+                //}
                 start = _currGen.Count;
                 parents.AddRange(filtered);
                 _currGen.AddRange(filtered);
@@ -2672,12 +2684,22 @@ namespace FameBase
                 _currGenModelViewers.Add(mv);
             }
             _currGen = new List<Model>(prev_parents); // for user selection
+
+            long secs = stopWatch.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time: " + _currIter.ToString() + " iteration, " + _ancesterModelViewers.Count.ToString()
+            + " orginal models, takes " + secs.ToString() + " senconds.");
+
             return _currGenModelViewers;
         }// autoGenerate
 
-        private void runFunctionalityTestWithPatchCombination(Model model)
+        private bool runFunctionalityTestWithPatchCombination(Model model, int gen)
         {
-            runFunctionalityTest(model);
+            //runFunctionalityTest(model);
+
+            if (funcFolder == null)
+            {
+                funcFolder = @"D:\fame\data_sets\patch_data\models\funcTest\";
+            } 
 
             //List<string> patchFileNames = this.useSelectedSubsetPatchesForPrediction(model);
             // combination of patches
@@ -2685,6 +2707,7 @@ namespace FameBase
             string weightFolder = Interface.WEIGHT_PATH + model._model_name;
             List<int> possibleN = new List<int>();
             List<List<int>> patchSPindices = new List<List<int>>();
+            Dictionary<int, List<Common.Category>> maps = new Dictionary<int, List<Common.Category>>();
             foreach (Common.Category cat in model._GRAPH._ff._cats)
             {
                 //List<SamplePoints> sps = this.getPatchesFromCategory(cat, model, weightFolder);
@@ -2695,14 +2718,28 @@ namespace FameBase
                 if (!possibleN.Contains(pn))
                 {
                     possibleN.Add(pn);
+                    List<Common.Category> catIdx = new List<Common.Category>();
+                    catIdx.Add(cat);
+                    maps.Add(pn, catIdx);
+                }else{
+                    maps[pn].Add(cat);
                 }
             }
 
             int totalPatches = patchSPindices.Count;
             int comId = 0;
+            int nCats = Enum.GetNames(typeof(Common.Category)).Length;
+            double[] highestScores = new double[nCats];
+            for (int i = 0; i < nCats; ++i)
+            {
+                highestScores[i] = 0;
+            }
+            double max_score_all = 0;
+            Dictionary<Common.Category, SamplePoints> dict = new Dictionary<Common.Category, SamplePoints>();
             for (int i = 0; i < possibleN.Count; ++i)
             {
                 List<List<int>> com = new List<List<int>>();
+                List<int> curCats = new List<int>();
                 if (possibleN[i] == 1)
                 {
                     for (int j = 0; j < totalPatches; ++j)
@@ -2720,27 +2757,57 @@ namespace FameBase
                 {
                     com = combine(totalPatches, 3);
                 }
+                // this is for checking different categories with the same number of patches, 
+                // so we can check them in the same time
+                int nCatCheck = maps[possibleN[i]].Count;
+                SamplePoints[] bestSP = new SamplePoints[nCatCheck];
                 for (int c = 0; c < com.Count; ++c)
                 {
                     List<List<int>> curr = new List<List<int>>();
                     for (int j = 0; j < com[c].Count; ++j)
                     {
-                        curr.Add(patchSPindices[com[c][j]]);
+                        curr.Add(patchSPindices[com[c][j] - 1]);
                     }
                     Model model_com = model.Clone() as Model;
-                    model_com._model_name += "com_" + comId.ToString();
+                    model_com._path = funcFolder + "gen_" + gen.ToString() + "\\";
+                    model_com._model_name += "_com_" + comId.ToString();
                     SamplePoints sp = this.mergePatchesSP(curr, model);
                     model_com._SP = sp;
-                    runFunctionalityTest(model_com);
+                    double[] scores = runFunctionalityTest(model_com);
+                    this.saveAPartBasedModel(model_com, model_com._path + model_com._model_name + ".pam", false);
+                    ++comId;
+                    if (scores == null)
+                    {
+                        continue;
+                    }
+                    for (int j = 0; j < nCatCheck; ++j)
+                    {
+                        int catId = (int)maps[possibleN[i]][j];
+                        if (scores[catId] > highestScores[catId])
+                        {
+                            highestScores[catId] = scores[catId];
+                            dict[maps[possibleN[i]][j]] = sp;
+                            if (scores[catId] > max_score_all)
+                            {
+                                max_score_all = scores[catId];
+                            }
+                        }
+                    }
                 }// each combination
             }
+            foreach (Common.Category cat in model._GRAPH._ff._cats)
+            {
+                Model best_patches = model.Clone() as Model;
+                best_patches._path = funcFolder + "gen_" + gen.ToString() + "\\";
+                best_patches._model_name += "_best_" + cat;
+                best_patches._SP = dict[cat];
+                this.saveAPartBasedModel(best_patches, best_patches._path + best_patches._model_name + ".pam", false);
+            }
+            return max_score_all > 0.9;
         }// runFunctionalityTestWithPatchCombination
 
-        private bool runFunctionalityTest(Model model)
+        private double[] runFunctionalityTest(Model model)
         {
-            bool isValid = true; // has at least one functionality?
-            double thr = 0.9;
-
             model.checkInSamplePoints();
 
             string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
@@ -2758,7 +2825,7 @@ namespace FameBase
 
             if (!isSuccess)
             {
-                return true;
+                return null;
             }
 
             MLApp.MLApp matlab = new MLApp.MLApp();
@@ -2778,12 +2845,7 @@ namespace FameBase
             }
             this.saveScoreFile(scoreFileName, scores);
 
-            if (scores[0] < thr)
-            {
-                // the largest functionality score is too low
-                isValid = false;
-            }
-            return isValid;
+            return scores;
         }// runFunctionalityTest
 
         private SamplePoints mergePatchesSP(List<List<int>> patches, Model model)
@@ -2845,7 +2907,7 @@ namespace FameBase
         private List<List<int>> getPatchesFromCategory(Common.Category cat, Model model, string weightFolder)
         {
             int nPatches = Common.numOfPatchesFromCategory(cat);
-            double thr_ratio = 1.0 / nPatches;
+            double thr_ratio = 0.2;
             string wight_name_filter = model._model_name + "_predict_" + cat;
             string[] weightFiles = Directory.GetFiles(weightFolder, "*.csv");
             int fid = 0;
@@ -2983,14 +3045,14 @@ namespace FameBase
                 string subsetStr = "_subPatches_" + cat;
                 string patchFileName = model._model_name + subsetStr;
                 patchFileNamesForPredictions.Add(patchFileName);
-                writeSampleFeatureFilesForPrediction(subPatches, model, subsetStr);
+                //writeSampleFeatureFilesForPrediction(subPatches, model, subsetStr);
 
                 // test the whole shape
                 subPatches = model._GRAPH._NODES;
                 subsetStr = "_wholeShape_" + cat;
                 patchFileName = model._model_name + subsetStr;
                 patchFileNamesForPredictions.Add(patchFileName);
-                writeSampleFeatureFilesForPrediction(subPatches, model, subsetStr);
+                //writeSampleFeatureFilesForPrediction(subPatches, model, subsetStr);
             }
             return patchFileNamesForPredictions;
         }// useSelectedSubsetPatchesForPrediction
@@ -3000,8 +3062,9 @@ namespace FameBase
             string mesh_file = model._path + model._model_name + "\\" + model._model_name + ".obj";
             if (!File.Exists(mesh_file))
             {
-                MessageBox.Show("Mesh of model does not exist!");
-                return;
+                //MessageBox.Show("Mesh of model does not exist!");
+                //return;
+                this.saveObj(model._MESH, mesh_file, GLDrawer.MeshColor);
             }
 
             string copyFolder = Interface.MESH_PATH + model._model_name + "\\";
@@ -3092,93 +3155,6 @@ namespace FameBase
             File.Copy(feat_file, copyFolder + featureFileName, true);
         }// writeModelSampleFeatureFilesForPrediction
 
-        private void writeSampleFeatureFilesForPrediction(List<Node> subPatches, Model model, string subsetStr)
-        {
-            string meshFileName = model._model_name + subsetStr + ".obj";
-            string mesh_file = model._path + meshFileName;
-            this.saveMeshForModel(subPatches, mesh_file);
-            File.Copy(mesh_file, Interface.MESH_PATH + meshFileName, true);
-
-            string folder = Interface.MATLAB_INPUT_PATH;
-            string possionFilename = model._model_name + subsetStr + ".poisson";
-            string pois_file = folder + possionFilename;
-            using (StreamWriter sw = new StreamWriter(pois_file))
-            {
-                int start = 0;
-                foreach (Node node in subPatches)
-                {
-                    SamplePoints sp = node._PART._partSP;
-                    for (int j = 0; j < sp._points.Length; ++j)
-                    {
-                        Vector3d vpos = sp._points[j];
-                        sw.Write(vector3dToString(vpos, " ", " "));
-                        Vector3d vnor = sp._normals[j];
-                        sw.Write(vector3dToString(vnor, " ", " "));
-                        int fidx = start + sp._faceIdx[j];
-                        sw.WriteLine(fidx.ToString());
-                    }
-                    start += node._PART._MESH.FaceCount;
-                }
-            }
-            File.Copy(pois_file, Interface.POINT_SAMPLE_PATH + possionFilename, true);
-
-            string featureFileName = model._model_name + subsetStr + "_point_feature.csv";
-            string feat_file = folder + featureFileName;
-            using (StreamWriter sw = new StreamWriter(feat_file))
-            {
-                int npnts = 0;
-                foreach (Node node in subPatches)
-                {
-                    int n = node._PART._partSP._points.Length;
-                    npnts += n;
-                    for (int i = 0; i < n; ++i)
-                    {
-                        StringBuilder sb = new StringBuilder();
-                        int d = Common._POINT_FEAT_DIM;
-                        for (int j = 0; j < d; ++j)
-                        {
-                            sb.Append(Common.correct(node._funcFeat._pointFeats[i * d + j]));
-                            sb.Append(",");
-                        }
-                        d = Common._CURV_FEAT_DIM;
-                        for (int j = 0; j < d; ++j)
-                        {
-                            sb.Append(Common.correct(node._funcFeat._curvFeats[i * d + j]));
-                            sb.Append(",");
-                        }
-                        d = Common._PCA_FEAT_DIM;
-                        for (int j = 0; j < d; ++j)
-                        {
-                            sb.Append(Common.correct(node._funcFeat._pcaFeats[i * d + j]));
-                            sb.Append(",");
-                        }
-                        d = Common._RAY_FEAT_DIM;
-                        for (int j = 0; j < d; ++j)
-                        {
-                            sb.Append(Common.correct(node._funcFeat._rayFeats[i * d + j]));
-                            sb.Append(",");
-                        }
-                        d = Common._CONVEXHULL_FEAT_DIM;
-                        for (int j = 0; j < d; ++j)
-                        {
-                            sb.Append(Common.correct(node._funcFeat._conhullFeats[i * d + j]));
-                            sb.Append(",");
-                        }
-                        for (int j = 0; j < d; ++j)
-                        {
-                            sb.Append(Common.correct(node._funcFeat._cenOfMassFeats[i * d + j]));
-                            if (j < d - 1)
-                            {
-                                sb.Append(",");
-                            }
-                        }
-                        sw.WriteLine(sb.ToString());
-                    }
-                }
-            }
-            File.Copy(feat_file, Interface.POINT_FEATURE_PATH + featureFileName, true);
-        }// writeSampleFeatureFilesForPrediction
-
         private List<Model> runGrowth(List<Model> models, int gen, Random rand, string imageFolder, int start)
         {
             List<Model> growth = new List<Model>();
@@ -3225,6 +3201,7 @@ namespace FameBase
                     Model model = growNewFunctionality(m1, m2, path, idx, rand);
                     if (model != null && model._GRAPH != null && model._GRAPH.isValid())
                     {
+                        model.composeMesh();
                         model._GRAPH.reset();
                         model._GRAPH.recomputeSPnormals();
                         model._GRAPH._ff = this.addFF(m1._GRAPH._ff, m2._GRAPH._ff);
@@ -3509,6 +3486,7 @@ namespace FameBase
                 model._GRAPH._ff = iModel._GRAPH._ff.clone() as FunctionalityFeatures;
                 if (model._GRAPH.isValid())
                 {
+                    model.composeMesh();
                     model._GRAPH.unify();
                     mutated.Add(model);
                     // screenshot
@@ -3594,10 +3572,11 @@ namespace FameBase
                     {
                         if (m._GRAPH.isValid())
                         {
+                            m.composeMesh();
                             m._GRAPH.unify();
                             m._GRAPH._ff = this.addFF(m1._GRAPH._ff, m2._GRAPH._ff);
                             crossed.Add(m);
-                            if (crossed.Count > 15) { return crossed; }
+                            //if (crossed.Count > 15) { return crossed; }
                             // screenshot
                             this.setCurrentModel(m, -1);
                             Program.GetFormMain().updateStats();

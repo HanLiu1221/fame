@@ -1300,7 +1300,6 @@ namespace Component
         public Node symmetry = null;
         public Symmetry symm = null;
         public List<Common.Functionality> _funcs = new List<Common.Functionality>();
-        public FuncFeatures _funcFeat;
 
         public Node(Part p, int idx)
         {
@@ -1309,7 +1308,6 @@ namespace Component
             _edges = new List<Edge>();
             _adjNodes = new List<Node>();
             _pos = p._BOUNDINGBOX.CENTER;
-            _funcFeat = new FuncFeatures();
         }
 
         public void addAnEdge(Edge e)
@@ -1371,7 +1369,6 @@ namespace Component
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
             cloned._funcs = new List<Common.Functionality>(_funcs);
-            cloned._funcFeat = _funcFeat.clone() as FuncFeatures;
             return cloned;
         }// Clone
 
@@ -1381,7 +1378,6 @@ namespace Component
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
             cloned._funcs = new List<Common.Functionality>(_funcs);
-            cloned._funcFeat = _funcFeat.clone() as FuncFeatures;
             return cloned;
         }// Clone
 
