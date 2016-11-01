@@ -318,6 +318,45 @@ namespace Geometry
             }
         }// getCategory
 
+        public static int numOfPatchesFromCategory(Category cat)
+        {
+            switch (cat)
+            {
+                case Category.Backpack:
+                    return 1;
+                case Category.Basket:
+                    return 2;
+                case Category.Bicycle:
+                    return 2;
+                case Category.Chair:
+                    return 2;
+                case Category.Desk:
+                    return 3;
+                case Category.DryingRack:
+                    return 2;
+                case Category.Handcart:
+                    return 3;
+                case Category.Hanger:
+                    return 2;
+                case Category.Hook:
+                    return 2;
+                case Category.Shelf:
+                    return 3;
+                case Category.Stand:
+                    return 2;
+                case Category.Stroller:
+                    return 3;
+                case Category.Table:
+                    return 3;
+                case Category.TvBench:
+                    return 3;
+                case Category.Vase:
+                    return 2;
+                default:
+                    return 0;
+            }
+        }// numOfPatchesFromCategory
+
         public static List<Functionality> getFunctionalityFromCategory(Category cat)
         {
             List<Functionality> funcs = new List<Functionality>();

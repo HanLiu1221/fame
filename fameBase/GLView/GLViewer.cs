@@ -872,13 +872,14 @@ namespace FameBase
             Object matlabOutput = null;
             matlab.Feval("clearData", 0, out matlabOutput);
 
-            this.runFunctionalityTest(_currModel);
+            //this.runFunctionalityTest(_currModel);
+            this.runFunctionalityTestWithPatchCombination(_currModel);
 
             long secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to compute features: " + secs.ToString() + " senconds.");
         }
 
-        public void computeShape2PoseAndIconFeatures(Model model)
+        public bool computeShape2PoseAndIconFeatures(Model model)
         {
             string path = model._path;
             string model_name = model._model_name;
@@ -890,7 +891,6 @@ namespace FameBase
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
 
-            string computeLocalFeatureExe = exePath + "ComputeLocalFeatures.exe";
             string shape2poseMeshFile = shape2poseDataFolder + model_name + ".off";
             string shape2poseSampleFile = shape2poseDataFolder + model_name + ".pts";
 
@@ -899,7 +899,7 @@ namespace FameBase
             string prstOutputFile2 = shape2poseDataFolder + model_name + "_msh.arff";
             string prstCmdPara = shape2poseMeshFile + " " + prstOutputFile1 +
                               " -v -input_points " + shape2poseSampleFile + " -output_point_properties " + prstOutputFile2 +
-                              " -in_plane_vector 0 0 1 -min_value 0.9 -min_weight 128";
+                              " -in_plane_vector 0 1 0 -min_value 0.9 -min_weight 128";
             //Process.Start(msh2plnCmd, prstCmdPara);
 
             // WaitForExit(); block the program from responding
@@ -1002,6 +1002,11 @@ namespace FameBase
 
             double[] k1k2Curv = this.loadShape2Pose_nDimFeatures(k1k2OutputFile, 2);
 
+            if (absCurv == null || absCurvGeo == null || k1k2Curv == null)
+            {
+                return false;
+            }
+
             int dim = Common._CURV_FEAT_DIM;
             model._funcFeat._curvFeats = new double[dim * nSamplePoints];
             for (int i = 0; i < nSamplePoints; ++i)
@@ -1020,6 +1025,8 @@ namespace FameBase
             model.computeDistAndAngleToCenterOfMass();
 
             this.writeModelSampleFeatureFilesForPrediction(model);
+
+            return true;
         }// computeShape2PoseAndIconFeatures
 
         private double[] loadShape2Pose_OrientedGeodesicPCAFeatures(string filename)
@@ -2668,6 +2675,67 @@ namespace FameBase
             return _currGenModelViewers;
         }// autoGenerate
 
+        private void runFunctionalityTestWithPatchCombination(Model model)
+        {
+            runFunctionalityTest(model);
+
+            //List<string> patchFileNames = this.useSelectedSubsetPatchesForPrediction(model);
+            // combination of patches
+            //List<SamplePoints> patches = new List<SamplePoints>();
+            string weightFolder = Interface.WEIGHT_PATH + model._model_name;
+            List<int> possibleN = new List<int>();
+            List<List<int>> patchSPindices = new List<List<int>>();
+            foreach (Common.Category cat in model._GRAPH._ff._cats)
+            {
+                //List<SamplePoints> sps = this.getPatchesFromCategory(cat, model, weightFolder);
+                //patches.AddRange(sps);
+                List<List<int>> sps = this.getPatchesFromCategory(cat, model, weightFolder);
+                patchSPindices.AddRange(sps);
+                int pn = Common.numOfPatchesFromCategory(cat);
+                if (!possibleN.Contains(pn))
+                {
+                    possibleN.Add(pn);
+                }
+            }
+
+            int totalPatches = patchSPindices.Count;
+            int comId = 0;
+            for (int i = 0; i < possibleN.Count; ++i)
+            {
+                List<List<int>> com = new List<List<int>>();
+                if (possibleN[i] == 1)
+                {
+                    for (int j = 0; j < totalPatches; ++j)
+                    {
+                        List<int> single = new List<int>();
+                        single.Add(j + 1);
+                        com.Add(single);
+                    }
+                }
+                else if (possibleN[i] == 2)
+                {
+                    com = combine(totalPatches, 2);
+                }
+                else if (possibleN[i] == 3)
+                {
+                    com = combine(totalPatches, 3);
+                }
+                for (int c = 0; c < com.Count; ++c)
+                {
+                    List<List<int>> curr = new List<List<int>>();
+                    for (int j = 0; j < com[c].Count; ++j)
+                    {
+                        curr.Add(patchSPindices[com[c][j]]);
+                    }
+                    Model model_com = model.Clone() as Model;
+                    model_com._model_name += "com_" + comId.ToString();
+                    SamplePoints sp = this.mergePatchesSP(curr, model);
+                    model_com._SP = sp;
+                    runFunctionalityTest(model_com);
+                }// each combination
+            }
+        }// runFunctionalityTestWithPatchCombination
+
         private bool runFunctionalityTest(Model model)
         {
             bool isValid = true; // has at least one functionality?
@@ -2686,15 +2754,17 @@ namespace FameBase
             this.saveModelOff(model, offname);
             this.saveModelSamplePoints(model, ptsname);
 
-            this.computeShape2PoseAndIconFeatures(model);
+            bool isSuccess = this.computeShape2PoseAndIconFeatures(model);
+
+            if (!isSuccess)
+            {
+                return true;
+            }
 
             MLApp.MLApp matlab = new MLApp.MLApp();
             string exeStr = "cd " + Interface.MATLAB_PATH;
             matlab.Execute(exeStr);
-            
 
-            //List<string> patchFileNames = this.useSelectedSubsetPatchesForPrediction(model);
-            // combination of patches
             Object matlabOutput = null;
             matlab.Feval("getSingleModelFunctionalityScore", 1, out matlabOutput, model._model_name);
             Object[] res = matlabOutput as Object[];
@@ -2715,6 +2785,149 @@ namespace FameBase
             }
             return isValid;
         }// runFunctionalityTest
+
+        private SamplePoints mergePatchesSP(List<List<int>> patches, Model model)
+        {
+            int npoints = model._SP._points.Length;
+            bool[] added = new bool[npoints];
+            for (int i = 0; i < patches.Count; ++i)
+            {
+                for (int j = 0; j < patches[i].Count; ++j)
+                {
+                    added[patches[i][j]] = true;
+                }
+            }
+            List<Vector3d> points = new List<Vector3d>();
+            List<Vector3d> normals = new List<Vector3d>();
+            List<int> faceIdxs = new List<int>();
+            for (int i = 0; i < npoints; ++i)
+            {
+                if (!added[i])
+                {
+                    continue;
+                }
+                points.Add(model._SP._points[i]);
+                normals.Add(model._SP._normals[i]);
+                faceIdxs.Add(model._SP._faceIdx[i]);
+            }
+            SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(), faceIdxs.ToArray(), null, model._MESH.FaceCount);
+            return sp;
+        }// mergeSamplePoints
+
+        public List<List<int>> combine(int n, int k)
+        {
+            List<List<int>> result = new List<List<int>>();
+
+            if (n <= 0 || n < k)
+                return result;
+
+            List<int> item = new List<int>();
+            dfs(n, k, 1, item, result); // because it need to begin from 1
+            return result;
+        }
+
+        private void dfs(int n, int k, int start, List<int> item, List<List<int>> res)
+        {
+            if (item.Count == k)
+            {
+                res.Add(new List<int>(item));
+                return;
+            }
+
+            for (int i = start; i <= n; i++)
+            {
+                item.Add(i);
+                dfs(n, k, i + 1, item, res);
+                item.RemoveAt(item.Count - 1);
+            }
+        }
+
+        private List<List<int>> getPatchesFromCategory(Common.Category cat, Model model, string weightFolder)
+        {
+            int nPatches = Common.numOfPatchesFromCategory(cat);
+            double thr_ratio = 1.0 / nPatches;
+            string wight_name_filter = model._model_name + "_predict_" + cat;
+            string[] weightFiles = Directory.GetFiles(weightFolder, "*.csv");
+            int fid = 0;
+            List<string> patchWeightFiles = new List<string>();
+            while (fid < weightFiles.Length)
+            {
+                string weight_name = Path.GetFileName(weightFiles[fid]);
+                if (weight_name.StartsWith(wight_name_filter))
+                {
+                    // locate the weight files
+                    while (weight_name.StartsWith(wight_name_filter))
+                    {
+                        patchWeightFiles.Add(weightFiles[fid++]);
+                        if (fid >= weightFiles.Length)
+                        {
+                            break;
+                        }
+                        weight_name = Path.GetFileName(weightFiles[fid]);
+                    }
+                    break;
+                }
+                ++fid;
+            }
+            // load weights
+            //List<SamplePoints> samplePoints = new List<SamplePoints>();
+            List<List<int>> samplePointsIndices = new List<List<int>>();
+            int patchId = 0;
+            int nPoints = model._SP._points.Length;
+            double[,] weights = new double[nPoints, nPatches];
+            foreach (string wfile in patchWeightFiles)
+            {
+                double minw;
+                double maxw;
+                double[] curr_weights = loadPatchWeight(wfile, out minw, out maxw);
+                double wdiff = maxw - minw;
+                for (int i = 0; i < curr_weights.Length; ++i)
+                {
+                    double normalized = (curr_weights[i] - minw) / wdiff;
+                    weights[i, patchId] = normalized;                    
+                }
+                ++patchId;
+            }
+            for (int i = 0; i < nPatches; ++i)
+            {
+                //List<Vector3d> points = new List<Vector3d>();
+                //List<Vector3d> normals = new List<Vector3d>();
+                //List<int> faceIdxs = new List<int>();
+                //List<Color> colors = new List<Color>();
+                List<int> indices = new List<int>();
+                for (int j = 0; j < nPoints; ++j)
+                {
+                    if (weights[j, i] < thr_ratio)
+                    {
+                        continue;
+                    }
+                    bool isMax = true;
+                    for (int k = 0; k < nPatches; ++k)
+                    {
+                        if (k != i && weights[j, k] > weights[j, i])
+                        {
+                            isMax = false;
+                            break;
+                        }
+                    }
+                    if (isMax)
+                    {
+                        indices.Add(j);
+                    }
+                    //points.Add(model._SP._points[i]);
+                    //normals.Add(model._SP._normals[i]);
+                    //faceIdxs.Add(model._SP._faceIdx[i]);
+                    //Color color = GLDrawer.getColorGradient(weights[j, i], patchId);
+                    //colors.Add(color);
+                }
+                //SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(), faceIdxs.ToArray(), colors.ToArray(), model._MESH.FaceCount);
+                //samplePoints.Add(sp);
+                samplePointsIndices.Add(indices);
+            }
+            return samplePointsIndices;
+            //return samplePoints;
+        }// getPatchesFromCategory
+
 
         private void writeFileNamesForPredictToMatlabFolder(List<string> strs)
         {
