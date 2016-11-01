@@ -88,7 +88,6 @@ namespace Component
             }
         }
 
-
         private void buildSamplePoints(int[] fIndex, SamplePoints sp)
         {
             int nsamples = fIndex.Length;
@@ -463,7 +462,10 @@ namespace Component
 
         private void init()
         {
-            composeMesh();
+            if (_mesh == null)
+            {
+                composeMesh();
+            }
             computeCenterOfMass();
             computeConvexHull();
             this.initializeParts();
@@ -503,15 +505,17 @@ namespace Component
             this.Transform(Q);
         }// unify
 
-        private void composeMesh()
+        public void composeMesh()
         {
-            if (_mesh != null)
-            {
-                return;
-            }
             List<double> vertexPos = new List<double>();
             List<int> faceIndex = new List<int>();
-            int start = 0;
+            int start_v = 0;
+            int start_f = 0;
+            _SP = new SamplePoints();
+            List<Vector3d> points = new List<Vector3d>();
+            List<Vector3d> normals = new List<Vector3d>();
+            List<int> faceIdxs = new List<int>();
+            
             foreach (Part part in _parts)
             {
                 Mesh mesh = part._MESH;
@@ -525,15 +529,27 @@ namespace Component
                     vertexPos.Add(ipos.z);
                 }
                 // face
+                List<int> reFaceIdx = new List<int>();
                 for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
                 {
-                    faceIndex.Add(mesh.FaceVertexIndex[j++]);
-                    faceIndex.Add(mesh.FaceVertexIndex[j++]);
-                    faceIndex.Add(mesh.FaceVertexIndex[j++]);
+                    faceIndex.Add(start_v + mesh.FaceVertexIndex[j++]);
+                    faceIndex.Add(start_v + mesh.FaceVertexIndex[j++]);
+                    faceIndex.Add(start_v + mesh.FaceVertexIndex[j++]);
+                    reFaceIdx.Add(start_f + i);
                 }
-                start += mesh.VertexCount;
+                start_v += mesh.VertexCount;
+                start_f += mesh.FaceCount;
+
+                SamplePoints sp = part._partSP;
+                points.AddRange(sp._points);
+                normals.AddRange(sp._normals);
+                faceIdxs.AddRange(reFaceIdx);
             }
             _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
+
+            _SP._points = points.ToArray();
+            _SP._normals = normals.ToArray();
+            _SP._faceIdx = faceIdxs.ToArray();
         }// composeMesh
 
         public void checkInSamplePoints(SamplePoints sp)
@@ -914,6 +930,8 @@ namespace Component
                 }
                 m._funcSpaces = fss;
             }
+            m._path = this._path.Clone() as string;
+            m._model_name = this._model_name.Clone() as string;
             m._GRAPH = _GRAPH.Clone(parts) as Graph;
             return m;
         }
@@ -1377,7 +1395,11 @@ namespace Component
             Vector3d[] cpoints = _points.Clone() as Vector3d[];
             Vector3d[] cnormals = _normals.Clone() as Vector3d[];
             int[] cfaceIdx = _faceIdx.Clone() as int[];
-            Color[] ccolors = _blendColors.Clone() as Color[];
+            Color[] ccolors = null;
+            if (_blendColors != null)
+            {
+                ccolors = _blendColors.Clone() as Color[];
+            }
             SamplePoints sp = new SamplePoints(cpoints, cnormals, cfaceIdx, ccolors, _totalNfaces);
             return sp;
         }
