@@ -2584,8 +2584,6 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-           
-
             this.isDrawBbox = false;
             this.isDrawGraph = false;
             this.isDrawGround = true;
@@ -2621,7 +2619,7 @@ namespace FameBase
             }
             parents.AddRange(_currGen);
 
-            int maxIter = 5;
+            int maxIter = 1;
             int start = 0;
             for (int i = 0; i < maxIter; ++i)
             {
@@ -2631,7 +2629,7 @@ namespace FameBase
                 {
                     _mutateOrCross = 1;
                 }
-                //_mutateOrCross = 1;
+                _mutateOrCross = 1;
                 List<Model> cur_par = new List<Model>(parents);
                 List<Model> cur_kids = new List<Model>();
                 string runstr = "Run ";
@@ -2694,11 +2692,11 @@ namespace FameBase
 
         private bool runFunctionalityTestWithPatchCombination(Model model, int gen)
         {
-            //runFunctionalityTest(model);
+            runFunctionalityTest(model);
 
             if (funcFolder == null)
             {
-                funcFolder = @"D:\fame\data_sets\patch_data\models\funcTest\";
+                funcFolder = @"E:\Projects\fame\data_sets\patch_data\models\funcTest\" + model._model_name + "\\";
             } 
 
             //List<string> patchFileNames = this.useSelectedSubsetPatchesForPrediction(model);
@@ -2907,7 +2905,7 @@ namespace FameBase
         private List<List<int>> getPatchesFromCategory(Common.Category cat, Model model, string weightFolder)
         {
             int nPatches = Common.numOfPatchesFromCategory(cat);
-            double thr_ratio = 0.2;
+            double thr_ratio = 0.5;
             string wight_name_filter = model._model_name + "_predict_" + cat;
             string[] weightFiles = Directory.GetFiles(weightFolder, "*.csv");
             int fid = 0;
@@ -3622,6 +3620,8 @@ namespace FameBase
                 {
                     // only switch 1 functionality at one time
                     funcs = this.selectFunctionality(rand, 1);
+                    funcs.Clear();
+                    funcs.Add(Common.Functionality.SUPPORT);
                     if (option == 0)
                     {
                         g1.selectedNodes = g1.getNodesByFunctionality(funcs);
@@ -6135,47 +6135,46 @@ namespace FameBase
                 // weights & colors
                 sp._weights = weights_patches;
                 sp._colors = colors_patches;
-                //// functional space
-                //fid = 0;
-                //List<string> fspaceFiles = new List<string>();
-                //while (fid < funspaceFiles.Length)
-                //{
-                //    string func_name = Path.GetFileName(funspaceFiles[fid]);
-                //    if (func_name.StartsWith(model_name_filter))
-                //    {
-                //        // locate the weight files
-                //        while (func_name.StartsWith(model_name_filter))
-                //        {
-                //            fspaceFiles.Add(funspaceFiles[fid++]);
-                //            if (fid >= funspaceFiles.Length)
-                //            {
-                //                break;
-                //            }
-                //            func_name = Path.GetFileName(funspaceFiles[fid]);
-                //        }
-                //        break;
-                //    }
-                //    ++fid;
-                //}
-                //if (fspaceFiles.Count != npatch)
-                //{
-                //    MessageBox.Show("#Functional space file does not match weight file.");
-                //    return;
-                //}
-                //FuncSpace[] fss = new FuncSpace[npatch];
-                //int nfs = 0;
-                //foreach (String fsfile in fspaceFiles)
-                //{
-                //    FuncSpace fs = loadFunctionSpace(fsfile);
-                //    if (fs == null)
-                //    {
-                //        MessageBox.Show("Functional space file error: " + Path.GetFileName(fsfile));
-                //        return;
-                //    }
-                //    fss[nfs++] = fs;
-                //}
+                // functional space
+                fid = 0;
+                List<string> fspaceFiles = new List<string>();
+                while (fid < funspaceFiles.Length)
+                {
+                    string func_name = Path.GetFileName(funspaceFiles[fid]);
+                    if (func_name.StartsWith(model_name_filter))
+                    {
+                        // locate the weight files
+                        while (func_name.StartsWith(model_name_filter))
+                        {
+                            fspaceFiles.Add(funspaceFiles[fid++]);
+                            if (fid >= funspaceFiles.Length)
+                            {
+                                break;
+                            }
+                            func_name = Path.GetFileName(funspaceFiles[fid]);
+                        }
+                        break;
+                    }
+                    ++fid;
+                }
+                if (fspaceFiles.Count != npatch)
+                {
+                    MessageBox.Show("#Functional space file does not match weight file.");
+                    return;
+                }
+                FuncSpace[] fss = new FuncSpace[npatch];
+                int nfs = 0;
+                foreach (String fsfile in fspaceFiles)
+                {
+                    FuncSpace fs = loadFunctionSpace(fsfile);
+                    if (fs == null)
+                    {
+                        MessageBox.Show("Functional space file error: " + Path.GetFileName(fsfile));
+                        return;
+                    }
+                    fss[nfs++] = fs;
+                }
 
-                FuncSpace[] fss = null;
                 Model model = new Model(mesh, sp, fss, true);
                 model._model_name = model_name;
                 _models.Add(model);
@@ -6732,6 +6731,10 @@ namespace FameBase
                 Gl.glEnable(Gl.GL_DEPTH_TEST);
             }
 
+            this.drawCurrentMesh();
+
+            this.drawImportMeshes();
+
             // Draw all meshes
             if (_currModel != null && _meshClasses.Count == 0)
             {
@@ -6741,10 +6744,6 @@ namespace FameBase
                     this.drawGraph(_currModel._GRAPH);
                 }
             }
-
-            this.drawCurrentMesh();
-
-            this.drawImportMeshes();
 
             this.drawHumanPose();
 

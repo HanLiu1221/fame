@@ -468,8 +468,12 @@ namespace Component
             }
             computeCenterOfMass();
             computeConvexHull();
+            bool needMerge = _parts == null ? true : _parts.Count == 0;
             this.initializeParts();
-            //this.mergeNearbyParts();
+            if (needMerge)
+            {
+                this.mergeNearbyParts();
+            }
         }
 
         public void initializeGraph()
