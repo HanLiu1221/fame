@@ -42,7 +42,6 @@ namespace Component
 
         public void init()
         {
-            composeMesh();
             analyzeOriginFeatures();
             //computeFeatures();
         }// init
@@ -51,10 +50,13 @@ namespace Component
         {
             List<double> vertexPos = new List<double>();
             List<int> faceIndex = new List<int>();
-            int start = 0;
+            int start_v = 0;
+            int start_f = 0;
             foreach (Node node in _nodes)
             {
                 Mesh mesh = node._PART._MESH;
+                node._PART._VERTEXINDEX = new int[mesh.VertexCount];
+                node._PART._FACEVERTEXINDEX = new int[mesh.FaceCount];
 
                 // vertex
                 for (int i = 0; i < mesh.VertexCount; ++i)
@@ -63,15 +65,18 @@ namespace Component
                     vertexPos.Add(ipos.x);
                     vertexPos.Add(ipos.y);
                     vertexPos.Add(ipos.z);
+                    node._PART._VERTEXINDEX[i] = start_v + i;
                 }
+                start_v += mesh.VertexCount;
                 // face
                 for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
                 {
                     faceIndex.Add(mesh.FaceVertexIndex[j++]);
                     faceIndex.Add(mesh.FaceVertexIndex[j++]);
                     faceIndex.Add(mesh.FaceVertexIndex[j++]);
+                    node._PART._FACEVERTEXINDEX[i] = start_f + i;
                 }
-                start += mesh.VertexCount;
+                start_f += mesh.VertexCount;
             }
             return new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
         }// composeMesh       
