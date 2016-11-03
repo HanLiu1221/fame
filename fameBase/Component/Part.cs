@@ -923,7 +923,7 @@ namespace Component
             }
             Model m = new Model(parts);
             Mesh mesh = _mesh.Clone() as Mesh;
-            m.setMesh(mesh);
+            m._MESH = mesh;
             m._SP = _SP.clone() as SamplePoints;
             if (_funcSpaces != null)
             {
@@ -1248,11 +1248,6 @@ namespace Component
             _parts.Remove(p);
         }
 
-        public void setMesh(Mesh m)
-        {
-            _mesh = m;
-        }
-
         // Global get
         public int _NPARTS
         {
@@ -1275,6 +1270,10 @@ namespace Component
             get
             {
                 return _mesh;
+            }
+            set
+            {
+                _mesh = value;
             }
         }
     }// Model

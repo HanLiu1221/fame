@@ -519,6 +519,37 @@ namespace FameBase
             }
         }// saveOffFile
 
+
+        public void saveModelMesh_StyleSimilarityUse(Model model, string filename)
+        {
+            Mesh mesh = model._MESH;
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine("OFF");
+                sw.WriteLine(mesh.VertexCount.ToString() + " " + mesh.FaceCount.ToString() + "  0");
+                // vertex
+                string s = "";
+                for (int i = 0, j = 0; i < mesh.VertexCount; ++i, j+= 3)
+                {
+                    s = mesh.VertexPos[j].ToString() + " "
+                        + mesh.VertexPos[j + 1].ToString() + " "
+                        + mesh.VertexPos[j + 2].ToString() + " ";
+                    s += mesh.VertexNormal[j].ToString() + " "
+                        + mesh.VertexNormal[j + 1].ToString() + " "
+                        + mesh.VertexNormal[j + 2].ToString() + " ";
+                    sw.WriteLine(s);
+                }
+                // face
+                for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                {
+                    s = "3";
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    sw.WriteLine(s);
+                }
+            }
+        }// saveOffFile
         private void saveModelFromPartsOff(string filename)
         {
             using (StreamWriter sw = new StreamWriter(filename))
@@ -826,8 +857,21 @@ namespace FameBase
                 return;
             }
             // save mesh
+            if (model._MESH == null)
+            {
+                model._MESH = model._GRAPH.composeMesh();
+            }
             string meshName = foldername + model_name + ".obj";
             this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
+            // save .off file & .pts file for shape2pose feature computation
+            string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
+            string offname = shape2poseDataFolder + model._model_name + ".off";
+            string meshfileName = shape2poseDataFolder + model._model_name + ".mesh";            
+            this.saveModelOff(model, offname);
+            this.saveModelMesh_StyleSimilarityUse(model, meshfileName);
+            // re sampling
+            this.reSamplingForANewShape(model);
+
             // save mesh sample points & normals & faceindex
             if (model._SP != null)
             {
@@ -875,12 +919,34 @@ namespace FameBase
             Object matlabOutput = null;
             matlab.Feval("clearData", 0, out matlabOutput);
 
-            //this.runFunctionalityTest(_currModel);
-            this.runFunctionalityTestWithPatchCombination(_currModel, 0);
+            this.runFunctionalityTest(_currModel);
+            //this.runFunctionalityTestWithPatchCombination(_currModel, 0);
 
             long secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to compute features: " + secs.ToString() + " senconds.");
         }
+
+        private void reSamplingForANewShape(Model model)
+        {
+            string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
+            if (!Directory.Exists(shape2poseDataFolder))
+            {
+                Directory.CreateDirectory(shape2poseDataFolder);
+            }
+            string meshName = shape2poseDataFolder + model._model_name + ".mesh";
+            string exeFolder = @"..\..\external\";
+            string exePath = Path.GetFullPath(exeFolder);
+            string samplingCmd = exePath + "StyleSimilarity.exe ";
+            string samplingCmdPara = "-sample " + meshName + "  -numSamples 2000 -visibilityChecking 1";
+
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = samplingCmd;
+            startInfo.Arguments = samplingCmdPara;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+        }// reSamplingForANewShape
 
         public bool computeShape2PoseAndIconFeatures(Model model)
         {
@@ -1019,10 +1085,7 @@ namespace FameBase
                 model._funcFeat._curvFeats[i * dim + 2] = k1k2Curv[i * 2];
                 model._funcFeat._curvFeats[i * dim + 3] = k1k2Curv[i * 2 + 1];
             }
-            if (model._MESH == null)
-            {
-                model.setMesh(model._GRAPH.composeMesh());
-            }
+
             model._funcFeat._rayFeats = model._MESH.computeRayDist(model._SP._points, model._SP._normals);
             model.computeDistAndAngleToCenterOfConvexHull();
             model.computeDistAndAngleToCenterOfMass();
@@ -1396,7 +1459,7 @@ namespace FameBase
                     parts.Add(part);
                 }
                 Model model = new Model(parts);
-                model.setMesh(modelMesh);
+                model._MESH = modelMesh;
                 model.checkInSamplePoints(sp);
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 string name = filename.Substring(filename.LastIndexOf('\\') + 1);
@@ -2813,11 +2876,10 @@ namespace FameBase
             {
                 Directory.CreateDirectory(shape2poseDataFolder);
             }
-            // save .off file & .pts file for shape2pose feature computation
+
             string offname = shape2poseDataFolder + model._model_name + ".off";
+            string meshName = shape2poseDataFolder + model._model_name + ".mesh";
             string ptsname = shape2poseDataFolder + model._model_name + ".pts";
-            this.saveModelOff(model, offname);
-            this.saveModelSamplePoints(model, ptsname);
 
             bool isSuccess = this.computeShape2PoseAndIconFeatures(model);
 
@@ -2988,7 +3050,6 @@ namespace FameBase
             //return samplePoints;
         }// getPatchesFromCategory
 
-
         private void writeFileNamesForPredictToMatlabFolder(List<string> strs)
         {
             string filename = Interface.MATLAB_PATH + "\\shapeFileNames.txt";
@@ -3060,8 +3121,6 @@ namespace FameBase
             string mesh_file = model._path + model._model_name + "\\" + model._model_name + ".obj";
             if (!File.Exists(mesh_file))
             {
-                //MessageBox.Show("Mesh of model does not exist!");
-                //return;
                 this.saveObj(model._MESH, mesh_file, GLDrawer.MeshColor);
             }
 
@@ -6193,6 +6252,21 @@ namespace FameBase
             this.Refresh();
         }// loadPatchInfo
 
+        private List<string> loadCategory(string filename)
+        {
+            List<string> cats = new List<string>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine();
+                    cats.Add(s);
+                }
+            }
+            return cats;
+        }// readCategory
+
         public void loadPatchInfo_opt(string foldername)
         {
             this.foldername = foldername;
@@ -6207,6 +6281,8 @@ namespace FameBase
                 MessageBox.Show("Lack data folder.");
                 return;
             }
+
+            List<string> cats = this.loadCategory(modelFolder + "category.txt");
 
             string[] subFolders = Directory.GetDirectories(modelFolder);
             _models = new List<Model>();
@@ -6228,8 +6304,9 @@ namespace FameBase
                     // model
                     Mesh mesh = new Mesh(modelstr, false);
                     // category name
-                    string category = model_name.Substring(model_name.LastIndexOf('_') + 1);
-                    category = "Chair";
+                    //string category = model_name.Substring(model_name.LastIndexOf('_') + 1);
+                    //category = "Chair";
+                    string category = cats[nfile];
                     // sample points
                     string sample_name = sampleFolder + subfolder_name + "\\" +  model_name + ".poisson";
                     SamplePoints sp = loadSamplePoints(sample_name, mesh.FaceCount);
