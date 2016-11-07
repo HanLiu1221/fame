@@ -117,6 +117,7 @@ namespace FameBase
         private bool isDrawQuad = false;
         private bool isDrawFuncSpace = false;
         public bool isDrawSamplePoints = false;
+        public bool needReSample = true;
 
         public bool enableDepthTest = true;
         public bool showVanishingLines = true;
@@ -496,7 +497,7 @@ namespace FameBase
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 sw.WriteLine("OFF");
-                sw.WriteLine(mesh.VertexCount.ToString() + " " + mesh.FaceCount.ToString() + "  0");
+                sw.WriteLine(mesh.VertexCount.ToString() + " " + mesh.FaceCount.ToString() + " " + mesh.EdgeCount.ToString());
                 // vertex
                 string s = "";
                 for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
@@ -510,9 +511,9 @@ namespace FameBase
                 for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
                 {
                     s = "3";
-                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
-                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
-                    s += " " + (mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++]).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++] ).ToString();
+                    s += " " + (mesh.FaceVertexIndex[j++]).ToString();
                     sw.WriteLine(s);
                 }
             }
@@ -525,7 +526,7 @@ namespace FameBase
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 sw.WriteLine("OFF");
-                sw.WriteLine(mesh.VertexCount.ToString() + " " + mesh.FaceCount.ToString() + "  0");
+                sw.WriteLine(mesh.VertexCount.ToString() + " " + mesh.FaceCount.ToString() + " " + mesh.EdgeCount.ToString());
                 // vertex
                 string s = "";
                 for (int i = 0, j = 0; i < mesh.VertexCount; ++i, j+= 3)
@@ -860,7 +861,7 @@ namespace FameBase
                 saveModelInfo(model, meshDir, modelName, isOriginalModel);
             }
         }// saveAPartBasedModel
-        public bool needReSample = false;
+        
         private void saveModelInfo(Model model, string foldername, string model_name, bool isOriginalModel)
         {
             if (model == null)
@@ -956,7 +957,7 @@ namespace FameBase
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
             string samplingCmd = exePath + "StyleSimilarity.exe ";
-            string samplingCmdPara = "-sample " + meshName + " -numSamples 3000 -visibilityChecking 1";
+            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 1";
 
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -2909,7 +2910,7 @@ namespace FameBase
 
         private double[] runFunctionalityTest(Model model)
         {
-            model.checkInSamplePoints();
+            //model.checkInSamplePoints();
 
             string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
             if (!Directory.Exists(shape2poseDataFolder))
@@ -2921,13 +2922,13 @@ namespace FameBase
             string meshName = shape2poseDataFolder + model._model_name + ".mesh";
             string ptsname = shape2poseDataFolder + model._model_name + ".pts";
 
-            if (!File.Exists(offname))
-            {
+            //if (!File.Exists(offname))
+            //{
                 this.saveModelOff(model, offname);
                 this.saveModelMesh_StyleSimilarityUse(model, meshName);
-            }
+            //}
 
-            if (this.needReSample)
+            if (this.needReSample || model._SP == null || model._SP._points == null || model._SP._points.Length == 0)
             {
                 this.reSamplingForANewShape(model);
             }

@@ -614,6 +614,28 @@ namespace Geometry
 
         private void loadOffMesh(StreamReader sr, bool normalize)
 		{
+            //            OFF
+            //#
+            //#  cube.off
+            //#  A cube.
+            //#  There is extra RGBA color information specified for the faces.
+            //#
+            //8 6 12 (#vertex, #face, #edge)
+            //  1.632993   0.000000   1.154701
+            //  0.000000   1.632993   1.154701
+            // -1.632993   0.000000   1.154701
+            //  0.000000  -1.632993   1.154701
+            //  1.632993   0.000000  -1.154701
+            //  0.000000   1.632993  -1.154701
+            // -1.632993   0.000000  -1.154701
+            //  0.000000  -1.632993  -1.154701
+            //  4  0 1 2 3  1.000 0.000 0.000 0.75
+            //  4  7 4 0 3  0.300 0.400 0.000 0.75
+            //  4  4 5 1 0  0.200 0.500 0.100 0.75
+            //  4  5 6 2 1  0.100 0.600 0.200 0.75
+            //  4  3 2 6 7  0.000 0.700 0.300 0.75
+            //  4  6 5 4 7  0.000 1.000 0.000 0.75
+
             char[] separator = new char[] { ' ', '\t', '\\' };
 
             List<double> vertexArray = new List<double>();
@@ -644,7 +666,7 @@ namespace Geometry
                 string[] array = line.Split(separator);
                 for (int j = 1; j < 4; ++j)
                 {
-                    faceArray.Add(int.Parse(array[j]) - 1);
+                    faceArray.Add(int.Parse(array[j]));
                 }
             }
             this.vertexPos = vertexArray.ToArray();
@@ -854,16 +876,8 @@ namespace Geometry
                 }
 			}
             this.initializeColor();
-            //for (int i = 0; i < this.vertexCount; ++i)
-            //{
-            //    Vector3d vn = new Vector3d(this.vertexNormal[3 * i],
-            //        this.vertexNormal[3 * i + 1],
-            //        this.vertexNormal[3 * i + 2]);
-            //    vn.normalize();
-            //    this.vertexNormal[3 * i] = vn.x;
-            //    this.vertexNormal[3 * i + 1] = vn.y;
-            //    this.vertexNormal[3 * i + 2] = vn.z;
-            //}
+
+            
             for (int i = 0; i < this.vertexCount; ++i)
             {
                 Vector3d normal = new Vector3d();
@@ -876,8 +890,7 @@ namespace Geometry
                         this.faceNormal[3 * fidx + 2]);
                     normal += nor;
                 }
-                Vector3d vn = normal / this.vertexFaceIndex[i].Count;
-                vn.normalize();
+                Vector3d vn = normal.normalize();
                 this.vertexNormal[3 * i] = vn.x;
                 this.vertexNormal[3 * i + 1] = vn.y;
                 this.vertexNormal[3 * i + 2] = vn.z;
