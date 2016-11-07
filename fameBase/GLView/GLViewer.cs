@@ -485,8 +485,7 @@ namespace FameBase
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
             {
-                MessageBox.Show("Directory does not exist!");
-                return;
+                Directory.CreateDirectory(Path.GetDirectoryName(filename));
             }
             Mesh mesh = model._MESH;
             if (mesh == null)
@@ -778,6 +777,16 @@ namespace FameBase
 
         public void switchXYZ(int mode)
         {
+            if (_currModel != null)
+            {
+                Common.switchXYZ_mesh(_currModel._MESH, mode);
+                if (_currModel._SP != null)
+                {
+                    Common.switchXYZ_vectors(_currModel._SP._points, mode);
+                    _currModel._SP.updateNormals(_currModel._MESH);
+                }
+            }
+
             foreach (Part p in _selectedParts)
             {
                 Common.switchXYZ_mesh(p._MESH, mode);
@@ -815,6 +824,8 @@ namespace FameBase
             string meshDir = filename.Substring(0, filename.LastIndexOf('.')) + "\\";
             int loc = filename.LastIndexOf('\\');
             string modelName = filename.Substring(loc + 1, filename.LastIndexOf('.') - loc - 1);
+            model._model_name = modelName;
+            model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
             if (!Directory.Exists(meshDir))
             {
                 Directory.CreateDirectory(meshDir);
@@ -849,7 +860,7 @@ namespace FameBase
                 saveModelInfo(model, meshDir, modelName, isOriginalModel);
             }
         }// saveAPartBasedModel
-
+        public bool needReSample = false;
         private void saveModelInfo(Model model, string foldername, string model_name, bool isOriginalModel)
         {
             if (model == null)
@@ -859,7 +870,7 @@ namespace FameBase
             // save mesh
             if (model._MESH == null)
             {
-                model._MESH = model._GRAPH.composeMesh();
+                model.composeMesh();
             }
             string meshName = foldername + model_name + ".obj";
             this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
@@ -870,7 +881,15 @@ namespace FameBase
             this.saveModelOff(model, offname);
             this.saveModelMesh_StyleSimilarityUse(model, meshfileName);
             // re sampling
-            this.reSamplingForANewShape(model);
+            if (needReSample)
+            {
+                this.reSamplingForANewShape(model);
+            }
+            else
+            {
+                string ptsname = shape2poseDataFolder + model._model_name + ".pts";
+                this.saveModelSamplePoints(model, ptsname);
+            }
 
             // save mesh sample points & normals & faceindex
             if (model._SP != null)
@@ -937,7 +956,7 @@ namespace FameBase
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
             string samplingCmd = exePath + "StyleSimilarity.exe ";
-            string samplingCmdPara = "-sample " + meshName + "  -numSamples 2000 -visibilityChecking 1";
+            string samplingCmdPara = "-sample " + meshName + " -numSamples 3000 -visibilityChecking 1";
 
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -946,6 +965,15 @@ namespace FameBase
             process.StartInfo = startInfo;
             process.Start();
             process.WaitForExit();
+
+            // reset sample points
+            string ptsname = shape2poseDataFolder + model._model_name + ".pts";
+            model._SP = loadSamplePoints(ptsname, model._MESH.FaceCount);
+            string modelSPname = model._path + model._model_name + "\\" + model._model_name + ".sp";
+            this.saveSamplePointsInfo(model._SP, modelSPname);
+            string spColorname = model._path + model._model_name + "\\" + model._model_name + ".color";
+            model._SP._blendColors = new Color[model._SP._points.Length];
+            this.saveSamplePointsColor(model._SP._blendColors, spColorname);
         }// reSamplingForANewShape
 
         public bool computeShape2PoseAndIconFeatures(Model model)
@@ -962,6 +990,7 @@ namespace FameBase
 
             string shape2poseMeshFile = shape2poseDataFolder + model_name + ".off";
             string shape2poseSampleFile = shape2poseDataFolder + model_name + ".pts";
+
 
             string msh2plnCmd = exePath + "msh2pln.exe ";
             string prstOutputFile1 = shape2poseDataFolder + model_name + "_msh.planes.txt";
@@ -1049,7 +1078,7 @@ namespace FameBase
             process = new Process();
             startInfo = new ProcessStartInfo();
             startInfo.FileName = k1k2Cmd;
-            startInfo.Arguments = shape2poseSampleFile;
+            startInfo.Arguments = "-curvature " + shape2poseSampleFile;
             process.StartInfo = startInfo;
             process.Start();
             process.WaitForExit();
@@ -1266,6 +1295,10 @@ namespace FameBase
 
         private void saveSamplePointsInfo(SamplePoints sp, string filename)
         {
+            if (!Directory.Exists(Path.GetDirectoryName(filename)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(filename));
+            }
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 //sw.WriteLine(sp._points.Length.ToString());
@@ -1363,6 +1396,11 @@ namespace FameBase
             return sb.ToString();
         }// vector3dToString
 
+        private string formatOutputStr(double val)
+        {
+            return string.Format("{0:0.######}", val); 
+        }
+
         private Model loadOnePartBasedModel(string filename)
         {
             using (StreamReader sr = new StreamReader(filename))
@@ -1399,8 +1437,10 @@ namespace FameBase
                 // mesh sample points
                 string modelSPname = partfolder + "\\" + modelName + ".sp";
                 SamplePoints sp = this.loadSamplePoints(modelSPname, modelMesh == null ? 0 : modelMesh.FaceCount);
-                string spColorname = partfolder + "\\" + modelName + ".color";
-                sp._blendColors = this.loadSamplePointsColors(spColorname);
+                if (sp._blendColors == null && sp._points!= null)
+                {
+                    sp._blendColors = new Color[sp._points.Length];
+                }
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -1458,8 +1498,7 @@ namespace FameBase
                     part._FACEVERTEXINDEX = faceVertexIndex;
                     parts.Add(part);
                 }
-                Model model = new Model(parts);
-                model._MESH = modelMesh;
+                Model model = new Model(modelMesh, parts);
                 model.checkInSamplePoints(sp);
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 string name = filename.Substring(filename.LastIndexOf('\\') + 1);
@@ -1489,8 +1528,9 @@ namespace FameBase
             }
             else
             {
-                LoadAGraph(_currModel, graphName, true);
+                LoadAGraph(_currModel, graphName, false);
             }
+            _currModel.composeMesh();
             this.setUIMode(0);
             this.Refresh();
         }// loadAPartBasedModel
@@ -2755,7 +2795,7 @@ namespace FameBase
 
         private bool runFunctionalityTestWithPatchCombination(Model model, int gen)
         {
-            runFunctionalityTest(model);
+            //runFunctionalityTest(model);
 
             if (funcFolder == null)
             {
@@ -2880,6 +2920,21 @@ namespace FameBase
             string offname = shape2poseDataFolder + model._model_name + ".off";
             string meshName = shape2poseDataFolder + model._model_name + ".mesh";
             string ptsname = shape2poseDataFolder + model._model_name + ".pts";
+
+            if (!File.Exists(offname))
+            {
+                this.saveModelOff(model, offname);
+                this.saveModelMesh_StyleSimilarityUse(model, meshName);
+            }
+
+            if (this.needReSample)
+            {
+                this.reSamplingForANewShape(model);
+            }
+            if (!File.Exists(ptsname))
+            {
+                this.saveModelSamplePoints(model, ptsname);
+            }
 
             bool isSuccess = this.computeShape2PoseAndIconFeatures(model);
 
@@ -3166,36 +3221,36 @@ namespace FameBase
                     int d = Common._POINT_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._funcFeat._pointFeats[i * d + j]));
+                        sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._pointFeats[i * d + j])));
                         sb.Append(",");
                     }
                     d = Common._CURV_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._funcFeat._curvFeats[i * d + j]));
+                        sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._curvFeats[i * d + j])));
                         sb.Append(",");
                     }
                     d = Common._PCA_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._funcFeat._pcaFeats[i * d + j]));
+                        sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._pcaFeats[i * d + j])));
                         sb.Append(",");
                     }
                     d = Common._RAY_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._funcFeat._rayFeats[i * d + j]));
+                        sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._rayFeats[i * d + j])));
                         sb.Append(",");
                     }
                     d = Common._CONVEXHULL_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._funcFeat._conhullFeats[i * d + j]));
+                        sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._conhullFeats[i * d + j])));
                         sb.Append(",");
                     }
                     for (int j = 0; j < d; ++j)
                     {
-                        sb.Append(Common.correct(model._funcFeat._cenOfMassFeats[i * d + j]));
+                        sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._cenOfMassFeats[i * d + j])));
                         if (j < d - 1)
                         {
                             sb.Append(",");
@@ -6983,10 +7038,10 @@ namespace FameBase
             {
                 drawParts(_currModel._PARTS);
             }
-            //if (this.isDrawSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
-            //{
-            //    GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP._blendColors);
-            //}
+            if (this.isDrawSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
+            {
+                GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP._blendColors, 10.0f);
+            }
         }// drawModel
 
         private void drawParts(List<Part> parts)
@@ -7046,21 +7101,16 @@ namespace FameBase
                 }
                 
             }
-            if (this.isDrawSamplePoints)
-            {
-                foreach (Part part in parts)
-                {
-                    if (part._partSP != null && part._partSP._points != null)
-                    {
-                        GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
-                        //for (int i = 0; i < part._partSP._points.Length; ++i)
-                        //{
-                        //    Vector3d v = part._partSP._points[i];
-                        //    GLDrawer.drawSphere(v, 0.005, part._partSP._blendColors[i]);
-                        //}
-                    }
-                }
-            }
+            //if (this.isDrawSamplePoints)
+            //{
+            //    foreach (Part part in parts)
+            //    {
+            //        if (part._partSP != null && part._partSP._points != null)
+            //        {
+            //            GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
+            //        }
+            //    }
+            //}
         }//drawParts
 
         private void drawHumanPose()

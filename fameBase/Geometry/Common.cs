@@ -110,6 +110,10 @@ namespace Geometry
 
         public static void switchXYZ_mesh(Mesh mesh, int mode)
         {
+            if (mesh == null)
+            {
+                return;
+            }
             for (int i = 0, j = 0; i < mesh.VertexCount; i++, j += 3)
             {
                 double x = mesh.VertexPos[j];

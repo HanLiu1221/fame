@@ -841,8 +841,15 @@ namespace FameBase
             Gl.glBegin(Gl.GL_POINTS);
             for (int i = 0; i < points.Length; ++i)
             {
-                Color c = colors[i];
-                Gl.glColor3ub(c.R, c.G, c.B);
+                if (colors != null)
+                {
+                    Color c = colors[i];
+                    Gl.glColor3ub(c.R, c.G, c.B);
+                }
+                else
+                {
+                    Gl.glColor3ub(155, 155, 155);
+                }
                 Gl.glVertex3d(points[i].x, points[i].y, points[i].z);
             }
             Gl.glEnd();

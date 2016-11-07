@@ -446,6 +446,13 @@ namespace Component
             this.init();
         }
 
+        public Model(Mesh mesh, List<Part> parts)
+        {
+            _mesh = mesh;
+            _parts = parts;
+            this.init();
+        }
+
         public Model(Mesh mesh, SamplePoints sp, FuncSpace[] fss, bool needNormalize)
         {
             _mesh = mesh;
@@ -515,15 +522,22 @@ namespace Component
             List<int> faceIndex = new List<int>();
             int start_v = 0;
             int start_f = 0;
-            _SP = new SamplePoints();
+            bool redoSP = false;
+            if (_SP == null || _SP._blendColors == null)
+            {
+                _SP = new SamplePoints();
+                redoSP = true;
+            }
             List<Vector3d> points = new List<Vector3d>();
             List<Vector3d> normals = new List<Vector3d>();
             List<int> faceIdxs = new List<int>();
+            List<Color> colors = new List<Color>();
             
             foreach (Part part in _parts)
             {
                 Mesh mesh = part._MESH;
-
+                part._VERTEXINDEX = new int[mesh.VertexCount];
+                part._FACEVERTEXINDEX = new int[mesh.FaceCount];
                 // vertex
                 for (int i = 0; i < mesh.VertexCount; ++i)
                 {
@@ -531,6 +545,7 @@ namespace Component
                     vertexPos.Add(ipos.x);
                     vertexPos.Add(ipos.y);
                     vertexPos.Add(ipos.z);
+                    part._VERTEXINDEX[i] = start_v + i;
                 }
                 // face
                 List<int> reFaceIdx = new List<int>();
@@ -540,6 +555,7 @@ namespace Component
                     faceIndex.Add(start_v + mesh.FaceVertexIndex[j++]);
                     faceIndex.Add(start_v + mesh.FaceVertexIndex[j++]);
                     reFaceIdx.Add(start_f + i);
+                    part._FACEVERTEXINDEX[i] = start_f + i;
                 }
                 start_v += mesh.VertexCount;
                 start_f += mesh.FaceCount;
@@ -548,18 +564,32 @@ namespace Component
                 points.AddRange(sp._points);
                 normals.AddRange(sp._normals);
                 faceIdxs.AddRange(reFaceIdx);
+                colors.AddRange(sp._blendColors);
             }
             _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
-
-            _SP._points = points.ToArray();
-            _SP._normals = normals.ToArray();
-            _SP._faceIdx = faceIdxs.ToArray();
+            if (redoSP)
+            {
+                _SP._points = points.ToArray();
+                _SP._normals = normals.ToArray();
+                _SP._faceIdx = faceIdxs.ToArray();
+                _SP._blendColors = colors.ToArray();
+            }
         }// composeMesh
 
         public void checkInSamplePoints(SamplePoints sp)
         {
-            _SP = sp;
-            _SP.updateNormals(_mesh);
+            if (sp == null || sp._blendColors == null)
+            {
+                composeMesh();
+            }
+            else
+            {
+                _SP = sp;
+            }
+            if (_SP._normals == null || _SP._normals.Length != _SP._points.Length)
+            {
+                _SP.updateNormals(_mesh);
+            }
         }
 
         public void checkInSamplePoints()

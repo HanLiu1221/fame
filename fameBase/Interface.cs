@@ -772,5 +772,11 @@ namespace FameBase
             }
         }
 
+        private void reSampleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.reSampleToolStripMenuItem.Checked = !this.reSampleToolStripMenuItem.Checked;
+            this.glViewer.needReSample = this.reSampleToolStripMenuItem.Checked;
+        }
+
 	}// Interface
 }// namespace
