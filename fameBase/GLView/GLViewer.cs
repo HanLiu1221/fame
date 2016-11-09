@@ -6209,6 +6209,13 @@ namespace FameBase
             {
                 // model
                 string model_name = Path.GetFileName(modelstr);
+                string pure_name = model_name.Substring(0, model_name.LastIndexOf('.'));
+                string iNum = pure_name.Substring(pure_name.LastIndexOf('_') + 1);
+                int iInfo = int.Parse(iNum);
+                if (iInfo != 1)
+                {
+                    continue;
+                }
                 model_name = model_name.Substring(0, model_name.LastIndexOf('_'));
                 Mesh mesh = new Mesh(modelstr, false);
                 // category name
