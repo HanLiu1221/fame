@@ -176,6 +176,7 @@ namespace FameBase
 
         public bool zoonIn = false;
         private int meshIdx = 0;
+        private int _fsIdx = 0;
 
         /******************** Vars ********************/
         Model _currModel;
@@ -881,16 +882,8 @@ namespace FameBase
             string meshfileName = shape2poseDataFolder + model._model_name + ".mesh";            
             this.saveModelOff(model, offname);
             this.saveModelMesh_StyleSimilarityUse(model, meshfileName);
-            // re sampling
-            if (needReSample)
-            {
-                this.reSamplingForANewShape(model);
-            }
-            else
-            {
-                string ptsname = shape2poseDataFolder + model._model_name + ".pts";
-                this.saveModelSamplePoints(model, ptsname);
-            }
+            string ptsname = shape2poseDataFolder + model._model_name + ".pts";
+            this.saveModelSamplePoints(model, ptsname);
 
             // save mesh sample points & normals & faceindex
             if (model._SP != null)
@@ -903,9 +896,8 @@ namespace FameBase
             for (int i = 0; i < _currModel._NPARTS; ++i)
             {
                 Part ipart = _currModel._PARTS[i];
-                if (ipart._partSP == null || ipart._partSP._points == null || ipart._partSP._normals == null)
+                if (ipart._partSP == null || ipart._partSP._points == null || ipart._partSP._points.Length == 0 || ipart._partSP._normals == null)
                 {
-                    MessageBox.Show("No sample point in part #" + i.ToString());
                     return;
                 }
                 string partSPname = foldername + "part_" + i.ToString() + ".sp";
@@ -1780,6 +1772,30 @@ namespace FameBase
             return str;
         }
 
+        public string nextFunctionalSpace()
+        {
+            if (_currModel == null || _currModel._funcSpaces == null)
+            {
+                return "0/0";
+            }
+            _fsIdx = (_fsIdx + 1) % _currModel._funcSpaces.Length;
+            this.Refresh();
+            string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
+            return str;
+        }
+        
+        public string prevFunctionalSpace()
+        {
+            if (_currModel == null || _currModel._funcSpaces == null)
+            {
+                return "0/0";
+            }
+            _fsIdx = (_fsIdx - 1 + _currModel._funcSpaces.Length) % _currModel._funcSpaces.Length;
+            this.Refresh();
+            string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
+            return str;
+        }
+
         public string nextMeshClass()
         {
             if (this._meshClasses.Count == 0)
@@ -2499,18 +2515,30 @@ namespace FameBase
 
             this.readModelModelViewMatrix(folder + "\\view.mat");
 
-            this.isDrawBbox = false;
-            this.isDrawGraph = false;
-            this.isDrawGround = true;
-            Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
-            Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
-            Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
-
             // for capturing screen
             this.reloadView();
 
+            this.decideWhichToDraw(false, false, true, false);
+
             dfs_files(folder, snapshot_folder);
         }// collectSnapshotsFromFolder
+
+        public void decideWhichToDraw(bool isBbox, bool isGraph, bool isGround, bool isFunctionalSpace)
+        {
+            this.isDrawBbox = isBbox;
+            this.isDrawGraph = isGraph;
+            this.isDrawGround = isGround;
+            this.isDrawFuncSpace = isFunctionalSpace;
+            this.updateCheckBox();
+        }
+
+        private void updateCheckBox()
+        {
+            Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
+            Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
+            Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
+            Program.GetFormMain().setCheckBox_drawFunctionalSpace(this.isDrawFuncSpace);
+        }
 
         private void dfs_files(string folder, string snap_folder)
         {
@@ -2688,12 +2716,7 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-            this.isDrawBbox = false;
-            this.isDrawGraph = false;
-            this.isDrawGround = true;
-            Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
-            Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
-            Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
+            this.decideWhichToDraw(false, false, true, false);
 
             // CALL MATLAB
             // clear folder
@@ -2723,7 +2746,7 @@ namespace FameBase
             }
             parents.AddRange(_currGen);
 
-            int maxIter = 1;
+            int maxIter = 5;
             int start = 0;
             for (int i = 0; i < maxIter; ++i)
             {
@@ -2733,7 +2756,11 @@ namespace FameBase
                 {
                     _mutateOrCross = 1;
                 }
-                _mutateOrCross = 1;
+                if (_mutateOrCross == 2)
+                {
+                    _mutateOrCross = 0;
+                }
+                //_mutateOrCross = 1;
                 List<Model> cur_par = new List<Model>(parents);
                 List<Model> cur_kids = new List<Model>();
                 string runstr = "Run ";
@@ -6149,11 +6176,17 @@ namespace FameBase
         //######### Data & feature from ICON2 paper #########//
         public void loadPatchInfo_ori(string foldername)
         {
+            this.readModelModelViewMatrix(foldername + "\\view.mat");
+            this.reloadView();
+
             this.foldername = foldername;
             string modelFolder = foldername + "\\meshes\\";
             string sampleFolder = foldername + "\\samples\\";
             string weightFolder = foldername + "\\weights\\";
             string funcSpaceFolder = foldername + "\\funcSpace\\";
+
+            string saveModelFolder = foldername + "\\autoModels\\";
+            string imageFolder = foldername + "\\snapshots\\";
 
             if (!Directory.Exists(sampleFolder) || !Directory.Exists(weightFolder) ||
                 !Directory.Exists(modelFolder) || !Directory.Exists(funcSpaceFolder))
@@ -6290,10 +6323,34 @@ namespace FameBase
                     fss[nfs++] = fs;
                 }
 
+                // test
+                Program.writeToConsole("Mesh:");
+                Program.writeToConsole("Max vertex: " + this.vector3dToString(mesh.MaxCoord, ", ", ""));
+                Program.writeToConsole("Min vertex: " + this.vector3dToString(mesh.MinCoord, ", ", ""));
+
                 Model model = new Model(mesh, sp, fss, true);
                 model._model_name = model_name;
                 _models.Add(model);
 
+                // Screenshots
+                _currModel = model;
+                string modelFileName = saveModelFolder + model_name + ".pam";
+                this.saveAPartBasedModel(model, modelFileName, true);
+                this.decideWhichToDraw(false, false, true, false);
+                this.Refresh();
+                this.decideWhichToDraw(false, false, false, true);
+                for (int i = 0; i < _currModel._funcSpaces.Length; ++i)
+                {
+                    _fsIdx = i;
+                    this.Refresh();
+                    this.captureScreen(imageFolder + model_name + "_fs_" + (i+1).ToString() + ".png");
+
+                    // test
+                    Program.writeToConsole("Functional space #" + (i + 1).ToString());
+                    Program.writeToConsole("Max vertex: " + this.vector3dToString(model._funcSpaces[i]._mesh.MaxCoord, ", ", ""));
+                    Program.writeToConsole("Min vertex: " + this.vector3dToString(model._funcSpaces[i]._mesh.MinCoord, ", ", ""));
+                }
+                
                 ++nfile;
                 //if (nfile > 2)
                 //{
@@ -6305,6 +6362,7 @@ namespace FameBase
             {
                 _currModel = _models[0];
             }
+            _fsIdx = 0;
             this.Refresh();
         }// loadPatchInfo
 
@@ -6492,6 +6550,7 @@ namespace FameBase
             }
             this.Refresh();
         }// loadPatchInfo
+
         private FuncSpace loadFunctionSpace(string filename)
         {
             if (!File.Exists(filename))
@@ -6499,31 +6558,49 @@ namespace FameBase
                 return null;
             }
             // load mesh
-            Mesh mesh = new Mesh(filename, false); // not normalize
-            double[] weights = new double[mesh.FaceCount];
+            List<double> weights = new List<double>();
             // weights
+            List<double> vposs = new List<double>();
+            List<int> faceIds = new List<int>();
+            // test
+            Vector3d minCoord = Vector3d.MaxCoord;
+            Vector3d maxCoord = Vector3d.MinCoord;
             using (StreamReader sr = new StreamReader(filename))
             {
                 // read only weights
                 char[] separators = { ' ', '\\', '\t' };
-                int faceid = 0;
                 while (sr.Peek() > -1)
                 {
-                    string s = sr.ReadLine();
+                    string s = sr.ReadLine().Trim();
                     string[] strs = s.Split(separators);
+
                     if (strs[0] == "v")
                     {
-                        continue;
+                        Vector3d vec = new Vector3d();
+                        for (int i = 1; i < 4; ++i)
+                        {
+                            vposs.Add(double.Parse(strs[i]));
+                            vec[i - 1] = double.Parse(strs[i]);
+                        }
+                        minCoord = Vector3d.Min(minCoord, vec);
+                        maxCoord = Vector3d.Max(maxCoord, vec);
                     }
-                    if (strs.Length < 5)
+                    if (strs[0] == "f")
                     {
-                        MessageBox.Show("Functional space file error: " + Path.GetFileName(filename));
-                        continue;
+                        for (int i = 1; i < 4; ++i)
+                        {
+                            faceIds.Add(int.Parse(strs[i]));
+                        }
+                        weights.Add(double.Parse(strs[4]));
+                        if (strs.Length < 5)
+                        {
+                            MessageBox.Show("Functional space file error: " + Path.GetFileName(filename));
+                            continue;
+                        }
                     }
-                    double w = double.Parse(strs[4]);
-                    weights[faceid++] = w;
                 }
-                FuncSpace fs = new FuncSpace(mesh, weights);
+                Mesh mesh = new Mesh(vposs.ToArray(), faceIds.ToArray());
+                FuncSpace fs = new FuncSpace(mesh, weights.ToArray());
                 return fs;
             }
         }// loadFunctionSpace
@@ -7027,12 +7104,8 @@ namespace FameBase
             // draw functional space
             if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._funcSpaces != null)
             {
-                int nfs = 1;// _currModel._SP.funcSpaces.Length;
-                for (int i = 0; i < nfs; ++i )
-                {
-                    FuncSpace fs = _currModel._funcSpaces[i];
-                    GLDrawer.drawMeshFace(fs._mesh, GLDrawer.FunctionalSpaceColor);
-                }
+                FuncSpace fs = _currModel._funcSpaces[_fsIdx];
+                GLDrawer.drawMeshFace(fs._mesh, GLDrawer.FunctionalSpaceColor);
             }
             // draw parts
             if (_currModel._PARTS != null)

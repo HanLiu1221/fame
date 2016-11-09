@@ -478,6 +478,11 @@ namespace FameBase
             this.groundToolStripMenuItem.Checked = isdraw;
         }
 
+        public void setCheckBox_drawFunctionalSpace(bool isdraw)
+        {
+            this.functionalSpaceToolStripMenuItem.Checked = isdraw;
+        }
+
         private void addSelectedParts_Click(object sender, EventArgs e)
         {
             ModelViewer mv = this.glViewer.addSelectedPartsToBasket();
@@ -776,6 +781,16 @@ namespace FameBase
         {
             this.reSampleToolStripMenuItem.Checked = !this.reSampleToolStripMenuItem.Checked;
             this.glViewer.needReSample = this.reSampleToolStripMenuItem.Checked;
+        }
+
+        private void prev_fs_Click(object sender, EventArgs e)
+        {
+            this.glViewer.prevFunctionalSpace();
+        }
+
+        private void next_fs_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nextFunctionalSpace();
         }
 
 	}// Interface

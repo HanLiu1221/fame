@@ -121,7 +121,10 @@ namespace Component
             Prism prism = _boundingbox.Clone() as Prism;
             Part p = new Part(m, prism);
             p._COLOR = this._COLOR;
-            p._partSP = _partSP.clone() as SamplePoints;
+            if (_partSP != null)
+            {
+                p._partSP = _partSP.clone() as SamplePoints;
+            }
             return p;
         }
 
@@ -508,11 +511,14 @@ namespace Component
             double maxS = scale.x > scale.y ? scale.x : scale.y;
             maxS = maxS > scale.z ? maxS : scale.z;
             maxS = 1.0 / maxS;
-            Vector3d center = (maxCoord + minCoord) / 2;
-            center.y = 0.5; // unit box
-            Matrix4d T = Matrix4d.TranslationMatrix(center);
+            //Vector3d center = (maxCoord + minCoord) / 2;
+            //Vector3d unit_center = new Vector3d(0, 0.5, 0);
+            Vector3d lower_center = (maxCoord + minCoord) / 2;
+            lower_center.y = minCoord.y;
+            Vector3d unit_center = new Vector3d(0, 0, 0);
+            //Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
-            Matrix4d Q = T * S;
+            Matrix4d Q = Matrix4d.TranslationMatrix(unit_center) * S * Matrix4d.TranslationMatrix(new Vector3d() - lower_center);
             this.Transform(Q);
         }// unify
 
@@ -561,10 +567,18 @@ namespace Component
                 start_f += mesh.FaceCount;
 
                 SamplePoints sp = part._partSP;
+                if (sp == null || sp._points == null || sp._points.Length == null)
+                {
+                    redoSP = false;
+                    continue;
+                }
                 points.AddRange(sp._points);
                 normals.AddRange(sp._normals);
                 faceIdxs.AddRange(reFaceIdx);
-                colors.AddRange(sp._blendColors);
+                if (sp._blendColors != null)
+                {
+                    colors.AddRange(sp._blendColors);
+                }
             }
             _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
             if (redoSP)
@@ -1225,7 +1239,7 @@ namespace Component
                     return null;
                 }
 
-                if (part._partSP != null && part._partSP._fidxMapSPid != null)
+                if (part._partSP != null && part._partSP._points.Length != 0 &&  part._partSP._fidxMapSPid != null)
                 {
                     samplePnts.AddRange(part._partSP._points);
                     samplePntsNormals.AddRange(part._partSP._normals);
