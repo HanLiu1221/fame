@@ -483,6 +483,51 @@ namespace FameBase
             }
         }// saveObj
 
+        public void saveFunctionalSpace(FunctionalSpace fs, string model_name, string foldername, int fid)
+        {
+            if (fs._mesh == null)
+            {
+                return;
+            }
+            string mesh_name = foldername + model_name + "_fs_" + fid.ToString() + ".obj";
+            string w_name = foldername + model_name + "_fs_" + fid.ToString() + ".weight";
+            using (StreamWriter sw = new StreamWriter(mesh_name))
+            {
+                // vertex
+                string s = "";
+                for (int i = 0, j = 0; i < fs._mesh.VertexCount; ++i)
+                {
+                    s = "v";
+                    s += " " + fs._mesh.VertexPos[j++].ToString();
+                    s += " " + fs._mesh.VertexPos[j++].ToString();
+                    s += " " + fs._mesh.VertexPos[j++].ToString();
+                    sw.WriteLine(s);
+                }
+                // face
+                for (int i = 0, j = 0; i < fs._mesh.FaceCount; ++i)
+                {
+                    s = "f";
+                    s += " " + (fs._mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (fs._mesh.FaceVertexIndex[j++] + 1).ToString();
+                    s += " " + (fs._mesh.FaceVertexIndex[j++] + 1).ToString();
+                    sw.WriteLine(s);
+                }
+            }
+            using (StreamWriter sw = new StreamWriter(w_name))
+            {
+                string s = "";
+                for (int i = 0, j = 0; i < fs._mesh.FaceCount; ++i)
+                {
+                    s = fs._mesh.FaceColor[j++].ToString() + " ";
+                    s += fs._mesh.FaceColor[j++].ToString() + " ";
+                    s += fs._mesh.FaceColor[j++].ToString() + " ";
+                    s += fs._mesh.FaceColor[j++].ToString() + " ";
+                    s += fs._weights[i].ToString();
+                    sw.WriteLine(s);
+                }
+            }
+        }// saveFunctionalSpace
+
         public void saveModelOff(Model model, string filename)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
@@ -892,6 +937,15 @@ namespace FameBase
                 this.saveSamplePointsInfo(model._SP, modelSPname);
                 string spColorname = foldername + model_name + ".color";
                 this.saveSamplePointsColor(model._SP._blendColors, spColorname);
+            }
+            if (model._funcSpaces != null)
+            {
+                int fsId = 1;
+                foreach (FunctionalSpace fs in model._funcSpaces)
+                {
+                    string fsName = model._model_name + "_" + fsId.ToString() + ".obj";
+                    this.saveFunctionalSpace(fs, model_name, foldername, fsId++);
+                }
             }
             for (int i = 0; i < _currModel._NPARTS; ++i)
             {
@@ -1434,6 +1488,21 @@ namespace FameBase
                 {
                     sp._blendColors = new Color[sp._points.Length];
                 }
+                // functional space
+                int fid = 1;
+                List<FunctionalSpace> fss = new List<FunctionalSpace>();
+                while (true)
+                {
+                    string fsName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".obj";
+                    string fsInfoName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".weight";
+                    if (!File.Exists(fsName))
+                    {
+                        break;
+                    }
+                    FunctionalSpace fs = this.loadFunctionalSpaceInfo(fsName, fsInfoName);
+                    fss.Add(fs);
+                    ++fid;
+                }
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -1493,6 +1562,7 @@ namespace FameBase
                 }
                 Model model = new Model(modelMesh, parts);
                 model.checkInSamplePoints(sp);
+                model._funcSpaces = fss.ToArray();
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 string name = filename.Substring(filename.LastIndexOf('\\') + 1);
                 model._model_name = name.Substring(0, name.LastIndexOf('.'));
@@ -6280,7 +6350,7 @@ namespace FameBase
                         }
                         Color color = GLDrawer.getColorGradient(ratio, npatch);
                         //mesh.setVertexColor(GLDrawer.getColorArray(color), i);
-                        byte[] color_array = GLDrawer.getColorArray(color);
+                        byte[] color_array = GLDrawer.getColorArray(color, 255);
                         mesh.setFaceColor(color_array, sp._faceIdx[i]);
                         colors_patches[npatch, i] = GLDrawer.getColorRGB(color_array);
                         sp._blendColors[i] = colors_patches[npatch, i];
@@ -6317,11 +6387,11 @@ namespace FameBase
                     MessageBox.Show("#Functional space file does not match weight file.");
                     return;
                 }
-                FuncSpace[] fss = new FuncSpace[npatch];
+                FunctionalSpace[] fss = new FunctionalSpace[npatch];
                 int nfs = 0;
                 foreach (String fsfile in fspaceFiles)
                 {
-                    FuncSpace fs = loadFunctionSpace(fsfile);
+                    FunctionalSpace fs = loadFunctionSpace(fsfile, nfs);
                     if (fs == null)
                     {
                         MessageBox.Show("Functional space file error: " + Path.GetFileName(fsfile));
@@ -6525,11 +6595,11 @@ namespace FameBase
                     //    MessageBox.Show("#Functional space file does not match weight file.");
                     //    return;
                     //}
-                    //FuncSpace[] fss = new FuncSpace[npatch];
+                    //FunctionalSpace[] fss = new FunctionalSpace[npatch];
                     //int nfs = 0;
                     //foreach (String fsfile in fspaceFiles)
                     //{
-                    //    FuncSpace fs = loadFunctionSpace(fsfile);
+                    //    FunctionalSpace fs = loadFunctionSpace(fsfile);
                     //    if (fs == null)
                     //    {
                     //        MessageBox.Show("Functional space file error: " + Path.GetFileName(fsfile));
@@ -6538,7 +6608,7 @@ namespace FameBase
                     //    fss[nfs++] = fs;
                     //}
 
-                    FuncSpace[] fss = null;
+                    FunctionalSpace[] fss = null;
                     Model model = new Model(mesh, sp, fss, false);
                     model._model_name = model_name;
                     _models.Add(model);
@@ -6558,7 +6628,32 @@ namespace FameBase
             this.Refresh();
         }// loadPatchInfo
 
-        private FuncSpace loadFunctionSpace(string filename)
+        private FunctionalSpace loadFunctionalSpaceInfo(string meshName, string infoName)
+        {
+            Mesh mesh = new Mesh(meshName, false);
+            List<double> weights = new List<double>();
+            using (StreamReader sr = new StreamReader(infoName))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+                int faceId = 0;
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine().Trim();
+                    string[] strs = s.Split(separators);
+                    byte[] color = new byte[4];
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        color[i] = byte.Parse(strs[i]);
+                    }
+                    mesh.setFaceColor(color, faceId++);
+                    weights.Add(double.Parse(strs[4]));
+                }
+            }
+            FunctionalSpace fs = new FunctionalSpace(mesh, weights.ToArray());
+            return fs;
+        }// loadFunctionalSpaceInfo
+
+        private FunctionalSpace loadFunctionSpace(string filename, int fid)
         {
             if (!File.Exists(filename))
             {
@@ -6566,6 +6661,8 @@ namespace FameBase
             }
             // load mesh
             List<double> weights = new List<double>();
+            double minw = double.MaxValue;
+            double maxw = double.MinValue;
             // weights
             List<double> vposs = new List<double>();
             List<int> faceIds = new List<int>();
@@ -6598,7 +6695,10 @@ namespace FameBase
                         {
                             faceIds.Add(int.Parse(strs[i]));
                         }
-                        weights.Add(double.Parse(strs[4]));
+                        double w = double.Parse(strs[4]);
+                        weights.Add(w);
+                        minw = minw < w ? minw : w;
+                        maxw = maxw > w ? maxw : w;
                         if (strs.Length < 5)
                         {
                             MessageBox.Show("Functional space file error: " + Path.GetFileName(filename));
@@ -6607,7 +6707,15 @@ namespace FameBase
                     }
                 }
                 Mesh mesh = new Mesh(vposs.ToArray(), faceIds.ToArray());
-                FuncSpace fs = new FuncSpace(mesh, weights.ToArray());
+                double diffw = maxw-minw;
+                for (int i = 0; i < weights.Count; ++i)
+                {
+                    double ratio = (weights[i] - minw) / diffw;
+                    ratio = Math.Min(ratio * 2, 1);
+                    Color cg = GLDrawer.getColorGradient(ratio, fid);
+                    mesh.setFaceColor(GLDrawer.getColorArray(cg, 120), i);
+                }
+                FunctionalSpace fs = new FunctionalSpace(mesh, weights.ToArray());
                 return fs;
             }
         }// loadFunctionSpace
@@ -7111,8 +7219,8 @@ namespace FameBase
             // draw functional space
             if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._funcSpaces != null)
             {
-                FuncSpace fs = _currModel._funcSpaces[_fsIdx];
-                GLDrawer.drawMeshFace(fs._mesh, GLDrawer.FunctionalSpaceColor);
+                FunctionalSpace fs = _currModel._funcSpaces[_fsIdx];
+                GLDrawer.drawMeshFace(fs._mesh);
             }
             // draw parts
             if (_currModel._PARTS != null)

@@ -789,7 +789,7 @@ namespace Geometry
 
         private void initializeColor()
         {
-            int n = 3;
+            int n = 4;
             if (this.vertexColor == null || this.vertexColor.Length != this.vertexCount * n)
             {
                 this.vertexColor = new byte[this.vertexCount * n];
@@ -851,7 +851,7 @@ namespace Geometry
 			}
 			this.faceNormal = new double[this.faceCount * 3];
 			this.vertexNormal = new double[this.vertexCount * 3];
-            this.faceColor = new byte[this.faceCount * 4];
+            
 			for (int i = 0; i < this.faceCount; ++i)
 			{
 				int vidx1 = this.faceVertexIndex[3 * i];
@@ -875,8 +875,12 @@ namespace Geometry
                     this.vertexNormal[vidx3 * 3 + j] += normal[j];
                 }
 			}
-            this.initializeColor();
 
+            if (faceColor == null)
+            {
+                this.faceColor = new byte[this.faceCount * 4];
+                this.initializeColor();
+            }
             
             for (int i = 0; i < this.vertexCount; ++i)
             {
@@ -1004,11 +1008,18 @@ namespace Geometry
         {
             if (this.faceColor == null)
             {
-                this.faceColor = new byte[this.faceCount * 3];
+                this.faceColor = new byte[this.faceCount * 4];
             }
-            this.faceColor[idx * 3] = color[0];
-            this.faceColor[idx * 3 + 1] = color[1];
-            this.faceColor[idx * 3 + 2] = color[2];
+            this.faceColor[idx * 4] = color[0];
+            this.faceColor[idx * 4 + 1] = color[1];
+            this.faceColor[idx * 4 + 2] = color[2];
+            if (color.Length > 3)
+            {
+                this.faceColor[idx * 4 + 3] = color[3];
+            }else
+            {
+                this.faceColor[idx * 4 + 3] = 255;
+            }
         }// setVertexColor
 
         // Shape2Pose & ICON features

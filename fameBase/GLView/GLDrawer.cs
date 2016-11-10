@@ -104,6 +104,17 @@ namespace FameBase
             cv[2] = c.B;
             return cv;
         }
+
+        public static byte[] getColorArray(Color c, byte alpha)
+        {
+            byte[] cv = new byte[4];
+            cv[0] = c.R;
+            cv[1] = c.G;
+            cv[2] = c.B;
+            cv[3] = alpha;
+            return cv;
+        }
+
         public static void drawTriangle(Triangle3D t)
         {
             Gl.glVertex3dv(t.u.ToArray());
@@ -675,6 +686,39 @@ namespace FameBase
                 Gl.glVertex3d(v3.x, v3.y, v3.z);
                 Gl.glEnd();
             }            
+
+            Gl.glEnable(Gl.GL_LIGHTING);
+            Gl.glDisable(Gl.GL_BLEND);
+            Gl.glEnable(Gl.GL_CULL_FACE);
+        }
+
+        public static void drawMeshFace(Mesh m)
+        {
+            if (m == null) return;
+
+            Gl.glDisable(Gl.GL_LIGHTING);
+            Gl.glEnable(Gl.GL_BLEND);
+            Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+            Gl.glDisable(Gl.GL_CULL_FACE);
+
+            for (int i = 0, j = 0; i < m.FaceCount; ++i, j += 3)
+            {
+                int vidx1 = m.FaceVertexIndex[j];
+                int vidx2 = m.FaceVertexIndex[j + 1];
+                int vidx3 = m.FaceVertexIndex[j + 2];
+                Vector3d v1 = new Vector3d(
+                    m.VertexPos[vidx1 * 3], m.VertexPos[vidx1 * 3 + 1], m.VertexPos[vidx1 * 3 + 2]);
+                Vector3d v2 = new Vector3d(
+                    m.VertexPos[vidx2 * 3], m.VertexPos[vidx2 * 3 + 1], m.VertexPos[vidx2 * 3 + 2]);
+                Vector3d v3 = new Vector3d(
+                    m.VertexPos[vidx3 * 3], m.VertexPos[vidx3 * 3 + 1], m.VertexPos[vidx3 * 3 + 2]);
+                Gl.glColor4ub(m.FaceColor[i * 4], m.FaceColor[i * 4 + 1], m.FaceColor[i * 4 + 2], m.FaceColor[i * 4 + 3]);
+                Gl.glBegin(Gl.GL_TRIANGLES);
+                Gl.glVertex3d(v1.x, v1.y, v1.z);
+                Gl.glVertex3d(v2.x, v2.y, v2.z);
+                Gl.glVertex3d(v3.x, v3.y, v3.z);
+                Gl.glEnd();
+            }
 
             Gl.glEnable(Gl.GL_LIGHTING);
             Gl.glDisable(Gl.GL_BLEND);

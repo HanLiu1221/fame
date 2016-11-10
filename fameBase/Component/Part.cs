@@ -420,7 +420,7 @@ namespace Component
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
         
-        public FuncSpace[] _funcSpaces;
+        public FunctionalSpace[] _funcSpaces;
 
         public string _path = "";
         public string _model_name = "";
@@ -456,7 +456,7 @@ namespace Component
             this.init();
         }
 
-        public Model(Mesh mesh, SamplePoints sp, FuncSpace[] fss, bool needNormalize)
+        public Model(Mesh mesh, SamplePoints sp, FunctionalSpace[] fss, bool needNormalize)
         {
             _mesh = mesh;
             _SP = sp;
@@ -865,7 +865,7 @@ namespace Component
             }
             if (_funcSpaces != null)
             {
-                foreach (FuncSpace fs in _funcSpaces)
+                foreach (FunctionalSpace fs in _funcSpaces)
                 {
                     Common.switchXYZ_mesh(fs._mesh, 2);
                     Common.switchXYZ_mesh(fs._mesh, 2);
@@ -885,7 +885,7 @@ namespace Component
             }
             Vector3d maxCoord = _mesh.MaxCoord;
             Vector3d minCoord = _mesh.MinCoord;
-            //foreach (FuncSpace fs in _SP.funcSpaces)
+            //foreach (FunctionalSpace fs in _SP.funcSpaces)
             //{
             //    maxCoord = Vector3d.Max(maxCoord, fs._mesh.MaxCoord);
             //    minCoord = Vector3d.Min(minCoord, fs._mesh.MinCoord);
@@ -919,7 +919,7 @@ namespace Component
                 }
                 if (_funcSpaces != null)
                 {
-                    foreach (FuncSpace fs in _funcSpaces)
+                    foreach (FunctionalSpace fs in _funcSpaces)
                     {
                         fs._mesh.Transform(T);
                     }
@@ -971,10 +971,10 @@ namespace Component
             m._SP = _SP.clone() as SamplePoints;
             if (_funcSpaces != null)
             {
-                FuncSpace[] fss = new FuncSpace[_funcSpaces.Length];
+                FunctionalSpace[] fss = new FunctionalSpace[_funcSpaces.Length];
                 for (int i = 0; i < _funcSpaces.Length; ++i)
                 {
-                    fss[i] = _funcSpaces[i].clone() as FuncSpace;
+                    fss[i] = _funcSpaces[i].clone() as FunctionalSpace;
                 }
                 m._funcSpaces = fss;
             }
@@ -1452,12 +1452,12 @@ namespace Component
         }
     }// SamplePoint
 
-    public class FuncSpace
+    public class FunctionalSpace
     {
         public Mesh _mesh;
         public double[] _weights; // w.r.t. faces
 
-        public FuncSpace(Mesh mesh, double[] weights)
+        public FunctionalSpace(Mesh mesh, double[] weights)
         {
             _mesh = mesh;
             _weights = weights;
@@ -1467,8 +1467,8 @@ namespace Component
         {
             Mesh cmesh = _mesh.Clone() as Mesh;
             double[] cweights = _weights.Clone() as double[];
-            FuncSpace fs = new FuncSpace(cmesh, cweights);
+            FunctionalSpace fs = new FunctionalSpace(cmesh, cweights);
             return fs;
         }
-    }// FuncSpace
+    }// FunctionalSpace
 }
