@@ -700,6 +700,7 @@ namespace FameBase
             Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
             Gl.glDisable(Gl.GL_CULL_FACE);
+            Gl.glEnable(Gl.GL_DEPTH_TEST);
 
             for (int i = 0, j = 0; i < m.FaceCount; ++i, j += 3)
             {
@@ -719,7 +720,7 @@ namespace FameBase
                 Gl.glVertex3d(v3.x, v3.y, v3.z);
                 Gl.glEnd();
             }
-
+            Gl.glDisable(Gl.GL_DEPTH_TEST);
             Gl.glEnable(Gl.GL_LIGHTING);
             Gl.glDisable(Gl.GL_BLEND);
             Gl.glEnable(Gl.GL_CULL_FACE);

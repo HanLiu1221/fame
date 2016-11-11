@@ -476,14 +476,14 @@ namespace Component
             {
                 composeMesh();
             }
-            computeCenterOfMass();
-            computeConvexHull();
+            //computeCenterOfMass();
+            //computeConvexHull();
             bool needMerge = _parts == null ? true : _parts.Count == 0;
             this.initializeParts();
-            if (needMerge)
-            {
-                this.mergeNearbyParts();
-            }
+            //if (needMerge)
+            //{
+            //    this.mergeNearbyParts();
+            //}
         }
 
         public void initializeGraph()

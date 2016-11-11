@@ -6384,8 +6384,8 @@ namespace FameBase
                 }
                 if (fspaceFiles.Count != npatch)
                 {
-                    MessageBox.Show("#Functional space file does not match weight file.");
-                    return;
+                    //MessageBox.Show("#Functional space file does not match weight file.");
+                    continue;
                 }
                 FunctionalSpace[] fss = new FunctionalSpace[npatch];
                 int nfs = 0;
@@ -6407,7 +6407,7 @@ namespace FameBase
 
                 Model model = new Model(mesh, sp, fss, true);
                 model._model_name = model_name;
-                _models.Add(model);
+                //_models.Add(model);
 
                 // Screenshots
                 _currModel = model;
@@ -6645,6 +6645,7 @@ namespace FameBase
                     {
                         color[i] = byte.Parse(strs[i]);
                     }
+                    color[3] = 230;
                     mesh.setFaceColor(color, faceId++);
                     weights.Add(double.Parse(strs[4]));
                 }
@@ -7216,12 +7217,6 @@ namespace FameBase
             {
                 GLDrawer.drawMeshFace(_currModel._MESH, GLDrawer.MeshColor, false);
             }
-            // draw functional space
-            if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._funcSpaces != null)
-            {
-                FunctionalSpace fs = _currModel._funcSpaces[_fsIdx];
-                GLDrawer.drawMeshFace(fs._mesh);
-            }
             // draw parts
             if (_currModel._PARTS != null)
             {
@@ -7230,6 +7225,12 @@ namespace FameBase
             if (this.isDrawSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
             {
                 GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP._blendColors, 10.0f);
+            }
+            // draw functional space
+            if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._funcSpaces != null)
+            {
+                FunctionalSpace fs = _currModel._funcSpaces[_fsIdx];
+                GLDrawer.drawMeshFace(fs._mesh);
             }
         }// drawModel
 

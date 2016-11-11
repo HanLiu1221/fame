@@ -535,6 +535,7 @@ namespace Component
             {
                 return;
             }
+            return;
             for (int i = 0; i < _NNodes - 1; ++i)
             {
                 Part ip = _nodes[i]._PART;
