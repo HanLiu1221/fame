@@ -6290,6 +6290,11 @@ namespace FameBase
                 Mesh mesh = new Mesh(modelstr, false);
                 // category name
                 string category = model_name.Substring(0, model_name.IndexOf('_'));
+
+                // category specific view
+                this.readModelModelViewMatrix(foldername + "\\" + category + ".mat");
+                this.reloadView();
+
                 // sample points
                 string sample_name = sampleFolder + model_name + ".poisson";
                 SamplePoints sp = loadSamplePoints(sample_name, mesh.FaceCount);           
