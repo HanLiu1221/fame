@@ -45,8 +45,8 @@ namespace FameBase
         public static Color GradientColor_5 = Color.FromArgb(122, 1, 119);
         public static Color GradientColor_6 = Color.FromArgb(231, 212, 232);
         public static Color GradientColor_7 = Color.FromArgb(118, 42, 131);
-
         public static Color FunctionalSpaceColor = Color.FromArgb(100, 49, 130, 189);
+        public static byte FunctionalSpaceAlpha = 230;
 
         public static int _NSlices = 40;
 
