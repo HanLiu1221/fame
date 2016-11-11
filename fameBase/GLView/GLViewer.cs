@@ -6645,7 +6645,7 @@ namespace FameBase
                     {
                         color[i] = byte.Parse(strs[i]);
                     }
-                    color[3] = 230;
+                    color[3] = 240;
                     mesh.setFaceColor(color, faceId++);
                     weights.Add(double.Parse(strs[4]));
                 }
