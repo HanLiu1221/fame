@@ -1094,7 +1094,10 @@ namespace Component
                             samplePnts.Add(_SP._points[spid]);
                             samplePntsNormals.Add(_SP._normals[spid]);
                             samplePntsFaceIdxs.Add(f);
-                            samplePntsColors.Add(_SP._blendColors[spid]);
+                            if (_SP._blendColors != null && _SP._blendColors.Length > 0)
+                            {
+                                samplePntsColors.Add(_SP._blendColors[spid]);
+                            }
                         }
                     }
                 }

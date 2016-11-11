@@ -483,6 +483,11 @@ namespace FameBase
             this.functionalSpaceToolStripMenuItem.Checked = isdraw;
         }
 
+        public void setCheckBox_drawSamplePoints(bool isdraw)
+        {
+            this.samplePointsToolStripMenuItem.Checked = isdraw;
+        }
+
         private void addSelectedParts_Click(object sender, EventArgs e)
         {
             ModelViewer mv = this.glViewer.addSelectedPartsToBasket();
@@ -791,6 +796,16 @@ namespace FameBase
         private void next_fs_Click(object sender, EventArgs e)
         {
             this.glViewer.nextFunctionalSpace();
+        }
+
+        private void loadOriPatchOnlyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new FolderBrowserDialog() { SelectedPath = PATCH_PATH + "origin_data" };
+            if (dialog.ShowDialog(this) == System.Windows.Forms.DialogResult.OK)
+            {
+                string foldername = dialog.SelectedPath;
+                this.glViewer.loadPatchInfo_ori_draw_sample_points_only(foldername);
+            }
         }
 
 	}// Interface

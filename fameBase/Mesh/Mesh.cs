@@ -708,6 +708,10 @@ namespace Geometry
 
         private void collectMeshInfo()
         {
+            if (isOverSize())
+            {
+                return;
+            }
             getVertexFaceIndex();
             this.buildHalfEdge();
             this.buildKdtree();
@@ -735,12 +739,18 @@ namespace Geometry
             alglib.kdtreebuildtagged(xy, tags, nx, ny, normtype, out _kdtree);
         }// buildKdtree
 
+        public bool isOverSize()
+        {
+            return this.faceCount > Common._MAX_FACE_COUNT;
+        }
+
         public void afterUpdatePos()
         {
             this.getBoundary();
             this.calculateFaceVertexNormal();
             this.calculateFaceNormal();
         }
+
         private void getBoundary()
         {
             _maxCoord = Vector3d.MinCoord;

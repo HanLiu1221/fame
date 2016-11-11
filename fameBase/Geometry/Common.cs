@@ -29,6 +29,8 @@ namespace Geometry
         public static int _RAY_FEAT_DIM = 2;
         public static int _CONVEXHULL_FEAT_DIM = 2;
 
+        public static int _MAX_FACE_COUNT = 100000;
+
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
