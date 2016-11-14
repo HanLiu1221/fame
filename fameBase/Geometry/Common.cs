@@ -37,7 +37,7 @@ namespace Geometry
 
         public enum Functionality { GROUND_TOUCHING, HUMAN_BACK, HUMAN_HIP, HAND_HOLD, HAND_PLACE, SUPPORT, HANG };
 
-        public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Shelf, Stand, Stroller, Table, TvBench, Vase, None };
+        public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Shelf, Stand, Stroller, Table, TVBench, Vase, None };
 
         public Common() { }
 
@@ -277,7 +277,7 @@ namespace Geometry
                 case 12:
                     return "Table";
                 case 13:
-                    return "TvBench";
+                    return "TVBench";
                 case 14:
                     return "Vase";
                 default:
@@ -315,8 +315,8 @@ namespace Geometry
                     return Category.Stroller;
                 case "Table":
                     return Category.Table;
-                case "TvBench":
-                    return Category.TvBench;
+                case "TVBench":
+                    return Category.TVBench;
                 case "Vase":
                     return Category.Vase;
                 default:
@@ -354,7 +354,7 @@ namespace Geometry
                     return 3;
                 case Category.Table:
                     return 3;
-                case Category.TvBench:
+                case Category.TVBench:
                     return 3;
                 case Category.Vase:
                     return 2;

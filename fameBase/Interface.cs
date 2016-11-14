@@ -488,6 +488,11 @@ namespace FameBase
             this.samplePointsToolStripMenuItem.Checked = isdraw;
         }
 
+        public void setCheckBox_drawMesh(bool isdraw)
+        {
+            this.faceToolStripMenuItem.Checked = isdraw;
+        }
+
         private void addSelectedParts_Click(object sender, EventArgs e)
         {
             ModelViewer mv = this.glViewer.addSelectedPartsToBasket();

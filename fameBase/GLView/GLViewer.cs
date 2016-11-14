@@ -110,7 +110,7 @@ namespace FameBase
 
         private bool drawVertex = false;
         private bool drawEdge = false;
-        private bool drawFace = true;
+        private bool isDrawMesh = true;
         private bool isDrawBbox = true;
         private bool isDrawGraph = true;
         private bool isDrawAxes = false;
@@ -832,6 +832,13 @@ namespace FameBase
                     Common.switchXYZ_vectors(_currModel._SP._points, mode);
                     _currModel._SP.updateNormals(_currModel._MESH);
                 }
+                if (_currModel._funcSpaces != null)
+                {
+                    foreach (FunctionalSpace fs in _currModel._funcSpaces)
+                    {
+                        Common.switchXYZ_mesh(fs._mesh, mode);
+                    }
+                }
             }
 
             foreach (Part p in _selectedParts)
@@ -931,20 +938,23 @@ namespace FameBase
             this.saveModelSamplePoints(model, ptsname);
 
             // save mesh sample points & normals & faceindex
-            if (model._SP != null)
+            if (isOriginalModel)
             {
-                string modelSPname = foldername + model_name + ".sp";
-                this.saveSamplePointsInfo(model._SP, modelSPname);
-                string spColorname = foldername + model_name + ".color";
-                this.saveSamplePointsColor(model._SP._blendColors, spColorname);
-            }
-            if (model._funcSpaces != null)
-            {
-                int fsId = 1;
-                foreach (FunctionalSpace fs in model._funcSpaces)
+                if (model._SP != null)
                 {
-                    string fsName = model._model_name + "_" + fsId.ToString() + ".obj";
-                    this.saveFunctionalSpace(fs, model_name, foldername, fsId++);
+                    string modelSPname = foldername + model_name + ".sp";
+                    this.saveSamplePointsInfo(model._SP, modelSPname);
+                    string spColorname = foldername + model_name + ".color";
+                    this.saveSamplePointsColor(model._SP._blendColors, spColorname);
+                }
+                if (model._funcSpaces != null)
+                {
+                    int fsId = 1;
+                    foreach (FunctionalSpace fs in model._funcSpaces)
+                    {
+                        string fsName = model._model_name + "_" + fsId.ToString() + ".obj";
+                        this.saveFunctionalSpace(fs, model_name, foldername, fsId++);
+                    }
                 }
             }
             for (int i = 0; i < _currModel._NPARTS; ++i)
@@ -2588,13 +2598,14 @@ namespace FameBase
             // for capturing screen
             this.reloadView();
 
-            this.decideWhichToDraw(false, false, true, false, false);
+            this.decideWhichToDraw(true, false, false, true, false, false);
 
             dfs_files(folder, snapshot_folder);
         }// collectSnapshotsFromFolder
 
-        public void decideWhichToDraw(bool isBbox, bool isGraph, bool isGround, bool isFunctionalSpace, bool isDrawSamplePoints)
+        public void decideWhichToDraw(bool isDrawMesh, bool isBbox, bool isGraph, bool isGround, bool isFunctionalSpace, bool isDrawSamplePoints)
         {
+            this.isDrawMesh = isDrawMesh;
             this.isDrawBbox = isBbox;
             this.isDrawGraph = isGraph;
             this.isDrawGround = isGround;
@@ -2605,6 +2616,7 @@ namespace FameBase
 
         private void updateCheckBox()
         {
+            Program.GetFormMain().setCheckBox_drawMesh(this.isDrawMesh);
             Program.GetFormMain().setCheckBox_drawBbox(this.isDrawBbox);
             Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
             Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
@@ -2788,7 +2800,7 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-            this.decideWhichToDraw(false, false, true, false, false);
+            this.decideWhichToDraw(true, false, false, true, false, false);
 
             // CALL MATLAB
             // clear folder
@@ -5075,7 +5087,7 @@ namespace FameBase
                     break;
                 case 3:
                 default:
-                    this.drawFace = !this.drawFace;
+                    this.isDrawMesh = !this.isDrawMesh;
                     break;
             }
             this.Refresh();
@@ -6433,9 +6445,9 @@ namespace FameBase
                 _currModel = model;
                 string modelFileName = saveModelFolder + model_name + ".pam";
                 this.saveAPartBasedModel(model, modelFileName, true);
-                this.decideWhichToDraw(false, false, true, false, false);
+                this.decideWhichToDraw(true, false, false, true, false, false);
                 this.Refresh();
-                this.decideWhichToDraw(false, false, false, true, false);
+                this.decideWhichToDraw(true, false, false, false, true, false);
                 for (int i = 0; i < _currModel._funcSpaces.Length; ++i)
                 {
                     _fsIdx = i;
@@ -6531,6 +6543,10 @@ namespace FameBase
                 {
                     List<string> cur_wfiles = new List<string>();
                     string nCategory = Common.getCategoryName(nc);
+                    if (nCategory != "TVBench")
+                    {
+                        continue;
+                    }
                     string model_wight_name_filter = model_name_filter + "predict_" + nCategory + "_";
                     // in case the order of files are not the same in diff folders
                     int fid = 0;
@@ -6600,11 +6616,11 @@ namespace FameBase
                     _currModel.checkInSamplePoints(sp);
                     if (nc == 0)
                     {
-                        this.decideWhichToDraw(false, false, true, false, false);
+                        this.decideWhichToDraw(true, false, false, true, false, false);
                         this.Refresh();
                         this.captureScreen(imageFolder + model_name + ".png");
                     }
-                    this.decideWhichToDraw(false, false, false, true, true);
+                    this.decideWhichToDraw(false, false, false, false, true, true);
                     this.Refresh();
                     this.captureScreen(imageFolder + model_name + "_" + nCategory + "_functionalPatches.png");
                 }
@@ -7293,7 +7309,7 @@ namespace FameBase
             }
             if (this.currMeshClass != null)
             {
-                if (this.drawFace)
+                if (this.isDrawMesh)
                 {
                     GLDrawer.drawMeshFace(currMeshClass.Mesh, Color.White, false);
                     //GLDrawer.drawMeshFace(currMeshClass.Mesh, GLDrawer.MeshColor, false);
@@ -7329,7 +7345,7 @@ namespace FameBase
             }
             foreach (MeshClass mc in this._meshClasses)
             {
-                if (this.drawFace)
+                if (this.isDrawMesh)
                 {
                     GLDrawer.drawMeshFace(mc.Mesh, GLDrawer.MeshColor, false);
                 }
@@ -7412,7 +7428,7 @@ namespace FameBase
                     continue;
                 }
                 bool isSelected = _selectedEdge != null && (_selectedEdge._start._PART == part || _selectedEdge._end._PART == part);
-                if (this.drawFace)
+                if (this.isDrawMesh)
                 {
                     if (isSelected)
                     {
@@ -7557,7 +7573,7 @@ namespace FameBase
             {
                 foreach (Part part in _selectedParts)
                 {
-                    if (this.drawFace)
+                    if (this.isDrawMesh)
                     {
                         GLDrawer.drawMeshFace(part._MESH, GLDrawer.SelectionColor, false);
                     }
