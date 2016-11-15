@@ -6906,6 +6906,68 @@ namespace FameBase
             }
         }// loadFunctionSpace
 
+        public void loadFunctionalSpaceFiles(string[] filenames)
+        {
+            if (filenames == null || filenames.Length == 0 || _currModel == null || _currModel._SP == null)
+            {
+                return;
+            }
+            _currModel._funcSpaces = new FunctionalSpace[filenames.Length];
+            for (int f = 0; f < filenames.Length; ++f)
+            {
+                string wname = filenames[f].Substring(0, filenames[f].LastIndexOf('.')) + ".weight";
+                _currModel._funcSpaces[f] = this.loadFunctionalSpaceInfo(filenames[f], wname);
+            }
+        }// loadFunctionalSpaceFiles
+
+        public void loadFunctionalPatchesWeight(string[] filenames)
+        {
+            if (filenames == null || filenames.Length == 0 || _currModel == null || _currModel._SP == null)
+            {
+                return;
+            }
+            double minw;
+            double maxw;
+            int npatches = filenames.Length;
+            int npoints = _currModel._SP._points.Length;
+            // multiple weights file w.r.t. patches
+            double[,] weights_patches = new double[npatches, npoints];
+            Color[,] colors_patches = new Color[npatches, npoints];
+            _currModel._SP._blendColors = new Color[npoints];
+            byte[] def_col = new byte[4]{255,255,255,GLDrawer.FunctionalSpaceColor.A};
+            for (int i = 0; i < npoints; ++i)
+            {
+                _currModel._SP._blendColors[i] = Color.WhiteSmoke;
+            }
+            for (int w = 0; w < filenames.Length; ++w)
+            {
+                double[] weights = loadPatchWeight(filenames[w], out minw, out maxw);
+                if (weights == null || weights.Length != npoints)
+                {
+                    MessageBox.Show("Weight file does not match sample file.");
+                    continue;
+                }
+                double wdiff = maxw-minw;
+                for (int i = 0; i < weights.Length; ++i)
+                {
+                    weights_patches[w, i] = weights[i];
+                    double ratio = (weights[i] - minw) / wdiff;
+                    if (ratio < 0.1)
+                    {
+                        continue;
+                    }
+                    Color color = GLDrawer.getColorGradient(ratio, w);
+                    //mesh.setVertexColor(GLDrawer.getColorArray(color), i);
+                    byte[] color_array = GLDrawer.getColorArray(color, 255);
+                    _currModel._MESH.setFaceColor(color_array,  _currModel._SP._faceIdx[i]);
+                    colors_patches[w, i] = GLDrawer.getColorRGB(color_array);
+                    _currModel._SP._blendColors[i] = colors_patches[w, i];
+                }
+            }
+            _currModel._SP._weights = weights_patches;
+            _currModel._SP._colors = colors_patches;
+        }// loadFunctionalPatchesWeight
+
         private SamplePoints loadSamplePoints(string filename, int totalNFaces)
         {
             if (!File.Exists(filename))
