@@ -1494,7 +1494,7 @@ namespace FameBase
                 // mesh sample points
                 string modelSPname = partfolder + "\\" + modelName + ".sp";
                 SamplePoints sp = this.loadSamplePoints(modelSPname, modelMesh == null ? 0 : modelMesh.FaceCount);
-                if (sp._blendColors == null && sp._points!= null)
+                if (sp != null && sp._blendColors == null && sp._points!= null)
                 {
                     sp._blendColors = new Color[sp._points.Length];
                 }
@@ -6543,10 +6543,10 @@ namespace FameBase
                 {
                     List<string> cur_wfiles = new List<string>();
                     string nCategory = Common.getCategoryName(nc);
-                    if (nCategory != "TVBench")
-                    {
-                        continue;
-                    }
+                    //if (nCategory != "TVBench")
+                    //{
+                    //    continue;
+                    //}
                     string model_wight_name_filter = model_name_filter + "predict_" + nCategory + "_";
                     // in case the order of files are not the same in diff folders
                     int fid = 0;

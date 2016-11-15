@@ -476,8 +476,8 @@ namespace Component
             {
                 composeMesh();
             }
-            computeCenterOfMass();
-            computeConvexHull();
+            //computeCenterOfMass();
+            //computeConvexHull();
             bool needMerge = _parts == null ? true : _parts.Count == 0;
             this.initializeParts();
             //if (needMerge)
