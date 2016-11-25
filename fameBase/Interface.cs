@@ -488,6 +488,11 @@ namespace FameBase
             this.samplePointsToolStripMenuItem.Checked = isdraw;
         }
 
+        public void setCheckBox_drawPartSamplePoints(bool isdraw)
+        {
+            this.partSPToolStripMenuItem.Checked = isdraw;
+        }
+
         public void setCheckBox_drawMesh(bool isdraw)
         {
             this.faceToolStripMenuItem.Checked = isdraw;
@@ -752,7 +757,24 @@ namespace FameBase
         private void samplePointsToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.samplePointsToolStripMenuItem.Checked = !this.samplePointsToolStripMenuItem.Checked;
-            this.glViewer.isDrawSamplePoints = this.samplePointsToolStripMenuItem.Checked;
+            this.glViewer.isDrawModelSamplePoints = this.samplePointsToolStripMenuItem.Checked;
+            if (this.glViewer.isDrawModelSamplePoints)
+            {
+                this.glViewer.isDrawPartSamplePoints = false;
+                this.setCheckBox_drawPartSamplePoints(false);
+            }
+            this.glViewer.Refresh();
+        }
+
+        private void partSPToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.partSPToolStripMenuItem.Checked = !this.partSPToolStripMenuItem.Checked;
+            this.glViewer.isDrawPartSamplePoints = this.partSPToolStripMenuItem.Checked;
+            if (this.glViewer.isDrawPartSamplePoints)
+            {
+                this.glViewer.isDrawModelSamplePoints = false;
+                this.setCheckBox_drawSamplePoints(false);
+            }
             this.glViewer.Refresh();
         }
 
