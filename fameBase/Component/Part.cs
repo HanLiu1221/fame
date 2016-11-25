@@ -1474,4 +1474,24 @@ namespace Component
             return fs;
         }
     }// FunctionalSpace
+
+    public class PartGroup
+    {
+        List<Part> _parts = new List<Part>();
+        double[] featureVector = new double[Common._NUM_PART_GROUP_FEATURE];
+
+        public PartGroup(List<Part> parts)
+        {
+            _parts = new List<Part>(parts);
+            this.computeFeatureVector();
+        }
+
+        private void computeFeatureVector()
+        {
+            foreach (Part part in _parts)
+            {
+                
+            }
+        }// computeFeatureVector
+    }// PartGroup
 }

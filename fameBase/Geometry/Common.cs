@@ -30,6 +30,7 @@ namespace Geometry
         public static int _CONVEXHULL_FEAT_DIM = 2;
 
         public static int _MAX_FACE_COUNT = 300000;
+        public static int _NUM_PART_GROUP_FEATURE = 30;
 
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };

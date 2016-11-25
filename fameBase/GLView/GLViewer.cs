@@ -116,7 +116,8 @@ namespace FameBase
         private bool isDrawAxes = false;
         private bool isDrawQuad = false;
         private bool isDrawFuncSpace = false;
-        public bool isDrawSamplePoints = false;
+        public bool isDrawModelSamplePoints = false;
+        public bool isDrawPartSamplePoints = false;
         public bool needReSample = true;
 
         public bool enableDepthTest = true;
@@ -2610,7 +2611,7 @@ namespace FameBase
             this.isDrawGraph = isGraph;
             this.isDrawGround = isGround;
             this.isDrawFuncSpace = isFunctionalSpace;
-            this.isDrawSamplePoints = isDrawSamplePoints;
+            this.isDrawModelSamplePoints = isDrawSamplePoints;
             this.updateCheckBox();
         }
 
@@ -2621,7 +2622,7 @@ namespace FameBase
             Program.GetFormMain().setCheckBox_drawGraph(this.isDrawGraph);
             Program.GetFormMain().setCheckBox_drawGround(this.isDrawGround);
             Program.GetFormMain().setCheckBox_drawFunctionalSpace(this.isDrawFuncSpace);
-            Program.GetFormMain().setCheckBox_drawSamplePoints(this.isDrawSamplePoints);
+            Program.GetFormMain().setCheckBox_drawSamplePoints(this.isDrawModelSamplePoints);
         }
 
         private void dfs_files(string folder, string snap_folder)
@@ -7469,7 +7470,7 @@ namespace FameBase
             {
                 drawParts(_currModel._PARTS);
             }
-            if (this.isDrawSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
+            if (this.isDrawModelSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
             {
                 GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP._blendColors, 10.0f);
             }
@@ -7496,7 +7497,7 @@ namespace FameBase
                     {
                         GLDrawer.drawMeshFace(part._MESH, GLDrawer.HighlightBboxColor, false);
                     }
-                    else if (this.isDrawSamplePoints)
+                    else if (this.isDrawPartSamplePoints)
                     {
                         GLDrawer.drawMeshFace(part._MESH, GLDrawer.MeshColor, false);
                     } 
@@ -7538,16 +7539,16 @@ namespace FameBase
                 }
                 
             }
-            //if (this.isDrawSamplePoints)
-            //{
-            //    foreach (Part part in parts)
-            //    {
-            //        if (part._partSP != null && part._partSP._points != null)
-            //        {
-            //            GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
-            //        }
-            //    }
-            //}
+            if (this.isDrawPartSamplePoints)
+            {
+                foreach (Part part in parts)
+                {
+                    if (part._partSP != null && part._partSP._points != null)
+                    {
+                        GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
+                    }
+                }
+            }
         }//drawParts
 
         private void drawHumanPose()
