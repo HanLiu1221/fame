@@ -869,5 +869,50 @@ namespace FameBase
             this.glViewer.Refresh();
         }
 
+        private void chairLegToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Leg");
+        }
+
+        private void chairBackToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Back");
+        }
+
+        private void chairHandrestToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Handrest");
+        }
+
+        private void seatToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Seat");
+        }
+
+        private void topToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Top"); // table top
+        }
+
+        private void containerToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Container");
+        }
+
+        private void shelfToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Shelf");
+        }
+
+        private void handleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Handle");
+        }
+
+        private void groundSupportToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("GroundSupport");
+        }
+
 	}// Interface
 }// namespace
