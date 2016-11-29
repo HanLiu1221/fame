@@ -1277,7 +1277,6 @@ namespace Geometry
             }
 
             int k = 5; // maximum k nearest points
-            double maxdist = 0.05; // maximum distance to the point in the neighborhood
             double[] vpos = new double[3];
             vpos[0] = vvec.x;
             vpos[1] = vvec.y;
@@ -1293,11 +1292,6 @@ namespace Geometry
             {
                 int vidx = pointsIdxs[v];
                 Vector3d nvec = getVertexPos(vidx);
-                //double d = (nvec - ivec).Length();
-                //if (d < maxdist)
-                //{
-                //    neigPoints.Add(nvec);
-                //}
                 neigPoints.Add(nvec);
             }
             return neigPoints.ToArray();

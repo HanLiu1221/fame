@@ -10,9 +10,9 @@ namespace Component
     {
         List<Node> _nodes = new List<Node>();
         List<Edge> _edges = new List<Edge>();
-        public int _NNodes = 0;
         public int _NEdges = 0;
         public FunctionalityFeatures _ff = null;
+        public List<PartGroup> _partGroups;
 
         public Vector3d _centerOfMass;
 
@@ -31,8 +31,7 @@ namespace Component
         public Graph(List<Part> parts)
         {
             _nodes = new List<Node>();
-            _NNodes = parts.Count;
-            for (int i = 0; i < _NNodes; ++i)
+            for (int i = 0; i < parts.Count; ++i)
             {
                 _nodes.Add(new Node(parts[i], i));
             }
@@ -104,7 +103,6 @@ namespace Component
                 return null;
             }
             Graph cloned = new Graph();
-            cloned._NNodes = parts.Count;
             for (int i = 0; i < _NNodes; ++i)
             {
                 Node cn = _nodes[i].Clone(parts[i]) as Node;
@@ -133,7 +131,6 @@ namespace Component
                 Edge ec = new Edge(cloned._nodes[i], cloned._nodes[j], contacts);
                 cloned.addEdge(ec);
             }
-            cloned._NNodes = cloned._nodes.Count;
             cloned._NEdges = cloned._edges.Count;
             cloned._maxAdjNodesDist = _maxAdjNodesDist;
             cloned._minNodeBboxScale = _minNodeBboxScale;
@@ -246,7 +243,6 @@ namespace Component
             {
                 _nodes.Add(node);
             }
-            _NNodes = _nodes.Count;
             resetNodeIndex();
 
             // UPDATE edges
@@ -517,7 +513,6 @@ namespace Component
 
         public void markGroundTouchingNodes()
         {
-            return;
             foreach (Node node in _nodes)
             {
                 double ydist = node._PART._MESH.MinCoord.y;
@@ -535,7 +530,6 @@ namespace Component
             {
                 return;
             }
-            return;
             for (int i = 0; i < _NNodes - 1; ++i)
             {
                 Part ip = _nodes[i]._PART;
@@ -557,7 +551,6 @@ namespace Component
         public void addANode(Node node)
         {
             _nodes.Add(node);
-            _NNodes = _nodes.Count;
         }
 
         private double getDistBetweenMeshes(Mesh m1, Mesh m2, out Vector3d contact)
@@ -1127,7 +1120,6 @@ namespace Component
         {
             // center of mass falls in the supporting polygon
             _centerOfMass = new Vector3d();
-            _NNodes = _nodes.Count;
             List<Vector2d> centers2d = new List<Vector2d>();
             List<Vector3d> groundPnts = new List<Vector3d>();
             foreach (Node node in _nodes)
@@ -1173,7 +1165,6 @@ namespace Component
 
         private bool isIndexValid()
         {
-            _NNodes = _nodes.Count;
             foreach (Edge e in _edges)
             {
                 if (e._start._INDEX >= _NNodes || e._end._INDEX >= _NNodes)
@@ -1223,7 +1214,6 @@ namespace Component
 
         private bool isLoseOriginalFunctionality()
         {
-            return false;
             List<Common.Functionality> funs = this.getGraphFuncs();
             if (funs.Count < _origin_funcs.Count)
             {
@@ -1275,6 +1265,187 @@ namespace Component
         //    computeDistAndAngleToCenterOfMass();
         //}// computeFeatures
 
+        public void initilaizePartGroups()
+        {
+            _partGroups = new List<PartGroup>();
+            // 1. connected parts
+            List<List<int>> comIndices = new List<List<int>>();
+            // 1. functionality group
+            var allFuncs = Enum.GetValues(typeof(Common.Functionality));
+            foreach (Common.Functionality func in allFuncs)
+            {
+                List<Node> nodes = this.getNodesByFunctionality(func);
+                if (nodes.Count == 0)
+                {
+                    continue;
+                }
+                PartGroup ng = new PartGroup(nodes);
+                List<int> indices = new List<int>();
+                foreach (Node nd in nodes)
+                {
+                    indices.Add(nd._INDEX);
+                }
+                if (getIndex(comIndices, indices) == -1 && shouldCreateNewPartGroup(_partGroups, nodes))
+                {
+                    comIndices.Add(indices);
+                    _partGroups.Add(ng);
+                }
+            }
+            // 2. symmetry parts
+            bool[] added = new bool[_NNodes];
+            for (int i = 0; i < _NNodes; ++i)
+            {
+                if (added[i] || _nodes[i].symmetry == null)
+                {
+                    continue;
+                }
+                Node sym = _nodes[i].symmetry;
+                added[i] = true;
+                added[sym._INDEX] = true;
+                List<Node> symNodes = new List<Node>();
+                symNodes.Add(_nodes[i]);
+                symNodes.Add(sym);
+                PartGroup pg = new PartGroup(symNodes);
+                List<int> indices = new List<int>();
+                indices.Add(i);
+                indices.Add(sym._INDEX);
+                if (getIndex(comIndices, indices) == -1)
+                {
+                    _partGroups.Add(pg);
+                    comIndices.Add(indices);
+                }
+                // symmetry breaking
+                List<Node> nodes1 = new List<Node>();
+                nodes1.Add(_nodes[i]);
+                if (shouldCreateNewPartGroup(_partGroups, nodes1))
+                {
+                    _partGroups.Add(new PartGroup(nodes1));
+                    indices = new List<int>();
+                    indices.Add(i);
+                    comIndices.Add(indices);
+                }
+                List<Node> nodes2 = new List<Node>();
+                nodes2.Add(sym);
+                if (shouldCreateNewPartGroup(_partGroups, nodes2))
+                {
+                    _partGroups.Add(new PartGroup(nodes2));
+                    indices = new List<int>();
+                    indices.Add(sym._INDEX);
+                    comIndices.Add(indices);
+                }
+            }
+            // 3. connected parts to exisiting groups
+            int nGroups = _partGroups.Count;
+            for (int i = 0; i < nGroups; ++i)
+            {
+                PartGroup pg = _partGroups[i];
+                List<int> indices = breadthFirstSearch(pg._NODES);
+                if (getIndex(comIndices, indices) != -1)
+                {
+                    continue;
+                }
+                comIndices.Add(indices);
+                List<Node> propogationNodes = new List<Node>();
+                foreach (int idx in indices)
+                {
+                    propogationNodes.Add(_nodes[idx]);
+                }
+                PartGroup ppg = new PartGroup(propogationNodes);
+                _partGroups.Add(ppg);
+            }
+        }// initilaizePartGroups
+
+        private List<int> breadthFirstSearch(List<Node> nodes)
+        {
+            List<int> res = new List<int>();
+            Queue<Node> queue = new Queue<Node>();
+            foreach (Node node in nodes)
+            {
+                queue.Enqueue(node);
+            }
+            bool[] visited = new bool[_nodes.Count];
+            while (queue.Count > 0)
+            {
+                List<Node> cur = new List<Node>();
+                while (queue.Count > 0)
+                {
+                    Node qn = queue.Dequeue();
+                    cur.Add(qn);
+                    visited[qn._INDEX] = true;
+                    res.Add(qn._INDEX);
+                }
+                foreach (Node nd in cur)
+                {
+                    foreach (Node adj in nd._adjNodes)
+                    {
+                        // only consider region growing on trivial parts
+                        if (visited[adj._INDEX] || adj._funcs.Count > 0)
+                        {
+                            continue;
+                        }
+                        queue.Enqueue(adj);
+                    }
+                }
+            }// while
+            return res;
+        }// breadthFirstSearch
+
+        private bool shouldCreateNewPartGroup(List<PartGroup> _partGroups, List<Node> nodes)
+        {
+            // case 1: one node only, but there already exists a node as part group that
+            //          has the same functionality
+            if (nodes.Count != 1)
+            {
+                return true;
+            }
+            List<Common.Functionality> funcs = nodes[0]._funcs;
+            foreach (PartGroup pg in _partGroups)
+            {
+                if (pg._NODES.Count == 1)
+                {
+                    bool iden = false;
+                    foreach (Common.Functionality f in funcs)
+                    {
+                        if (pg._NODES[0]._funcs.Contains(f))
+                        {
+                            iden = true;
+                            break;
+                        }
+                    }
+                    if (iden)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }// shouldCreateNewPartGroup
+
+        private int getIndex(List<List<int>> com, List<int> cand)
+        {
+            for (int i = 0; i < com.Count; ++i)
+            {
+                List<int> c = com[i];
+                if (c.Count != cand.Count)
+                {
+                    continue;
+                }
+                bool notIden = false;
+                foreach (int num in cand)
+                {
+                    if (!c.Contains(num))
+                    {
+                        notIden = true;
+                        break;
+                    }
+                }
+                if (!notIden)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }// getIndex
        
         public List<Node> _NODES
         {
@@ -1289,6 +1460,14 @@ namespace Component
             get
             {
                 return _edges;
+            }
+        }
+
+        public int _NNodes
+        {
+            get
+            {
+                return _nodes.Count;
             }
         }
     }// Graph

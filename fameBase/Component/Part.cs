@@ -21,11 +21,11 @@ namespace Component
         List<Part> _jointParts = new List<Part>();
         List<Joint> _joints = new List<Joint>();
         Vector3d[] axes;
-
         int[] _vertexIndexInParentMesh;
         int[] _faceVIndexInParentMesh;
 
         public SamplePoints _partSP;
+        public string _partName;
 
         public Color _COLOR = Color.LightBlue;
 
@@ -567,7 +567,7 @@ namespace Component
                 start_f += mesh.FaceCount;
 
                 SamplePoints sp = part._partSP;
-                if (sp == null || sp._points == null || sp._points.Length == null)
+                if (sp == null || sp._points == null || sp._points.Length == 0)
                 {
                     redoSP = false;
                     continue;
@@ -1067,6 +1067,7 @@ namespace Component
                     vPos[j++] = _mesh.VertexPos[idx++];
                     vPos[j++] = _mesh.VertexPos[idx++];
                 }
+                // collect face indices belong to this part
                 HashSet<int> fIndex = new HashSet<int>();
                 foreach (int i in vIndex)
                 {
@@ -1080,16 +1081,25 @@ namespace Component
                 List<int> samplePntsFaceIdxs = new List<int>();
                 List<Color> samplePntsColors = new List<Color>();
                 int[] faceIdxs = fIndex.ToArray();
+                List<PatchWeightPerCategory> weightsPerCat = new List<PatchWeightPerCategory>();
+                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                {
+                    weightsPerCat.Add(new PatchWeightPerCategory(Common.getCategoryName(i)));
+                }
+                // find corresponding sample points from each triangle face 
+                // each face can have 0, 1,...n sample points
                 if (_SP != null && _SP._fidxMapSPid != null)
                 {
+                    List<int> spPerPart = new List<int>();
                     for (int f = 0; f < fIndex.Count; ++f)
                     {
                         if (!_SP._fidxMapSPid.ContainsKey(faceIdxs[f]))
                         {
                             continue;
                         }
+                        // sample points  on face f
                         List<int> spIds = _SP._fidxMapSPid[faceIdxs[f]];
-                        foreach(int spid in spIds)
+                        foreach (int spid in spIds)
                         {
                             samplePnts.Add(_SP._points[spid]);
                             samplePntsNormals.Add(_SP._normals[spid]);
@@ -1099,10 +1109,32 @@ namespace Component
                                 samplePntsColors.Add(_SP._blendColors[spid]);
                             }
                         }
+                        spPerPart.AddRange(spIds);
+                        // collect weights per part
+                        int totalSamplePoints = spPerPart.Count;
+                        for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+                        {
+                            weightsPerCat[c]._weights = new double[spPerPart.Count, _SP._weightsPerCat[c]._nPatches];
+                            for (int np = 0; np < totalSamplePoints; ++np)
+                            {
+                                int idx = spPerPart[np];
+                                for (int d = 0; d < _SP._weightsPerCat[c]._nPatches; ++d)
+                                {
+                                    weightsPerCat[c]._weights[np, d] = _SP._weightsPerCat[c]._weights[idx, d];
+                                }
+                            }
+                            weightsPerCat[c]._nPoints = totalSamplePoints;
+                            weightsPerCat[c]._nPatches = _SP._weightsPerCat[c]._nPatches;
+                        }
                     }
+                }
+                if (samplePnts.Count == 0)
+                {
+                    continue;
                 }
                 SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), 
                     samplePntsFaceIdxs.ToArray(), samplePntsColors.ToArray(), faceIdxs.Length);
+                sp._weightsPerCat = weightsPerCat;
                 Part part = new Part(_mesh, vIndex.ToArray(), vPos, faceIdxs, sp);
                 _parts.Add(part);
             }
@@ -1235,6 +1267,12 @@ namespace Component
             List<Vector3d> samplePntsNormals = new List<Vector3d>();
             List<int> samplePntsFaceIdxs = new List<int>();
             List<Color> samplePntsColors = new List<Color>();
+            List<PatchWeightPerCategory> mergedWeights = new List<PatchWeightPerCategory>();
+            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            {
+                mergedWeights.Add(new PatchWeightPerCategory(Common.getCategoryName(i)));
+            }
+            int totalSamplePoints = 0;
             foreach (Part part in parts)
             {
                 if (part._partSP == null)
@@ -1242,7 +1280,7 @@ namespace Component
                     return null;
                 }
 
-                if (part._partSP != null && part._partSP._points.Length != 0 &&  part._partSP._fidxMapSPid != null)
+                if (part._partSP != null && part._partSP._points.Length != 0 && part._partSP._fidxMapSPid != null)
                 {
                     samplePnts.AddRange(part._partSP._points);
                     samplePntsNormals.AddRange(part._partSP._normals);
@@ -1252,11 +1290,35 @@ namespace Component
                         int fid = part._partSP._faceIdx[f];
                         samplePntsFaceIdxs.Add(start + fid);
                     }
+                    totalSamplePoints += part._partSP._points.Length;
                 }
                 start += part._MESH.FaceCount;
             }
+            if (totalSamplePoints > 0)
+            {
+                // merge points weights
+                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                {
+                    mergedWeights[i]._weights = new double[totalSamplePoints, _SP._weightsPerCat[i]._nPatches];
+                    mergedWeights[i]._nPatches = _SP._weightsPerCat[i]._nPatches;
+                    mergedWeights[i]._nPoints = totalSamplePoints;
+                    int nsp = 0;
+                    foreach (Part part in parts)
+                    {
+                        for (int p = 0; p < part._partSP._weightsPerCat[i]._nPoints; ++p)
+                        {
+                            for (int q = 0; q < part._partSP._weightsPerCat[i]._nPatches; ++q)
+                            {
+                                mergedWeights[i]._weights[nsp, q] = part._partSP._weightsPerCat[i]._weights[p, q];
+                            }
+                            ++nsp;
+                        }
+                    }
+                }
+            }
             SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), 
                 samplePntsFaceIdxs.ToArray(), samplePntsColors.ToArray(), start + 1);
+            sp._weightsPerCat = mergedWeights;
             return sp;
         }// groupSamplePoints
 
@@ -1388,6 +1450,7 @@ namespace Component
         public Color[] _blendColors;
         public Dictionary<int, List<int>> _fidxMapSPid;
         private int _totalNfaces = 0;
+        public List<PatchWeightPerCategory> _weightsPerCat = null;
 
         public SamplePoints() { }
 
@@ -1453,7 +1516,38 @@ namespace Component
             SamplePoints sp = new SamplePoints(cpoints, cnormals, cfaceIdx, ccolors, _totalNfaces);
             return sp;
         }
+
+        public void setWeigthsPerCat(List<PatchWeightPerCategory> weights)
+        {
+            _weightsPerCat = weights;
+            foreach (PatchWeightPerCategory pw in weights)
+            {
+                pw._nPoints = pw._weights.GetLength(0);
+                pw._nPatches = pw._weights.GetLength(1);
+            }
+        }// setWeigthsPerCat
     }// SamplePoint
+
+    public class PatchWeightPerCategory
+    {
+        public string _catName;
+        public double[,] _weights;
+        public int _nPoints = 0;
+        public int _nPatches = 0;
+        public PatchWeightPerCategory() { }
+
+        public PatchWeightPerCategory(string name) {
+            _catName = name;
+        }
+
+        public PatchWeightPerCategory(string name, double[,] weights)
+        {
+            _catName = name;
+            _weights = weights;
+            _nPoints = weights.GetLength(0);
+            _nPatches = weights.GetLength(1);
+        }
+    }// PatchWeightPerCategory
 
     public class FunctionalSpace
     {
@@ -1477,21 +1571,96 @@ namespace Component
 
     public class PartGroup
     {
-        List<Part> _parts = new List<Part>();
-        double[] featureVector = new double[Common._NUM_PART_GROUP_FEATURE];
+        int _parentShapeIdx = -1;
+        List<Node> _nodes = new List<Node>();
+        public double[] _featureVector = new double[Common._NUM_PART_GROUP_FEATURE];
 
-        public PartGroup(List<Part> parts)
+        public PartGroup(List<Node> nodes)
         {
-            _parts = new List<Part>(parts);
+            _nodes = new List<Node>(nodes);
             this.computeFeatureVector();
         }
 
-        private void computeFeatureVector()
+        public PartGroup(List<Node> nodes, double[] featureVectors)
         {
-            foreach (Part part in _parts)
+            _nodes = new List<Node>(nodes);
+            _featureVector = featureVectors;
+        }
+
+        public void computeFeatureVector()
+        {
+            int ndim = Common._NUM_PART_GROUP_FEATURE;
+            double[] means = new double[ndim];
+            double[] stds = new double[ndim];
+            int npoints = 0;
+            foreach (Node node in _nodes)
             {
-                
+                // accummulate the weight fields
+                SamplePoints sp = node._PART._partSP;
+                int d2 = 0;
+                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                {
+                    int idim = sp._weightsPerCat[i]._nPatches;
+                    double[] imeans = new double[idim];
+                    for (int j = 0; j < idim; ++j)
+                    {
+                        imeans[j] += sp._weightsPerCat[i]._weights[i, j];
+                        means[d2 + j] += sp._weightsPerCat[i]._weights[i, j];
+                    }
+                    for (int j = 0; j < idim; ++j) {
+                        imeans[j] /= sp._weightsPerCat[i]._nPoints;
+                    }
+
+                    d2 += sp._weightsPerCat[i]._nPatches;
+                }
+                npoints += sp._weightsPerCat[0]._nPoints;
             }
+            for (int i = 0; i < ndim; ++i)
+            {
+                means[i] /= npoints;
+            }
+            foreach (Node node in _nodes)
+            {
+                SamplePoints sp = node._PART._partSP;
+                int d2 = 0;
+                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                {
+                    int idim = sp._weightsPerCat[i]._nPatches;
+                    for (int j = 0; j < idim; ++j)
+                    {
+                        double std = sp._weightsPerCat[i]._weights[i, j] - means[d2 + j];
+                        std *= std;
+                        stds[d2 + j] += std;
+                    }
+                    d2 += sp._weightsPerCat[i]._nPatches;
+                }
+            }
+            for (int i = 0; i < ndim; ++i)
+            {
+                stds[i] /= npoints;
+            }
+            // TEST
+            _featureVector = means;
         }// computeFeatureVector
+
+        public List<Node> _NODES
+        {
+            get
+            {
+                return _nodes;
+            }
+        }
+
+        public int _ParentModelIndex
+        {
+            get
+            {
+                return _parentShapeIdx;
+            }
+            set
+            {
+                _parentShapeIdx = value;
+            }
+        }
     }// PartGroup
 }
