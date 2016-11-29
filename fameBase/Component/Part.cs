@@ -1128,6 +1128,10 @@ namespace Component
                         }
                     }
                 }
+                if (samplePnts.Count == 0)
+                {
+                    continue;
+                }
                 SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), 
                     samplePntsFaceIdxs.ToArray(), samplePntsColors.ToArray(), faceIdxs.Length);
                 sp._weightsPerCat = weightsPerCat;
@@ -1305,8 +1309,9 @@ namespace Component
                         {
                             for (int q = 0; q < part._partSP._weightsPerCat[i]._nPatches; ++q)
                             {
-                                mergedWeights[i]._weights[nsp++, q] = part._partSP._weightsPerCat[i]._weights[p, q];
+                                mergedWeights[i]._weights[nsp, q] = part._partSP._weightsPerCat[i]._weights[p, q];
                             }
+                            ++nsp;
                         }
                     }
                 }
@@ -1574,6 +1579,12 @@ namespace Component
         {
             _nodes = new List<Node>(nodes);
             this.computeFeatureVector();
+        }
+
+        public PartGroup(List<Node> nodes, double[] featureVectors)
+        {
+            _nodes = new List<Node>(nodes);
+            _featureVector = featureVectors;
         }
 
         public void computeFeatureVector()

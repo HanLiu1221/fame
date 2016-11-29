@@ -31,7 +31,7 @@ namespace Component
         public Graph(List<Part> parts)
         {
             _nodes = new List<Node>();
-            for (int i = 0; i < _NNodes; ++i)
+            for (int i = 0; i < parts.Count; ++i)
             {
                 _nodes.Add(new Node(parts[i], i));
             }
@@ -1340,7 +1340,7 @@ namespace Component
             {
                 PartGroup pg = _partGroups[i];
                 List<int> indices = breadthFirstSearch(pg._NODES);
-                if (comIndices.Contains(indices))
+                if (getIndex(comIndices, indices) != -1)
                 {
                     continue;
                 }
