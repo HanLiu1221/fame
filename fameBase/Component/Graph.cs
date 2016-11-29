@@ -1097,10 +1097,10 @@ namespace Component
             {
                 return false;
             }
-            if (isLoseOriginalFunctionality())
-            {
-                return false;
-            }
+            //if (isLoseOriginalFunctionality())
+            //{
+            //    return false;
+            //}
             if (hasDetachedParts())
             {
                 return false;
@@ -1109,10 +1109,10 @@ namespace Component
             {
                 return false;
             }
-            if (isViolateOriginalScales())
-            {
-                return false;
-            }
+            //if (isViolateOriginalScales())
+            //{
+            //    return false;
+            //}
             return true;
         }// isValid
 

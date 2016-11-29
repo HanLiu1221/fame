@@ -424,6 +424,7 @@ namespace Component
 
         public string _path = "";
         public string _model_name = "";
+        public PartGroupPair _partGroupPair; // kid hybrids, created from which two part groups
 
         public SamplePoints _SP;
         public FuncFeatures _funcFeat = null;
@@ -1592,47 +1593,46 @@ namespace Component
             int ndim = Common._NUM_PART_GROUP_FEATURE;
             double[] means = new double[ndim];
             double[] stds = new double[ndim];
+            double[] sums = new double[ndim];
             int npoints = 0;
             foreach (Node node in _nodes)
             {
                 // accummulate the weight fields
                 SamplePoints sp = node._PART._partSP;
-                int d2 = 0;
-                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                int d = 0;
+                for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
                 {
-                    int idim = sp._weightsPerCat[i]._nPatches;
-                    double[] imeans = new double[idim];
-                    for (int j = 0; j < idim; ++j)
+                    for (int i = 0; i < sp._weightsPerCat[c]._nPatches; ++i)
                     {
-                        imeans[j] += sp._weightsPerCat[i]._weights[i, j];
-                        means[d2 + j] += sp._weightsPerCat[i]._weights[i, j];
+                        for (int j = 0; j < sp._weightsPerCat[c]._nPoints; ++j)
+                        {
+                            sums[d + i] += sp._weightsPerCat[c]._weights[j, i];
+                        }
                     }
-                    for (int j = 0; j < idim; ++j) {
-                        imeans[j] /= sp._weightsPerCat[i]._nPoints;
-                    }
-
-                    d2 += sp._weightsPerCat[i]._nPatches;
+                    d += sp._weightsPerCat[c]._nPatches;
                 }
                 npoints += sp._weightsPerCat[0]._nPoints;
             }
             for (int i = 0; i < ndim; ++i)
             {
-                means[i] /= npoints;
+                means[i] = sums[i] / npoints;
             }
             foreach (Node node in _nodes)
             {
                 SamplePoints sp = node._PART._partSP;
-                int d2 = 0;
-                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                int d = 0;
+                for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
                 {
-                    int idim = sp._weightsPerCat[i]._nPatches;
-                    for (int j = 0; j < idim; ++j)
+                    for (int i = 0; i < sp._weightsPerCat[c]._nPatches; ++i)
                     {
-                        double std = sp._weightsPerCat[i]._weights[i, j] - means[d2 + j];
-                        std *= std;
-                        stds[d2 + j] += std;
+                        for (int j = 0; j < sp._weightsPerCat[c]._nPoints; ++j)
+                        {
+                            double std = sp._weightsPerCat[c]._weights[j, i] - means[d + i];
+                            std *= std;
+                            stds[d + i] += std;
+                        }
                     }
-                    d2 += sp._weightsPerCat[i]._nPatches;
+                    d += sp._weightsPerCat[c]._nPatches;
                 }
             }
             for (int i = 0; i < ndim; ++i)
@@ -1641,6 +1641,8 @@ namespace Component
             }
             // TEST
             _featureVector = means;
+            //_featureVector = stds;
+            //_featureVector = sums;
         }// computeFeatureVector
 
         public List<Node> _NODES
@@ -1663,4 +1665,18 @@ namespace Component
             }
         }
     }// PartGroup
+
+    public class PartGroupPair
+    {
+        public int _p1;
+        public int _p2;
+        public double _score = 1.0;
+
+        public PartGroupPair(int i, int j, double val)
+        {
+            _p1 = i;
+            _p2 = j;
+            _score = val;
+        }
+    }// PartGroupPair
 }
