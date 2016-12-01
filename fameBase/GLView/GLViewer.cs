@@ -183,6 +183,12 @@ namespace FameBase
         public bool zoonIn = false;
         private int meshIdx = 0;
         private int _fsIdx = 0;
+        private int _pairPG1 = 0;
+        private int _pairPG2 = 1;
+        public int _nPairsPG = 0;
+        List<Part> _pgPairVisualization;
+        private List<int> _inputSetCats;
+        double _highProbThresh = 0;
 
         /******************** Vars ********************/
         Model _currModel;
@@ -1774,6 +1780,7 @@ namespace FameBase
                     LoadPartGroupsOfAModelGraph(m._GRAPH, pgName);
                     if (m._GRAPH != null && m._GRAPH._partGroups != null)
                     {
+                        m._GRAPH._partGroups.Add(new PartGroup(new List<Node>()));
                         foreach (PartGroup pg in m._GRAPH._partGroups)
                         {
                             pg._ParentModelIndex = _ancesterModels.Count - 1;
@@ -1797,7 +1804,7 @@ namespace FameBase
             this.preProcessInputSet();
             return _ancesterModelViewers;
         }// loadPartBasedModels
-
+        
         private void preProcessInputSet()
         {
             // Given n input shapes, do:
@@ -1805,6 +1812,8 @@ namespace FameBase
             {
                 return;
             }
+            _inputSetCats = new List<int>();
+            
             // 1. load all part groups
             // 2. normalize all weights per category
             int ndim = Common._NUM_PART_GROUP_FEATURE;
@@ -1817,6 +1826,10 @@ namespace FameBase
             }
             foreach (Model model in _ancesterModels)
             {
+                foreach (Common.Category cat in model._GRAPH._ff._cats)
+                {
+                    _inputSetCats.Add((int)cat);
+                }
                 if (model._GRAPH == null || model._GRAPH._partGroups.Count == 0)
                 {
                     MessageBox.Show("Model #" + model._model_name + " doesn't have any part groups.");
@@ -1874,21 +1887,24 @@ namespace FameBase
                 nPGs += m._GRAPH._partGroups.Count;
                 _currPartGroups.AddRange(m._GRAPH._partGroups);
             }
+            int nps = _currPartGroups.Count;
+            _nPairsPG = nps * (nps - 1) / 2 - nps;
             // recompute
             foreach (PartGroup pg in _currPartGroups)
             {
                 pg.computeFeatureVector();
             }
 
+            List<double> sorted = new List<double>();
             _similarityMatrixPG = new SparseMatrix(nPGs, nPGs);
             for (int i = 0; i < nPGs - 1; ++i)
             {
-                _similarityMatrixPG.AddTriplet(i, i, 1.0);
+                _similarityMatrixPG.AddTriplet(i, i, 3.0);
                 for (int j = i + 1; j < nPGs; ++j)
                 {
                     double simdist = compareTwoPartGroups(_currPartGroups[i], _currPartGroups[j]);
                     _similarityMatrixPG.AddTriplet(i, j, simdist);
-
+                    sorted.Add(simdist);
                     StringBuilder sb = new StringBuilder();
                     sb.Append("Two part groups: \n");
                     sb.Append(this.getPartGroupNames(_currPartGroups[i]));
@@ -1899,19 +1915,105 @@ namespace FameBase
                     Program.writeToConsole(sb.ToString());
                 }
             }
+            sorted.Sort();
+            double prob = 0.6;
+            int ntop = (int)(sorted.Count * prob);
+            _highProbThresh = sorted[ntop];
+
+            // 3. load knowledge base - binary features
+            this.loadLearnedBinaryFeautres();
         }// preProcessInputSet
+
+        List<BinaryFeaturePerCategory> _binaryFeatures;
+        private void loadLearnedBinaryFeautres()
+        {
+            string featureFolder = this.foldername + "\\patchFeature\\";
+            _binaryFeatures = new List<BinaryFeaturePerCategory>();
+            for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+            {
+                string catName = Common.getCategoryName(c);
+                string folder = featureFolder + catName + "\\";
+                if (!Directory.Exists(folder))
+                {
+                    MessageBox.Show("Missing binary feature folder: " + catName);
+                    return;
+                }
+                BinaryFeaturePerCategory bf = new BinaryFeaturePerCategory((Common.Category)c);
+                _binaryFeatures.Add(bf);
+                
+                for (int i = 0; i < bf._nPatches; ++i)
+                {
+                    for (int j = i; j < bf._nPatches; ++j)
+                    {
+                        string filename = folder + catName + "_pair_" + i.ToString() + "_" + j.ToString() + "_binary_feature_gt.csv";
+                        if (!File.Exists(filename))
+                        {
+                            MessageBox.Show("Missing binary feature data: " + catName);
+                            return;
+                        }
+                        double[,] res = this.loadOnePairOfBinaryFeature(filename);
+                        bf._binaryF.Add(res);
+                    }
+                }
+            }
+        }// loadLearnedBinaryFeautres
+
+        private double[,] loadOnePairOfBinaryFeature(string filename)
+        {
+            double[,] res = null;
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t', ',' };
+                int ndim = Common._NUM_BINARY_FEATURE;
+                for (int i = 0; i < ndim; ++i)
+                {
+                    string s = sr.ReadLine().Trim();
+                    string[] strs = s.Split(separator);
+                    if (i == 0)
+                    {
+                        res = new double[ndim, strs.Length];
+                    }
+                    for (int j = 0; j < strs.Length; ++j)
+                    {
+                        res[i, j] = double.Parse(strs[j]);
+                    }
+                }
+            }
+            return res;
+        }// loadOnePairOfBinaryFeature
 
         private double compareTwoPartGroups(PartGroup pg1, PartGroup pg2)
         {
             double simdist = 0;
-            int n = pg1._featureVector.Length;
-            for (int i = 0; i < n; ++i)
+            double max = 3;
+            //int n = pg1._featureVector.Length;
+            //for (int i = 0; i < n; ++i)
+            //{
+            //    double d = pg1._featureVector[i] - pg2._featureVector[i];
+            //    simdist += d * d;
+            //}
+            //simdist /= n;
+
+            int ndim = Common._NUM_PART_GROUP_FEATURE;
+            int d = 0;
+            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
             {
-                double d = pg1._featureVector[i] - pg2._featureVector[i];
-                simdist += d * d;
+                int np = Common.numOfPatchesFromCategory((Common.Category)i);
+                if (_inputSetCats.Contains(i))
+                {
+                    for (int j = 0; j < np; ++j)
+                    {
+                        double dist = pg1._featureVector[j + d] - pg2._featureVector[j + d];
+                        simdist += Math.Abs(dist);
+                    }
+                }
+                d += np;
             }
-            simdist /= n;
-            return simdist;
+            if (pg1._NODES.Count == 0 || pg2._NODES.Count == 0)
+            {
+                simdist = max;
+            }
+            return max - simdist;
         }// compareTwoPartGroups
 
         public string loadAShapeNetModel(string foldername)
@@ -2097,26 +2199,55 @@ namespace FameBase
 
         public string nextFunctionalSpace()
         {
-            if (_currModel == null || _currModel._funcSpaces == null)
+            if (_pairPG2 + 1 >= _currPartGroups.Count)
             {
-                return "0/0";
+                _pairPG1++;
+                _pairPG2 = _pairPG1;
             }
-            _fsIdx = (_fsIdx + 1) % _currModel._funcSpaces.Length;
-            this.Refresh();
-            string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
-            return str;
+            ++_pairPG2;
+            if (_pairPG1 >= _currPartGroups.Count)
+            {
+                MessageBox.Show("Start over.");
+                _pairPG1 = 0;
+                _pairPG2 = 1;
+            }
+            double dist = this.setCurrPairOfPartGroups();
+            return dist.ToString();
+            //if (_currModel == null || _currModel._funcSpaces == null)
+            //{
+            //    return "0/0";
+            //}
+            //_fsIdx = (_fsIdx + 1) % _currModel._funcSpaces.Length;
+            //this.Refresh();
+            //string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
+            //return str;
         }
         
         public string prevFunctionalSpace()
         {
-            if (_currModel == null || _currModel._funcSpaces == null)
+            if (_pairPG2 - 1 <= _pairPG1)
             {
-                return "0/0";
+                _pairPG1--;
+                _pairPG2 = _currPartGroups.Count;
             }
-            _fsIdx = (_fsIdx - 1 + _currModel._funcSpaces.Length) % _currModel._funcSpaces.Length;
-            this.Refresh();
-            string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
-            return str;
+            --_pairPG2;
+            if (_pairPG2 <= _pairPG1)
+            {
+                MessageBox.Show("End.");
+                _pairPG1 = _currPartGroups.Count - 2;
+                _pairPG2 = _currPartGroups.Count - 1;
+            }
+            double dist = this.setCurrPairOfPartGroups();
+            return dist.ToString();
+
+            //if (_currModel == null || _currModel._funcSpaces == null)
+            //{
+            //    return "0/0";
+            //}
+            //_fsIdx = (_fsIdx - 1 + _currModel._funcSpaces.Length) % _currModel._funcSpaces.Length;
+            //this.Refresh();
+            //string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
+            //return str;
         }
 
         public string nextMeshClass()
@@ -2132,6 +2263,31 @@ namespace FameBase
             str += this.currMeshClass._MESHNAME;
             return str;
         }
+
+        private double setCurrPairOfPartGroups()
+        {
+            PartGroup pg1 = _currPartGroups[_pairPG1];
+            PartGroup pg2 = _currPartGroups[_pairPG2];
+            double sim = this.compareTwoPartGroups(pg1, pg2);
+            _pgPairVisualization = new List<Part>();
+            Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d(-0.5, 0, 0));
+            foreach (Node node in pg1._NODES)
+            {
+                Part p = node._PART.Clone() as Part;
+                p.Transform(T);
+                _pgPairVisualization.Add(p);
+            }
+            T = Matrix4d.TranslationMatrix(new Vector3d(0.5, 0, 0));
+            foreach (Node node in pg2._NODES)
+            {
+                Part p = node._PART.Clone() as Part;
+                p.Transform(T);
+                _pgPairVisualization.Add(p);
+            }
+            _currModel = null;
+            this.Refresh();
+            return sim;
+        }// setCurrPairOfPartGroups
 
         public string prevMeshClass()
         {
@@ -4127,14 +4283,14 @@ namespace FameBase
             int i = 0;
             while (i < maxNumber)
             {
-                List<Model> res = this.runACrossover(gen, rand, imageFolder);
+                List<Model> res = this.runACrossover(gen, rand, imageFolder, i);
                 crossed.AddRange(res);
                 ++i;
             }
             return crossed;
         }// runAGenerationOfCrossover
 
-        private List<Model> runACrossover(int gen, Random rand, string imageFolder)
+        private List<Model> runACrossover(int gen, Random rand, string imageFolder, int idx)
         {
             List<Model> crossed = new List<Model>();
             int nPGs = _currPartGroups.Count;
@@ -4150,16 +4306,13 @@ namespace FameBase
             {
                 int i = rand.Next(nPGs);
                 int j = rand.Next(nPGs);
-                if (isAGoodSelectionOfPartGroupPair(i, j))
+                p1 = Math.Min(i, j);
+                p2 = Math.Max(i, j);
+                triplet = _similarityMatrixPG.GetTriplet(p1, p2);
+                if (triplet != null && isAGoodSelectionOfPartGroupPair(p1, p2))
                 {
-                    p1 = Math.Min(i, j);
-                    p2 = Math.Max(i, j);
-                    triplet = _similarityMatrixPG.GetTriplet(p1, p2);
-                    if (triplet != null)
-                    {
-                        selected = true;
-                        Program.writeToConsole("Similarity of the selected part group: " + triplet.value.ToString());
-                    }
+                    selected = true;
+                    Program.writeToConsole("Similarity of the selected part group: " + triplet.value.ToString());
                 }
             }
             int shapeIdx1 = _currPartGroups[p1]._ParentModelIndex;
@@ -4180,7 +4333,7 @@ namespace FameBase
             sb.Append(this.getPartGroupNames(_currPartGroups[p2]));
             Program.writeToConsole(sb.ToString());
 
-            List<Model> results = this.crossOverOp(model1, model2, gen, 0);
+            List<Model> results = this.crossOverOp(model1, model2, gen, idx, p1, p2);
             foreach (Model m in results)
             {
                 if (m._GRAPH.isValid())
@@ -4202,18 +4355,17 @@ namespace FameBase
 
         private bool isAGoodSelectionOfPartGroupPair(int i, int j)
         {
-            if (i == j || _currPartGroups[i]._ParentModelIndex == _currPartGroups[j]._ParentModelIndex)
+            // i <= j
+            if (i == j)// || _currPartGroups[i]._ParentModelIndex == _currPartGroups[j]._ParentModelIndex)
             {
                 return false;
             }
-            int minIdx = Math.Min(i, j);
-            int maxIdx = Math.Max(i, j);
             List<int> pairs;
-            if (_pairGroupMemory.TryGetValue(minIdx, out pairs))
+            if (_pairGroupMemory.TryGetValue(i, out pairs))
             {
-                if (!pairs.Contains(maxIdx))
+                if (!pairs.Contains(j))
                 {
-                    _pairGroupMemory[minIdx].Add(maxIdx);
+                    _pairGroupMemory[i].Add(j);
                 }
                 //else
                 //{
@@ -4223,14 +4375,15 @@ namespace FameBase
             else
             {
                 pairs = new List<int>();
-                pairs.Add(maxIdx);
-                _pairGroupMemory.Add(minIdx, pairs);
-                return true;
+                pairs.Add(j);
+                _pairGroupMemory.Add(i, pairs);
+                //return true;
             }
-            //if (_similarityMatrixPG.GetTriplet(minIdx, maxIdx).value < Common._thresh)
-            //{
-            //    return false;
-            //}
+            double val = _similarityMatrixPG.GetTriplet(i, j).value;
+            if (val < _highProbThresh)
+            {
+                return false;
+            }
             return true;
         }// isAGoodSelectionOfPartGroupPair
 
@@ -4247,6 +4400,25 @@ namespace FameBase
                 m._GRAPH.selectedNodes.Add(node);
             }
         }// setSelectedNodes
+
+        private void calculateBinaryFeature(Model m)
+        {
+            Graph g = m._GRAPH;
+            if (g == null) {
+                return;
+            }
+            // 1. estimate the functional patches
+            foreach (Node node in g._NODES)
+            {
+            }
+            // 2. calculate binary feature
+
+            // 3. multiply by weights
+
+            // 4. calculate the distance to the given categories
+            // not as filtering, maybe sort models by the functionality distance
+
+        }// calculateBinaryFeature
 
         private List<Model> runCrossover(List<Model> models, int gen, Random rand, string imageFolder, int start)
         {
@@ -4281,7 +4453,7 @@ namespace FameBase
                     {
                         m2._GRAPH.selectedNodes = nodes2;
                     }
-                    List<Model> results = this.crossOverOp(m1, m2, gen, m_idx);
+                    List<Model> results = this.crossOverOp(m1, m2, gen, m_idx, -1, -1);
                     m_idx += 2;
                     foreach (Model m in results)
                     {
@@ -4465,7 +4637,7 @@ namespace FameBase
             return false;
         }// hasIntersection
 
-        public List<Model> crossOverOp(Model m1, Model m2, int gen, int idx)
+        public List<Model> crossOverOp(Model m1, Model m2, int gen, int idx, int p1, int p2)
         {
             List<Model> crossModels = new List<Model>();
             if (m1 == null || m2 == null)
@@ -4492,9 +4664,16 @@ namespace FameBase
             // using model names will be too long, exceed the maximum length of file name
             //newM1._model_name = m1._model_name + "_c_" + m2._model_name;
             //newM2._model_name = m2._model_name + "_c_" + m1._model_name;
-            newM1._model_name = "gen_" + gen.ToString() + "_" + idx.ToString();
-            newM2._model_name = "gen_" + gen.ToString() + "_" + (idx + 1).ToString();
-
+            if (p1 != -1 && p2 != -1)
+            {
+                newM1._model_name = "num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString();
+                newM2._model_name = "num_" + idx.ToString() + "_pg_" + p2.ToString() + "_" + p1.ToString();
+            }
+            else
+            {
+                newM1._model_name = "gen_" + gen.ToString() + "_" + idx.ToString();
+                newM2._model_name = "gen_" + gen.ToString() + "_" + (idx + 1).ToString();
+            }
             foreach (Node node in m1._GRAPH.selectedNodes)
             {
                 nodes1.Add(newM1._GRAPH._NODES[node._INDEX]);
@@ -5214,7 +5393,7 @@ namespace FameBase
                     {
                         m1._GRAPH.selectedNodes = nodeChoices1[t];
                         m2._GRAPH.selectedNodes = nodeChoices2[t];
-                        List<Model> crossed = this.crossOverOp(m1, m2, t, k);
+                        List<Model> crossed = this.crossOverOp(m1, m2, t, k, -1, -1);
                         k += 2;
                         crossedModels.AddRange(crossed);
                     }
@@ -8199,6 +8378,13 @@ namespace FameBase
                 // hightlight the nodes
                 GLDrawer.drawBoundingboxPlanes(_selectedEdge._start._PART._BOUNDINGBOX, GLDrawer.HighlightBboxColor);
                 GLDrawer.drawBoundingboxPlanes(_selectedEdge._end._PART._BOUNDINGBOX, GLDrawer.HighlightBboxColor);
+            }
+            if (_pgPairVisualization != null)
+            {
+                foreach (Part part in _pgPairVisualization)
+                {
+                    GLDrawer.drawMeshFace(part._MESH, part._COLOR, false);
+                }
             }
         }// DrawHighlight3D
 

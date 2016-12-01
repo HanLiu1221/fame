@@ -21,25 +21,25 @@ namespace FameBase
 
         /*********Var**********/
         // test paths
-        //public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
-        //public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
-        //public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
-        //public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
-        //// FOR showing predicted results
-        //public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch_data\meshes\";
-        //public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch_data\samples\";
-        //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
-        //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
-
-        public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models\";
-        public static string PATCH_PATH = @"D:\fame\data_sets\patch_data\";
-        public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only\";
-        public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
+        public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
+        public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
+        public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
         // FOR showing predicted results
-        public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
-        public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch_data\samples\";
-        public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point_feature\";
-        public static string WEIGHT_PATH = @"D:\fame\data_sets\patch_data\weights\";
+        public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch_data\meshes\";
+        public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch_data\samples\";
+        public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
+        public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
+
+        //public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models\";
+        //public static string PATCH_PATH = @"D:\fame\data_sets\patch_data\";
+        //public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only\";
+        //public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        //// FOR showing predicted results
+        //public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
+        //public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch_data\samples\";
+        //public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point_feature\";
+        //public static string WEIGHT_PATH = @"D:\fame\data_sets\patch_data\weights\";
 
         private void open3D_Click(object sender, EventArgs e)
         {
@@ -817,12 +817,22 @@ namespace FameBase
 
         private void prev_fs_Click(object sender, EventArgs e)
         {
-            this.glViewer.prevFunctionalSpace();
+            string s = this.glViewer.prevFunctionalSpace();
+            this.simOfPGpairsLabel.Text = "Similarity value: " + s;
         }
 
         private void next_fs_Click(object sender, EventArgs e)
         {
-            this.glViewer.nextFunctionalSpace();
+            //this.glViewer.nextFunctionalSpace();
+            string folder = @"E:\Projects\fame\data_sets\patch_data\models\pairValues\";
+            for (int i = 0; i < this.glViewer._nPairsPG; ++i)
+            {
+                string s = this.glViewer.nextFunctionalSpace();
+                this.simOfPGpairsLabel.Text = "Similarity value: " + s;
+                this.Refresh();
+                string filename = folder + i.ToString() + ".png";
+                this.glViewer.captureScreen(filename);
+            }
         }
 
         private void loadOriPatchOnlyToolStripMenuItem_Click(object sender, EventArgs e)

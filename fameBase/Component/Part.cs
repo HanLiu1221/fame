@@ -1515,6 +1515,11 @@ namespace Component
                 ccolors = _blendColors.Clone() as Color[];
             }
             SamplePoints sp = new SamplePoints(cpoints, cnormals, cfaceIdx, ccolors, _totalNfaces);
+            sp._weightsPerCat = new List<PatchWeightPerCategory>();
+            foreach (PatchWeightPerCategory pw in this._weightsPerCat)
+            {
+                sp._weightsPerCat.Add(pw.Clone() as PatchWeightPerCategory);
+            }
             return sp;
         }
 
@@ -1547,6 +1552,13 @@ namespace Component
             _weights = weights;
             _nPoints = weights.GetLength(0);
             _nPatches = weights.GetLength(1);
+        }
+
+        public Object Clone()
+        {
+            PatchWeightPerCategory pw = new PatchWeightPerCategory(_catName.Clone() as string);
+            pw._weights = _weights.Clone() as double[,];
+            return pw;
         }
     }// PatchWeightPerCategory
 
@@ -1591,9 +1603,14 @@ namespace Component
         public void computeFeatureVector()
         {
             int ndim = Common._NUM_PART_GROUP_FEATURE;
+            _featureVector = new double[ndim];
             double[] means = new double[ndim];
             double[] stds = new double[ndim];
             double[] sums = new double[ndim];
+            if (_nodes.Count == 0)
+            {
+                return;
+            }
             int npoints = 0;
             foreach (Node node in _nodes)
             {
@@ -1602,6 +1619,10 @@ namespace Component
                 int d = 0;
                 for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
                 {
+                    if (sp._weightsPerCat == null || sp._weightsPerCat.Count == 0)
+                    {
+                        return;
+                    }
                     for (int i = 0; i < sp._weightsPerCat[c]._nPatches; ++i)
                     {
                         for (int j = 0; j < sp._weightsPerCat[c]._nPoints; ++j)
@@ -1679,4 +1700,20 @@ namespace Component
             _score = val;
         }
     }// PartGroupPair
+
+    public class BinaryFeaturePerCategory
+    {
+        public Common.Category _cat;
+        public int _nPatches = 0;
+        public int _npairs = 0;
+        public List<double[,]> _binaryF;
+
+        public BinaryFeaturePerCategory(Common.Category c)
+        {
+            _cat = c;
+            _nPatches = Common.numOfPatchesFromCategory(c);
+            _npairs = _nPatches * (_nPatches + 1) / 2;
+            _binaryF = new List<double[,]>();
+        }
+    }// BinaryFeaturePerCategory
 }
