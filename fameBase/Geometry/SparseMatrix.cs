@@ -45,8 +45,8 @@ namespace Geometry
 	{
 		private List<Triplet> triplets = null;
 		private int nRows, nCols, nTriplets;
-		static private List<List<Triplet>> rowTriplets = null;
-		static private List<List<Triplet>> colTriplets = null;
+		private List<List<Triplet>> rowTriplets = null;
+		private List<List<Triplet>> colTriplets = null;
 
 		#region Count-info
 		public int NRow

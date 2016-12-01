@@ -33,6 +33,8 @@ namespace Geometry
         public static int _NUM_PART_GROUP_FEATURE = 35; // ncat * npatch
         public static int _NUM_FUNCTIONALITY = 6;
         public static int _NUM_CATEGORIY = 15;
+        public static int _NUM_BINARY_FEATURE = 110;
+
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
