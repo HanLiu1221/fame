@@ -4486,7 +4486,7 @@ namespace FameBase
                         weightMat[samplePointIndexStart + i, j] = pw._weights[i, j];
                     }
                 }
-                int patchIdx = -1;
+                int patchIdx = 0;
                 int maxNum = 0;
                 for (int i = 0; i < nPatches; ++i)
                 {
@@ -4524,19 +4524,22 @@ namespace FameBase
                 for (int j = 0; j < nSamplePoints; ++j)
                 {
                     // 2.1 orientation
-                    double angle1 = Math.Acos(spPositions[i].Dot(spPositions[j])) / Math.PI;
+                    Vector3d vi = spPositions[i].normalize();
+                    Vector3d vj = spPositions[j].normalize();
+                    double cosv = Common.cutoff(vi.Dot(vj), 0, 1); // when a value is large than 1, e.g., 1.000001, Acos() gives NaN
+                    double angle1 = Math.Acos(cosv) / Math.PI;
                     angle1 = Common.cutoff(angle1, 0, 1);
-                    int binId1 = (int)Common.cutoff(Math.Ceiling(angle1 / angleStep1), 1, dims[0]);
-                    binMatPerDim[binId1].AddTriplet(i, j, 1.0);
+                    int binId1 = (int)Common.cutoff(angle1 / angleStep1, 0, dims[0] - 1);
+                    binMatPerDim[0].AddTriplet(i, j, 1.0);
                     // 2.2
                     // point distance
                     double distBin = (spPositions[i] - spPositions[j]).Length() / distStep;
-                    int dBinIdx = (int)Common.cutoff(Math.Ceiling(distBin), 1, nBin);
+                    int dBinIdx = (int)Common.cutoff(distBin, 1, nBin);
                     // line segment angle
                     Vector3d dir = (spPositions[i] - spPositions[j]).normalize();
-                    double angle2 = Math.Acos(dir[1]); // .dot(new vector3d(0,1,0) == y - axis upright vector
+                    double angle2 = Math.Acos(Common.cutoff(dir[1], 0, 1)); // .dot(new vector3d(0,1,0) == y - axis upright vector
                     angle2 /= Math.PI;
-                    int aBinIdx = (int)Common.cutoff(Math.Ceiling(angle2 / angleStep2), 1, nBin);
+                    int aBinIdx = (int)Common.cutoff(angle2 / angleStep2, 1, nBin);
                     int binId2 = dBinIdx + (aBinIdx - 1) * nBin;
                     binId2 = (int)Common.cutoff(binId2, 1, dims[1]);
                     binMatPerDim[dims[0] + binId2].AddTriplet(i, j, 1.0);
