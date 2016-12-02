@@ -4524,7 +4524,9 @@ namespace FameBase
                 for (int j = 0; j < nSamplePoints; ++j)
                 {
                     // 2.1 orientation
-                    double angle1 = Math.Acos(spPositions[i].Dot(spPositions[j])) / Math.PI;
+                    Vector3d vi = spPositions[i].normalize();
+                    Vector3d vj = spPositions[j].normalize();
+                    double angle1 = Math.Acos(vi.Dot(vj)) / Math.PI;
                     angle1 = Common.cutoff(angle1, 0, 1);
                     int binId1 = (int)Common.cutoff(Math.Ceiling(angle1 / angleStep1), 1, dims[0]);
                     binMatPerDim[binId1].AddTriplet(i, j, 1.0);
