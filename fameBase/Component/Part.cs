@@ -1602,15 +1602,14 @@ namespace Component
 
         public void computeFeatureVector()
         {
-            int ndim = Common._NUM_PART_GROUP_FEATURE;
-            _featureVector = new double[ndim];
-            double[] means = new double[ndim];
-            double[] stds = new double[ndim];
-            double[] sums = new double[ndim];
             if (_nodes.Count == 0)
             {
                 return;
             }
+            int ndim = Common._NUM_PART_GROUP_FEATURE;
+            double[] means = new double[ndim];
+            double[] stds = new double[ndim];
+            double[] sums = new double[ndim];
             int npoints = 0;
             foreach (Node node in _nodes)
             {
@@ -1711,7 +1710,7 @@ namespace Component
         public BinaryFeaturePerCategory(Common.Category c)
         {
             _cat = c;
-            _nPatches = Common.numOfPatchesFromCategory(c);
+            _nPatches = Common.getNumberOfFunctionalPatchesPerCategory(c);
             _npairs = _nPatches * (_nPatches + 1) / 2;
             _binaryF = new List<double[,]>();
         }

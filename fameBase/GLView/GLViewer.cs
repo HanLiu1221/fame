@@ -1879,6 +1879,7 @@ namespace FameBase
                     }
                 }
             }
+            
             // 2. analyze the feature vector for each part group
             int nPGs = 0;
             _currPartGroups = new List<PartGroup>();
@@ -1922,6 +1923,9 @@ namespace FameBase
 
             // 3. load knowledge base - binary features
             this.loadLearnedBinaryFeautres();
+
+            // TEST
+            this.calculateBinaryFeaturePerCategory(_ancesterModels);
         }// preProcessInputSet
 
         List<BinaryFeaturePerCategory> _binaryFeatures;
@@ -1998,7 +2002,7 @@ namespace FameBase
             int d = 0;
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
             {
-                int np = Common.numOfPatchesFromCategory((Common.Category)i);
+                int np = Common.getNumberOfFunctionalPatchesPerCategory((Common.Category)i);
                 if (_inputSetCats.Contains(i))
                 {
                     for (int j = 0; j < np; ++j)
@@ -3435,7 +3439,7 @@ namespace FameBase
                 //patches.AddRange(sps);
                 List<List<int>> sps = this.getPatchesFromCategory(cat, model, weightFolder);
                 patchSPindices.AddRange(sps);
-                int pn = Common.numOfPatchesFromCategory(cat);
+                int pn = Common.getNumberOfFunctionalPatchesPerCategory(cat);
                 if (!possibleN.Contains(pn))
                 {
                     possibleN.Add(pn);
@@ -3641,7 +3645,7 @@ namespace FameBase
 
         private List<List<int>> getPatchesFromCategory(Common.Category cat, Model model, string weightFolder)
         {
-            int nPatches = Common.numOfPatchesFromCategory(cat);
+            int nPatches = Common.getNumberOfFunctionalPatchesPerCategory(cat);
             double thr_ratio = 0.5;
             string wight_name_filter = model._model_name + "_predict_" + cat;
             string[] weightFiles = Directory.GetFiles(weightFolder, "*.csv");
@@ -4401,24 +4405,219 @@ namespace FameBase
             }
         }// setSelectedNodes
 
-        private void calculateBinaryFeature(Model m)
+        private void calculateBinaryFeaturePerCategory(List<Model> models)
+        {
+            int nCats = _inputSetCats.Count;
+            double[,] distCats = new double[models.Count, nCats];
+            int i = 0;
+            foreach (Model m in models)
+            {
+                int j = 0;
+                foreach (int cat in _inputSetCats)
+                {
+                    double[] res = this.computeBinaryFeaturePerCategory(m, cat);
+                    distCats[i, j++] = res[0] + res[1];
+                }
+                ++i;
+            }
+            // normalize
+            double[,] simCats = new double[models.Count, nCats];
+            for (int j = 0; j < nCats; ++j)
+            {
+                double min = double.MaxValue;
+                double max = double.MinValue;
+                for (int k = 0; k < models.Count; ++k)
+                {
+                    min = min < distCats[k, j] ? min : distCats[k, j];
+                    max = max > distCats[k, j] ? max : distCats[k, j];
+                }
+                double diff = max - min;
+                for (int k = 0; k < models.Count; ++k)
+                {
+                    simCats[k, j] = 1 - (distCats[k, j] - min) / diff;
+                }
+            }
+        }// calculateBinaryFeaturePerCategory
+
+        private double[] computeBinaryFeaturePerCategory(Model m, int catIdx)
         {
             Graph g = m._GRAPH;
-            if (g == null) {
-                return;
+            if (g == null)
+            {
+                return null;
             }
+            Common.Category cat = (Common.Category)catIdx;
+            int[] idxs = Common.getCategoryPatchIndicesInFeatureVector(cat);
+            int nPatches = idxs.Length;
+            double thresh = 0.5; // for normalized weights
             // 1. estimate the functional patches
+            //      1.1 for each node, check the number of points that have a high value for each functional patch
+            //      1.2 classify it to a patch that has the most number of such salient points
+            List<PartGroup> patches = new List<PartGroup>();
+            for (int i = 0; i < nPatches; ++i)
+            {
+                patches.Add(new PartGroup(new List<Node>()));
+            }
+            List<Vector3d> spPositions = new List<Vector3d>();
+            List<Vector3d> spNormals = new List<Vector3d>();
+            int nSamplePoints = 0;
             foreach (Node node in g._NODES)
             {
+                nSamplePoints += node._PART._partSP._points.Length;
+            }
+            MatrixNd weightMat = new MatrixNd(nSamplePoints, nPatches);
+            int samplePointIndexStart = 0;
+            Vector3d maxPos = Vector3d.MinCoord;
+            Vector3d minPos = Vector3d.MaxCoord;
+            foreach (Node node in g._NODES)
+            {
+                int[] numSalientPoints = new int[nPatches];
+                SamplePoints sp = node._PART._partSP;
+                PatchWeightPerCategory pw = sp._weightsPerCat[(int)cat];
+                int nPoints = pw._weights.GetLength(0);
+                for (int i = 0; i < nPoints; ++i)
+                {
+                    for (int j = 0; j < nPatches; ++j)
+                    {
+                        if (pw._weights[i, j] > thresh)
+                        {
+                            ++numSalientPoints[j];
+                        }
+                        weightMat[samplePointIndexStart + i, j] = pw._weights[i, j];
+                    }
+                }
+                int patchIdx = -1;
+                int maxNum = 0;
+                for (int i = 0; i < nPatches; ++i)
+                {
+                    if (numSalientPoints[i] > maxNum)
+                    {
+                        maxNum = numSalientPoints[i];
+                        patchIdx = i;
+                    }
+                }
+                patches[patchIdx]._NODES.Add(node);
+                spPositions.AddRange(sp._points);
+                spNormals.AddRange(sp._normals);
+                samplePointIndexStart += sp._points.Length;
+                foreach (Vector3d v in sp._points)
+                {
+                    maxPos = Vector3d.Max(maxPos, v);
+                    minPos = Vector3d.Max(minPos, v);
+                }
             }
             // 2. calculate binary feature
+            SparseMatrix[] binMatPerDim = new SparseMatrix[Common._NUM_BINARY_FEATURE];
+            for (int i = 0; i < binMatPerDim.Length; ++i)
+            {
+                binMatPerDim[i] = new SparseMatrix(nSamplePoints, nSamplePoints);
+            }
+            
+            int[] dims = {10, 100};
+            double angleStep1 = 0.5 / dims[0];
+            int nBin = (int)Math.Sqrt(dims[1]);
+            double distStep = (maxPos - minPos).Length() / nBin;
+            double angleStep2 = 0.5 / nBin;
+
+            for (int i = 0; i < nSamplePoints; ++i)
+            {
+                for (int j = 0; j < nSamplePoints; ++j)
+                {
+                    // 2.1 orientation
+                    double angle1 = Math.Acos(spPositions[i].Dot(spPositions[j])) / Math.PI;
+                    angle1 = Common.cutoff(angle1, 0, 1);
+                    int binId1 = (int)Common.cutoff(Math.Ceiling(angle1 / angleStep1), 1, dims[0]);
+                    binMatPerDim[binId1].AddTriplet(i, j, 1.0);
+                    // 2.2
+                    // point distance
+                    double distBin = (spPositions[i] - spPositions[j]).Length() / distStep;
+                    int dBinIdx = (int)Common.cutoff(Math.Ceiling(distBin), 1, nBin);
+                    // line segment angle
+                    Vector3d dir = (spPositions[i] - spPositions[j]).normalize();
+                    double angle2 = Math.Acos(dir[1]); // .dot(new vector3d(0,1,0) == y - axis upright vector
+                    angle2 /= Math.PI;
+                    int aBinIdx = (int)Common.cutoff(Math.Ceiling(angle2 / angleStep2), 1, nBin);
+                    int binId2 = dBinIdx + (aBinIdx - 1) * nBin;
+                    binId2 = (int)Common.cutoff(binId2, 1, dims[1]);
+                    binMatPerDim[dims[0] + binId2].AddTriplet(i, j, 1.0);
+                }
+            }
 
             // 3. multiply by weights
-
+            int[] pairIdx;
+            if (nPatches == 1) {
+                pairIdx = Common._PAIR_INDEX_1;
+            }else if (nPatches == 2) {
+                pairIdx = Common._PAIR_INDEX_2;
+            } else {
+                pairIdx = Common._PAIR_INDEX_3;
+            }
+            double[,] binaryFeature = new double[Common._NUM_BINARY_FEATURE, pairIdx.Length];
+            for (int i = 0; i < Common._NUM_BINARY_FEATURE; ++i)
+            {
+                MatrixNd binMat = new MatrixNd(binMatPerDim[i]);
+                MatrixNd bb = binMat + binMat.Transpose();
+                MatrixNd wb = weightMat.Transpose() * bb * weightMat;
+                for (int j = 0; j < pairIdx.Length; ++j)
+                {
+                    binaryFeature[i, j] = wb[pairIdx[j]];
+                }
+            }
             // 4. calculate the distance to the given categories
             // not as filtering, maybe sort models by the functionality distance
+            BinaryFeaturePerCategory binFeatureCat = _binaryFeatures[catIdx];
+            int np = nPatches * nPatches;
+            double[] res = new double[2];
+            for (int p = 0; p < pairIdx.Length; ++p)
+            {
+                double[,] value = binFeatureCat._binaryF[p];
+                res[0] += this.getDistanceToLearnedFeature(value, 0, dims[0], binaryFeature, p) / np;
+                res[1] += this.getDistanceToLearnedFeature(value, dims[0], dims[1], binaryFeature, p) / np;
+            }
+            return res;
+        }// computeBinaryFeaturePerCategory
 
-        }// calculateBinaryFeature
+        private double getDistanceToLearnedFeature(double[,] value, int s, int e, double[,] binaryFeature, int dim)
+        {
+            int k = 5;
+            double[] neighs = new double[k];
+            for (int j = 0; j < k; ++j)
+            {
+                neighs[j] = double.MaxValue;
+            }
+            int nShapes = value.GetLength(1);
+            double[] ds = new double[nShapes];
+            for (int j = 0; j < nShapes; ++j) // number of train shapes
+            {
+                for (int i = s; i < e; ++i)
+                {
+                    double dist = (value[i, j] - binaryFeature[i, dim]);
+                    ds[j] += dist * dist;
+                }
+            }
+            for (int j = 0; j < nShapes; ++j)
+            {
+                for (int t = 0; t < k; ++t)
+                {
+                    if (ds[j] < neighs[t])
+                    {
+                        for (int q = k - 1; q > t; --q)
+                        {
+                            neighs[q] = neighs[q - 1];
+                        }
+                        neighs[t] = ds[j];
+                        break;
+                    }
+                }
+            }// compare to find the min 5 neighs to calculate the average distance
+            double avg = 0;
+            for (int j = 0; j < k; ++j)
+            {
+                avg += neighs[j];
+            }
+            avg /= k;
+            return avg;
+        }// getDistanceToLearnedFeature
 
         private List<Model> runCrossover(List<Model> models, int gen, Random rand, string imageFolder, int start)
         {

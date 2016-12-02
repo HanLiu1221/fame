@@ -899,6 +899,24 @@ namespace Geometry
 			}
 		}
 
+        public MatrixNd(SparseMatrix mat)
+        {
+            M = mat.NRow;
+            N = mat.NCol;
+            length = M * N;
+            arr = new double[length];
+            for (int i = 0; i < M; ++i)
+            {
+                foreach (Triplet tri in mat.GetRowTriplets(i))
+                {
+                    int r = tri.row;
+                    int c = tri.col;
+                    double val = tri.value;
+                    arr[r * M + c] = val;
+                }
+            }
+        }
+
 		public double this[int row, int col]
 		{
 			get
@@ -978,6 +996,26 @@ namespace Geometry
 			}
 			return mat;
 		}
+
+        static public MatrixNd operator *(MatrixNd m1, MatrixNd m2)
+        {
+            if (m1.Col != m2.Row)
+            {
+                return null;
+            }
+            MatrixNd mat = new MatrixNd(m1.Row, m2.Col);
+            for (int i = 0; i < m1.Row; ++i)
+            {
+                for (int j = 0; j < m2.Col; ++j)
+                {
+                    for (int k = 0; k < m1.Col; ++k)
+                    {
+                        mat[i, j] += m1[i, k] * m2[k, j];
+                    }
+                }
+            }
+            return mat;
+        }
 
 		static public MatrixNd operator /(double factor, MatrixNd m)
 		{
