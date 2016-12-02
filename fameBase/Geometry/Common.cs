@@ -34,6 +34,9 @@ namespace Geometry
         public static int _NUM_FUNCTIONALITY = 6;
         public static int _NUM_CATEGORIY = 15;
         public static int _NUM_BINARY_FEATURE = 110;
+        public static int[] _PAIR_INDEX_1 = { 0 }; // 1 functional patch
+        public static int[] _PAIR_INDEX_2 = { 0, 2, 3 }; // 2 patches - 4 pairs
+        public static int[] _PAIR_INDEX_3 = { 0, 3, 6, 5, 7, 8 }; // 3 patches - 6 pairs
 
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
@@ -328,7 +331,7 @@ namespace Geometry
             }
         }// getCategory
 
-        public static int numOfPatchesFromCategory(Category cat)
+        public static int getNumberOfFunctionalPatchesPerCategory(Category cat)
         {
             switch (cat)
             {
@@ -365,7 +368,23 @@ namespace Geometry
                 default:
                     return 0;
             }
-        }// numOfPatchesFromCategory
+        }// getNumberOfFunctionalPatchesPerCategory
+
+        public static int[] getCategoryPatchIndicesInFeatureVector(Common.Category cat)
+        {
+            int[] idxs = new int[getNumberOfFunctionalPatchesPerCategory(cat)];
+            int catIdx = (int)cat;
+            int start = 0;
+            for (int i = 0; i < catIdx; ++i)
+            {
+                start += getNumberOfFunctionalPatchesPerCategory((Category)i);
+            }
+            for (int i = 0; i < idxs.Length; ++i)
+            {
+                idxs[i] = start + i;
+            }
+            return idxs;
+        }// getCategoryPatchIndicesInFeatureVector
 
         public static List<Functionality> getFunctionalityFromCategory(Category cat)
         {
