@@ -1235,7 +1235,47 @@ namespace Component
             {
                 Mesh m1 = e._start._PART._MESH;
                 Mesh m2 = e._end._PART._MESH;
-                if (isTwoPolyOverlap(m1.MinCoord, m2.MaxCoord) || isTwoPolyOverlap(m2.MinCoord, m1.MaxCoord))
+                if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
+                {
+                    return true;
+                }
+            }
+            // if any node that is detached
+            // check if we can walk through one node to all the other nodes
+            resetNodeIndex();
+            bool[] visited = new bool[_nodes.Count];
+            Node start = _nodes[0];
+            List<Node> queue = new List<Node>();
+            queue.Add(start);
+            while (queue.Count > 0)
+            {
+                List<Node> cur = new List<Node>(queue);
+                foreach (Node node in cur)
+                {
+                    visited[node._INDEX] = true;
+                }
+                queue.Clear();
+                foreach (Node c in cur)
+                {
+                    // include all connected
+                    Mesh m1 = c._PART._MESH;
+                    foreach (Node node in _nodes)
+                    {
+                        if (visited[node._INDEX] || queue.Contains(node))
+                        {
+                            continue;
+                        }
+                        Mesh m2 = node._PART._MESH;
+                        if (!isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) && !isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
+                        {
+                            queue.Add(node);
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < visited.Length; ++i)
+            {
+                if (!visited[i])
                 {
                     return true;
                 }
@@ -1243,7 +1283,7 @@ namespace Component
             return false;
         }// hasDetachedParts
 
-        private bool isTwoPolyOverlap(Vector3d v1_min, Vector3d v2_max)
+        private bool isTwoPolyDetached(Vector3d v1_min, Vector3d v2_max)
         {
             return v1_min.x > v2_max.x || v1_min.y > v2_max.y || v1_min.z > v2_max.z;
         }// isTwoPolyOverlap

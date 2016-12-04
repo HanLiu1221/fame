@@ -21,25 +21,25 @@ namespace FameBase
 
         /*********Var**********/
         // test paths
-        //public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
-        //public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
-        //public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
-        //public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
-        //// FOR showing predicted results
-        //public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch_data\meshes\";
-        //public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch_data\samples\";
-        //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
-        //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
-
-        public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models\";
-        public static string PATCH_PATH = @"D:\fame\data_sets\patch_data\";
-        public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only\";
-        public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
+        public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
+        public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
+        public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
         // FOR showing predicted results
-        public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
-        public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch_data\samples\";
-        public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point_feature\";
-        public static string WEIGHT_PATH = @"D:\fame\data_sets\patch_data\weights\";
+        public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch_data\meshes\";
+        public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch_data\samples\";
+        public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
+        public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
+
+        //public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models\";
+        //public static string PATCH_PATH = @"D:\fame\data_sets\patch_data\";
+        //public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only\";
+        //public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        //// FOR showing predicted results
+        //public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
+        //public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch_data\samples\";
+        //public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point_feature\";
+        //public static string WEIGHT_PATH = @"D:\fame\data_sets\patch_data\weights\";
 
         private void open3D_Click(object sender, EventArgs e)
         {
@@ -827,10 +827,10 @@ namespace FameBase
             string folder = @"E:\Projects\fame\data_sets\patch_data\models\pairValues\";
             for (int i = 0; i < this.glViewer._nPairsPG; ++i)
             {
-                string s = this.glViewer.nextFunctionalSpace();
-                this.simOfPGpairsLabel.Text = "Similarity value: " + s;
+                string[] ss = this.glViewer.collectSimValuesOfPartGroups();
+                this.simOfPGpairsLabel.Text = ss[0] + " Similarity value: " + ss[1];
                 this.Refresh();
-                string filename = folder + i.ToString() + ".png";
+                string filename = folder + ss[0] + ".png";
                 this.glViewer.captureScreen(filename);
             }
         }
@@ -932,6 +932,20 @@ namespace FameBase
         private void connectorToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.nameParts("Connector");
+        }
+
+        private void sortResToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<ModelViewer> modelViews = this.glViewer.sortEvolutionResults();
+            this.partBasket.Controls.Clear();
+            if (modelViews != null)
+            {
+                foreach (ModelViewer mv in modelViews)
+                {
+                    addModelViewerToRightPanel(mv);
+                }
+            }
+            this.Refresh();
         }
 
 	}// Interface

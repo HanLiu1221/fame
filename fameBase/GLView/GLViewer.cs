@@ -164,10 +164,6 @@ namespace FameBase
         public string foldername = "";
         private Vector3d objectCenter = new Vector3d();
 
-        private SparseMatrix _similarityMatrixPG;
-        private List<PartGroup> _currPartGroups;
-        private Dictionary<int, List<int>> _pairGroupMemory = new Dictionary<int,List<int>>();
-
         private enum Depthtype
         {
             opacity, hidden, OpenGLDepthTest, none, rayTracing // test 
@@ -188,7 +184,7 @@ namespace FameBase
         public int _nPairsPG = 0;
         List<Part> _pgPairVisualization;
         private List<int> _inputSetCats;
-        double _highProbThresh = 0;
+        double _highProbabilityThresh = 0;
 
         /******************** Vars ********************/
         Model _currModel;
@@ -216,14 +212,24 @@ namespace FameBase
         private ReplaceablePair[,] _replaceablePairs = null;
         private int _currIter = 0;
         private int _mutateOrCross = -1;
+        private int _modelIndex = -1;
         private bool _showContactPoint = false;
 
         List<ModelViewer> _partViewers = new List<ModelViewer>();
-        List<List<Model>> _mutateGenerations = new List<List<Model>>();
-        List<List<Model>> _crossoverGenerations = new List<List<Model>>();
         List<ModelViewer> _currGenModelViewers = new List<ModelViewer>();
-        List<Model> _currGen = new List<Model>();
+        List<Model> _userSelectedModels = new List<Model>();
+        List<Model> _modelLibrary = new List<Model>();
         List<FunctionalityModel> _functionalityModels = new List<FunctionalityModel>();
+
+        private SparseMatrix _similarityMatrixPG;
+        private Dictionary<int, List<int>> _curGenPGmemory = new Dictionary<int, List<int>>();
+        private Dictionary<int, List<int>> _pairGroupMemory = new Dictionary<int, List<int>>();
+        private Dictionary<int, Model> _modelIndexMap = new Dictionary<int, Model>();
+        // part groups in the first generation are kept unchanged
+        // they will be cloned in the evolution, so will be used for new crossover
+        List<List<PartGroup>> _partGroupLibrary = new List<List<PartGroup>>();
+        private int _numOfEmptyGroupUsed = 0;
+        private int _maxUseEmptyGroup = 0;
 
         /******************** Functions ********************/
 
@@ -450,10 +456,14 @@ namespace FameBase
                 Directory.CreateDirectory(Path.GetDirectoryName(filename));
             }
             if (mesh == null)
-            {
+            { 
                 // save a mesh for the current model
-                this.saveModelObj(filename);
-                return;
+                if (_currModel._NPARTS > 0)
+                {
+                    this.saveModelObj(filename);
+                    return;
+                }
+                mesh = _currModel._MESH;
             }
             string model_name = filename.Substring(filename.LastIndexOf('\\') + 1);
             model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
@@ -903,7 +913,8 @@ namespace FameBase
                 {
                     if (model._PARTS[i]._partName == null)
                     {
-                        model._PARTS[i]._partName = "part_" + i.ToString();
+                        // It happens when parts get grouped, to avoid using the same part name as other parts.
+                        model._PARTS[i]._partName = "groupedPart_" + i.ToString();
                     }
                     string partName = model._PARTS[i]._partName;
                     sw.WriteLine("% Part #" + i.ToString() + " " + partName);
@@ -1253,6 +1264,13 @@ namespace FameBase
             Vector3d[] centers;
             Vector3d[] normals;
             this.loadShape2Pose_SymPlane(prstOutputFile1, out centers, out normals);
+            if (centers == null || normals == null)
+            {
+                centers = new Vector3d[1];
+                centers[0] = new Vector3d(0, 0.5, 0);
+                normals = new Vector3d[1];
+                normals[0] = new Vector3d(1, 0, 0);
+            }
             model.findBestSymPlane(centers, normals);
             model.computeSamplePointsFeatures();
             
@@ -1802,6 +1820,7 @@ namespace FameBase
 
             // pre-process models
             this.preProcessInputSet();
+
             return _ancesterModelViewers;
         }// loadPartBasedModels
         
@@ -1882,19 +1901,23 @@ namespace FameBase
             
             // 2. analyze the feature vector for each part group
             int nPGs = 0;
-            _currPartGroups = new List<PartGroup>();
+            _partGroupLibrary = new List<List<PartGroup>>();
             foreach(Model m in _ancesterModels)
             {
                 nPGs += m._GRAPH._partGroups.Count;
-                _currPartGroups.AddRange(m._GRAPH._partGroups);
+                foreach (PartGroup pg in m._GRAPH._partGroups)
+                {
+                    // recompute
+                    pg.computeFeatureVector();
+                    // at the beginning, a part group only maps to itself
+                    // after a few generations, it will map to its cloned part groups
+                    List<PartGroup> pgs = new List<PartGroup>();
+                    pgs.Add(pg);
+                    _partGroupLibrary.Add(pgs);
+                }
             }
-            int nps = _currPartGroups.Count;
+            int nps = _partGroupLibrary.Count;
             _nPairsPG = nps * (nps - 1) / 2 - nps;
-            // recompute
-            foreach (PartGroup pg in _currPartGroups)
-            {
-                pg.computeFeatureVector();
-            }
 
             List<double> sorted = new List<double>();
             _similarityMatrixPG = new SparseMatrix(nPGs, nPGs);
@@ -1903,14 +1926,14 @@ namespace FameBase
                 _similarityMatrixPG.AddTriplet(i, i, 3.0);
                 for (int j = i + 1; j < nPGs; ++j)
                 {
-                    double simdist = compareTwoPartGroups(_currPartGroups[i], _currPartGroups[j]);
+                    double simdist = compareTwoPartGroups(_partGroupLibrary[i][0], _partGroupLibrary[j][0]);
                     _similarityMatrixPG.AddTriplet(i, j, simdist);
                     sorted.Add(simdist);
                     StringBuilder sb = new StringBuilder();
                     sb.Append("Two part groups: \n");
-                    sb.Append(this.getPartGroupNames(_currPartGroups[i]));
+                    sb.Append(this.getPartGroupNames(_partGroupLibrary[i][0]));
                     sb.Append("\n");
-                    sb.Append(this.getPartGroupNames(_currPartGroups[j]));
+                    sb.Append(this.getPartGroupNames(_partGroupLibrary[j][0]));
                     sb.Append("\n");
                     sb.Append("Similarity value: " + _similarityMatrixPG.GetTriplet(i, j).value.ToString());
                     Program.writeToConsole(sb.ToString());
@@ -1919,13 +1942,23 @@ namespace FameBase
             sorted.Sort();
             double prob = 0.6;
             int ntop = (int)(sorted.Count * prob);
-            _highProbThresh = sorted[ntop];
+            _highProbabilityThresh = sorted[ntop];
 
             // 3. load knowledge base - binary features
             this.loadLearnedBinaryFeautres();
 
+            // 4. set up the current generation
+
+            _modelLibrary = new List<Model>(_ancesterModels);
+            _currIter = 0;
+            for (int i = 0; i < _modelLibrary.Count; ++i)
+            {
+                _modelIndexMap.Add(i, _modelLibrary[i]);
+                _modelIndex++;
+            }
+            _userSelectedModels = new List<Model>(_ancesterModels);
             // TEST
-            this.calculateBinaryFeaturePerCategory(_ancesterModels);
+            //this.calculateBinaryFeaturePerCategory(_ancesterModels);
         }// preProcessInputSet
 
         List<BinaryFeaturePerCategory> _binaryFeatures;
@@ -2201,30 +2234,37 @@ namespace FameBase
             return str;
         }
 
-        public string nextFunctionalSpace()
+        public string[] collectSimValuesOfPartGroups()
         {
-            if (_pairPG2 + 1 >= _currPartGroups.Count)
+            if (_pairPG2 + 1 >= _partGroupLibrary.Count)
             {
                 _pairPG1++;
                 _pairPG2 = _pairPG1;
             }
             ++_pairPG2;
-            if (_pairPG1 >= _currPartGroups.Count)
+            if (_pairPG1 >= _partGroupLibrary.Count)
             {
                 MessageBox.Show("Start over.");
                 _pairPG1 = 0;
                 _pairPG2 = 1;
             }
+            string[] strs = new string[2];
             double dist = this.setCurrPairOfPartGroups();
-            return dist.ToString();
-            //if (_currModel == null || _currModel._funcSpaces == null)
-            //{
-            //    return "0/0";
-            //}
-            //_fsIdx = (_fsIdx + 1) % _currModel._funcSpaces.Length;
-            //this.Refresh();
-            //string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
-            //return str;
+            strs[0] = "pg_" + _pairPG1.ToString() + "_" + _pairPG2.ToString();
+            strs[1] = dist.ToString();
+            return strs;
+        }
+
+        public string nextFunctionalSpace()
+        {
+            if (_currModel == null || _currModel._funcSpaces == null)
+            {
+                return "0/0";
+            }
+            _fsIdx = (_fsIdx + 1) % _currModel._funcSpaces.Length;
+            this.Refresh();
+            string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
+            return str;
         }
         
         public string prevFunctionalSpace()
@@ -2232,14 +2272,14 @@ namespace FameBase
             if (_pairPG2 - 1 <= _pairPG1)
             {
                 _pairPG1--;
-                _pairPG2 = _currPartGroups.Count;
+                _pairPG2 = _partGroupLibrary.Count;
             }
             --_pairPG2;
             if (_pairPG2 <= _pairPG1)
             {
                 MessageBox.Show("End.");
-                _pairPG1 = _currPartGroups.Count - 2;
-                _pairPG2 = _currPartGroups.Count - 1;
+                _pairPG1 = _partGroupLibrary.Count - 2;
+                _pairPG2 = _partGroupLibrary.Count - 1;
             }
             double dist = this.setCurrPairOfPartGroups();
             return dist.ToString();
@@ -2270,8 +2310,8 @@ namespace FameBase
 
         private double setCurrPairOfPartGroups()
         {
-            PartGroup pg1 = _currPartGroups[_pairPG1];
-            PartGroup pg2 = _currPartGroups[_pairPG2];
+            PartGroup pg1 = _partGroupLibrary[_pairPG1][0];
+            PartGroup pg2 = _partGroupLibrary[_pairPG2][0];
             double sim = this.compareTwoPartGroups(pg1, pg2);
             _pgPairVisualization = new List<Part>();
             Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d(-0.5, 0, 0));
@@ -2727,14 +2767,14 @@ namespace FameBase
         public bool userSelectModel(Model m)
         {
             // from user selction
-            if (_currGen.Contains(m))
+            if (_userSelectedModels.Contains(m))
             {
-                _currGen.Remove(m);
+                _userSelectedModels.Remove(m);
                 return false;
             }
             else
             {
-                _currGen.Add(m);
+                _userSelectedModels.Add(m);
                 return true;
             }
         }// userSelectModel
@@ -3290,7 +3330,7 @@ namespace FameBase
             {
                 sw.WriteLine("User " + _userIndex.ToString());
                 sw.WriteLine("Generation " + gen.ToString());
-                foreach (Model model in _currGen)
+                foreach (Model model in _userSelectedModels)
                 {
                     sw.WriteLine(model._path + model._model_name);
                 }
@@ -3320,42 +3360,48 @@ namespace FameBase
             // for capturing screen            
             this.reloadView();
 
-            //// set user selection
-            //foreach (ModelViewer mv in _currGenModelViewers)
-            //{
-            //    if (!_currGen.Contains(mv._MODEL))
-            //    {
-            //        // user did not select
-            //        int p1 = mv._MODEL._partGroupPair._p1;
-            //        int p2 = mv._MODEL._partGroupPair._p2;
-            //        _similarityMatrixPG.AddTriplet(p1, p2, 0);
-            //    }
-            //}
+            // set user selection
+            foreach (ModelViewer mv in _currGenModelViewers)
+            {
+                if (!_userSelectedModels.Contains(mv._MODEL))
+                {
+                    // user did not select
+                    int p1 = mv._MODEL._partGroupPair._p1;
+                    int p2 = mv._MODEL._partGroupPair._p2;
+                    _similarityMatrixPG.AddTriplet(p1, p2, 0);
+                }
+            }
 
-            List<Model> parents = new List<Model>();
-            List<Model> prev_parents = new List<Model>(_currGen);
+            // parent shapes at the current generation
+            List<Model> parents = new List<Model>(_userSelectedModels);
             // always include the ancient models
             foreach (ModelViewer mv in _ancesterModelViewers)
             {
                 parents.Add(mv._MODEL);
             }
-            _currGenModelViewers.Clear();
+            
 
-            _currIter = 0;
             // add user selected models
             if (_currIter > 0)
             {
                 this.saveUserSelections(_currIter);
             }
-            parents.AddRange(_currGen);
 
+            // run 
             int maxIter = 1;
             int start = 0;
+            _userSelectedModels = new List<Model>();
+            _currGenModelViewers.Clear();
+            _curGenPGmemory = new Dictionary<int, List<int>>();
+            _maxUseEmptyGroup = parents.Count;
+            List<Model> curGeneration = new List<Model>();
             for (int i = 0; i < maxIter; ++i)
             {
                 Random rand = new Random();
                 //_mutateOrCross = runMutateOrCrossover(rand);
                 _mutateOrCross = 1;
+                // always use the given parent shapes, if the auto evolution is ran more than 1 iteration
+                // do not add the kid shapes to the parent set
                 List<Model> cur_par = new List<Model>(parents);
                 List<Model> cur_kids = new List<Model>();
                 string runstr = "Run ";
@@ -3381,34 +3427,19 @@ namespace FameBase
                         cur_kids = runAGenerationOfCrossover(_currIter, rand, imageFolder_c);
                         break;
                 }
-                // functionality test
-                List<Model> filtered = new List<Model>(cur_kids);
-                //List<Model> filtered = new List<Model>();
-                //foreach (Model kid in cur_kids)
-                //{
-                //    //bool isFuncValid = this.runFunctionalityTest(kid);
-                //    bool isFuncValid = this.runFunctionalityTestWithPatchCombination(kid, _currIter);
-                //    if (isFuncValid)
-                //    {
-                //        filtered.Add(kid);
-                //    }
-                //}
-                //if (filtered.Count == 0)
-                //{
-                //    break;
-                //}
-                start = _currGen.Count;
-                parents.AddRange(filtered);
-                _currGen.AddRange(filtered);
+                // post check
+                //this.calculateBinaryFeaturePerCategory(cur_kids);
+
+                curGeneration.AddRange(cur_kids);
                 ++_currIter;
             }
-            int n = _ancesterModelViewers.Count;
-            foreach (Model m in _currGen)
+
+            foreach (Model m in curGeneration)
             {
-                ModelViewer mv = new ModelViewer(m, n++, this, 2);
+                ModelViewer mv = new ModelViewer(m, _modelIndex++, this, _currIter);
                 _currGenModelViewers.Add(mv);
             }
-            _currGen = new List<Model>(prev_parents); // for user selection
+            //_userSelectedModels = new List<Model>(prev_parents); // for user selection
 
             long secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time: " + _currIter.ToString() + " iteration, " + _ancesterModelViewers.Count.ToString()
@@ -3416,6 +3447,241 @@ namespace FameBase
 
             return _currGenModelViewers;
         }// autoGenerate
+
+        public List<ModelViewer> sortEvolutionResults()
+        {
+            if (_currGenModelViewers.Count == 0)
+            {
+                return _currGenModelViewers;
+            }
+            Random rand = new Random();
+            int m = _currGenModelViewers.Count;
+            int n = _inputSetCats.Count;
+            List<Model> models = new List<Model>();
+            double[,] scores = new double[m, n];
+            for (int i = 0; i < m; ++i )
+            {
+                Model model = _currGenModelViewers[i]._MODEL;
+                models.Add(model);
+                double[] ss = runFunctionalityTest(model);
+                //// TEST
+                //double[] ss = new double[Common._NUM_CATEGORIY];
+                //for (int k = 0; k < ss.Length; ++k)
+                //{
+                //    ss[k] = rand.NextDouble();
+                //}
+                // only use input set
+                int j = 0;
+                foreach (int c in _inputSetCats)
+                {
+                    scores[i, j++] = ss[c];
+                }
+            }
+            //List<int> sortedIndex = this.calculateBinaryFeaturePerCategory(models);
+            // sort 
+            int[,] rankMat = new int[m, n];
+            List<double> ranks = new List<double>(); // for sorting
+            List<double> sums = new List<double>(); 
+            for (int i = 0; i < m; ++i)
+            {
+                ranks.Add(0);
+                sums.Add(0);
+            }
+            for (int j = 0; j < n; ++j)
+            {
+                Dictionary<double, int> sortIndex = new Dictionary<double, int>();
+                List<double> simVals = new List<double>();
+                for (int i = 0; i < m; ++i)
+                {
+                    sortIndex.Add(scores[i, j], i);
+                    simVals.Add(scores[i, j]);
+                    sums[i] += scores[i, j];
+                }
+                simVals.Sort((a, b) => b.CompareTo(a));
+                for (int i = 0; i < m; ++i)
+                {
+                    if (!sortIndex.TryGetValue(simVals[i], out rankMat[i, j]))
+                    {
+                        MessageBox.Show("Miss data when sorting the similarity.");
+                    }
+                    ranks[i] += rankMat[i, j]; // has repeat values
+                }
+            }
+            Dictionary<double, int> rankDict = new Dictionary<double, int>();
+            for (int i = 0; i < m; ++i)
+            {
+                //rankDict.Add(ranks[i], i);
+                rankDict.Add(sums[i], i);
+            }
+            //ranks.Sort((a, b) => b.CompareTo(a));
+            sums.Sort((a, b) => b.CompareTo(a));
+            List<ModelViewer> sorted = new List<ModelViewer>(_currGenModelViewers);
+            _currGenModelViewers = new List<ModelViewer>();
+            for (int i = 0; i < m; ++i)
+            {
+                int cur = -1;
+                //rankDict.TryGetValue(ranks[i], out cur);
+                rankDict.TryGetValue(sums[i], out cur);
+                _currGenModelViewers.Add(sorted[cur]);
+            }
+            return _currGenModelViewers;
+        }// sortEvolutionResults
+
+
+        private List<Model> runAGenerationOfCrossover(int gen, Random rand, string imageFolder)
+        {
+            List<Model> crossed = new List<Model>();
+            int maxNumber = 10;
+            int idx = _modelIndex;
+            while (crossed.Count < maxNumber)
+            {
+                List<Model> res = new List<Model>();
+                if (!this.runACrossover(gen, rand, imageFolder, _modelIndex + crossed.Count, out res)) { 
+                    // couldn't find any more
+                    MessageBox.Show("Do not have any good choices.");
+                    break;
+                }
+                crossed.AddRange(res);
+            }
+            return crossed;
+        }// runAGenerationOfCrossover
+
+        private bool runACrossover(int gen, Random rand, string imageFolder, int idx, out List<Model> res)
+        {
+            res = new List<Model>();
+            int nPGs = _partGroupLibrary.Count;
+            if (nPGs == 0)
+            {
+                return false;
+            }
+            // select two part groups randomly
+            bool selected = false;
+            int p1 = -1;
+            int p2 = -1;
+            Triplet triplet = null;
+            int ntry = 0;
+            bool selectHighProb = true; // _currIter % 2 == 0 ? false : true;
+            while (!selected && ntry < Common._MAX_TRY_TIMES)
+            {
+                int i = rand.Next(nPGs);
+                int j = rand.Next(nPGs);
+                p1 = Math.Min(i, j);
+                p2 = Math.Max(i, j);
+                triplet = _similarityMatrixPG.GetTriplet(p1, p2);
+                if (triplet != null && isAGoodSelectionOfPartGroupPair(p1, p2, selectHighProb))
+                {
+                    selected = true;
+                    Program.writeToConsole("Similarity of the selected part group: " + triplet.value.ToString());
+                }
+                ++ntry;
+            }
+            if (!selected)
+            {
+                return false;
+            }
+            // select parent shapes
+            Program.writeToConsole("Crossover: \n");
+            Model model1 = this.selectAPartGroupAndParentModel(p1, rand);
+            Model model2 = this.selectAPartGroupAndParentModel(p2, rand);
+
+            List<Model> results = this.crossOverOp(model1, model2, gen, idx, p1, p2);
+
+            foreach (Model m in results)
+            {
+                if (m._GRAPH.isValid())
+                {
+                    m.composeMesh();
+                    m._GRAPH.unify();
+                    m._GRAPH._ff = this.addFF(model1._GRAPH._ff, model2._GRAPH._ff);
+                    m._partGroupPair = new PartGroupPair(p1, p2, triplet.value);
+                    res.Add(m);
+                    // update the parent shape of the part group
+
+                    // screenshot
+                    this.setCurrentModel(m, -1);
+                    Program.GetFormMain().updateStats();
+                    this.captureScreen(imageFolder + m._model_name + ".png");
+                    saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                }
+            }
+            return true;
+        }// runACrossover - part groups
+
+        private bool isAGoodSelectionOfPartGroupPair(int i, int j, bool highProb)
+        {
+            // symmetric matrix, let i <= j
+            if (i == j || _partGroupLibrary[i][0]._ParentModelIndex == _partGroupLibrary[j][0]._ParentModelIndex)
+            {
+                return false;
+            }
+            // update global dictionary
+            List<int> pairs;
+            if (_pairGroupMemory.TryGetValue(i, out pairs))
+            {
+                if (!pairs.Contains(j))
+                {
+                    _pairGroupMemory[i].Add(j);
+                }
+            }
+            else
+            {
+                pairs = new List<int>();
+                pairs.Add(j);
+                _pairGroupMemory.Add(i, pairs);
+            }
+            // update current dictionary
+            if (_curGenPGmemory.TryGetValue(i, out pairs))
+            {
+                if (!pairs.Contains(j))
+                {
+                    _curGenPGmemory[i].Add(j);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                pairs = new List<int>();
+                pairs.Add(j);
+                _curGenPGmemory.Add(i, pairs);
+            }
+
+            double val = _similarityMatrixPG.GetTriplet(i, j).value;
+            if (val == 0)
+            {
+                // user dislike
+                return false;
+            }
+            if ((highProb && val < _highProbabilityThresh) || (!highProb && val > _highProbabilityThresh))
+            {
+                return false;
+            }
+            if (_partGroupLibrary[i][0]._NODES.Count == 0 || _partGroupLibrary[j][0]._NODES.Count == 0)
+            {
+                if (_numOfEmptyGroupUsed >= _maxUseEmptyGroup)
+                {
+                    return false;
+                }
+                ++_numOfEmptyGroupUsed;
+            }
+            return true;
+        }// isAGoodSelectionOfPartGroupPair
+
+        private void setSelectedNodes(Model m, PartGroup pg)
+        {
+            m._GRAPH.selectedNodes = new List<Node>();
+            foreach (Node node in pg._NODES)
+            {
+                if (!m._GRAPH._NODES.Contains(node))
+                {
+                    MessageBox.Show("Something goes wrong with the part group: " + m._model_name);
+                    return;
+                }
+                m._GRAPH.selectedNodes.Add(node);
+            }
+        }// setSelectedNodes
 
         private bool runFunctionalityTestWithPatchCombination(Model model, int gen)
         {
@@ -3891,6 +4157,26 @@ namespace FameBase
             File.Copy(feat_file, copyFolder + featureFileName, true);
         }// writeModelSampleFeatureFilesForPrediction
 
+        private void writeSamplePoints(Model model)
+        {
+            string folder = Interface.MATLAB_INPUT_PATH;
+            string possionFilename = model._model_name + ".poisson";
+            string pois_file = folder + possionFilename;
+            using (StreamWriter sw = new StreamWriter(pois_file))
+            {
+                SamplePoints sp = model._SP;
+                for (int j = 0; j < sp._points.Length; ++j)
+                {
+                    Vector3d vpos = sp._points[j];
+                    sw.Write(vector3dToString(vpos, " ", " "));
+                    Vector3d vnor = sp._normals[j];
+                    sw.Write(vector3dToString(vnor, " ", " "));
+                    int fidx = sp._faceIdx[j];
+                    sw.WriteLine(fidx.ToString());
+                }
+            }// writeSamplePoints
+        }
+
         private List<Model> runGrowth(List<Model> models, int gen, Random rand, string imageFolder, int start)
         {
             List<Model> growth = new List<Model>();
@@ -4248,9 +4534,10 @@ namespace FameBase
             ori_axis[axis]=1;
             if (node._PART._BOUNDINGBOX.type == Common.PrimType.Cylinder)
             {
-                Vector3d rot_axis = node._PART._BOUNDINGBOX.rot_axis;
-                R = Matrix4d.RotationMatrix(rot_axis, Math.Acos(ori_axis.Dot(rot_axis)));
+                //Vector3d rot_axis = node._PART._BOUNDINGBOX.rot_axis;
+                //R = Matrix4d.RotationMatrix(rot_axis, Math.Acos(ori_axis.Dot(rot_axis)));
                 //scale_vec = scale * rot_axis;
+
             }
             Matrix4d S = Matrix4d.ScalingMatrix(scale_vec);
             Vector3d center = node._pos;
@@ -4280,163 +4567,91 @@ namespace FameBase
             return sb.ToString();
         }// getPartGroupNames
 
-        private List<Model> runAGenerationOfCrossover(int gen, Random rand, string imageFolder)
+        private Model selectAPartGroupAndParentModel(int p, Random rand)
         {
-            List<Model> crossed = new List<Model>();
-            int maxNumber = 20;
-            int i = 0;
-            while (i < maxNumber)
-            {
-                List<Model> res = this.runACrossover(gen, rand, imageFolder, i);
-                crossed.AddRange(res);
-                ++i;
-            }
-            return crossed;
-        }// runAGenerationOfCrossover
-
-        private List<Model> runACrossover(int gen, Random rand, string imageFolder, int idx)
-        {
-            List<Model> crossed = new List<Model>();
-            int nPGs = _currPartGroups.Count;
-            if (nPGs == 0) {
-                return crossed;
-            }
-            // select two part groups randomly
-            bool selected = false;
-            int p1 = -1;
-            int p2 = -1;
-            Triplet triplet = null;
-            while (!selected)
-            {
-                int i = rand.Next(nPGs);
-                int j = rand.Next(nPGs);
-                p1 = Math.Min(i, j);
-                p2 = Math.Max(i, j);
-                triplet = _similarityMatrixPG.GetTriplet(p1, p2);
-                if (triplet != null && isAGoodSelectionOfPartGroupPair(p1, p2))
-                {
-                    selected = true;
-                    Program.writeToConsole("Similarity of the selected part group: " + triplet.value.ToString());
-                }
-            }
-            int shapeIdx1 = _currPartGroups[p1]._ParentModelIndex;
-            int shapeIdx2 = _currPartGroups[p2]._ParentModelIndex;
-            Model model1 = _ancesterModels[shapeIdx1];
-            Model model2 = _ancesterModels[shapeIdx2];
-            this.setSelectedNodes(model1, _currPartGroups[p1]);
-            this.setSelectedNodes(model2, _currPartGroups[p2]);
+            int np = _partGroupLibrary[p].Count;
+            int pgIdx = rand.Next(np);
+            int parentIdx =  _partGroupLibrary[p][pgIdx]._ParentModelIndex;
+            Model model = null;
+            _modelIndexMap.TryGetValue(parentIdx, out model);
+            this.setSelectedNodes(model, _partGroupLibrary[p][pgIdx]);
             // info
             StringBuilder sb = new StringBuilder();
-            sb.Append("Crossover: \n");
-            sb.Append(model1._model_name + " - part groups:\n");
-            sb.Append(this.getPartGroupNames(_currPartGroups[p1]));
+            sb.Append(model._model_name + " - part groups:\n");
+            sb.Append(this.getPartGroupNames(_partGroupLibrary[p][pgIdx]));
             Program.writeToConsole(sb.ToString());
 
-            sb = new StringBuilder();
-            sb.Append(model2._model_name + " - part groups:\n");
-            sb.Append(this.getPartGroupNames(_currPartGroups[p2]));
-            Program.writeToConsole(sb.ToString());
+            return model;
+        }// selectAPartGroupAndParentModel
 
-            List<Model> results = this.crossOverOp(model1, model2, gen, idx, p1, p2);
-            foreach (Model m in results)
-            {
-                if (m._GRAPH.isValid())
-                {
-                    m.composeMesh();
-                    m._GRAPH.unify();
-                    m._GRAPH._ff = this.addFF(model1._GRAPH._ff, model2._GRAPH._ff);
-                    m._partGroupPair = new PartGroupPair(p1, p2, triplet.value); 
-                    crossed.Add(m);
-                    // screenshot
-                    this.setCurrentModel(m, -1);
-                    Program.GetFormMain().updateStats();
-                    this.captureScreen(imageFolder + m._model_name + ".png");
-                    saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
-                }
-            }
-            return crossed;
-        }// runACrossover - part groups
-
-        private bool isAGoodSelectionOfPartGroupPair(int i, int j)
+        private List<int> calculateBinaryFeaturePerCategory(List<Model> models)
         {
-            // i <= j
-            if (i == j)// || _currPartGroups[i]._ParentModelIndex == _currPartGroups[j]._ParentModelIndex)
+            int m = models.Count;
+            int n = _inputSetCats.Count;
+            double[,] distCats = new double[models.Count, n];
+            for (int i = 0; i < m; ++i)
             {
-                return false;
-            }
-            List<int> pairs;
-            if (_pairGroupMemory.TryGetValue(i, out pairs))
-            {
-                if (!pairs.Contains(j))
+                Model im = models[i];
+                for(int j = 0; j < n;++j)
                 {
-                    _pairGroupMemory[i].Add(j);
+                    double[] res = this.computeBinaryFeaturePerCategory(im, _inputSetCats[j]);
+                    distCats[i, j] = res[0] + res[1];
                 }
-                //else
-                //{
-                //    return false;
-                //}
             }
-            else
-            {
-                pairs = new List<int>();
-                pairs.Add(j);
-                _pairGroupMemory.Add(i, pairs);
-                //return true;
-            }
-            double val = _similarityMatrixPG.GetTriplet(i, j).value;
-            if (val < _highProbThresh)
-            {
-                return false;
-            }
-            return true;
-        }// isAGoodSelectionOfPartGroupPair
-
-        private void setSelectedNodes(Model m, PartGroup pg)
-        {
-            m._GRAPH.selectedNodes = new List<Node>();
-            foreach (Node node in pg._NODES)
-            {
-                if (!m._GRAPH._NODES.Contains(node))
-                {
-                    MessageBox.Show("Something goes wrong with the part group: " + m._model_name);
-                    return;
-                }
-                m._GRAPH.selectedNodes.Add(node);
-            }
-        }// setSelectedNodes
-
-        private void calculateBinaryFeaturePerCategory(List<Model> models)
-        {
-            int nCats = _inputSetCats.Count;
-            double[,] distCats = new double[models.Count, nCats];
-            int i = 0;
-            foreach (Model m in models)
-            {
-                int j = 0;
-                foreach (int cat in _inputSetCats)
-                {
-                    double[] res = this.computeBinaryFeaturePerCategory(m, cat);
-                    distCats[i, j++] = res[0] + res[1];
-                }
-                ++i;
-            }
-            // normalize
-            double[,] simCats = new double[models.Count, nCats];
-            for (int j = 0; j < nCats; ++j)
+            // normalize -- cannot use it simply, as it should be normalized on all hybrids
+            // for now, we  can only apply it to the current generation
+            double[,] simCats = new double[m, n];
+            for (int j = 0; j < n; ++j)
             {
                 double min = double.MaxValue;
                 double max = double.MinValue;
-                for (int k = 0; k < models.Count; ++k)
+                for (int i = 0; i < m; ++i)
                 {
-                    min = min < distCats[k, j] ? min : distCats[k, j];
-                    max = max > distCats[k, j] ? max : distCats[k, j];
+                    min = min < distCats[i, j] ? min : distCats[i, j];
+                    max = max > distCats[i, j] ? max : distCats[i, j];
                 }
                 double diff = max - min;
-                for (int k = 0; k < models.Count; ++k)
+                for (int i = 0; i < models.Count; ++i)
                 {
-                    simCats[k, j] = 1 - (distCats[k, j] - min) / diff;
+                    simCats[i, j] = 1 - (distCats[i, j] - min) / diff;
                 }
             }
+            // sort 
+            int[,] rankMat = new int[m, n];
+            List<int> ranks = new List<int>(m); // for sorting
+            for (int j = 0; j < n; ++j)
+            {
+                Dictionary<double, int> sortIndex = new Dictionary<double, int>();
+                List<double> simVals = new List<double>();
+                for (int i = 0; i < m; ++i)
+                {
+                    sortIndex.Add(simCats[i, j], i);
+                    simVals.Add(simCats[i, j]);
+                }
+                simVals.Sort((a, b) => b.CompareTo(a));
+                for (int i = 0; i < m; ++i)
+                {
+                    if (!sortIndex.TryGetValue(simVals[i], out rankMat[i, j]))
+                    {
+                        MessageBox.Show("Miss data when sorting the similarity.");
+                    }
+                    ranks[i] += rankMat[i, j];
+                }
+            }
+            Dictionary<int, int> rankDict = new Dictionary<int, int>();
+            for (int i = 0; i < m; ++i)
+            {
+                rankDict.Add(ranks[i], i);
+            }
+            ranks.Sort((a, b) => b - a);
+            List<int> sorted = new List<int>();
+            for (int i = 0; i < m; ++i)
+            {
+                int cur = -1;
+                rankDict.TryGetValue(ranks[i], out cur);
+                sorted.Add(cur);
+            }
+            return sorted;
         }// calculateBinaryFeaturePerCategory
 
         private double[] computeBinaryFeaturePerCategory(Model m, int catIdx)
@@ -4903,6 +5118,33 @@ namespace FameBase
             return crossModels;
         }// crossover
 
+        private int getAxisAlignedAxis(Vector3d v)
+        {
+            int axis = -1;
+            double maxv = -1;
+            for (int i = 0; i < 3; ++i)
+            {
+                if (Math.Abs(v[i]) > maxv)
+                {
+                    maxv = Math.Abs(v[i]);
+                    axis = i;
+                }
+            }
+            return axis;
+        }//getAxisAlignedAxis
+
+        private int hasCylinderNode(List<Node> nodes)
+        {
+            foreach (Node node in nodes)
+            {
+                if (node._PART._BOUNDINGBOX.type == Common.PrimType.Cylinder)
+                {
+                    return this.getAxisAlignedAxis(node._PART._BOUNDINGBOX.rot_axis);
+                }
+            }
+            return -1;
+        }
+
         private void switchNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2,
             out List<Node> updateNodes1, out List<Node> updateNodes2)
         {
@@ -4940,11 +5182,44 @@ namespace FameBase
 
             double sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
             double sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
-            double sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
+            double sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);           
+
+            int axis = this.hasCylinderNode(nodes1);
+            if (axis != -1)
+            {
+                if (axis != 0)
+                {
+                    sx = 1.0;
+                }
+                if (axis != 1)
+                {
+                    sy = 1.0;
+                }
+                if (axis != 2)
+                {
+                    sz = 1.0;
+                }
+            }
             Vector3d boxScale_1 = new Vector3d(sx, sy, sz);
             sx = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
             sy = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
             sz = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
+            axis = this.hasCylinderNode(nodes2);
+            if (axis != -1)
+            {
+                if (axis != 0)
+                {
+                    sx = 1.0;
+                }
+                if (axis != 1)
+                {
+                    sy = 1.0;
+                }
+                if (axis != 2)
+                {
+                    sz = 1.0;
+                }
+            }
             Vector3d boxScale_2 = new Vector3d(sx, sy, sz);
 
             Matrix4d S, T, Q;
@@ -5027,6 +5302,7 @@ namespace FameBase
             }
             g2.resetUpdateStatus();
         }// switchOneNode
+
 
         private void deformNodesAndEdges(List<Node> nodes, Matrix4d T)
         {
@@ -5651,7 +5927,8 @@ namespace FameBase
             return false;
         }
 
-        public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, out Matrix4d S, out Matrix4d T, out Matrix4d Q, Vector3d boxScale, bool useScale)
+        public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, 
+            out Matrix4d S, out Matrix4d T, out Matrix4d Q, Vector3d boxScale, bool useScale)
         {
             int n = srcpts.Count;
             if (n == 1)
@@ -7330,7 +7607,6 @@ namespace FameBase
                 // create the model
                 // test
                 if (fss != null && fss.Length > 0 && fss[0] != null)
-
                 {
                     Program.writeToConsole("Load " + model_name);
                     Program.writeToConsole("Mesh:");

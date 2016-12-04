@@ -112,6 +112,7 @@
             this.autoGenerateToolStripMenuItem = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
+            this.simOfPGpairsLabel = new System.Windows.Forms.Label();
             this.prev_next_panel = new System.Windows.Forms.Panel();
             this.next_fs = new System.Windows.Forms.Button();
             this.prev_fs = new System.Windows.Forms.Button();
@@ -148,7 +149,7 @@
             this.hangerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.simOfPGpairsLabel = new System.Windows.Forms.Label();
+            this.sortResToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.glViewer = new FameBase.GLViewer();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
@@ -811,7 +812,8 @@
             this.toolStripDropDownButton1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.symmetryToolStripMenuItem,
             this.crossoverToolStripMenuItem,
-            this.mutateToolStripMenuItem});
+            this.mutateToolStripMenuItem,
+            this.sortResToolStripMenuItem});
             this.toolStripDropDownButton1.Image = ((System.Drawing.Image)(resources.GetObject("toolStripDropDownButton1.Image")));
             this.toolStripDropDownButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripDropDownButton1.Name = "toolStripDropDownButton1";
@@ -822,21 +824,21 @@
             // symmetryToolStripMenuItem
             // 
             this.symmetryToolStripMenuItem.Name = "symmetryToolStripMenuItem";
-            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.symmetryToolStripMenuItem.Text = "Symmetry";
             this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
             // 
             // crossoverToolStripMenuItem
             // 
             this.crossoverToolStripMenuItem.Name = "crossoverToolStripMenuItem";
-            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.crossoverToolStripMenuItem.Text = "Crossover";
             this.crossoverToolStripMenuItem.Click += new System.EventHandler(this.crossoverToolStripMenuItem_Click);
             // 
             // mutateToolStripMenuItem
             // 
             this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.mutateToolStripMenuItem.Text = "Mutate";
             this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
             // 
@@ -886,6 +888,16 @@
             this.fileNameTabs.SelectedIndex = 0;
             this.fileNameTabs.Size = new System.Drawing.Size(1093, 28);
             this.fileNameTabs.TabIndex = 0;
+            // 
+            // simOfPGpairsLabel
+            // 
+            this.simOfPGpairsLabel.AutoSize = true;
+            this.simOfPGpairsLabel.BackColor = System.Drawing.Color.White;
+            this.simOfPGpairsLabel.Font = new System.Drawing.Font("SimSun", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.simOfPGpairsLabel.Location = new System.Drawing.Point(356, 30);
+            this.simOfPGpairsLabel.Name = "simOfPGpairsLabel";
+            this.simOfPGpairsLabel.Size = new System.Drawing.Size(0, 21);
+            this.simOfPGpairsLabel.TabIndex = 19;
             // 
             // prev_next_panel
             // 
@@ -1201,15 +1213,12 @@
             this.connectorToolStripMenuItem.Text = "Connector";
             this.connectorToolStripMenuItem.Click += new System.EventHandler(this.connectorToolStripMenuItem_Click);
             // 
-            // simOfPGpairsLabel
+            // sortResToolStripMenuItem
             // 
-            this.simOfPGpairsLabel.AutoSize = true;
-            this.simOfPGpairsLabel.BackColor = System.Drawing.Color.White;
-            this.simOfPGpairsLabel.Font = new System.Drawing.Font("SimSun", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.simOfPGpairsLabel.Location = new System.Drawing.Point(278, 4);
-            this.simOfPGpairsLabel.Name = "simOfPGpairsLabel";
-            this.simOfPGpairsLabel.Size = new System.Drawing.Size(0, 21);
-            this.simOfPGpairsLabel.TabIndex = 19;
+            this.sortResToolStripMenuItem.Name = "sortResToolStripMenuItem";
+            this.sortResToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.sortResToolStripMenuItem.Text = "Sort Res";
+            this.sortResToolStripMenuItem.Click += new System.EventHandler(this.sortResToolStripMenuItem_Click);
             // 
             // glViewer
             // 
@@ -1380,6 +1389,7 @@
         private System.Windows.Forms.ToolStripMenuItem hangerToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem connectorToolStripMenuItem;
         private System.Windows.Forms.Label simOfPGpairsLabel;
+        private System.Windows.Forms.ToolStripMenuItem sortResToolStripMenuItem;
 	}
 }
 

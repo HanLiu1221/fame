@@ -1068,7 +1068,7 @@ namespace Component
                     vPos[j++] = _mesh.VertexPos[idx++];
                     vPos[j++] = _mesh.VertexPos[idx++];
                 }
-                // collect face indices belong to this part
+                // collect face indices belong to this part, avoiding repeat face id
                 HashSet<int> fIndex = new HashSet<int>();
                 foreach (int i in vIndex)
                 {

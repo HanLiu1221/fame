@@ -603,7 +603,10 @@ namespace Geometry
             this.faceVertexIndex = faceArray.ToArray();
             this.halfEdges = halfEdgeArray.ToArray();
             this.singleHalfEdges = edgeArray.ToArray();
-            this.edgeIter = this.halfEdges[0];
+            if (this.halfEdges != null && this.halfEdges.Length > 0)
+            {
+                this.edgeIter = this.halfEdges[0];
+            }
 
             if (normalize)
             {
