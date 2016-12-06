@@ -1618,7 +1618,7 @@ namespace Component
         public PartGroup(List<Node> nodes)
         {
             _nodes = new List<Node>(nodes);
-            this.computeFeatureVector();
+            this.computeFeatureVector(null);
         }
 
         public PartGroup(List<Node> nodes, double[] featureVectors)
@@ -1627,7 +1627,7 @@ namespace Component
             _featureVector = featureVectors;
         }
 
-        public void computeFeatureVector()
+        public void computeFeatureVector(List<double> thresholds)
         {
             if (_nodes.Count == 0)
             {
@@ -1637,7 +1637,7 @@ namespace Component
             double[] means = new double[ndim];
             double[] stds = new double[ndim];
             double[] sums = new double[ndim];
-            int npoints = 0;
+            int[] npoints = new int[ndim];
             foreach (Node node in _nodes)
             {
                 // accummulate the weight fields
@@ -1653,16 +1653,27 @@ namespace Component
                     {
                         for (int j = 0; j < sp._weightsPerCat[c]._nPoints; ++j)
                         {
-                            sums[d + i] += sp._weightsPerCat[c]._weights[j, i];
+                            double w = sp._weightsPerCat[c]._weights[j, i];
+                            if (thresholds == null || w > thresholds[d + i])
+                            {
+                                sums[d + i] += w;
+                                ++npoints[d + i];
+                            }
                         }
                     }
                     d += sp._weightsPerCat[c]._nPatches;
                 }
-                npoints += sp._weightsPerCat[0]._nPoints;
             }
             for (int i = 0; i < ndim; ++i)
             {
-                means[i] = sums[i] / npoints;
+                if (npoints[i] == 0)
+                {
+                    means[i] = 0;
+                }
+                else
+                {
+                    means[i] = sums[i] / npoints[i];
+                }
             }
             foreach (Node node in _nodes)
             {
@@ -1674,9 +1685,13 @@ namespace Component
                     {
                         for (int j = 0; j < sp._weightsPerCat[c]._nPoints; ++j)
                         {
-                            double std = sp._weightsPerCat[c]._weights[j, i] - means[d + i];
-                            std *= std;
-                            stds[d + i] += std;
+                            double w = sp._weightsPerCat[c]._weights[j, i];
+                            if (thresholds == null || w > thresholds[d + i])
+                            {
+                                double std = w - means[d + i];
+                                std *= std;
+                                stds[d + i] += std;
+                            }
                         }
                     }
                     d += sp._weightsPerCat[c]._nPatches;
@@ -1684,7 +1699,14 @@ namespace Component
             }
             for (int i = 0; i < ndim; ++i)
             {
-                stds[i] /= npoints;
+                if (npoints[i] == 0)
+                {
+                    stds[i] = 0;
+                }
+                else
+                {
+                    stds[i] /= npoints[i];
+                }
             }
             // TEST
             _featureVector = means;
