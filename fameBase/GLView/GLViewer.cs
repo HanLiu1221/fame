@@ -1963,9 +1963,26 @@ namespace FameBase
                 _modelIndex++;
             }
             _userSelectedModels = new List<Model>(_ancesterModels);
+
+            // 5. compute binary feature for known category models
+            foreach (Model m in _ancesterModels)
+            {
+                m._GRAPH._ff._funvals = this.evaluateFeaturesOfAModel(m);
+            }
             // TEST
             //this.calculateBinaryFeaturePerCategory(_ancesterModels);
         }// preProcessInputSet
+
+        private List<double> evaluateFeaturesOfAModel(Model m)
+        {
+            List<double> res = new List<double>();
+            foreach (Common.Category cat in m._GRAPH._ff._cats)
+            {
+                double[] vals = this.computeBinaryFeaturePerCategory(m, (int)cat);
+                res.Add(vals[0] + vals[1]);
+            }
+            return res;
+        }// evaluateFeaturesOfAModel
 
         List<BinaryFeaturePerCategory> _binaryFeatures;
         private void loadLearnedBinaryFeautres()
@@ -1981,9 +1998,7 @@ namespace FameBase
                     MessageBox.Show("Missing binary feature folder: " + catName);
                     return;
                 }
-                BinaryFeaturePerCategory bf = new BinaryFeaturePerCategory((Common.Category)c);
-                _binaryFeatures.Add(bf);
-                
+                BinaryFeaturePerCategory bf = new BinaryFeaturePerCategory((Common.Category)c);                
                 for (int i = 0; i < bf._nPatches; ++i)
                 {
                     for (int j = i; j < bf._nPatches; ++j)
@@ -1998,6 +2013,7 @@ namespace FameBase
                         bf._binaryF.Add(res);
                     }
                 }
+                _binaryFeatures.Add(bf);
             }
         }// loadLearnedBinaryFeautres
 
@@ -3384,8 +3400,7 @@ namespace FameBase
             foreach (ModelViewer mv in _ancesterModelViewers)
             {
                 parents.Add(mv._MODEL);
-            }
-            
+            }            
 
             // add user selected models
             if (_currIter > 0)
@@ -3434,9 +3449,14 @@ namespace FameBase
                         break;
                 }
                 // post check
-                //cur_kids = this.postAnalysis(cur_kids);
-
-                curGeneration.AddRange(cur_kids);
+                cur_kids = this.postAnalysis(cur_kids);
+                // only include top models
+                int nModels = Math.Min(Common._MAX_USE_PRESENT_NUMBER, cur_kids.Count);
+                for (int j = 0; j < nModels; ++j)
+                {
+                    curGeneration.Add(cur_kids[j]);
+                }
+                    //curGeneration.AddRange(cur_kids);
                 ++_currIter;
             }
 
@@ -3537,9 +3557,8 @@ namespace FameBase
         private List<Model> runAGenerationOfCrossover(int gen, Random rand, string imageFolder)
         {
             List<Model> crossed = new List<Model>();
-            int maxNumber = 10;
             int idx = _modelIndex;
-            while (crossed.Count < maxNumber)
+            while (crossed.Count < Common._MAX_GEN_HYBRID_NUMBER)
             {
                 List<Model> res = new List<Model>();
                 if (!this.runACrossover(gen, rand, imageFolder, _modelIndex + crossed.Count, out res)) { 
@@ -3596,33 +3615,61 @@ namespace FameBase
             {
                 if (m._GRAPH.isValid())
                 {
-                    m.composeMesh();
-                    m._GRAPH.unify();
                     m._GRAPH._ff = this.addFF(model1._GRAPH._ff, model2._GRAPH._ff);
-                    m._partGroupPair = new PartGroupPair(p1, p2, triplet.value);
-                    res.Add(m);
-                    // record the post analysis feature
-                    StringBuilder sb = new StringBuilder();
-                    for (int j = 0; j < _inputSetCats.Count; ++j)
-                    {
-                        double[] vals = this.computeBinaryFeaturePerCategory(m, _inputSetCats[j]);
-                        double sum = 0;
-                        for (int i = 0; i < vals.Length; ++i)
-                        {
-                            sum += vals[i];
-                        }
-                        sum = 1 - sum;
-                        sb.Append(Common.getCategoryName(_inputSetCats[j]));
-                        sb.Append(" ");
-                        sb.Append(sum.ToString());
-                        sb.Append("\n");
-                    }
-                    Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
+                    //List<double> fvals = this.evaluateFeaturesOfAModel(m);
+                    // TEST --- evaluate if m loses a great functionality from parent shapes
+                    //bool isLoseFuncs = true;
+                    //for (int i = 0; i < m._GRAPH._ff._funvals.Count; ++i)
+                    //{
+                    //    if (fvals[i] > m._GRAPH._ff._funvals[i] * 0.8)
+                    //    {
+                    //        isLoseFuncs = false;
+                    //        break;
+                    //    }
+                    //}
+                    // record the post analysis feature - REPEAT the last statement, REMOVED after testing
+                    //StringBuilder sb = new StringBuilder();
+                    //for (int j = 0; j < _inputSetCats.Count; ++j)
+                    //{
+                    //    double[] vals = this.computeBinaryFeaturePerCategory(m, _inputSetCats[j]);
+                    //    double sum = 0;
+                    //    for (int i = 0; i < vals.Length; ++i)
+                    //    {
+                    //        sum += vals[i];
+                    //    }
+                    //    sum = 1 - sum;
+                    //    sb.Append(Common.getCategoryName(_inputSetCats[j]));
+                    //    sb.Append(" ");
+                    //    sb.Append(sum.ToString());
+                    //    sb.Append("\n");
+                    //}
+                    ////if (isLoseFuncs)
+                    ////{
+                    ////    sb.Append("Filtered.\n");
+                    ////}
+                    //Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
+
                     // screenshot
                     this.setCurrentModel(m, -1);
                     Program.GetFormMain().updateStats();
+                    //if (isLoseFuncs)
+                    //{
+                    //    m._model_name = m._model_name + "_filtered";
+                    //}
                     this.captureScreen(imageFolder + m._model_name + ".png");
                     saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                    
+                    //if (isLoseFuncs)
+                    //{
+                    //    continue;
+                    //}
+                    // refresh func values
+                    //m._GRAPH._ff._funvals = fvals;
+
+                    m.composeMesh();
+                    m._GRAPH.unify();
+                    m._partGroupPair = new PartGroupPair(p1, p2, triplet.value);
+                    res.Add(m);
                 }
             }
             return true;
@@ -4675,6 +4722,19 @@ namespace FameBase
                 {
                     simCats[i, j] = 1 - (distCats[i, j] - min) / diff;
                     sums[i] += simCats[i, j];
+                }
+            }
+            // repeat sum
+            for (int i = 0; i < m - 1; ++i)
+            {
+                int iden = 1;
+                for (int j = i + 1; j < m; ++j)
+                {
+                    if (sums[j] == sums[i])
+                    {
+                        sums[j] += Common._thresh * iden;
+                        ++iden;
+                    }
                 }
             }
             // sort 

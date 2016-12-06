@@ -13,6 +13,7 @@ namespace Component
         public int _NEdges = 0;
         public FunctionalityFeatures _ff = null;
         public List<PartGroup> _partGroups;
+        public List<Node> selectedNodes = new List<Node>();
 
         public Vector3d _centerOfMass;
 
@@ -20,7 +21,7 @@ namespace Component
         double _minNodeBboxScale; // min scale of a box
         double _maxAdjNodesDist; // max distance between two nodes
 
-        public List<Node> selectedNodes = new List<Node>();
+        
         private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
 
         // test

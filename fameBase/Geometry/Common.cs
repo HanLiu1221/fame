@@ -40,6 +40,9 @@ namespace Geometry
         public static int _MAX_MATRIX_DIM = 300;
         public static int _MAX_TRY_TIMES = 40;
 
+        public static int _MAX_GEN_HYBRID_NUMBER = 20;
+        public static int _MAX_USE_PRESENT_NUMBER = 10;
+
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
