@@ -151,6 +151,7 @@
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sortResToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.glViewer = new FameBase.GLViewer();
+            this.postAnalysisRes = new System.Windows.Forms.Label();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -869,6 +870,7 @@
             // 
             // viewPanel.Panel2
             // 
+            this.viewPanel.Panel2.Controls.Add(this.postAnalysisRes);
             this.viewPanel.Panel2.Controls.Add(this.simOfPGpairsLabel);
             this.viewPanel.Panel2.Controls.Add(this.prev_next_panel);
             this.viewPanel.Panel2.Controls.Add(this.statsLabel);
@@ -1240,6 +1242,17 @@
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
+            // postAnalysisRes
+            // 
+            this.postAnalysisRes.AutoSize = true;
+            this.postAnalysisRes.BackColor = System.Drawing.Color.White;
+            this.postAnalysisRes.Font = new System.Drawing.Font("SimSun", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.postAnalysisRes.Location = new System.Drawing.Point(395, 13);
+            this.postAnalysisRes.Name = "postAnalysisRes";
+            this.postAnalysisRes.Size = new System.Drawing.Size(56, 16);
+            this.postAnalysisRes.TabIndex = 20;
+            this.postAnalysisRes.Text = "cats: ";
+            // 
             // Interface
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1390,6 +1403,7 @@
         private System.Windows.Forms.ToolStripMenuItem connectorToolStripMenuItem;
         private System.Windows.Forms.Label simOfPGpairsLabel;
         private System.Windows.Forms.ToolStripMenuItem sortResToolStripMenuItem;
+        private System.Windows.Forms.Label postAnalysisRes;
 	}
 }
 

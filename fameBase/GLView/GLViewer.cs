@@ -914,7 +914,7 @@ namespace FameBase
                     if (model._PARTS[i]._partName == null)
                     {
                         // It happens when parts get grouped, to avoid using the same part name as other parts.
-                        model._PARTS[i]._partName = "groupedPart_" + i.ToString();
+                        model._PARTS[i]._partName = model.getPartName();
                     }
                     string partName = model._PARTS[i]._partName;
                     sw.WriteLine("% Part #" + i.ToString() + " " + partName);
@@ -1847,7 +1847,10 @@ namespace FameBase
             {
                 foreach (Common.Category cat in model._GRAPH._ff._cats)
                 {
-                    _inputSetCats.Add((int)cat);
+                    if (!_inputSetCats.Contains((int)cat))
+                    {
+                        _inputSetCats.Add((int)cat);
+                    }
                 }
                 if (model._GRAPH == null || model._GRAPH._partGroups.Count == 0)
                 {
@@ -1873,31 +1876,31 @@ namespace FameBase
                 }
             }
             // normalize
-            double[] diffw = new double[ndim];
-            for (int i = 0; i < ndim; ++i)
-            {
-                diffw[i] = maxw[i] - minw[i];
-            }
-            foreach (Model model in _ancesterModels)
-            {
-                foreach (Node node in model._GRAPH._NODES)
-                {
-                    SamplePoints sp = node._PART._partSP;
-                    int d = 0;
-                    for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
-                    {
-                        for (int i = 0; i < sp._weightsPerCat[c]._nPatches; ++i)
-                        {
-                            for (int j = 0; j < sp._weightsPerCat[c]._nPoints; ++j)
-                            {
-                                double old = sp._weightsPerCat[c]._weights[j, i];
-                                sp._weightsPerCat[c]._weights[j, i] = (old - minw[d + i]) / diffw[d + i];
-                            }
-                        }
-                        d += sp._weightsPerCat[c]._nPatches;
-                    }
-                }
-            }
+            //double[] diffw = new double[ndim];
+            //for (int i = 0; i < ndim; ++i)
+            //{
+            //    diffw[i] = maxw[i] - minw[i];
+            //}
+            //foreach (Model model in _ancesterModels)
+            //{
+            //    foreach (Node node in model._GRAPH._NODES)
+            //    {
+            //        SamplePoints sp = node._PART._partSP;
+            //        int d = 0;
+            //        for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+            //        {
+            //            for (int i = 0; i < sp._weightsPerCat[c]._nPatches; ++i)
+            //            {
+            //                for (int j = 0; j < sp._weightsPerCat[c]._nPoints; ++j)
+            //                {
+            //                    double old = sp._weightsPerCat[c]._weights[j, i];
+            //                    sp._weightsPerCat[c]._weights[j, i] = (old - minw[d + i]) / diffw[d + i];
+            //                }
+            //            }
+            //            d += sp._weightsPerCat[c]._nPatches;
+            //        }
+            //    }
+            //}
             
             // 2. analyze the feature vector for each part group
             int nPGs = 0;
@@ -3428,7 +3431,7 @@ namespace FameBase
                         break;
                 }
                 // post check
-                //this.calculateBinaryFeaturePerCategory(cur_kids);
+                //cur_kids = this.postAnalysis(cur_kids);
 
                 curGeneration.AddRange(cur_kids);
                 ++_currIter;
@@ -3595,8 +3598,23 @@ namespace FameBase
                     m._GRAPH._ff = this.addFF(model1._GRAPH._ff, model2._GRAPH._ff);
                     m._partGroupPair = new PartGroupPair(p1, p2, triplet.value);
                     res.Add(m);
-                    // update the parent shape of the part group
-
+                    // record the post analysis feature
+                    StringBuilder sb = new StringBuilder();
+                    for (int j = 0; j < _inputSetCats.Count; ++j)
+                    {
+                        double[] vals = this.computeBinaryFeaturePerCategory(m, _inputSetCats[j]);
+                        double sum = 0;
+                        for (int i = 0; i < vals.Length; ++i)
+                        {
+                            sum += vals[i];
+                        }
+                        sum = 1 - sum;
+                        sb.Append(Common.getCategoryName(_inputSetCats[j]));
+                        sb.Append(" ");
+                        sb.Append(sum.ToString());
+                        sb.Append("\n");
+                    }
+                    Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
                     // screenshot
                     this.setCurrentModel(m, -1);
                     Program.GetFormMain().updateStats();
@@ -4584,6 +4602,40 @@ namespace FameBase
             return model;
         }// selectAPartGroupAndParentModel
 
+        private List<Model> postAnalysis(List<Model> models)
+        {
+            List<int> sortIndx = this.calculateBinaryFeaturePerCategory(models);
+            List<Model> sorted = new List<Model>(models);
+            _currGenModelViewers = new List<ModelViewer>();
+            models = new List<Model>();
+            for (int i = 0; i < models.Count; ++i)
+            {
+                models.Add(sorted[sortIndx[i]]);
+            }
+            return models;
+        }
+
+        public List<ModelViewer> postAnalysis()
+        {
+            if (_currGenModelViewers.Count == 0)
+            {
+                return _currGenModelViewers;
+            }
+            List<Model> models = new List<Model>();
+            foreach (ModelViewer mv in _currGenModelViewers)
+            {
+                models.Add(mv._MODEL);
+            }
+            List<int> sortIndx = this.calculateBinaryFeaturePerCategory(models);
+            List<ModelViewer> sorted = new List<ModelViewer>(_currGenModelViewers);
+            _currGenModelViewers = new List<ModelViewer>();
+            for (int i = 0; i < models.Count; ++i)
+            {
+                _currGenModelViewers.Add(sorted[sortIndx[i]]);
+            }
+            return _currGenModelViewers;
+        }
+
         private List<int> calculateBinaryFeaturePerCategory(List<Model> models)
         {
             int m = models.Count;
@@ -4601,6 +4653,11 @@ namespace FameBase
             // normalize -- cannot use it simply, as it should be normalized on all hybrids
             // for now, we  can only apply it to the current generation
             double[,] simCats = new double[m, n];
+            List<double> sums = new List<double>();
+            for (int i = 0; i < m; ++i)
+            {
+                sums.Add(0);
+            }
             for (int j = 0; j < n; ++j)
             {
                 double min = double.MaxValue;
@@ -4611,44 +4668,24 @@ namespace FameBase
                     max = max > distCats[i, j] ? max : distCats[i, j];
                 }
                 double diff = max - min;
-                for (int i = 0; i < models.Count; ++i)
+                for (int i = 0; i < m; ++i)
                 {
                     simCats[i, j] = 1 - (distCats[i, j] - min) / diff;
+                    sums[i] += simCats[i, j];
                 }
             }
             // sort 
-            int[,] rankMat = new int[m, n];
-            List<int> ranks = new List<int>(m); // for sorting
-            for (int j = 0; j < n; ++j)
-            {
-                Dictionary<double, int> sortIndex = new Dictionary<double, int>();
-                List<double> simVals = new List<double>();
-                for (int i = 0; i < m; ++i)
-                {
-                    sortIndex.Add(simCats[i, j], i);
-                    simVals.Add(simCats[i, j]);
-                }
-                simVals.Sort((a, b) => b.CompareTo(a));
-                for (int i = 0; i < m; ++i)
-                {
-                    if (!sortIndex.TryGetValue(simVals[i], out rankMat[i, j]))
-                    {
-                        MessageBox.Show("Miss data when sorting the similarity.");
-                    }
-                    ranks[i] += rankMat[i, j];
-                }
-            }
-            Dictionary<int, int> rankDict = new Dictionary<int, int>();
+            Dictionary<double, int> rankDict = new Dictionary<double, int>();
             for (int i = 0; i < m; ++i)
             {
-                rankDict.Add(ranks[i], i);
+                rankDict.Add(sums[i], i);
             }
-            ranks.Sort((a, b) => b - a);
+            sums.Sort((a, b) => b.CompareTo(a));
             List<int> sorted = new List<int>();
             for (int i = 0; i < m; ++i)
             {
                 int cur = -1;
-                rankDict.TryGetValue(ranks[i], out cur);
+                rankDict.TryGetValue(sums[i], out cur);
                 sorted.Add(cur);
             }
             return sorted;
@@ -4673,13 +4710,33 @@ namespace FameBase
             {
                 patches.Add(new PartGroup(new List<Node>()));
             }
-            List<Vector3d> spPositions = new List<Vector3d>();
-            List<Vector3d> spNormals = new List<Vector3d>();
             int nSamplePoints = 0;
+            double[] threshes = new double[nPatches];
+            double[] minThr = new double[nPatches];
+            double[] maxThr = new double[nPatches];
+            for (int j = 0; j < nPatches; ++j)
+            {
+                minThr[j] = double.MaxValue;
+                maxThr[j] = double.MinValue;
+            }
             foreach (Node node in g._NODES)
             {
                 nSamplePoints += node._PART._partSP._points.Length;
+                PatchWeightPerCategory pw = node._PART._partSP._weightsPerCat[catIdx];
+                for (int i = 0; i < node._PART._partSP._points.Length; ++i)
+                {
+                    for (int j = 0; j < nPatches; ++j)
+                    {
+                        minThr[j] = Math.Min(minThr[j], pw._weights[i, j]);
+                        maxThr[j] = Math.Max(maxThr[j], pw._weights[i, j]);
+                    }
+                }
             }
+            for (int j = 0; j < nPatches; ++j)
+            {
+                threshes[j] = (maxThr[j] - minThr[j]) / 2;
+            }
+
             MatrixNd weightMat = new MatrixNd(nSamplePoints, nPatches);
             int samplePointIndexStart = 0;
             Vector3d maxPos = Vector3d.MinCoord;
@@ -4694,7 +4751,7 @@ namespace FameBase
                 {
                     for (int j = 0; j < nPatches; ++j)
                     {
-                        if (pw._weights[i, j] > thresh)
+                        if (pw._weights[i, j] > threshes[j])
                         {
                             ++numSalientPoints[j];
                         }
@@ -4712,90 +4769,99 @@ namespace FameBase
                     }
                 }
                 patches[patchIdx]._NODES.Add(node);
-                spPositions.AddRange(sp._points);
-                spNormals.AddRange(sp._normals);
                 samplePointIndexStart += sp._points.Length;
                 foreach (Vector3d v in sp._points)
                 {
                     maxPos = Vector3d.Max(maxPos, v);
-                    minPos = Vector3d.Max(minPos, v);
+                    minPos = Vector3d.Min(minPos, v);
                 }
             }
-            // 2. calculate binary feature
-            SparseMatrix[] binMatPerDim = new SparseMatrix[Common._NUM_BINARY_FEATURE];
-            for (int i = 0; i < binMatPerDim.Length; ++i)
-            {
-                binMatPerDim[i] = new SparseMatrix(nSamplePoints, nSamplePoints);
-            }
-            
-            int[] dims = {10, 100};
+            // 2. calculate binary feature between each two patches
+            int[] dims = { 10, 100 };
             double angleStep1 = 0.5 / dims[0];
             int nBin = (int)Math.Sqrt(dims[1]);
             double distStep = (maxPos - minPos).Length() / nBin;
             double angleStep2 = 0.5 / nBin;
 
-            for (int i = 0; i < nSamplePoints; ++i)
-            {
-                for (int j = 0; j < nSamplePoints; ++j)
-                {
-                    // 2.1 orientation
-                    Vector3d vi = spPositions[i].normalize();
-                    Vector3d vj = spPositions[j].normalize();
-                    double cosv = Common.cutoff(vi.Dot(vj), 0, 1); // when a value is large than 1, e.g., 1.000001, Acos() gives NaN
-                    double angle1 = Math.Acos(cosv) / Math.PI;
-                    angle1 = Common.cutoff(angle1, 0, 1);
-                    int binId1 = (int)Common.cutoff(angle1 / angleStep1, 0, dims[0] - 1);
-                    binMatPerDim[0].AddTriplet(i, j, 1.0);
-                    // 2.2
-                    // point distance
-                    double distBin = (spPositions[i] - spPositions[j]).Length() / distStep;
-                    int dBinIdx = (int)Common.cutoff(distBin, 1, nBin);
-                    // line segment angle
-                    Vector3d dir = (spPositions[i] - spPositions[j]).normalize();
-                    double angle2 = Math.Acos(Common.cutoff(dir[1], 0, 1)); // .dot(new vector3d(0,1,0) == y - axis upright vector
-                    angle2 /= Math.PI;
-                    int aBinIdx = (int)Common.cutoff(angle2 / angleStep2, 1, nBin);
-                    int binId2 = dBinIdx + (aBinIdx - 1) * nBin;
-                    binId2 = (int)Common.cutoff(binId2, 1, dims[1]);
-                    binMatPerDim[dims[0] + binId2].AddTriplet(i, j, 1.0);
-                }
-            }
-
-            // 3. multiply by weights
-            int[] pairIdx;
-            if (nPatches == 1) {
-                pairIdx = Common._PAIR_INDEX_1;
-            }else if (nPatches == 2) {
-                pairIdx = Common._PAIR_INDEX_2;
-            } else {
-                pairIdx = Common._PAIR_INDEX_3;
-            }
-            double[,] binaryFeature = new double[Common._NUM_BINARY_FEATURE, pairIdx.Length];
-            for (int i = 0; i < Common._NUM_BINARY_FEATURE; ++i)
-            {
-                MatrixNd binMat = new MatrixNd(binMatPerDim[i]);
-                MatrixNd bb = binMat + binMat.Transpose();
-                MatrixNd wb = weightMat.Transpose() * bb * weightMat;
-                for (int j = 0; j < pairIdx.Length; ++j)
-                {
-                    binaryFeature[i, j] = wb[pairIdx[j]];
-                }
-            }
-            // 4. calculate the distance to the given categories
-            // not as filtering, maybe sort models by the functionality distance
             BinaryFeaturePerCategory binFeatureCat = _binaryFeatures[catIdx];
             int np = nPatches * nPatches;
             double[] res = new double[2];
-            for (int p = 0; p < pairIdx.Length; ++p)
+            int pairIdx = 0;
+
+            for (int p = 0; p < nPatches - 1; ++p)
             {
-                double[,] value = binFeatureCat._binaryF[p];
-                res[0] += this.getDistanceToLearnedFeature(value, 0, dims[0], binaryFeature, p) / np;
-                res[1] += this.getDistanceToLearnedFeature(value, dims[0], dims[1], binaryFeature, p) / np;
-            }
+                List<Vector3d> points1 = new List<Vector3d>();
+                List<Vector3d> normals1 = new List<Vector3d>();
+                List<double> weights1 = new List<double>(); // w.r.t. patch p
+                foreach (Node node in patches[p]._NODES)
+                {
+                    SamplePoints sp = node._PART._partSP;
+                    PatchWeightPerCategory pw = sp._weightsPerCat[(int)cat];
+                    points1.AddRange(sp._points);
+                    normals1.AddRange(sp._normals);
+                    for (int pi = 0; pi < pw._weights.GetLength(0); ++pi)
+                    {
+                        weights1.Add(pw._weights[pi, p]);
+                    }
+                }
+
+                for (int q = p + 1; q < nPatches; ++q)
+                {
+                    List<Vector3d> points2 = new List<Vector3d>();
+                    List<Vector3d> normals2 = new List<Vector3d>();
+                    List<double> weights2 = new List<double>(); // w.r.t. patch q
+                    foreach (Node node in patches[q]._NODES)
+                    {
+                        SamplePoints sp = node._PART._partSP;
+                        PatchWeightPerCategory pw = sp._weightsPerCat[(int)cat];
+                        points2.AddRange(sp._points);
+                        normals2.AddRange(sp._normals);
+                        for (int pi = 0; pi < pw._weights.GetLength(0); ++pi)
+                        {
+                            weights2.Add(pw._weights[pi, q]);
+                        }
+                    }
+                    // histogram
+                    // * weight at each entry
+                    double[] features = new double[Common._NUM_BINARY_FEATURE];
+                    for (int i = 0; i < points1.Count; ++i)
+                    {
+                        for (int j = 0; j < points2.Count; ++j)
+                        {
+                            // 2.1 orientation
+                            Vector3d vi = normals1[i].normalize();
+                            Vector3d vj = normals2[j].normalize();
+                            double cosv = Common.cutoff(vi.Dot(vj), 0, 1); // when a value is large than 1, e.g., 1.000001, Acos() gives NaN
+                            double angle1 = Math.Acos(cosv) / Math.PI;
+                            angle1 = Common.cutoff(angle1, 0, 1);
+                            int binId1 = (int)Common.cutoff(angle1 / angleStep1, 0, dims[0] - 1);
+                            features[binId1] += weights1[i] * weights2[j];
+                            // 2.2
+                            // point distance
+                            double distBin = (points1[i] - points2[j]).Length() / distStep;
+                            int dBinIdx = (int)Common.cutoff(distBin, 0, nBin - 1);
+                            // line segment angle
+                            Vector3d dir = (points1[i] - points2[j]).normalize();
+                            double angle2 = Math.Acos(Common.cutoff(dir[1], 0, 1)); // .dot(new vector3d(0,1,0) == y - axis upright vector
+                            angle2 /= Math.PI;
+                            int aBinIdx = (int)Common.cutoff(angle2 / angleStep2, 1, nBin);
+                            int binId2 = dBinIdx + (aBinIdx - 1) * nBin;
+                            binId2 = (int)Common.cutoff(binId2, 0, dims[1] - 1);
+                            features[binId2] += weights1[i] * weights2[j];
+                        }
+                    }
+                    // 3. calculate the distance to the given categories
+                    // not as filtering, maybe sort models by the functionality distance
+                    double[,] value = binFeatureCat._binaryF[pairIdx];
+                    res[0] += this.getDistanceToLearnedFeature(value, 0, dims[0], features) / np;
+                    res[1] += this.getDistanceToLearnedFeature(value, dims[0], dims[1], features) / np;
+                    ++pairIdx;
+                }
+            }// each two patch            
             return res;
         }// computeBinaryFeaturePerCategory
 
-        private double getDistanceToLearnedFeature(double[,] value, int s, int e, double[,] binaryFeature, int dim)
+        private double getDistanceToLearnedFeature(double[,] value, int s, int e, double[] feature)
         {
             int k = 5;
             double[] neighs = new double[k];
@@ -4809,7 +4875,7 @@ namespace FameBase
             {
                 for (int i = s; i < e; ++i)
                 {
-                    double dist = (value[i, j] - binaryFeature[i, dim]);
+                    double dist = (value[i, j] - feature[i]);
                     ds[j] += dist * dist;
                 }
             }
@@ -5083,8 +5149,8 @@ namespace FameBase
             //newM2._model_name = m2._model_name + "_c_" + m1._model_name;
             if (p1 != -1 && p2 != -1)
             {
-                newM1._model_name = "num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString();
-                newM2._model_name = "num_" + idx.ToString() + "_pg_" + p2.ToString() + "_" + p1.ToString();
+                newM1._model_name = "gen_" + gen.ToString() + "_num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString();
+                newM2._model_name = "gen_" + gen.ToString() + "_num_" + idx.ToString() + "_pg_" + p2.ToString() + "_" + p1.ToString();
             }
             else
             {
@@ -5143,7 +5209,28 @@ namespace FameBase
                 }
             }
             return -1;
-        }
+        }// hasCylinderNode
+
+        private double[] updateScalesForCylinder(double[] scales, int axis)
+        {
+            double max_scale = double.MinValue;
+            for (int i = 0; i < scales.Length; ++i)
+            {
+                max_scale = max_scale > scales[i] ? max_scale : scales[i];
+            }
+            for (int i = 0; i < scales.Length; ++i)
+            {
+                if (axis == i)
+                {
+                    scales[i] = max_scale;
+                }
+                else
+                {
+                    scales[i] = 1.0;
+                }
+            }
+            return scales;
+        }// updateScalesForCylinder
 
         private void switchNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2,
             out List<Node> updateNodes1, out List<Node> updateNodes2)
@@ -5180,47 +5267,27 @@ namespace FameBase
             }
             center2 /= nodes2.Count;
 
-            double sx = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
-            double sy = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
-            double sz = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);           
+            double[] scale1 = new double[3];
+            scale1[0] = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
+            scale1[1] = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
+            scale1[2] = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);           
 
             int axis = this.hasCylinderNode(nodes1);
             if (axis != -1)
             {
-                if (axis != 0)
-                {
-                    sx = 1.0;
-                }
-                if (axis != 1)
-                {
-                    sy = 1.0;
-                }
-                if (axis != 2)
-                {
-                    sz = 1.0;
-                }
+                scale1 = this.updateScalesForCylinder(scale1, axis);
             }
-            Vector3d boxScale_1 = new Vector3d(sx, sy, sz);
-            sx = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
-            sy = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
-            sz = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
+            Vector3d boxScale_1 = new Vector3d(scale1[0], scale1[1], scale1[2]);
+            double[] scale2 = new double[3];
+            scale2[0] = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
+            scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
+            scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
             axis = this.hasCylinderNode(nodes2);
             if (axis != -1)
             {
-                if (axis != 0)
-                {
-                    sx = 1.0;
-                }
-                if (axis != 1)
-                {
-                    sy = 1.0;
-                }
-                if (axis != 2)
-                {
-                    sz = 1.0;
-                }
+                scale2 = this.updateScalesForCylinder(scale2, axis);
             }
-            Vector3d boxScale_2 = new Vector3d(sx, sy, sz);
+            Vector3d boxScale_2 = new Vector3d(scale2[0], scale2[1], scale2[2]);
 
             Matrix4d S, T, Q;
 

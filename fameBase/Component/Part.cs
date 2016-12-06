@@ -1257,9 +1257,36 @@ namespace Component
             }
             SamplePoints sp = groupSamplePoints(parts);
             Part newPart = new Part(_mesh, vIndex.ToArray(), vPos.ToArray(), fIndex.ToArray(), sp);
+            newPart._partName = getPartGroupName();
             _parts.Add(newPart);
             return newPart;
         }// group parts
+
+        private string getPartGroupName()
+        {
+            int n = 0;
+            foreach (Part part in _parts)
+            {
+                if (part._partName != null && part._partName.StartsWith("group"))
+                {
+                    ++n;
+                }
+            }
+            return "group_" + n.ToString();
+        }// getPartGroupName
+
+        public string getPartName()
+        {
+            int n = 0;
+            foreach (Part part in _parts)
+            {
+                if (part._partName != null && part._partName.StartsWith("part"))
+                {
+                    ++n;
+                }
+            }
+            return "part_" + n.ToString();
+        }// getPartName
 
         private SamplePoints groupSamplePoints(List<Part> parts)
         {

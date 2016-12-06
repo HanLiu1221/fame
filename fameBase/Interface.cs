@@ -936,7 +936,8 @@ namespace FameBase
 
         private void sortResToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            List<ModelViewer> modelViews = this.glViewer.sortEvolutionResults();
+            //List<ModelViewer> modelViews = this.glViewer.sortEvolutionResults();
+            List<ModelViewer> modelViews = this.glViewer.postAnalysis();
             this.partBasket.Controls.Clear();
             if (modelViews != null)
             {
@@ -948,5 +949,10 @@ namespace FameBase
             this.Refresh();
         }
 
+        public void writePostAnalysisInfo(string str)
+        {
+            this.postAnalysisRes.Text = str;
+            this.Refresh();
+        }
 	}// Interface
 }// namespace
