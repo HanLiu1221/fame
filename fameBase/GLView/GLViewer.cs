@@ -184,6 +184,7 @@ namespace FameBase
         public int _nPairsPG = 0;
         List<Part> _pgPairVisualization;
         private List<int> _inputSetCats;
+        List<double> _inputSetThreshholds;
         double _highProbabilityThresh = 0;
 
         /******************** Vars ********************/
@@ -1823,6 +1824,7 @@ namespace FameBase
 
             return _ancesterModelViewers;
         }// loadPartBasedModels
+
         
         private void preProcessInputSet()
         {
@@ -1832,7 +1834,7 @@ namespace FameBase
                 return;
             }
             _inputSetCats = new List<int>();
-            
+            _inputSetThreshholds = new List<double>();
             // 1. load all part groups
             // 2. normalize all weights per category
             int ndim = Common._NUM_PART_GROUP_FEATURE;
@@ -1876,11 +1878,12 @@ namespace FameBase
                 }
             }
             // normalize
-            //double[] diffw = new double[ndim];
-            //for (int i = 0; i < ndim; ++i)
-            //{
-            //    diffw[i] = maxw[i] - minw[i];
-            //}
+            double[] diffw = new double[ndim];
+            for (int i = 0; i < ndim; ++i)
+            {
+                diffw[i] = maxw[i] - minw[i];
+                _inputSetThreshholds.Add(minw[i] + diffw[i] / 2);
+            }
             //foreach (Model model in _ancesterModels)
             //{
             //    foreach (Node node in model._GRAPH._NODES)
@@ -1910,8 +1913,8 @@ namespace FameBase
                 nPGs += m._GRAPH._partGroups.Count;
                 foreach (PartGroup pg in m._GRAPH._partGroups)
                 {
-                    // recompute
-                    pg.computeFeatureVector();
+                    // recompute after having the thresholds
+                    pg.computeFeatureVector(_inputSetThreshholds);
                     // at the beginning, a part group only maps to itself
                     // after a few generations, it will map to its cloned part groups
                     List<PartGroup> pgs = new List<PartGroup>();
