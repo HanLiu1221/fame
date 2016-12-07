@@ -3449,7 +3449,7 @@ namespace FameBase
                         break;
                 }
                 // post check
-                cur_kids = this.postAnalysis(cur_kids);
+                //cur_kids = this.postAnalysis(cur_kids);
                 // only include top models
                 int nModels = Math.Min(Common._MAX_USE_PRESENT_NUMBER, cur_kids.Count);
                 for (int j = 0; j < nModels; ++j)
@@ -3573,6 +3573,8 @@ namespace FameBase
 
         private bool runACrossover(int gen, Random rand, string imageFolder, int idx, out List<Model> res)
         {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
             res = new List<Model>();
             int nPGs = _partGroupLibrary.Count;
             if (nPGs == 0)
@@ -3672,6 +3674,8 @@ namespace FameBase
                     res.Add(m);
                 }
             }
+            long secs = stopWatch.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time to run a crossover: " + secs.ToString() + " senconds.");
             return true;
         }// runACrossover - part groups
 
@@ -4655,14 +4659,13 @@ namespace FameBase
         private List<Model> postAnalysis(List<Model> models)
         {
             List<int> sortIndx = this.calculateBinaryFeaturePerCategory(models);
-            List<Model> sorted = new List<Model>(models);
             _currGenModelViewers = new List<ModelViewer>();
-            models = new List<Model>();
+            List<Model> sorted = new List<Model>();
             for (int i = 0; i < models.Count; ++i)
             {
-                models.Add(sorted[sortIndx[i]]);
+                sorted.Add(models[sortIndx[i]]);
             }
-            return models;
+            return sorted;
         }
 
         public List<ModelViewer> postAnalysis()
@@ -4720,7 +4723,14 @@ namespace FameBase
                 double diff = max - min;
                 for (int i = 0; i < m; ++i)
                 {
-                    simCats[i, j] = 1 - (distCats[i, j] - min) / diff;
+                    if (diff == 0)
+                    {
+                        simCats[i, j] = 0;
+                    }
+                    else
+                    {
+                        simCats[i, j] = 1 - (distCats[i, j] - min) / diff;
+                    }
                     sums[i] += simCats[i, j];
                 }
             }
