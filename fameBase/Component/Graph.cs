@@ -1001,6 +1001,7 @@ namespace Component
             Vector3d t = new Vector3d() - center;
             t.y = -minCoord.y;
             T = Matrix4d.TranslationMatrix(t);
+
             this.transformAll(T);
 
             recomputeSPnormals();

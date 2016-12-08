@@ -1299,8 +1299,6 @@ namespace FameBase
             model.computeDistAndAngleToCenterOfConvexHull();
             model.computeDistAndAngleToCenterOfMass();
 
-            this.writeModelSampleFeatureFilesForPrediction(model);
-
             return true;
         }// computeShape2PoseAndIconFeatures
 
@@ -1970,7 +1968,7 @@ namespace FameBase
                 m._GRAPH._ff._funvals = this.evaluateFeaturesOfAModel(m);
             }
             // TEST
-            //this.calculateBinaryFeaturePerCategory(_ancesterModels);
+            //this.rankOffspringByICONfeatures(_ancesterModels);
         }// preProcessInputSet
 
         private List<double> evaluateFeaturesOfAModel(Model m)
@@ -1978,8 +1976,13 @@ namespace FameBase
             List<double> res = new List<double>();
             foreach (Common.Category cat in m._GRAPH._ff._cats)
             {
-                double[] vals = this.computeBinaryFeaturePerCategory(m, (int)cat);
-                res.Add(vals[0] + vals[1]);
+                double[] vals = this.computeICONfeaturePerCategory(m, (int)cat);
+                double sum = 0;
+                for (int i = 0; i < vals.Length; ++i)
+                {
+                    sum += vals[i];
+                }
+                res.Add(sum);
             }
             return res;
         }// evaluateFeaturesOfAModel
@@ -3503,7 +3506,7 @@ namespace FameBase
                     scores[i, j++] = ss[c];
                 }
             }
-            //List<int> sortedIndex = this.calculateBinaryFeaturePerCategory(models);
+            //List<int> sortedIndex = this.rankOffspringByICONfeatures(models);
             // sort 
             int[,] rankMat = new int[m, n];
             List<double> ranks = new List<double>(); // for sorting
@@ -3633,7 +3636,7 @@ namespace FameBase
                     //StringBuilder sb = new StringBuilder();
                     //for (int j = 0; j < _inputSetCats.Count; ++j)
                     //{
-                    //    double[] vals = this.computeBinaryFeaturePerCategory(m, _inputSetCats[j]);
+                    //    double[] vals = this.computeICONfeaturePerCategory(m, _inputSetCats[j]);
                     //    double sum = 0;
                     //    for (int i = 0; i < vals.Length; ++i)
                     //    {
@@ -3869,10 +3872,8 @@ namespace FameBase
             return max_score_all > 0.9;
         }// runFunctionalityTestWithPatchCombination
 
-        private double[] runFunctionalityTest(Model model)
+        private void saveSamplePointsRequiredInfo(Model model)
         {
-            //model.checkInSamplePoints();
-
             string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
             if (!Directory.Exists(shape2poseDataFolder))
             {
@@ -3883,11 +3884,8 @@ namespace FameBase
             string meshName = shape2poseDataFolder + model._model_name + ".mesh";
             string ptsname = shape2poseDataFolder + model._model_name + ".pts";
 
-            //if (!File.Exists(offname))
-            //{
-                this.saveModelOff(model, offname);
-                this.saveModelMesh_StyleSimilarityUse(model, meshName);
-            //}
+            this.saveModelOff(model, offname);
+            this.saveModelMesh_StyleSimilarityUse(model, meshName);
 
             if (this.needReSample || model._SP == null || model._SP._points == null || model._SP._points.Length == 0)
             {
@@ -3897,6 +3895,13 @@ namespace FameBase
             {
                 this.saveModelSamplePoints(model, ptsname);
             }
+        }// saveSamplePointsRequiredInfo
+
+        private double[] runFunctionalityTest(Model model)
+        {
+            string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
+
+            this.saveSamplePointsRequiredInfo(model);
 
             bool isSuccess = this.computeShape2PoseAndIconFeatures(model);
 
@@ -3904,6 +3909,8 @@ namespace FameBase
             {
                 return null;
             }
+
+            this.writeModelSampleFeatureFilesForPrediction(model);
 
             MLApp.MLApp matlab = new MLApp.MLApp();
             string exeStr = "cd " + Interface.MATLAB_PATH;
@@ -4175,7 +4182,6 @@ namespace FameBase
             string feat_file = folder + featureFileName;
             using (StreamWriter sw = new StreamWriter(feat_file))
             {
-
                 int n = model._SP._points.Length;
                 for (int i = 0; i < n; ++i)
                 {
@@ -4658,7 +4664,7 @@ namespace FameBase
 
         private List<Model> postAnalysis(List<Model> models)
         {
-            List<int> sortIndx = this.calculateBinaryFeaturePerCategory(models);
+            List<int> sortIndx = this.rankOffspringByICONfeatures(models);
             _currGenModelViewers = new List<ModelViewer>();
             List<Model> sorted = new List<Model>();
             for (int i = 0; i < models.Count; ++i)
@@ -4679,7 +4685,7 @@ namespace FameBase
             {
                 models.Add(mv._MODEL);
             }
-            List<int> sortIndx = this.calculateBinaryFeaturePerCategory(models);
+            List<int> sortIndx = this.rankOffspringByICONfeatures(models);
             List<ModelViewer> sorted = new List<ModelViewer>(_currGenModelViewers);
             _currGenModelViewers = new List<ModelViewer>();
             for (int i = 0; i < models.Count; ++i)
@@ -4689,7 +4695,7 @@ namespace FameBase
             return _currGenModelViewers;
         }
 
-        private List<int> calculateBinaryFeaturePerCategory(List<Model> models)
+        private List<int> rankOffspringByICONfeatures(List<Model> models)
         {
             int m = models.Count;
             int n = _inputSetCats.Count;
@@ -4699,8 +4705,13 @@ namespace FameBase
                 Model im = models[i];
                 for(int j = 0; j < n;++j)
                 {
-                    double[] res = this.computeBinaryFeaturePerCategory(im, _inputSetCats[j]);
-                    distCats[i, j] = res[0] + res[1];
+                    double[] res = this.computeICONfeaturePerCategory(im, _inputSetCats[j]);
+                    double sum = 0;
+                    for (int t = 0; t < res.Length; ++t)
+                    {
+                        sum += res[i];
+                    }
+                    distCats[i, j] = sum;
                 }
             }
             // normalize -- cannot use it simply, as it should be normalized on all hybrids
@@ -4762,9 +4773,9 @@ namespace FameBase
                 sorted.Add(cur);
             }
             return sorted;
-        }// calculateBinaryFeaturePerCategory
+        }// rankOffspringByICONfeatures
 
-        private double[] computeBinaryFeaturePerCategory(Model m, int catIdx)
+        private double[] computeICONfeaturePerCategory(Model m, int catIdx)
         {
             Graph g = m._GRAPH;
             if (g == null)
@@ -4849,7 +4860,103 @@ namespace FameBase
                     minPos = Vector3d.Min(minPos, v);
                 }
             }
-            // 2. calculate binary feature between each two patches
+            // 2.1. calculate unary feature
+            if (m._SP == null)
+            {
+                m.composeMesh();
+            }
+            this.saveSamplePointsRequiredInfo(m);
+            bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
+            double[,] point_features = new double[nSamplePoints, Common._POINT_FEATURE_DIM];
+            for (int i = 0; i < nSamplePoints; ++i)
+            {
+                int dimId = 0;
+                int d = Common._POINT_FEAT_DIM;
+                for (int j = 0; j < d; ++j)
+                {
+                    point_features[i, dimId++] = m._funcFeat._pointFeats[i * d + j];
+                }
+                d = Common._CURV_FEAT_DIM;
+                for (int j = 0; j < d; ++j)
+                {
+                    point_features[i, dimId++] = m._funcFeat._curvFeats[i * d + j];
+                }
+                d = Common._PCA_FEAT_DIM;
+                for (int j = 0; j < d; ++j)
+                {
+                    point_features[i, dimId++] = m._funcFeat._pcaFeats[i * d + j];
+                }
+                d = Common._RAY_FEAT_DIM;
+                for (int j = 0; j < d; ++j)
+                {
+                    point_features[i, dimId++] = m._funcFeat._rayFeats[i * d + j];
+                }
+                d = Common._CONVEXHULL_FEAT_DIM;
+                for (int j = 0; j < d; ++j)
+                {
+                    point_features[i, dimId++] = m._funcFeat._conhullFeats[i * d + j];
+                }
+                for (int j = 0; j < d; ++j)
+                {
+                    point_features[i, dimId++] = m._funcFeat._cenOfMassFeats[i * d + j];
+                }
+            }
+            int nUnaryFeatureDim = 15;
+            int[] unaryFeatDims = new int[nUnaryFeatureDim];
+            double[] featureBinWidth = new double[nUnaryFeatureDim];
+            int nUnaryDim = 0;
+            int defaultBinNum = 10;
+            for (int i = 0; i < 12; ++i)
+            {
+                unaryFeatDims[i] = defaultBinNum;
+                nUnaryDim += unaryFeatDims[i];
+                featureBinWidth[i] = 0.1;
+            }
+            for (int i = 12; i < 15; ++i)
+            {
+                unaryFeatDims[i] = defaultBinNum * defaultBinNum;
+                nUnaryDim += unaryFeatDims[i];
+                featureBinWidth[i] = 0.1;
+            }
+            featureBinWidth[12] = 0.05;
+            double[,] featuresUnary = new double[nUnaryDim, nPatches];
+            int colIdx = 0;
+            int offset = 0;
+            for (int pid = 0; pid < nPatches; ++pid)
+            {
+                for (int i = 0; i < unaryFeatDims.Length; ++i)
+                {
+                    if (unaryFeatDims[i] == defaultBinNum)
+                    {
+                        for (int j = 0; j < nSamplePoints; ++j)
+                        {
+                            double idd = Math.Floor(point_features[j, colIdx] / featureBinWidth[i]);
+                            int idx = (int)Common.cutoff(idd, 0, defaultBinNum - 1);
+                            idx += offset;
+                            featuresUnary[idx, pid] += weightMat[idx, pid] * 1;
+                        }
+                        ++colIdx;
+                    }
+                    else
+                    {
+                        for (int j = 0; j < nSamplePoints; ++j)
+                        {
+                            double pf1 = point_features[j, colIdx];
+                            double pf2 = point_features[j, colIdx + 1];
+                            double idd1 = Math.Floor(pf1 / featureBinWidth[i]);
+                            double idd2 = Math.Floor(pf2 / featureBinWidth[i]);
+                            int idx1 = (int)Common.cutoff(idd1, 0, defaultBinNum - 2);
+                            int idx2 = (int)Common.cutoff(idd2, 0, defaultBinNum - 2);
+                            int idx = idx1 + idx2 * defaultBinNum + 1;
+                            idx += offset;
+                            featuresUnary[idx, pid] += weightMat[idx, pid] * 1;
+                        }
+                        colIdx += 2;
+                    }
+                     offset += unaryFeatDims[i];
+                }
+            }
+            // 2.2. calculate binary feature between each two patches
             int[] dims = { 10, 100 };
             double angleStep1 = 0.5 / dims[0];
             int nBin = (int)Math.Sqrt(dims[1]);
@@ -4896,7 +5003,7 @@ namespace FameBase
                     }
                     // histogram
                     // * weight at each entry
-                    double[] features = new double[Common._NUM_BINARY_FEATURE];
+                    double[] featuresBin = new double[Common._NUM_BINARY_FEATURE];
                     for (int i = 0; i < points1.Count; ++i)
                     {
                         for (int j = 0; j < points2.Count; ++j)
@@ -4908,7 +5015,7 @@ namespace FameBase
                             double angle1 = Math.Acos(cosv) / Math.PI;
                             angle1 = Common.cutoff(angle1, 0, 1);
                             int binId1 = (int)Common.cutoff(angle1 / angleStep1, 0, dims[0] - 1);
-                            features[binId1] += weights1[i] * weights2[j];
+                            featuresBin[binId1] += weights1[i] * weights2[j];
                             // 2.2
                             // point distance
                             double distBin = (points1[i] - points2[j]).Length() / distStep;
@@ -4920,19 +5027,19 @@ namespace FameBase
                             int aBinIdx = (int)Common.cutoff(angle2 / angleStep2, 1, nBin);
                             int binId2 = dBinIdx + (aBinIdx - 1) * nBin;
                             binId2 = (int)Common.cutoff(binId2, 0, dims[1] - 1);
-                            features[binId2] += weights1[i] * weights2[j];
+                            featuresBin[binId2] += weights1[i] * weights2[j];
                         }
                     }
                     // 3. calculate the distance to the given categories
                     // not as filtering, maybe sort models by the functionality distance
                     double[,] value = binFeatureCat._binaryF[pairIdx];
-                    res[0] += this.getDistanceToLearnedFeature(value, 0, dims[0], features) / np;
-                    res[1] += this.getDistanceToLearnedFeature(value, dims[0], dims[1], features) / np;
+                    res[0] += this.getDistanceToLearnedFeature(value, 0, dims[0], featuresBin) / np;
+                    res[1] += this.getDistanceToLearnedFeature(value, dims[0], dims[1], featuresBin) / np;
                     ++pairIdx;
                 }
             }// each two patch            
             return res;
-        }// computeBinaryFeaturePerCategory
+        }// computeICONfeaturePerCategory
 
         private double getDistanceToLearnedFeature(double[,] value, int s, int e, double[] feature)
         {
