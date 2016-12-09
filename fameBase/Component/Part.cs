@@ -475,7 +475,7 @@ namespace Component
         {
             if (_mesh == null)
             {
-                composeMesh();
+                composeMesh(true);
             }
             computeCenterOfMass();
             computeConvexHull();
@@ -523,18 +523,12 @@ namespace Component
             this.Transform(Q);
         }// unify
 
-        public void composeMesh()
+        public void composeMesh(bool redoSP)
         {
             List<double> vertexPos = new List<double>();
             List<int> faceIndex = new List<int>();
             int start_v = 0;
             int start_f = 0;
-            bool redoSP = false;
-            if (_SP == null || _SP._blendColors == null)
-            {
-                _SP = new SamplePoints();
-                redoSP = true;
-            }
             List<Vector3d> points = new List<Vector3d>();
             List<Vector3d> normals = new List<Vector3d>();
             List<int> faceIdxs = new List<int>();
@@ -561,11 +555,8 @@ namespace Component
                     faceIndex.Add(start_v + mesh.FaceVertexIndex[j++]);
                     faceIndex.Add(start_v + mesh.FaceVertexIndex[j++]);
                     faceIndex.Add(start_v + mesh.FaceVertexIndex[j++]);
-                    reFaceIdx.Add(start_f + i);
                     part._FACEVERTEXINDEX[i] = start_f + i;
                 }
-                start_v += mesh.VertexCount;
-                start_f += mesh.FaceCount;
 
                 SamplePoints sp = part._partSP;
                 if (sp == null || sp._points == null || sp._points.Length == 0)
@@ -573,6 +564,13 @@ namespace Component
                     redoSP = false;
                     continue;
                 }
+                for (int i = 0; i < sp._faceIdx.Length; ++i)
+                {
+                    reFaceIdx.Add(start_f + sp._faceIdx[i]);
+                }
+                start_v += mesh.VertexCount;
+                start_f += mesh.FaceCount;                
+                
                 points.AddRange(sp._points);
                 normals.AddRange(sp._normals);
                 faceIdxs.AddRange(reFaceIdx);
@@ -584,10 +582,7 @@ namespace Component
             _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
             if (redoSP)
             {
-                _SP._points = points.ToArray();
-                _SP._normals = normals.ToArray();
-                _SP._faceIdx = faceIdxs.ToArray();
-                _SP._blendColors = colors.ToArray();
+                _SP = new SamplePoints(points.ToArray(), normals.ToArray(), faceIdxs.ToArray(), colors.ToArray(), _mesh.FaceCount);
             }
         }// composeMesh
 
@@ -595,7 +590,7 @@ namespace Component
         {
             if (sp == null || sp._blendColors == null)
             {
-                composeMesh();
+                composeMesh(true);
             }
             else
             {
@@ -700,7 +695,9 @@ namespace Component
                 maxh = maxh > height ? maxh : height;
                 minh = minh < height ? minh : height;
                 // angle - normal vs. upright vector
-                double angle = Math.Acos(nor.Dot(Common.uprightVec));
+                double cosv = nor.Dot(Common.uprightVec);
+                cosv = Common.cutoff(cosv, -1, 1);
+                double angle = Math.Acos(cosv);
                 angle /= Math.PI;
                 angle = Common.cutoff(angle, 0, 1.0);
                 // dist to center of hull - reflection plane
@@ -1749,19 +1746,21 @@ namespace Component
         }
     }// PartGroupPair
 
-    public class BinaryFeaturePerCategory
+    public class TrainedFeaturePerCategory
     {
         public Common.Category _cat;
         public int _nPatches = 0;
         public int _npairs = 0;
+        public List<double[,]> _unaryF;
         public List<double[,]> _binaryF;
 
-        public BinaryFeaturePerCategory(Common.Category c)
+        public TrainedFeaturePerCategory(Common.Category c)
         {
             _cat = c;
             _nPatches = Common.getNumberOfFunctionalPatchesPerCategory(c);
             _npairs = _nPatches * (_nPatches + 1) / 2;
+            _unaryF = new List<double[,]>();
             _binaryF = new List<double[,]>();
         }
-    }// BinaryFeaturePerCategory
+    }// TrainedFeaturePerCategory
 }

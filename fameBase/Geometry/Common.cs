@@ -34,6 +34,7 @@ namespace Geometry
         public static int _NUM_PART_GROUP_FEATURE = 35; // ncat * npatch
         public static int _NUM_FUNCTIONALITY = 6;
         public static int _NUM_CATEGORIY = 15;
+        public static int _NUM_UNARY_FEATURE = 420;
         public static int _NUM_BINARY_FEATURE = 110;
         public static int[] _PAIR_INDEX_1 = { 0 }; // 1 functional patch
         public static int[] _PAIR_INDEX_2 = { 0, 2, 3 }; // 2 patches - 4 pairs
