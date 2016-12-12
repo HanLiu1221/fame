@@ -125,6 +125,7 @@ namespace Component
             {
                 p._partSP = _partSP.clone() as SamplePoints;
             }
+            p._partName = _partName.Clone() as string;
             return p;
         }
 
@@ -966,7 +967,7 @@ namespace Component
             Model m = new Model(parts);
             Mesh mesh = _mesh.Clone() as Mesh;
             m._MESH = mesh;
-            m._SP = _SP.clone() as SamplePoints;
+            //m._SP = _SP.clone() as SamplePoints;
             if (_funcSpaces != null)
             {
                 FunctionalSpace[] fss = new FunctionalSpace[_funcSpaces.Length];
@@ -1611,10 +1612,12 @@ namespace Component
         int _parentShapeIdx = -1;
         List<Node> _nodes = new List<Node>();
         public double[] _featureVector = new double[Common._NUM_PART_GROUP_FEATURE];
+        public int _gen = 0;
 
-        public PartGroup(List<Node> nodes)
+        public PartGroup(List<Node> nodes, int g)
         {
             _nodes = new List<Node>(nodes);
+            _gen = g;
             this.computeFeatureVector(null);
         }
 

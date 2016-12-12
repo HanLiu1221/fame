@@ -1321,7 +1321,7 @@ namespace Component
                 {
                     continue;
                 }
-                PartGroup ng = new PartGroup(nodes);
+                PartGroup ng = new PartGroup(nodes, 0);
                 List<int> indices = new List<int>();
                 foreach (Node nd in nodes)
                 {
@@ -1347,7 +1347,7 @@ namespace Component
                 List<Node> symNodes = new List<Node>();
                 symNodes.Add(_nodes[i]);
                 symNodes.Add(sym);
-                PartGroup pg = new PartGroup(symNodes);
+                PartGroup pg = new PartGroup(symNodes, 0);
                 List<int> indices = new List<int>();
                 indices.Add(i);
                 indices.Add(sym._INDEX);
@@ -1361,7 +1361,7 @@ namespace Component
                 nodes1.Add(_nodes[i]);
                 if (shouldCreateNewPartGroup(_partGroups, nodes1))
                 {
-                    _partGroups.Add(new PartGroup(nodes1));
+                    _partGroups.Add(new PartGroup(nodes1, 0));
                     indices = new List<int>();
                     indices.Add(i);
                     comIndices.Add(indices);
@@ -1370,7 +1370,7 @@ namespace Component
                 nodes2.Add(sym);
                 if (shouldCreateNewPartGroup(_partGroups, nodes2))
                 {
-                    _partGroups.Add(new PartGroup(nodes2));
+                    _partGroups.Add(new PartGroup(nodes2, 0));
                     indices = new List<int>();
                     indices.Add(sym._INDEX);
                     comIndices.Add(indices);
@@ -1392,7 +1392,7 @@ namespace Component
                 {
                     propogationNodes.Add(_nodes[idx]);
                 }
-                PartGroup ppg = new PartGroup(propogationNodes);
+                PartGroup ppg = new PartGroup(propogationNodes, 0);
                 _partGroups.Add(ppg);
             }
         }// initilaizePartGroups
@@ -1527,6 +1527,7 @@ namespace Component
         public Node symmetry = null;
         public Symmetry symm = null;
         public List<Common.Functionality> _funcs = new List<Common.Functionality>();
+        public Vector3d _ratios = new Vector3d();
 
         public Node(Part p, int idx)
         {
@@ -1590,6 +1591,14 @@ namespace Component
         {
             _funcs.Clear();
         }// removeAllFuncs
+
+        public void calRatios()
+        {
+            Vector3d scale = this._part._BOUNDINGBOX.MaxCoord - this._part._BOUNDINGBOX.MinCoord;
+            _ratios.x = 1.0;
+            _ratios.y = scale.y / scale.x;
+            _ratios.z = scale.z / scale.x;
+        }// calRatios
 
         public Object Clone(Part p)
         {
