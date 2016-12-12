@@ -3775,34 +3775,45 @@ namespace FameBase
                     m._GRAPH.unify();
                     m._GRAPH._ff = this.addFF(model1._GRAPH._ff, model2._GRAPH._ff);
                     // record the post analysis feature - REPEAT the last statement, REMOVED after testing
-                    this.saveSamplePointsRequiredInfo(m);
-                    bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
-                    if (isSuccess)
-                    {
-                        StringBuilder sb = new StringBuilder();
-                        double minVal = double.MaxValue;
-                        for (int j = 0; j < _inputSetCats.Count; ++j)
-                        {
-                            double[] vals = this.computeICONfeaturePerCategory(m, _inputSetCats[j]);
-                            double sum = 0;
-                            for (int i = 0; i < vals.Length; ++i)
-                            {
-                                sum += vals[i];
-                            }
-                            sum /= vals.Length;
-                            sum = 1 - sum;
-                            minVal = minVal < sum ? minVal : sum;
-                            sb.Append(Common.getCategoryName(_inputSetCats[j]));
-                            sb.Append(" ");
-                            sb.Append(sum.ToString());
-                            sb.Append("\n");
-                        }
-                        if (minVal < 0.7)
-                        {
-                            sb.Append("Filtered - low functionality values.\n");
-                        }
-                        Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
-                    }
+                    //this.needReSample = true;
+                    //double[] scores = this.runFunctionalityTest(m);
+                    //StringBuilder sb = new StringBuilder();
+                    //for (int j = 0; j < _inputSetCats.Count; ++j)
+                    //{
+                    //    sb.Append(Common.getCategoryName(_inputSetCats[j]));
+                    //    sb.Append(" ");
+                    //    sb.Append(scores[j].ToString());
+                    //    sb.Append("\n");
+                    //}
+                    //Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
+                    //this.saveSamplePointsRequiredInfo(m);
+                    //bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
+                    //if (isSuccess)
+                    //{
+                    //    StringBuilder sb = new StringBuilder();
+                    //    double minVal = double.MaxValue;
+                    //    for (int j = 0; j < _inputSetCats.Count; ++j)
+                    //    {
+                    //        double[] vals = this.computeICONfeaturePerCategory(m, _inputSetCats[j]);
+                    //        double sum = 0;
+                    //        for (int i = 0; i < vals.Length; ++i)
+                    //        {
+                    //            sum += vals[i];
+                    //        }
+                    //        sum /= vals.Length;
+                    //        sum = 1 - sum;
+                    //        minVal = minVal < sum ? minVal : sum;
+                    //        sb.Append(Common.getCategoryName(_inputSetCats[j]));
+                    //        sb.Append(" ");
+                    //        sb.Append(sum.ToString());
+                    //        sb.Append("\n");
+                    //    }
+                    //    if (minVal < 0.7)
+                    //    {
+                    //        sb.Append("Filtered - low functionality values.\n");
+                    //    }
+                    //    Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
+                    //}
                     secs = stopWatch_cross.ElapsedMilliseconds / 1000;
                     Program.writeToConsole("Time to eval an offspring: " + secs.ToString() + " senconds.");
                     // screenshot
@@ -4129,6 +4140,8 @@ namespace FameBase
             matlab.Execute(exeStr);
 
             Object matlabOutput = null;
+            // MATLAB array
+            //matlab.Execute("a = [1 2 3 4 5 6 7 8]");
             matlab.Feval("getSingleModelFunctionalityScore", 1, out matlabOutput, model._model_name);
             Object[] res = matlabOutput as Object[];
             double[,] results = res[0] as double[,];
