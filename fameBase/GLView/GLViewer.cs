@@ -1642,18 +1642,18 @@ namespace FameBase
                 // functional space
                 int fid = 1;
                 List<FunctionalSpace> fss = new List<FunctionalSpace>();
-                while (true)
-                {
-                    string fsName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".obj";
-                    string fsInfoName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".weight";
-                    if (!File.Exists(fsName))
-                    {
-                        break;
-                    }
-                    FunctionalSpace fs = this.loadFunctionalSpaceInfo(fsName, fsInfoName);
-                    fss.Add(fs);
-                    ++fid;
-                }
+                //while (true)
+                //{
+                //    string fsName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".obj";
+                //    string fsInfoName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".weight";
+                //    if (!File.Exists(fsName))
+                //    {
+                //        break;
+                //    }
+                //    FunctionalSpace fs = this.loadFunctionalSpaceInfo(fsName, fsInfoName);
+                //    fss.Add(fs);
+                //    ++fid;
+                //}
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -8032,11 +8032,22 @@ namespace FameBase
                             sp._blendColors[c] = Color.LightGray;
                         }
                     }
+                    Program.GetFormMain().writeToConsole("Category :" + cat_name);
                     foreach (string wfile in cur_wfiles)
                     {
                         double minw;
                         double maxw;
                         double[] weights = loadPatchWeight(wfile, out minw, out maxw);
+                        // TEST INFO
+                        Program.GetFormMain().writeToConsole("Minimum weight is: " + minw.ToString());
+                        Program.GetFormMain().writeToConsole("Maximum weight is: " + maxw.ToString());
+                        double sumw = 0;
+                        foreach (double w in weights)
+                        {
+                            sumw += w;
+                        }
+                        Program.GetFormMain().writeToConsole("Sum of weights is: " + sumw.ToString());
+
                         weights_per_cat.Add(new List<double>(weights));
                         if (weights == null || weights.Length != nFaceFromSP)
                         {
