@@ -968,15 +968,15 @@ namespace Component
             Mesh mesh = _mesh.Clone() as Mesh;
             m._MESH = mesh;
             //m._SP = _SP.clone() as SamplePoints;
-            if (_funcSpaces != null)
-            {
-                FunctionalSpace[] fss = new FunctionalSpace[_funcSpaces.Length];
-                for (int i = 0; i < _funcSpaces.Length; ++i)
-                {
-                    fss[i] = _funcSpaces[i].clone() as FunctionalSpace;
-                }
-                m._funcSpaces = fss;
-            }
+            //if (_funcSpaces != null)
+            //{
+            //    FunctionalSpace[] fss = new FunctionalSpace[_funcSpaces.Length];
+            //    for (int i = 0; i < _funcSpaces.Length; ++i)
+            //    {
+            //        fss[i] = _funcSpaces[i].clone() as FunctionalSpace;
+            //    }
+            //    m._funcSpaces = fss;
+            //}
             m._path = this._path.Clone() as string;
             m._model_name = this._model_name.Clone() as string;
             m._GRAPH = _GRAPH.Clone(parts) as Graph;

@@ -1269,7 +1269,7 @@ namespace FameBase
             Vector3d[] centers;
             Vector3d[] normals;
             this.loadShape2Pose_SymPlane(prstOutputFile1, out centers, out normals);
-            if (centers == null || normals == null)
+            if (centers == null || normals == null || centers.Length == 0)
             {
                 centers = new Vector3d[1];
                 centers[0] = new Vector3d(0, 0.5, 0);
@@ -1642,18 +1642,18 @@ namespace FameBase
                 // functional space
                 int fid = 1;
                 List<FunctionalSpace> fss = new List<FunctionalSpace>();
-                while (true)
-                {
-                    string fsName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".obj";
-                    string fsInfoName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".weight";
-                    if (!File.Exists(fsName))
-                    {
-                        break;
-                    }
-                    FunctionalSpace fs = this.loadFunctionalSpaceInfo(fsName, fsInfoName);
-                    fss.Add(fs);
-                    ++fid;
-                }
+                //while (true)
+                //{
+                //    string fsName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".obj";
+                //    string fsInfoName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".weight";
+                //    if (!File.Exists(fsName))
+                //    {
+                //        break;
+                //    }
+                //    FunctionalSpace fs = this.loadFunctionalSpaceInfo(fsName, fsInfoName);
+                //    fss.Add(fs);
+                //    ++fid;
+                //}
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -3407,6 +3407,8 @@ namespace FameBase
             }
         }// saveUserSelections
 
+        double avgTimePerValidOffspring = 0;
+        int validOffspringNumber = 0;
         public List<ModelViewer> autoGenerate()
         {
             if (!Directory.Exists(userFolder))
@@ -3462,6 +3464,8 @@ namespace FameBase
             }
 
             // run 
+            avgTimePerValidOffspring = 0;
+            validOffspringNumber = 0;
             int maxIter = 1;
             int start = 0;
             _userSelectedModels = new List<Model>();
@@ -3523,6 +3527,9 @@ namespace FameBase
             long secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time: " + _currGenId.ToString() + " iteration, " + _ancesterModelViewers.Count.ToString()
             + " orginal models, takes " + secs.ToString() + " senconds.");
+
+            avgTimePerValidOffspring /= validOffspringNumber;
+            Program.writeToConsole("Average time to produce a valid offspring is (including filtering invalid ones):" + avgTimePerValidOffspring.ToString()); 
 
             return _currGenModelViewers;
         }// autoGenerate
@@ -3738,7 +3745,11 @@ namespace FameBase
             // updated partgroups
             PartGroup pg1;
             PartGroup pg2;
+            Stopwatch stopWatch_cross = new Stopwatch();
+            stopWatch_cross.Start();
             List<Model> results = this.crossOverOp(model1, model2, gen, idx, p1, p2, out pg1, out pg2);
+            long secs = stopWatch_cross.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time to run crossover: " + secs.ToString() + " senconds.");
             int id = -1;
             foreach (Model m in results)
             {
@@ -3756,17 +3767,31 @@ namespace FameBase
                         break;
                     }
                 }
+                Stopwatch stopWatch_eval = new Stopwatch();
+                stopWatch_eval.Start();
                 if ( m._GRAPH.isValid())
                 {
                     m.composeMesh(true);
                     m._GRAPH.unify();
                     m._GRAPH._ff = this.addFF(model1._GRAPH._ff, model2._GRAPH._ff);
-                    //// record the post analysis feature - REPEAT the last statement, REMOVED after testing
+                    // record the post analysis feature - REPEAT the last statement, REMOVED after testing
+                    //this.needReSample = true;
+                    //double[] scores = this.runFunctionalityTest(m);
+                    //StringBuilder sb = new StringBuilder();
+                    //for (int j = 0; j < _inputSetCats.Count; ++j)
+                    //{
+                    //    sb.Append(Common.getCategoryName(_inputSetCats[j]));
+                    //    sb.Append(" ");
+                    //    sb.Append(scores[j].ToString());
+                    //    sb.Append("\n");
+                    //}
+                    //Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
                     //this.saveSamplePointsRequiredInfo(m);
                     //bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
                     //if (isSuccess)
                     //{
                     //    StringBuilder sb = new StringBuilder();
+                    //    double minVal = double.MaxValue;
                     //    for (int j = 0; j < _inputSetCats.Count; ++j)
                     //    {
                     //        double[] vals = this.computeICONfeaturePerCategory(m, _inputSetCats[j]);
@@ -3777,13 +3802,20 @@ namespace FameBase
                     //        }
                     //        sum /= vals.Length;
                     //        sum = 1 - sum;
+                    //        minVal = minVal < sum ? minVal : sum;
                     //        sb.Append(Common.getCategoryName(_inputSetCats[j]));
                     //        sb.Append(" ");
                     //        sb.Append(sum.ToString());
                     //        sb.Append("\n");
                     //    }
+                    //    if (minVal < 0.7)
+                    //    {
+                    //        sb.Append("Filtered - low functionality values.\n");
+                    //    }
                     //    Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
                     //}
+                    secs = stopWatch_cross.ElapsedMilliseconds / 1000;
+                    Program.writeToConsole("Time to eval an offspring: " + secs.ToString() + " senconds.");
                     // screenshot
                     this.setCurrentModel(m, -1);
                     Program.GetFormMain().updateStats();
@@ -3808,8 +3840,10 @@ namespace FameBase
                     res.Add(m);
                 }
             }
-            long secs = stopWatch.ElapsedMilliseconds / 1000;
+            secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to run a crossover: " + secs.ToString() + " senconds.");
+            avgTimePerValidOffspring += secs;
+            validOffspringNumber += res.Count;
             return true;
         }// runACrossover - part groups
 
@@ -3829,19 +3863,20 @@ namespace FameBase
             Vector3d scale = new Vector3d(1, 1, 1);
             double ry = node._ratios[1] / originalRatio[1];
             double rz = node._ratios[2] / originalRatio[2];
-            double thr = 2.0;
+            double thr1 = 3.0;
+            double thr2 = 1.0/thr1;
             bool needReScale = false;
-            if (ry >= thr && rz >= thr)
+            if (ry >= thr1 && rz >= thr1)
             {
                 scale[0] *= Math.Min(ry, rz);
                 needReScale = true;
             }
-            if (ry <= 0.5)
+            if (ry <= thr2)
             {
                 scale[1] = originalRatio[1] / ry;
                 needReScale = true;
             }
-            if (rz <= 0.5)
+            if (rz <= thr2)
             {
                 scale[2] = originalRatio[2] / rz;
                 needReScale = true;
@@ -4105,6 +4140,8 @@ namespace FameBase
             matlab.Execute(exeStr);
 
             Object matlabOutput = null;
+            // MATLAB array
+            //matlab.Execute("a = [1 2 3 4 5 6 7 8]");
             matlab.Feval("getSingleModelFunctionalityScore", 1, out matlabOutput, model._model_name);
             Object[] res = matlabOutput as Object[];
             double[,] results = res[0] as double[,];
@@ -7995,11 +8032,22 @@ namespace FameBase
                             sp._blendColors[c] = Color.LightGray;
                         }
                     }
+                    Program.GetFormMain().writeToConsole("Category :" + cat_name);
                     foreach (string wfile in cur_wfiles)
                     {
                         double minw;
                         double maxw;
                         double[] weights = loadPatchWeight(wfile, out minw, out maxw);
+                        // TEST INFO
+                        Program.GetFormMain().writeToConsole("Minimum weight is: " + minw.ToString());
+                        Program.GetFormMain().writeToConsole("Maximum weight is: " + maxw.ToString());
+                        double sumw = 0;
+                        foreach (double w in weights)
+                        {
+                            sumw += w;
+                        }
+                        Program.GetFormMain().writeToConsole("Sum of weights is: " + sumw.ToString());
+
                         weights_per_cat.Add(new List<double>(weights));
                         if (weights == null || weights.Length != nFaceFromSP)
                         {
