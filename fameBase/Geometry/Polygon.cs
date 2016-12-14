@@ -855,6 +855,17 @@ namespace Geometry
             }
         }
 
+        public void computeMaxMin()
+        {
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
+            foreach (Vector3d v in _points3d)
+            {
+                _maxCoord = Vector3d.Max(_maxCoord, v);
+                _minCoord = Vector3d.Min(_minCoord, v);
+            }
+        }
+
         public Vector3d MaxCoord {
             get
             {

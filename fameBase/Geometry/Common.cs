@@ -40,7 +40,7 @@ namespace Geometry
         public static int[] _PAIR_INDEX_2 = { 0, 2, 3 }; // 2 patches - 4 pairs
         public static int[] _PAIR_INDEX_3 = { 0, 3, 6, 5, 7, 8 }; // 3 patches - 6 pairs
         public static int _MAX_MATRIX_DIM = 300;
-        public static int _MAX_TRY_TIMES = 40;
+        public static int _MAX_TRY_TIMES = 60;
 
         public static int _MAX_GEN_HYBRID_NUMBER = 10;
         public static int _MAX_USE_PRESENT_NUMBER = 10;

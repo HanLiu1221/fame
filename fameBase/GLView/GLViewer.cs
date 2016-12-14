@@ -913,6 +913,10 @@ namespace FameBase
             }
             using (StreamWriter sw = new StreamWriter(filename))
             {
+                //if (model._GRAPH != null)
+                //{
+                //    model._GRAPH.unify();
+                //}
                 sw.WriteLine(model._NPARTS.ToString() + " parts");
                 for (int i = 0; i < model._NPARTS; ++i)
                 {
@@ -999,7 +1003,7 @@ namespace FameBase
                 Part ipart = _currModel._PARTS[i];
                 if (ipart._partSP == null || ipart._partSP._points == null || ipart._partSP._points.Length == 0 || ipart._partSP._normals == null)
                 {
-                    return;
+                    continue;
                 }
                 string partSPname = foldername + ipart._partName + ".sp";
                 this.saveSamplePointsInfo(ipart._partSP, partSPname);
@@ -1642,18 +1646,18 @@ namespace FameBase
                 // functional space
                 int fid = 1;
                 List<FunctionalSpace> fss = new List<FunctionalSpace>();
-                //while (true)
-                //{
-                //    string fsName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".obj";
-                //    string fsInfoName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".weight";
-                //    if (!File.Exists(fsName))
-                //    {
-                //        break;
-                //    }
-                //    FunctionalSpace fs = this.loadFunctionalSpaceInfo(fsName, fsInfoName);
-                //    fss.Add(fs);
-                //    ++fid;
-                //}
+                while (true)
+                {
+                    string fsName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".obj";
+                    string fsInfoName = partfolder + "\\" + modelName + "_fs_" + fid.ToString() + ".weight";
+                    if (!File.Exists(fsName))
+                    {
+                        break;
+                    }
+                    FunctionalSpace fs = this.loadFunctionalSpaceInfo(fsName, fsInfoName);
+                    fss.Add(fs);
+                    ++fid;
+                }
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -1826,6 +1830,7 @@ namespace FameBase
                             pg._ParentModelIndex = _modelIndex;
                         }
                     }
+                    m._index = idx;
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this, 0); // ancester
                     _ancesterModelViewers.Add(modelViewer);
                     ++_modelIndex;
@@ -3443,12 +3448,32 @@ namespace FameBase
                 if (increase)
                 {
                     update_prob = Math.Min(1.0, prob * 1.5);
-                    
+                    mv._MODEL._GRAPH.initilaizePartGroups();
+                    foreach (PartGroup pg in mv._MODEL._GRAPH._partGroups)
+                    {
+                        pg._ParentModelIndex = mv._MODEL._index;
+                        List<PartGroup> pgs = new List<PartGroup>();
+                        pgs.Add(pg);
+                        _partGroupLibrary.Add(pgs);
+                    }
                 }
                 _similarityMatrixPG.AddTriplet(p1, p2, update_prob);
-                this.updateSimilarGroups(p1, p2, increase);
+                //this.updateSimilarGroups(p1, p2, increase);
             }
-
+            if (_currGenId > 1)
+            {
+                SparseMatrix tmp = new SparseMatrix(_similarityMatrixPG);
+                int nPGs = _partGroupLibrary.Count;
+                _similarityMatrixPG = new SparseMatrix(tmp, nPGs, nPGs);
+                for (int i = 0; i < nPGs; ++i)
+                {
+                    for (int j = tmp.NRow; j < nPGs; ++j)
+                    {
+                        double simdist = compareTwoPartGroups(_partGroupLibrary[i][0], _partGroupLibrary[j][0]);
+                        _similarityMatrixPG.AddTriplet(i, j, simdist);
+                    }
+                }
+            }
             // parent shapes at the current generation
             List<Model> parents = new List<Model>(_userSelectedModels);
             // always include the ancient models
@@ -3716,6 +3741,23 @@ namespace FameBase
             Triplet triplet = null;
             int ntry = 0;
             bool selectHighProb = true; // _currGenId % 2 == 0 ? false : true;
+
+            //// TEST
+            //if (gen == 1 && idx == _modelViewIndex)
+            //{
+            //    p1 = 0;
+            //    p2 = 3;
+            //    selected = true;
+            //    triplet = _similarityMatrixPG.GetTriplet(p1, p2);
+            //}
+            //if (gen == 2 && idx == _modelViewIndex)
+            //{
+            //    p1 = 14;
+            //    p2 = 29;
+            //    selected = true;
+            //    triplet = _similarityMatrixPG.GetTriplet(p1, p2);
+            //}
+
             while (!selected && ntry < Common._MAX_TRY_TIMES)
             {
                 int i = rand.Next(nPGs);
@@ -3742,6 +3784,11 @@ namespace FameBase
             Program.writeToConsole("Crossover: \n");
             Model model1 = this.selectAPartGroupAndParentModel(p1, rand);
             Model model2 = this.selectAPartGroupAndParentModel(p2, rand);
+            if (gen == 2 && idx == _modelViewIndex)
+            {
+                _modelIndexMap.TryGetValue(_partGroupLibrary[p1][0]._ParentModelIndex, out model1);
+                _modelIndexMap.TryGetValue(_partGroupLibrary[p2][0]._ParentModelIndex, out model2);
+            }
             // updated partgroups
             PartGroup pg1;
             PartGroup pg2;
@@ -3764,12 +3811,20 @@ namespace FameBase
                         {
                             test = true;
                         }
-                        break;
+                        else
+                        {
+                            test = false;
+                        }
+                        if (test)
+                        {
+                            break;
+                        }
                     }
                 }
                 Stopwatch stopWatch_eval = new Stopwatch();
                 stopWatch_eval.Start();
-                if ( m._GRAPH.isValid())
+
+                if (m._GRAPH.isValid() || (p1 == 14 && p2 ==29))
                 {
                     m.composeMesh(true);
                     m._GRAPH.unify();
@@ -3828,6 +3883,7 @@ namespace FameBase
                         pg1._ParentModelIndex = _modelIndex;
                         _modelIndexMap.Add(_modelIndex, m);
                         _partGroupLibrary[p1].Add(pg1);
+                        m._index = _modelIndex;
                         ++_modelIndex;
                     }
                     else
@@ -3835,15 +3891,20 @@ namespace FameBase
                         pg2._ParentModelIndex = _modelIndex;
                         _modelIndexMap.Add(_modelIndex, m);
                         _partGroupLibrary[p2].Add(pg2);
+                        m._index = _modelIndex;
                         ++_modelIndex;
                     }
                     res.Add(m);
-                }
-            }
+                }// valid
+            }// 
             secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to run a crossover: " + secs.ToString() + " senconds.");
             avgTimePerValidOffspring += secs;
             validOffspringNumber += res.Count;
+            if (res.Count == 0)
+            {
+                _similarityMatrixPG.AddTriplet(p1, p2, 0);
+            }
             return true;
         }// runACrossover - part groups
 
@@ -3873,12 +3934,12 @@ namespace FameBase
             }
             if (ry <= thr2)
             {
-                scale[1] = originalRatio[1] / ry;
+                scale[1] = originalRatio[1] / node._ratios[1];
                 needReScale = true;
             }
             if (rz <= thr2)
             {
-                scale[2] = originalRatio[2] / rz;
+                scale[2] = originalRatio[2] / node._ratios[2];
                 needReScale = true;
             }
             if (needReScale)
@@ -3887,16 +3948,18 @@ namespace FameBase
                 int nnd = 0;
                 // all such nodes
                 List<Node> nodes = new List<Node>();
-                foreach (Node nd in m._GRAPH._NODES)
-                {
-                    if (nd._funcs.Contains(Common.Functionality.HAND_PLACE))
-                    {
-                        nodes.Add(nd);
-                        center += nd._PART._BOUNDINGBOX.CENTER;
-                        ++nnd;
-                    }
-                }
-                center /= nnd;
+                nodes.Add(node);
+                center = node._PART._BOUNDINGBOX.CENTER;
+                //foreach (Node nd in m._GRAPH._NODES)
+                //{
+                //    if (nd._funcs.Contains(Common.Functionality.HAND_PLACE))
+                //    {
+                //        nodes.Add(nd);
+                //        center += nd._PART._BOUNDINGBOX.CENTER;
+                //        ++nnd;
+                //    }
+                //}
+                //center /= nnd;
                 Matrix4d T = Matrix4d.TranslationMatrix(center) * Matrix4d.ScalingMatrix(scale) 
                     * Matrix4d.TranslationMatrix(new Vector3d() - center);
                 this.deformNodesAndEdges(nodes, T);
@@ -3947,15 +4010,15 @@ namespace FameBase
             }
 
             double val = _similarityMatrixPG.GetTriplet(i, j).value;
-            if (val == 0)
+            if (highProb && val == 0)
             {
                 // user dislike
                 return false;
             }
-            if ((highProb && val < _highProbabilityThresh) || (!highProb && val > _highProbabilityThresh))
-            {
-                return false;
-            }
+            //if ((highProb && val < _highProbabilityThresh) || (!highProb && val > _highProbabilityThresh))
+            //{
+            //    return false;
+            //}
             if (_partGroupLibrary[i][0]._NODES.Count == 0 || _partGroupLibrary[j][0]._NODES.Count == 0)
             {
                 if (_numOfEmptyGroupUsed >= _maxUseEmptyGroup)
@@ -5802,7 +5865,7 @@ namespace FameBase
                 //sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
                 //targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
             }
-            getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true);
+            getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center2 - center1, false);
             this.deformNodesAndEdges(updateNodes1, Q);
             if (ground2 != null)
             {
@@ -5811,7 +5874,7 @@ namespace FameBase
             }
             g1.resetUpdateStatus();
 
-            getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true);
+            getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true, center1 - center2, false);
             this.deformNodesAndEdges(updateNodes2, Q);
             if (ground1 != null)
             {
@@ -6296,7 +6359,7 @@ namespace FameBase
                 targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
             }
             Matrix4d T, S, Q;
-            getTransformation(sources, targets, out S, out T, out Q, null, false);
+            getTransformation(sources, targets, out S, out T, out Q, null, false, null, false);
             node.Transform(Q);
             node.updated = true;
             foreach (Edge e in node._edges)
@@ -6447,7 +6510,9 @@ namespace FameBase
         }
 
         public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, 
-            out Matrix4d S, out Matrix4d T, out Matrix4d Q, Vector3d boxScale, bool useScale)
+            out Matrix4d S, out Matrix4d T, out Matrix4d Q, 
+            Vector3d boxScale, bool useScale, 
+            Vector3d transVec, bool useCenter)
         {
             int n = srcpts.Count;
             if (n == 1)
@@ -6460,6 +6525,10 @@ namespace FameBase
                     S = Matrix4d.ScalingMatrix(boxScale);
                 }
                 T = Matrix4d.TranslationMatrix(trans);
+                if (useCenter)
+                {
+                    T = Matrix4d.TranslationMatrix(transVec);
+                }
                 Q = Matrix4d.TranslationMatrix(tarpts[0]) * S * Matrix4d.TranslationMatrix(new Vector3d() - srcpts[0]);
                 if (isNaNMat(Q))
                 {
@@ -6498,6 +6567,10 @@ namespace FameBase
                     }
                 }
                 T = Matrix4d.TranslationMatrix(c2 - c1);
+                if (useCenter)
+                {
+                    T = Matrix4d.TranslationMatrix(transVec);
+                }
                 Q = Matrix4d.TranslationMatrix(c2) * R * S * Matrix4d.TranslationMatrix(new Vector3d() - c1);
                 if (isNaNMat(Q))
                 {
@@ -6517,6 +6590,10 @@ namespace FameBase
 
                 Vector3d trans = t2 - t1;
                 T = Matrix4d.TranslationMatrix(trans);
+                if (useCenter)
+                {
+                    T = Matrix4d.TranslationMatrix(transVec);
+                }
 
                 // find the scales
                 int k = srcpts.Count;

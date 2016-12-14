@@ -57,7 +57,10 @@ namespace Component
             int k = 0;
             foreach (int idx in vIndex)
             {
-                d.Add(idx, k++);
+                if (!d.ContainsKey(idx))
+                {
+                    d.Add(idx, k++);
+                }
             }
             int[] faceVertexIndex = new int[fIndex.Length * 3];
             for (int i = 0, j= 0; i < fIndex.Length; ++i)
@@ -420,6 +423,7 @@ namespace Component
         List<Part> _parts;
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
+        public int _index = -1;
         
         public FunctionalSpace[] _funcSpaces;
 
@@ -597,7 +601,7 @@ namespace Component
             {
                 _SP = sp;
             }
-            if (_SP._normals == null || _SP._normals.Length != _SP._points.Length)
+            if (_SP != null && (_SP._normals == null || _SP._normals.Length != _SP._points.Length))
             {
                 _SP.updateNormals(_mesh);
             }
@@ -1127,21 +1131,16 @@ namespace Component
                         }
                     }
                 }
-                if (samplePnts.Count == 0)
-                {
-                    continue;
-                }
+                // BUG before! preserve the part even there is no sample points
+                //if (samplePnts.Count == 0)
+                //{
+                //    continue;
+                //}
                 SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), 
                     samplePntsFaceIdxs.ToArray(), samplePntsColors.ToArray(), faceIdxs.Length);
                 sp._weightsPerCat = weightsPerCat;
                 Part part = new Part(_mesh, vIndex.ToArray(), vPos, faceIdxs, sp);
                 _parts.Add(part);
-            }
-            // test
-            int nsps = 0;
-            foreach (Part part in _parts)
-            {
-                nsps += part._partSP._points.Length;
             }
         }// initializeParts
 
@@ -1303,7 +1302,7 @@ namespace Component
             {
                 if (part._partSP == null)
                 {
-                    return null;
+                    continue;
                 }
 
                 if (part._partSP != null && part._partSP._points.Length != 0 && part._partSP._fidxMapSPid != null)
@@ -1331,6 +1330,10 @@ namespace Component
                     int nsp = 0;
                     foreach (Part part in parts)
                     {
+                        if (part._partSP == null)
+                        {
+                            continue;
+                        }
                         for (int p = 0; p < part._partSP._weightsPerCat[i]._nPoints; ++p)
                         {
                             for (int q = 0; q < part._partSP._weightsPerCat[i]._nPatches; ++q)
@@ -1645,7 +1648,7 @@ namespace Component
                 int d = 0;
                 for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
                 {
-                    if (sp._weightsPerCat == null || sp._weightsPerCat.Count == 0)
+                    if (sp == null || sp._weightsPerCat == null || sp._weightsPerCat.Count == 0)
                     {
                         return;
                     }
