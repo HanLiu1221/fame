@@ -11,7 +11,7 @@ namespace Component
         List<Node> _nodes = new List<Node>();
         List<Edge> _edges = new List<Edge>();
         public int _NEdges = 0;
-        public FunctionalityFeatures _ff = null;
+        public FunctionalityFeatures _functionalityValues = null;
         public List<PartGroup> _partGroups;
         public List<Node> selectedNodes = new List<Node>();
 
@@ -1845,6 +1845,7 @@ namespace Component
     {
         public List<Common.Category> _cats = new List<Common.Category>();
         public List<double> _funvals = new List<double>();
+        public List<Common.Category> _parentCategories = new List<Common.Category>();
 
         public FunctionalityFeatures() { }
 
@@ -1860,6 +1861,16 @@ namespace Component
             List<double> vals = new List<double>(_funvals);
             FunctionalityFeatures ff = new FunctionalityFeatures(cats, vals);
             return ff;
+        }
+
+        public void addParentCategories(List<Common.Category> parents)
+        {
+            foreach (Common.Category cat in parents) {
+                if (!_parentCategories.Contains(cat))
+                {
+                    _parentCategories.Add(cat);
+                }
+            }
         }
     }// FunctionalityFeatures
 
