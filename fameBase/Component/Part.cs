@@ -1594,6 +1594,8 @@ namespace Component
         {
             PatchWeightPerCategory pw = new PatchWeightPerCategory(_catName.Clone() as string);
             pw._weights = _weights.Clone() as double[,];
+            pw._nPatches = _nPatches;
+            pw._nPoints = _nPoints;
             return pw;
         }
     }// PatchWeightPerCategory

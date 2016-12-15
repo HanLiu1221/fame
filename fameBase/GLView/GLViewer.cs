@@ -1878,9 +1878,9 @@ namespace FameBase
                 minw[i] = double.MaxValue;
                 maxw[i] = double.MinValue;
             }
-            int patchId = 0;
             foreach (Model model in models)
             {
+                int patchId = 0;
                 for (int n = 0; n < model._GRAPH._NNodes; ++n)
                 {
                     Node node = model._GRAPH._NODES[n];
@@ -1924,14 +1924,10 @@ namespace FameBase
                     double[] threshes = new double[nPatches];
                     double[] lowest = new double[nPatches];
                     int topNs = (int)(0.7 * totalPoints);
-                    double[] maxWeights = new double[nPatches];
-                    double[] minWeights = new double[nPatches];
                     for (int j = 0; j < nPatches; ++j)
                     {
                         weights[j].Sort();
                         threshes[j] = weights[j][topNs];
-                        maxWeights[j] = weights[j][totalPoints - 1];
-                        minWeights[j] = weights[j][0];
                     }
                     for (int n = 0; n < model._GRAPH._NNodes; ++n)
                     {
@@ -1940,16 +1936,26 @@ namespace FameBase
                         PatchWeightPerCategory pw = sp._weightsPerCat[c];
                         int nPoints = pw._weights.GetLength(0);
                         int[] numSalientPoints = new int[nPatches];
+                        double maxWeight = double.MinValue;
+                        double minWeight = double.MaxValue;
                         for (int j = 0; j < nPatches; ++j)
                         {
                             for (int i = 0; i < nPoints; ++i)
                             {
-                                if (pw._weights[i, j] > threshes[j])
+                                maxWeight = Math.Max(maxWeight, pw._weights[i, j]);
+                                minWeight = Math.Min(minWeight, pw._weights[i, j]);
+                            }
+                        }
+                        for (int j = 0; j < nPatches; ++j)
+                        {
+                            for (int i = 0; i < nPoints; ++i)
+                            {
+                                // set highlight colors
+                                double ratio = (pw._weights[i, j] - minWeight) / (maxWeight - minWeight);
+                                if (ratio > 0.5)
                                 {
                                     ++numSalientPoints[j];
                                 }
-                                // set highlight colors
-                                double ratio = (pw._weights[i, j] - minWeights[j]) / (maxWeights[j] - minWeights[j]);
                                 if (ratio < 0.1)
                                 {
                                     continue;
@@ -2086,9 +2092,6 @@ namespace FameBase
                 }
             }
             sorted.Sort();
-            double prob = 0.6;
-            int ntop = (int)(sorted.Count * prob);
-            _highProbabilityThresh = sorted[ntop];
 
             // 3. load knowledge base - binary features
             this.loadTrainedFeautres();
@@ -2099,8 +2102,11 @@ namespace FameBase
             _currGenId = 1;
             for (int i = 0; i < _modelLibrary.Count; ++i)
             {
-                _modelIndexMap.Add(i, _modelLibrary[i]);
-                _modelViewIndex++;
+                if (!_modelIndexMap.ContainsKey(i))
+                {
+                    _modelIndexMap.Add(i, _modelLibrary[i]);
+                    _modelViewIndex++;
+                }
             }
             _userSelectedModels = new List<Model>(models);
 
@@ -2116,10 +2122,11 @@ namespace FameBase
         private List<double> evaluateFeaturesOfAModel(Model m)
         {
             List<double> res = new List<double>();
+            double[,] point_features = this.computePointFeatures(m);
             foreach (Common.Category cat in m._GRAPH._ff._cats)
             {
                 List<PartGroup> patches;
-                double val = this.computeICONfeaturePerCategory(m, (int)cat, out patches);
+                double val = this.computeICONfeaturePerCategory(m, (int)cat, point_features, out patches);
                 res.Add(1 - val);
             }
             return res;
@@ -2127,7 +2134,7 @@ namespace FameBase
 
         private void loadTrainedFeautres()
         {
-            string featureFolder = this.foldername + "\\patchFeature\\";
+            string featureFolder = Interface.MODLES_PATH + "patchFeature\\";
             _trainingFeaturesPerCategory = new List<TrainedFeaturePerCategory>();
             for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
             {
@@ -5093,17 +5100,25 @@ namespace FameBase
             {
                 loadTrainedFeautres();
             }
+            double[,] point_features = this.computePointFeatures(_currModel);
+            foreach (Node node in _currModel._GRAPH._NODES)
+            {
+                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                {
+                    node._PART._highlightColors[i] = Color.FromArgb(255, 255, 255, 0);
+                }
+            }
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
             {
                 int[] patchIdxs = Common.getCategoryPatchIndicesInFeatureVector((Common.Category)i);
                 List<PartGroup> patches;
-                double val = this.computeICONfeaturePerCategory(_currModel, i, out patches);
+                double val = this.computeICONfeaturePerCategory(_currModel, i, point_features, out patches);
                 for (int j = 0; j < patches.Count; ++j)
                 {
                     foreach (Node node in patches[j]._NODES)
                     {
-                        node._PART._highlightColors[patchIdxs[j]] = GLDrawer.getColorPatch(j);
+                        node._PART._highlightColors[i] = GLDrawer.getColorPatch(j);
                     }
                 }
                 val = 1 - val;
@@ -5123,11 +5138,12 @@ namespace FameBase
             for (int i = 0; i < m; ++i)
             {
                 Model im = models[i];
+                double[,] point_features = this.computePointFeatures(im);
                 StringBuilder sb = new StringBuilder();
                 for (int j = 0; j < n; ++j)
                 {
                     List<PartGroup> patches;
-                    double val = this.computeICONfeaturePerCategory(im, _inputSetCats[j], out patches);
+                    double val = this.computeICONfeaturePerCategory(im, _inputSetCats[j], point_features, out patches);
                     distCats[i, j] = 1 - val;
 
                     sb.Append(Common.getCategoryName(_inputSetCats[j]));
@@ -5198,125 +5214,22 @@ namespace FameBase
             return sorted;
         }// rankOffspringByICONfeatures
 
-        private double computeICONfeaturePerCategory(Model m, int catIdx, out List<PartGroup> patches)
+        private double[,] computePointFeatures(Model m)
         {
-            Graph g = m._GRAPH;
-            patches = new List<PartGroup>();
-            if (g == null)
-            {
-                return 1;
-            }
-            Common.Category cat = (Common.Category)catIdx;
-            int[] patchIdxs = Common.getCategoryPatchIndicesInFeatureVector(cat);
-            int nPatches = patchIdxs.Length;
-            TrainedFeaturePerCategory trainedFeaturePerCat = _trainingFeaturesPerCategory[catIdx];
-            // 1. estimate the functional patches
-            //      1.1 for each node, check the number of points that have a high value for each functional patch
-            //      1.2 classify it to a patch that has the most number of such salient points
-            
-            for (int i = 0; i < nPatches; ++i)
-            {
-                patches.Add(new PartGroup(new List<Node>(), _currGenId));
-            }
             int nSamplePoints = 0;
-            double[] threshes = new double[nPatches];
-            double[] minWeights = new double[nPatches];
-            double[] maxWeights = new double[nPatches];
-            for (int j = 0; j < nPatches; ++j)
+            foreach (Node node in m._GRAPH._NODES)
             {
-                minWeights[j] = double.MaxValue;
-                maxWeights[j] = double.MinValue;
-            }
-            // normalize weights
-            double[] sumw = new double[nPatches];
-            List<PatchWeightPerCategory> clonedNodeWeights = new List<PatchWeightPerCategory>();
-            foreach (Node node in g._NODES)
-            {
-                nSamplePoints += node._PART._partSP._points.Length;
-                PatchWeightPerCategory pw = node._PART._partSP._weightsPerCat[catIdx];
-                double[,] weights = new double[pw._nPoints, pw._nPatches];
-                for (int i = 0; i < node._PART._partSP._points.Length; ++i)
+                if (node._PART._partSP != null)
                 {
-                    for (int j = 0; j < nPatches; ++j)
-                    {
-                        weights[i, j] = pw._weights[i, j];
-                        sumw[j] += pw._weights[i, j];
-                    }
-                }
-                PatchWeightPerCategory cloned = new PatchWeightPerCategory(Common.getCategoryName(catIdx), weights);
-                clonedNodeWeights.Add(cloned);
-            }
-            for (int n = 0; n < g._NNodes; ++n) 
-            {
-                Node node = g._NODES[n];
-                PatchWeightPerCategory pw = clonedNodeWeights[n];
-                for (int i = 0; i < node._PART._partSP._points.Length; ++i)
-                {
-                    for (int j = 0; j < nPatches; ++j)
-                    {
-                        // do not change the original weights
-                        // normalize under different patches and categories
-                        pw._weights[i, j] /= sumw[j];
-                        minWeights[j] = Math.Min(minWeights[j], pw._weights[i, j]);
-                        maxWeights[j] = Math.Max(maxWeights[j], pw._weights[i, j]);
-                    }
+                    nSamplePoints += node._PART._partSP._points.Length;
                 }
             }
-            for (int j = 0; j < nPatches; ++j)
-            {
-                threshes[j] = minWeights[j] + (maxWeights[j] - minWeights[j]) * 0.6; 
-            }
-            // weight matrix of the model w.r.t. the given category
-            MatrixNd weightMat = new MatrixNd(nSamplePoints, nPatches);
-            int samplePointIndexStart = 0;
-            Vector3d maxPos = Vector3d.MinCoord;
-            Vector3d minPos = Vector3d.MaxCoord;
-            // evaulate subset of parts that can serve the functional patches
-            List<Vector3d> patch_points = new List<Vector3d>();
-            List<Vector3d> patch_normals = new List<Vector3d>();
-            List<int> patch_faceIdxs = new List<int>();
-            int start_f = 0;
-            for (int n = 0; n < g._NNodes; ++n)
-            {
-                Node node = g._NODES[n];
-                int[] numSalientPoints = new int[nPatches];
-                SamplePoints sp = node._PART._partSP;
-                PatchWeightPerCategory pw = clonedNodeWeights[n];
-                int nPoints = pw._weights.GetLength(0);
-                // if the part is salient
-                for (int j = 0; j < patchIdxs.Length; ++j)
-                {
-                    if (node._isFunctionalPatch[patchIdxs[j]])
-                    {
-                        List<int> reFaceIdx = new List<int>();
-                        for (int i = 0; i < sp._faceIdx.Length; ++i)
-                        {
-                            reFaceIdx.Add(start_f + sp._faceIdx[i]);
-                        }
-                        patch_points.AddRange(sp._points);
-                        patch_normals.AddRange(sp._normals);
-                        patch_faceIdxs.AddRange(reFaceIdx);
-                        patches[j]._NODES.Add(node);
-                    }
-                }
-                start_f += node._PART._MESH.FaceCount;
-                samplePointIndexStart += sp._points.Length;
-                foreach (Vector3d v in sp._points)
-                {
-                    maxPos = Vector3d.Max(maxPos, v);
-                    minPos = Vector3d.Min(minPos, v);
-                }
-            }
-            // 2. compute unary and binary features
-            double[] res = new double[17]; // 15 for unary and 2 for binary
-            // 2.1. calculate unary feature
             if (m._SP == null || m._SP._points.Length != nSamplePoints || m._funcFeat == null)
             {
-                m.composeMesh(false);
+                m.composeMesh(true);
+                this.saveSamplePointsRequiredInfo(m);
+                bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
             }
-            m._SP = new SamplePoints(patch_points.ToArray(), patch_normals.ToArray(), patch_faceIdxs.ToArray(), null, m._MESH.FaceCount);
-            this.saveSamplePointsRequiredInfo(m);
-            bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
             // n * 18 put all features together
             double[,] point_features = new double[nSamplePoints, Common._POINT_FEATURE_DIM];
             for (int i = 0; i < nSamplePoints; ++i)
@@ -5352,6 +5265,97 @@ namespace FameBase
                     point_features[i, dimId++] = m._funcFeat._cenOfMassFeats[i * d + j];
                 }
             }
+            return point_features;
+        }
+
+        private double computeICONfeaturePerCategory(Model m, int catIdx, double[,] pointsFeatures, out List<PartGroup> patches)
+        {
+            Graph g = m._GRAPH;
+            patches = new List<PartGroup>();
+            if (g == null)
+            {
+                return 1;
+            }
+            Common.Category cat = (Common.Category)catIdx;
+            int[] patchIdxs = Common.getCategoryPatchIndicesInFeatureVector(cat);
+            int nPatches = patchIdxs.Length;
+            TrainedFeaturePerCategory trainedFeaturePerCat = _trainingFeaturesPerCategory[catIdx];
+            // 1. estimate the functional patches - already pre-processed
+            //      1.1 for each node, check the number of points that have a high value for each functional patch
+            //      1.2 classify it to a patch that has the most number of such salient points            
+            for (int i = 0; i < nPatches; ++i)
+            {
+                patches.Add(new PartGroup(new List<Node>(), _currGenId));
+            }
+            int nSamplePoints = 0;
+            // normalize weights
+            double[] sumw = new double[nPatches];
+            List<List<double>> weights = new List<List<double>>();
+            for (int i = 0; i < nPatches; ++i)
+            {
+                weights.Add(new List<double>());
+            }
+            bool[] added = new bool[g._NNodes];
+            Vector3d maxPos = Vector3d.MinCoord;
+            Vector3d minPos = Vector3d.MaxCoord;
+            List<int> addedPointIndex = new List<int>();
+            for (int n = 0; n < g._NNodes;++n)
+            {
+                Node node = g._NODES[n];
+                PatchWeightPerCategory pw = node._PART._partSP._weightsPerCat[catIdx];
+                for (int i = 0; i < node._PART._partSP._points.Length; ++i)
+                {
+                    for (int j = 0; j < nPatches; ++j)
+                    {
+                        sumw[j] += pw._weights[i, j];
+                    }
+                }
+                foreach (Vector3d v in node._PART._partSP._points)
+                {
+                    maxPos = Vector3d.Max(maxPos, v);
+                    minPos = Vector3d.Min(minPos, v);
+                }
+                bool shouldAdd = false;
+                for (int j = 0; j < nPatches; ++j)
+                {
+                    if (node._isFunctionalPatch[patchIdxs[j]] && !node._PART._partName.Contains("Container"))
+                    {
+                        patches[j]._NODES.Add(node);
+                        shouldAdd = true;
+                    }
+                }
+                if (!added[n] && shouldAdd)
+                {
+                    for (int i = 0; i < node._PART._partSP._points.Length; ++i)
+                    {
+                        for (int j = 0; j < nPatches; ++j)
+                        {
+                            weights[j].Add(pw._weights[i, j]);
+                        }
+                        addedPointIndex.Add(nSamplePoints + i);
+                    }
+                    added[n] = true;
+                    nSamplePoints += node._PART._partSP._points.Length;
+                }
+            }// add nodes / points for evaluation
+            int nFs = pointsFeatures.GetLength(1);
+            double[,] point_features = new double[nSamplePoints, nFs];
+            // weight matrix of the subset of the model w.r.t. the given category
+            for (int i = 0; i < nSamplePoints; ++i)
+            {
+                for (int j = 0; j < nPatches; ++j)
+                {
+                    weights[j][i] /= sumw[j];
+                }
+                for (int j = 0; j < nFs; ++j)
+                {
+                    point_features[i, j] = pointsFeatures[addedPointIndex[i], j];
+                }
+            }
+            // evaulate subset of parts that can serve the functional patches
+            // 2. compute unary and binary features
+            double[] res = new double[17]; // 15 for unary and 2 for binary
+            // 2.1. calculate unary feature
             // predefined feature dimensions
             int nUnaryFeatureDim = 15;
             int[] unaryFeatDims = new int[nUnaryFeatureDim];
@@ -5385,7 +5389,7 @@ namespace FameBase
                             double idd = Math.Floor(point_features[j, colIdx] / featureBinWidth[i]);
                             int idx = (int)Common.cutoff(idd, 0, defaultBinNum - 1);
                             idx += offset;
-                            unaryFeatureBins[idx] += weightMat[j, pid] * 1;
+                            unaryFeatureBins[idx] += weights[pid][j] * 1.0;
                         }
                         ++colIdx;
                     }
@@ -5401,7 +5405,7 @@ namespace FameBase
                             int idx2 = (int)Common.cutoff(idd2, 0, defaultBinNum - 1);
                             int idx = idx1 + idx2 * defaultBinNum;
                             idx += offset;
-                            unaryFeatureBins[idx] += weightMat[j, pid];
+                            unaryFeatureBins[idx] += weights[pid][j];
                         }
                         colIdx += 2;
                     }
@@ -5431,37 +5435,13 @@ namespace FameBase
             {
                 List<Vector3d> points1 = new List<Vector3d>();
                 List<Vector3d> normals1 = new List<Vector3d>();
-                List<double> weights1 = new List<double>(); // w.r.t. patch p
-                for (int n1 = 0; n1 < g._NNodes; ++n1)
-                {
-                    Node node = g._NODES[n1];
-                    SamplePoints sp = node._PART._partSP;
-                    PatchWeightPerCategory pw = clonedNodeWeights[n1];
-                    points1.AddRange(sp._points);
-                    normals1.AddRange(sp._normals);
-                    for (int pi = 0; pi < pw._weights.GetLength(0); ++pi)
-                    {
-                        weights1.Add(pw._weights[pi, p]);
-                    }
-                }
+                List<double> weights1 = weights[p]; // w.r.t. patch p
 
                 for (int q = p; q < nPatches; ++q)
                 {
                     List<Vector3d> points2 = new List<Vector3d>();
                     List<Vector3d> normals2 = new List<Vector3d>();
-                    List<double> weights2 = new List<double>(); // w.r.t. patch q
-                    for (int n2 = 0; n2 < g._NNodes; ++n2)
-                    {
-                        Node node = g._NODES[n2];
-                        SamplePoints sp = node._PART._partSP;
-                        PatchWeightPerCategory pw = clonedNodeWeights[n2];
-                        points2.AddRange(sp._points);
-                        normals2.AddRange(sp._normals);
-                        for (int pi = 0; pi < pw._weights.GetLength(0); ++pi)
-                        {
-                            weights2.Add(pw._weights[pi, q]);
-                        }
-                    }
+                    List<double> weights2 = weights[q]; // w.r.t. patch q
                     // histogram
                     // * weight at each entry
                     double[] binaryFeatureBins = new double[Common._NUM_BINARY_FEATURE];
