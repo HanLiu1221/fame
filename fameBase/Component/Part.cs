@@ -569,7 +569,9 @@ namespace Component
                 SamplePoints sp = part._partSP;
                 if (sp == null || sp._points == null || sp._points.Length == 0)
                 {
-                    redoSP = false;
+                    //redoSP = false;
+                    start_v += mesh.VertexCount;
+                    start_f += mesh.FaceCount;  
                     continue;
                 }
                 for (int i = 0; i < sp._faceIdx.Length; ++i)
@@ -1620,7 +1622,7 @@ namespace Component
     {
         int _parentShapeIdx = -1;
         List<Node> _nodes = new List<Node>();
-        public double[] _featureVector = new double[Common._NUM_PART_GROUP_FEATURE];
+        public double[] _featureVector = new double[Common.__TOTAL_FUNCTONAL_PATCHES];
         public int _gen = 0;
 
         public PartGroup(List<Node> nodes, int g)
@@ -1642,7 +1644,7 @@ namespace Component
             {
                 return;
             }
-            int ndim = Common._NUM_PART_GROUP_FEATURE;
+            int ndim = Common.__TOTAL_FUNCTONAL_PATCHES;
             double[] means = new double[ndim];
             double[] stds = new double[ndim];
             double[] sums = new double[ndim];

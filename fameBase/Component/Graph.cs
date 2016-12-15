@@ -1555,6 +1555,7 @@ namespace Component
         public Symmetry symm = null;
         public List<Common.Functionality> _funcs = new List<Common.Functionality>();
         public Vector3d _ratios = new Vector3d();
+        public bool[] _isFunctionalPatch = new bool[Common.__TOTAL_FUNCTONAL_PATCHES];
 
         public Node(Part p, int idx)
         {

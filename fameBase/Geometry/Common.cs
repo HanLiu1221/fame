@@ -31,7 +31,7 @@ namespace Geometry
         public static int _POINT_FEATURE_DIM = 18;
 
         public static int _MAX_FACE_COUNT = 300000;
-        public static int _NUM_PART_GROUP_FEATURE = 35; // ncat * npatch
+        public static int __TOTAL_FUNCTONAL_PATCHES = 35; // ncat * npatch
         public static int _NUM_FUNCTIONALITY = 6;
         public static int _NUM_CATEGORIY = 15;
         public static int _NUM_UNARY_FEATURE = 420;
