@@ -29,6 +29,9 @@ namespace Component
 
         public Color _COLOR = Color.LightBlue;
 
+        // Test
+        public Color[] _highlightColors = new Color[Common._NUM_CATEGORIY];
+
         public Part(Mesh m)
         {
             _mesh = m;
@@ -1480,6 +1483,9 @@ namespace Component
         public Dictionary<int, List<int>> _fidxMapSPid;
         private int _totalNfaces = 0;
         public List<PatchWeightPerCategory> _weightsPerCat = null;
+
+        // Test
+        public Color[][] _highlightedColors;
 
         public SamplePoints() { }
 

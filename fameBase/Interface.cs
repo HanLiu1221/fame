@@ -818,26 +818,28 @@ namespace FameBase
         private void prev_fs_Click(object sender, EventArgs e)
         {
             string s = this.glViewer.prevFunctionalSpace();
-            this.simOfPGpairsLabel.Text = "Similarity value: " + s;
+            this.simOfPGpairsLabel.Text = "Category: " + s;
+            //this.simOfPGpairsLabel.Text = "Similarity value: " + s;
         }
 
         private void next_fs_Click(object sender, EventArgs e)
         {
-            //this.glViewer.nextFunctionalSpace();
+            string s = this.glViewer.nextFunctionalSpace();
+            this.simOfPGpairsLabel.Text = "Category: " + s;
             //string folder = @"E:\Projects\fame\data_sets\patch_data\models\pairValues\";
-            string folder = @"D:\fame\data_sets\patch_data\models\pairValues\";
-            if (!Directory.Exists(Path.GetDirectoryName(folder)))
-            {
-                Directory.CreateDirectory(folder);
-            }
-            for (int i = 0; i < this.glViewer._nPairsPG; ++i)
-            {
-                string[] ss = this.glViewer.collectSimValuesOfPartGroups();
-                this.simOfPGpairsLabel.Text = ss[0] + " Similarity value: " + ss[1];
-                this.Refresh();
-                string filename = folder + ss[0] + ".png";
-                this.glViewer.captureScreen(filename);
-            }
+            //string folder = @"D:\fame\data_sets\patch_data\models\pairValues\";
+            //if (!Directory.Exists(Path.GetDirectoryName(folder)))
+            //{
+            //    Directory.CreateDirectory(folder);
+            //}
+            //for (int i = 0; i < this.glViewer._nPairsPG; ++i)
+            //{
+            //    string[] ss = this.glViewer.collectSimValuesOfPartGroups();
+            //    this.simOfPGpairsLabel.Text = ss[0] + " Similarity value: " + ss[1];
+            //    this.Refresh();
+            //    string filename = folder + ss[0] + ".png";
+            //    this.glViewer.captureScreen(filename);
+            //}
         }
 
         private void loadOriPatchOnlyToolStripMenuItem_Click(object sender, EventArgs e)
@@ -942,15 +944,16 @@ namespace FameBase
         private void sortResToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //List<ModelViewer> modelViews = this.glViewer.sortEvolutionResults();
-            List<ModelViewer> modelViews = this.glViewer.postAnalysis();
-            this.partBasket.Controls.Clear();
-            if (modelViews != null)
-            {
-                foreach (ModelViewer mv in modelViews)
-                {
-                    addModelViewerToRightPanel(mv);
-                }
-            }
+            //List<ModelViewer> modelViews = this.glViewer.postAnalysis();
+            //this.partBasket.Controls.Clear();
+            //if (modelViews != null)
+            //{
+            //    foreach (ModelViewer mv in modelViews)
+            //    {
+            //        addModelViewerToRightPanel(mv);
+            //    }
+            //}
+            this.glViewer.predictFunctionalPatches();
             this.Refresh();
         }
 
