@@ -87,6 +87,24 @@ namespace Geometry
             MakeRowColTriplets();
 		}
 
+        public SparseMatrix(SparseMatrix m)
+        {
+            triplets = new List<Triplet>(m.triplets);
+            nRows = m.nRows;
+            nCols = m.nCols;
+            nTriplets = triplets.Count;
+            MakeRowColTriplets();
+        }
+
+        public SparseMatrix(SparseMatrix m, int r, int c)
+        {
+            triplets = new List<Triplet>(m.triplets);
+            nRows = r;
+            nCols = c;
+            nTriplets = triplets.Count;
+            MakeRowColTriplets();
+        }
+
 		public SparseMatrix(List<Triplet> triplets, int nrow, int ncol)
 		{
 			triplets = new List<Triplet>(triplets);

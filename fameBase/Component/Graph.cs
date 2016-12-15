@@ -1012,7 +1012,10 @@ namespace Component
             // recompute sample points normals
             foreach (Node node in _nodes)
             {
-                node._PART._partSP.updateNormals(node._PART._MESH);
+                if (node._PART._partSP != null)
+                {
+                    node._PART._partSP.updateNormals(node._PART._MESH);
+                }
             }
         }
 
@@ -1268,7 +1271,7 @@ namespace Component
                             continue;
                         }
                         Mesh m2 = node._PART._MESH;
-                        if (!isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) && !isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
+                        if (isConnected(m1,m2))
                         {
                             queue.Add(node);
                         }
@@ -1284,6 +1287,30 @@ namespace Component
             }
             return false;
         }// hasDetachedParts
+
+        private bool isConnected(Mesh m1, Mesh m2)
+        {
+            double thr = 0.01;
+            double mind = double.MaxValue;
+            Vector3d[] v1 = m1.VertexVectorArray;
+            Vector3d[] v2 = m2.VertexVectorArray;
+            for (int i = 0; i < v1.Length; ++i)
+            {
+                for (int j = 0; j < v2.Length; ++j)
+                {
+                    double d = (v1[i] - v2[j]).Length();
+                    if (d < thr)
+                    {
+                        return true;
+                    }
+                    if (d < mind)
+                    {
+                        mind = d;
+                    }
+                }
+            }
+            return mind < thr;
+        }// is connected
 
         private bool isTwoPolyDetached(Vector3d v1_min, Vector3d v2_max)
         {
@@ -1359,13 +1386,13 @@ namespace Component
                 // symmetry breaking
                 List<Node> nodes1 = new List<Node>();
                 nodes1.Add(_nodes[i]);
-                if (shouldCreateNewPartGroup(_partGroups, nodes1))
-                {
+                //if (shouldCreateNewPartGroup(_partGroups, nodes1))
+                //{
                     _partGroups.Add(new PartGroup(nodes1, 0));
                     indices = new List<int>();
                     indices.Add(i);
                     comIndices.Add(indices);
-                }
+                //}
                 List<Node> nodes2 = new List<Node>();
                 nodes2.Add(sym);
                 if (shouldCreateNewPartGroup(_partGroups, nodes2))
@@ -1528,6 +1555,7 @@ namespace Component
         public Symmetry symm = null;
         public List<Common.Functionality> _funcs = new List<Common.Functionality>();
         public Vector3d _ratios = new Vector3d();
+        public bool[] _isFunctionalPatch = new bool[Common.__TOTAL_FUNCTONAL_PATCHES];
 
         public Node(Part p, int idx)
         {
@@ -1594,6 +1622,7 @@ namespace Component
 
         public void calRatios()
         {
+            //this._part._BOUNDINGBOX.computeMaxMin();
             Vector3d scale = this._part._BOUNDINGBOX.MaxCoord - this._part._BOUNDINGBOX.MinCoord;
             _ratios.x = 1.0;
             _ratios.y = scale.y / scale.x;

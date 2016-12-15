@@ -60,7 +60,10 @@ namespace Component
             int k = 0;
             foreach (int idx in vIndex)
             {
-                d.Add(idx, k++);
+                if (!d.ContainsKey(idx))
+                {
+                    d.Add(idx, k++);
+                }
             }
             int[] faceVertexIndex = new int[fIndex.Length * 3];
             for (int i = 0, j= 0; i < fIndex.Length; ++i)
@@ -423,6 +426,7 @@ namespace Component
         List<Part> _parts;
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
+        public int _index = -1;
         
         public FunctionalSpace[] _funcSpaces;
 
@@ -565,7 +569,9 @@ namespace Component
                 SamplePoints sp = part._partSP;
                 if (sp == null || sp._points == null || sp._points.Length == 0)
                 {
-                    redoSP = false;
+                    //redoSP = false;
+                    start_v += mesh.VertexCount;
+                    start_f += mesh.FaceCount;  
                     continue;
                 }
                 for (int i = 0; i < sp._faceIdx.Length; ++i)
@@ -600,7 +606,7 @@ namespace Component
             {
                 _SP = sp;
             }
-            if (_SP._normals == null || _SP._normals.Length != _SP._points.Length)
+            if (_SP != null && (_SP._normals == null || _SP._normals.Length != _SP._points.Length))
             {
                 _SP.updateNormals(_mesh);
             }
@@ -1130,21 +1136,16 @@ namespace Component
                         }
                     }
                 }
-                if (samplePnts.Count == 0)
-                {
-                    continue;
-                }
+                // BUG before! preserve the part even there is no sample points
+                //if (samplePnts.Count == 0)
+                //{
+                //    continue;
+                //}
                 SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), 
                     samplePntsFaceIdxs.ToArray(), samplePntsColors.ToArray(), faceIdxs.Length);
                 sp._weightsPerCat = weightsPerCat;
                 Part part = new Part(_mesh, vIndex.ToArray(), vPos, faceIdxs, sp);
                 _parts.Add(part);
-            }
-            // test
-            int nsps = 0;
-            foreach (Part part in _parts)
-            {
-                nsps += part._partSP._points.Length;
             }
         }// initializeParts
 
@@ -1306,7 +1307,7 @@ namespace Component
             {
                 if (part._partSP == null)
                 {
-                    return null;
+                    continue;
                 }
 
                 if (part._partSP != null && part._partSP._points.Length != 0 && part._partSP._fidxMapSPid != null)
@@ -1334,6 +1335,10 @@ namespace Component
                     int nsp = 0;
                     foreach (Part part in parts)
                     {
+                        if (part._partSP == null)
+                        {
+                            continue;
+                        }
                         for (int p = 0; p < part._partSP._weightsPerCat[i]._nPoints; ++p)
                         {
                             for (int q = 0; q < part._partSP._weightsPerCat[i]._nPatches; ++q)
@@ -1589,6 +1594,8 @@ namespace Component
         {
             PatchWeightPerCategory pw = new PatchWeightPerCategory(_catName.Clone() as string);
             pw._weights = _weights.Clone() as double[,];
+            pw._nPatches = _nPatches;
+            pw._nPoints = _nPoints;
             return pw;
         }
     }// PatchWeightPerCategory
@@ -1617,7 +1624,7 @@ namespace Component
     {
         int _parentShapeIdx = -1;
         List<Node> _nodes = new List<Node>();
-        public double[] _featureVector = new double[Common._NUM_PART_GROUP_FEATURE];
+        public double[] _featureVector = new double[Common.__TOTAL_FUNCTONAL_PATCHES];
         public int _gen = 0;
 
         public PartGroup(List<Node> nodes, int g)
@@ -1639,7 +1646,7 @@ namespace Component
             {
                 return;
             }
-            int ndim = Common._NUM_PART_GROUP_FEATURE;
+            int ndim = Common.__TOTAL_FUNCTONAL_PATCHES;
             double[] means = new double[ndim];
             double[] stds = new double[ndim];
             double[] sums = new double[ndim];
@@ -1651,7 +1658,7 @@ namespace Component
                 int d = 0;
                 for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
                 {
-                    if (sp._weightsPerCat == null || sp._weightsPerCat.Count == 0)
+                    if (sp == null || sp._weightsPerCat == null || sp._weightsPerCat.Count == 0)
                     {
                         return;
                     }

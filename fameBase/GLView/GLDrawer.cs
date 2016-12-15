@@ -72,6 +72,22 @@ namespace FameBase
             return color;
         }// getColorGradient
 
+        public static Color getColorPatch(int n)
+        {
+            switch (n)
+            {
+                case 1:
+                    return GradientColor_3;
+                case 2:
+                    return GradientColor_5;
+                case 3:
+                    return GradientColor_7;
+                case 0:
+                default:
+                    return GradientColor_1;
+            }
+        }
+
         public static Color getColorGradient(double ratio, Color c0, Color c1)
         {
             Vector3d v0 = getColorVec(c0);
