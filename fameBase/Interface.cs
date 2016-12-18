@@ -301,7 +301,8 @@ namespace FameBase
 
         private void screenCaptureToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.glViewer.captureScreen(0);
+            //this.glViewer.captureScreen(0);
+            this.glViewer.captureInputSets();
         }
 
         public int getScreenCaptureBoundaryX(int glViewLocX)
@@ -689,7 +690,7 @@ namespace FameBase
 
         private void autoSnapshotsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\mix\res_1" };
+            var dialog = new FolderBrowserDialog() { SelectedPath = @"E:\Projects\fame\data_sets\patch_data\models\results\User8\User8_highest" };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -960,6 +961,34 @@ namespace FameBase
         public void writePostAnalysisInfo(string str)
         {
             this.postAnalysisRes.Text = str;
+            this.Refresh();
+        }
+
+        private void rankByCatToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<ModelViewer> modelViews = this.glViewer.rankByHighestCategoryValue(null, 1);
+            this.partBasket.Controls.Clear();
+            if (modelViews != null)
+            {
+                foreach (ModelViewer mv in modelViews)
+                {
+                    addModelViewerToRightPanel(mv);
+                }
+            }
+            this.Refresh();
+        }
+
+        private void rankByMultiToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<ModelViewer> modelViews = this.glViewer.rankByHighestCategoryValue(null, 5);
+            this.partBasket.Controls.Clear();
+            if (modelViews != null)
+            {
+                foreach (ModelViewer mv in modelViews)
+                {
+                    addModelViewerToRightPanel(mv);
+                }
+            }
             this.Refresh();
         }
 	}// Interface

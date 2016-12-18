@@ -151,7 +151,9 @@
             this.hangerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rankByCatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.glViewer = new FameBase.GLViewer();
+            this.rankByMultiToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -812,7 +814,9 @@
             this.symmetryToolStripMenuItem,
             this.crossoverToolStripMenuItem,
             this.mutateToolStripMenuItem,
-            this.sortResToolStripMenuItem});
+            this.sortResToolStripMenuItem,
+            this.rankByCatToolStripMenuItem,
+            this.rankByMultiToolStripMenuItem});
             this.toolStripDropDownButton1.Image = ((System.Drawing.Image)(resources.GetObject("toolStripDropDownButton1.Image")));
             this.toolStripDropDownButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripDropDownButton1.Name = "toolStripDropDownButton1";
@@ -823,29 +827,29 @@
             // symmetryToolStripMenuItem
             // 
             this.symmetryToolStripMenuItem.Name = "symmetryToolStripMenuItem";
-            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.symmetryToolStripMenuItem.Text = "Symmetry";
             this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
             // 
             // crossoverToolStripMenuItem
             // 
             this.crossoverToolStripMenuItem.Name = "crossoverToolStripMenuItem";
-            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.crossoverToolStripMenuItem.Text = "Crossover";
             this.crossoverToolStripMenuItem.Click += new System.EventHandler(this.crossoverToolStripMenuItem_Click);
             // 
             // mutateToolStripMenuItem
             // 
             this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
+            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.mutateToolStripMenuItem.Text = "Mutate";
             this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
             // 
             // sortResToolStripMenuItem
             // 
             this.sortResToolStripMenuItem.Name = "sortResToolStripMenuItem";
-            this.sortResToolStripMenuItem.Size = new System.Drawing.Size(128, 22);
-            this.sortResToolStripMenuItem.Text = "Sort Res";
+            this.sortResToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.sortResToolStripMenuItem.Text = "Post analyze";
             this.sortResToolStripMenuItem.Click += new System.EventHandler(this.sortResToolStripMenuItem_Click);
             // 
             // autoGenerateToolStripMenuItem
@@ -876,6 +880,7 @@
             // viewPanel.Panel2
             // 
             this.viewPanel.Panel2.Controls.Add(this.postAnalysisRes);
+            this.viewPanel.Panel2.Controls.Add(this.simOfPGpairsLabel);
             this.viewPanel.Panel2.Controls.Add(this.prev_next_panel);
             this.viewPanel.Panel2.Controls.Add(this.statsLabel);
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
@@ -907,14 +912,14 @@
             // 
             // simOfPGpairsLabel
             // 
+            this.simOfPGpairsLabel.Anchor = System.Windows.Forms.AnchorStyles.Top;
             this.simOfPGpairsLabel.AutoSize = true;
             this.simOfPGpairsLabel.BackColor = System.Drawing.Color.White;
             this.simOfPGpairsLabel.Font = new System.Drawing.Font("SimSun", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.simOfPGpairsLabel.Location = new System.Drawing.Point(576, 71);
+            this.simOfPGpairsLabel.Location = new System.Drawing.Point(585, 6);
             this.simOfPGpairsLabel.Name = "simOfPGpairsLabel";
-            this.simOfPGpairsLabel.Size = new System.Drawing.Size(43, 21);
+            this.simOfPGpairsLabel.Size = new System.Drawing.Size(0, 21);
             this.simOfPGpairsLabel.TabIndex = 19;
-            this.simOfPGpairsLabel.Text = "cat";
             // 
             // prev_next_panel
             // 
@@ -1230,6 +1235,13 @@
             this.connectorToolStripMenuItem.Text = "Connector";
             this.connectorToolStripMenuItem.Click += new System.EventHandler(this.connectorToolStripMenuItem_Click);
             // 
+            // rankByCatToolStripMenuItem
+            // 
+            this.rankByCatToolStripMenuItem.Name = "rankByCatToolStripMenuItem";
+            this.rankByCatToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.rankByCatToolStripMenuItem.Text = "Rank by Cat";
+            this.rankByCatToolStripMenuItem.Click += new System.EventHandler(this.rankByCatToolStripMenuItem_Click);
+            // 
             // glViewer
             // 
             this.glViewer.AccumBits = ((byte)(0));
@@ -1250,13 +1262,19 @@
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
+            // rankByMultiToolStripMenuItem
+            // 
+            this.rankByMultiToolStripMenuItem.Name = "rankByMultiToolStripMenuItem";
+            this.rankByMultiToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.rankByMultiToolStripMenuItem.Text = "Rank by Multi";
+            this.rankByMultiToolStripMenuItem.Click += new System.EventHandler(this.rankByMultiToolStripMenuItem_Click);
+            // 
             // Interface
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
             this.ClientSize = new System.Drawing.Size(1099, 714);
-            this.Controls.Add(this.simOfPGpairsLabel);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -1402,6 +1420,8 @@
         private System.Windows.Forms.Label simOfPGpairsLabel;
         private System.Windows.Forms.ToolStripMenuItem sortResToolStripMenuItem;
         private System.Windows.Forms.Label postAnalysisRes;
+        private System.Windows.Forms.ToolStripMenuItem rankByCatToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem rankByMultiToolStripMenuItem;
 	}
 }
 
