@@ -2990,6 +2990,7 @@ namespace FameBase
             }
             StringBuilder sb = new StringBuilder();
             int n = _currGenModelViewers.Count;
+            n = _ancesterModelViewers.Count > n ? _ancesterModelViewers.Count : n;
             for (int i = 0; i < m._GRAPH._functionalityValues._cats.Count; ++i)
             {
                 sb.Append(m._GRAPH._functionalityValues._cats[i]);
@@ -3144,7 +3145,7 @@ namespace FameBase
 
         public void captureInputSets()
         {
-            if (_currGenModelViewers.Count == 0)
+            if (_currGenModelViewers.Count == 0 && _ancesterModelViewers.Count == 0)
             {
                 return;
             }
@@ -3694,13 +3695,20 @@ namespace FameBase
                 ++_currGenId;
             }// for each iteration
             // rank
-            _currentModelIndexMap = new Dictionary<int,int>();
+            _currentModelIndexMap = new Dictionary<int, int>();
             for (int i = 0; i < curGeneration.Count; ++i)
             {
                 _currentModelIndexMap.Add(curGeneration[i]._index, i);
             }
-            List<ModelViewer> sorted = this.rankByHighestCategoryValue(curGeneration, 3);
+            List<ModelViewer> sorted = this.rankByHighestCategoryValue(curGeneration, 3);            
             int nModels = Math.Min(Common._MAX_USE_PRESENT_NUMBER, curGeneration.Count);
+            //List<ModelViewer> sorted = new List<ModelViewer>();
+            //for (int i = 0; i < nModels; ++i )
+            //{
+            //    Model imodel = curGeneration[i];
+            //    sorted.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
+            //}
+            _currGenModelViewers = new List<ModelViewer>();
             for (int j = 0; j < nModels; ++j)
             {
                 _currGenModelViewers.Add(sorted[j]);
@@ -4042,17 +4050,45 @@ namespace FameBase
                 _similarityMatrixPG.AddTriplet(p1, p2, 0);
                 _similarityMatrixPG.AddTriplet(p2, p1, 0);
             }
+            if (res.Count == 2)
+            {
+                // select the BEST of the two
+                double[] scores = new double[res.Count];
+                int maxId = -1;
+                double maxScore = 0;
+                for (int i = 0; i < res.Count; ++i)
+                {
+                    for (int j = 0; j < res[i]._GRAPH._functionalityValues._parentCategories.Count; ++j)
+                    {
+                        int catId = (int)res[i]._GRAPH._functionalityValues._parentCategories[j];
+                        scores[i] += res[i]._GRAPH._functionalityValues._funvals[catId];
+                    }
+                    if (scores[i] > maxScore)
+                    {
+                        maxScore = scores[i];
+                        maxId = i;
+                    }
+                }
+                if (maxId == 0)
+                {
+                    _similarityMatrixPG.AddTriplet(p2, p1, 0);
+                }
+                else
+                {
+                    _similarityMatrixPG.AddTriplet(p1, p2, 0);
+                }
+            }
             return true;
         }// runACrossover - part groups
 
         private bool tryRestoreAFunctionalNode(Model m, Node node)
         {
-            Random rand = new Random();
-            int randnum = rand.Next(1);
-            if (randnum == 0)
-            {
-                return false;
-            }
+            //Random rand = new Random();
+            //int randnum = rand.Next(1);
+            //if (randnum == 0)
+            //{
+            //    return false;
+            //}
             string node_name = node._PART._partName;
             if (!_functionalPartScales.ContainsKey(node_name))
             {
@@ -5126,13 +5162,19 @@ namespace FameBase
             if (models == null || models.Count == 0)
             {
                 models = new List<Model>();
-                foreach (ModelViewer mv in _currGenModelViewers)
+
+                foreach (ModelViewer mv in _ancesterModelViewers)
                 {
                     models.Add(mv._MODEL);
                 }
                 if (models.Count == 0)
                 {
                     return _currGenModelViewers;
+                }
+                _currentModelIndexMap = new Dictionary<int, int>();
+                for (int i = 0; i < models.Count; ++i)
+                {
+                    _currentModelIndexMap.Add(i, i);
                 }
             }
             int n = models.Count;
@@ -5178,11 +5220,27 @@ namespace FameBase
             }
             Array.Sort(topNHighest, indices);
             List<ModelViewer> sorted = new List<ModelViewer>();
+            int nTopN = 15;
+            int mintopN = 1;
             for (int i = n - 1; i >= 0; --i)
             {
+                //// if the model is not in the top-5 of any category, ignore it
+                //int nTop = 0;
+                //for (int j = 0; j < catsIds.Length; ++j)
+                //{
+                //    if (_ranksByCategory[indices[i], catsIds[j]] <= nTopN)
+                //    {
+                //        ++nTop;
+                //    }
+                //}
+                //if (nTop < mintopN)
+                //{
+                //    continue;
+                //}
                 Model imodel = models[indices[i]];
                 sorted.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
             }
+            _currGenModelViewers = new List<ModelViewer>(sorted);
             return sorted;
         }// rankByHighestCategoryValue
 

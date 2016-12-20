@@ -966,6 +966,8 @@ namespace FameBase
 
         private void rankByCatToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            // 1. rank first
+            // 2. click on "screen capture" from top to low
             List<ModelViewer> modelViews = this.glViewer.rankByHighestCategoryValue(null, 1);
             this.partBasket.Controls.Clear();
             if (modelViews != null)
