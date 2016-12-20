@@ -119,6 +119,7 @@ namespace FameBase
         public bool isDrawModelSamplePoints = false;
         public bool isDrawPartSamplePoints = false;
         public bool needReSample = false;
+        public bool isDrawPartFunctionalSpacePrimitive = false;
 
         public bool enableDepthTest = true;
         public bool showVanishingLines = true;
@@ -1771,6 +1772,7 @@ namespace FameBase
                 LoadPartGroupsOfAModelGraph(_currModel._GRAPH, pgName);
             }
             _currModel._GRAPH.initilaizePartGroups();
+            _currModel.analyzeFunctionalSpace();
             List<Model> models = new List<Model>();
             models.Add(_currModel);
             this.preProcessInputSet(models);
@@ -2452,48 +2454,48 @@ namespace FameBase
 
         public string nextFunctionalSpace()
         {
-            // Functional Patch / parts
-            if (_currModel == null)
-            {
-                return "";
-            }
-            _categoryId = (_categoryId + 1) % Common._NUM_CATEGORIY;
-            this.Refresh();
-            string str = Common.getCategoryName(_categoryId);
-            return str;
+            //// Functional Patch / parts
+            //if (_currModel == null)
+            //{
+            //    return "";
+            //}
+            //_categoryId = (_categoryId + 1) % Common._NUM_CATEGORIY;
+            //this.Refresh();
+            //string str = Common.getCategoryName(_categoryId);
+            //return str;
 
             // Functional Space
-            //if (_currModel == null || _currModel._funcSpaces == null)
-            //{
-            //    return "0/0";
-            //}
-            //_fsIdx = (_fsIdx + 1) % _currModel._funcSpaces.Length;
-            //this.Refresh();
-            //string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
-            //return str;
+            if (_currModel == null || _currModel._funcSpaces == null)
+            {
+                return "0/0";
+            }
+            _fsIdx = (_fsIdx + 1) % _currModel._funcSpaces.Length;
+            this.Refresh();
+            string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
+            return str;
         }
         
         public string prevFunctionalSpace()
         {
             // Functional Patch / parts
-            if (_currModel == null)
-            {
-                return "";
-            }
-            _categoryId = (_categoryId - 1 + Common._NUM_CATEGORIY) % Common._NUM_CATEGORIY;
-            this.Refresh();
-            string str = Common.getCategoryName(_categoryId);
-            return str;
+            //if (_currModel == null)
+            //{
+            //    return "";
+            //}
+            //_categoryId = (_categoryId - 1 + Common._NUM_CATEGORIY) % Common._NUM_CATEGORIY;
+            //this.Refresh();
+            //string str = Common.getCategoryName(_categoryId);
+            //return str;
 
             // Functional Space
-            //if (_currModel == null || _currModel._funcSpaces == null)
-            //{
-            //    return "0/0";
-            //}
-            //_fsIdx = (_fsIdx - 1 + _currModel._funcSpaces.Length) % _currModel._funcSpaces.Length;
-            //this.Refresh();
-            //string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
-            //return str;
+            if (_currModel == null || _currModel._funcSpaces == null)
+            {
+                return "0/0";
+            }
+            _fsIdx = (_fsIdx - 1 + _currModel._funcSpaces.Length) % _currModel._funcSpaces.Length;
+            this.Refresh();
+            string str = (_fsIdx + 1).ToString() + "//" + _currModel._funcSpaces.Length.ToString();
+            return str;
         }
 
         public string nextMeshClass()
@@ -5220,8 +5222,8 @@ namespace FameBase
             }
             Array.Sort(topNHighest, indices);
             List<ModelViewer> sorted = new List<ModelViewer>();
-            int nTopN = 15;
-            int mintopN = 1;
+            //int nTopN = 15;
+            //int mintopN = 1;
             for (int i = n - 1; i >= 0; --i)
             {
                 //// if the model is not in the top-5 of any category, ignore it
@@ -9587,8 +9589,14 @@ namespace FameBase
                         GLDrawer.drawBoundingboxEdges(part._BOUNDINGBOX, part._COLOR);
                     }
                 }
-                
-            }
+                if (this.isDrawPartFunctionalSpacePrimitive && part._functionalSpacePrims.Count > 0)
+                {
+                    foreach (Prism fs in part._functionalSpacePrims)
+                    {
+                        GLDrawer.drawBoundingboxPlanes(fs, part._COLOR);
+                    }
+                }
+            }// each part
             if (this.isDrawPartSamplePoints)
             {
                 foreach (Part part in parts)

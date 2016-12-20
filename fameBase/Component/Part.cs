@@ -26,6 +26,7 @@ namespace Component
 
         public SamplePoints _partSP;
         public string _partName;
+        public List<Prism> _functionalSpacePrims = new List<Prism>();
 
         public Color _COLOR = Color.LightBlue;
 
@@ -150,14 +151,14 @@ namespace Component
             //this.calculateAxisAlignedBbox();
             //return;
 
-            int n = this._mesh.VertexCount;
+            int n = _mesh.VertexCount;
             double[,] vArray = new double[n, 3];
             Vector3d center = new Vector3d();
             for (int i = 0, j = 0; i < n; ++i, j += 3)
             {
-                vArray[i, 0] = this._mesh.VertexPos[j];
-                vArray[i, 1] = this._mesh.VertexPos[j + 1];
-                vArray[i, 2] = this._mesh.VertexPos[j + 2];
+                vArray[i, 0] = _mesh.VertexPos[j];
+                vArray[i, 1] = _mesh.VertexPos[j + 1];
+                vArray[i, 2] = _mesh.VertexPos[j + 2];
                 center += new Vector3d(vArray[i, 0], vArray[i, 1], vArray[i, 2]);
             }
             center /= n;           
@@ -178,7 +179,7 @@ namespace Component
                 axes[0] = new Vector3d(pca.Components[0].Eigenvector).normalize();
                 axes[1] = new Vector3d(pca.Components[1].Eigenvector).normalize();
                 axes[2] = new Vector3d(pca.Components[2].Eigenvector).normalize();
-                double[,] trans = pca.Transform(this._mesh.VertexArray, 3);
+                double[,] trans = pca.Transform(_mesh.VertexArray, 3);
                 double max_x = double.MinValue;
                 double max_y = double.MinValue;
                 double max_z = double.MinValue;
@@ -207,8 +208,8 @@ namespace Component
                 center += (axes[0] * shiftX + axes[1] * shiftY + axes[2] * shiftZ);
                 Vector3d scale = new Vector3d(scaleX, scaleY, scaleZ);
 
-                Prism cuboid = fitCuboid(center, scale, axes);
-                Prism cylinder = fitCylinder(center, scale, axes);
+                Prism cuboid = fitCuboid(_mesh, center, scale, axes);
+                Prism cylinder = fitCylinder(_mesh, center, scale, axes);
                 //_boundingbox = cuboid;
                 if (option == -1)
                 {
@@ -235,9 +236,100 @@ namespace Component
             }
         }// calPrincipalAxes
 
-        public Prism fitCuboid(Vector3d center, Vector3d scale, Vector3d[] axes)
+        public static Prism FitProxy(int option, Mesh mesh)
         {
-            ConvexHull hull = new ConvexHull(this._mesh);
+            Vector3d[] axes = new Vector3d[3];
+            int n = mesh.VertexCount;
+            double[,] vArray = new double[n, 3];
+            Vector3d center = new Vector3d();
+            for (int i = 0, j = 0; i < n; ++i, j += 3)
+            {
+                vArray[i, 0] = mesh.VertexPos[j];
+                vArray[i, 1] = mesh.VertexPos[j + 1];
+                vArray[i, 2] = mesh.VertexPos[j + 2];
+                center += new Vector3d(vArray[i, 0], vArray[i, 1], vArray[i, 2]);
+            }
+            center /= n;
+
+            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
+            pca.Compute();
+
+            Prism prism = null;
+
+            if (pca.Components.Count < 3)
+            {
+                // using axis aligned axes
+                axes[0] = Vector3d.XCoord;
+                axes[1] = Vector3d.YCoord;
+                axes[2] = Vector3d.ZCoord;
+                prism = new Prism(mesh.MinCoord, mesh.MaxCoord);
+            }
+            else
+            {
+                axes[0] = new Vector3d(pca.Components[0].Eigenvector).normalize();
+                axes[1] = new Vector3d(pca.Components[1].Eigenvector).normalize();
+                axes[2] = new Vector3d(pca.Components[2].Eigenvector).normalize();
+                double[,] trans = pca.Transform(mesh.VertexArray, 3);
+                double max_x = double.MinValue;
+                double max_y = double.MinValue;
+                double max_z = double.MinValue;
+                double min_x = double.MaxValue;
+                double min_y = double.MaxValue;
+                double min_z = double.MaxValue;
+                for (int i = 0, j = 0; i < n; ++i, j += 3)
+                {
+                    // compute the min max x,y,z
+                    if (max_x < trans[i, 0]) max_x = trans[i, 0];
+                    if (min_x > trans[i, 0]) min_x = trans[i, 0];
+                    if (max_y < trans[i, 1]) max_y = trans[i, 1];
+                    if (min_y > trans[i, 1]) min_y = trans[i, 1];
+                    if (max_z < trans[i, 2]) max_z = trans[i, 2];
+                    if (min_z > trans[i, 2]) min_z = trans[i, 2];
+                }
+
+                // shift the center point
+                double shiftX = (max_x + min_x) / 2;
+                double scaleX = (max_x - min_x) / 2;
+                double shiftY = (max_y + min_y) / 2;
+                double scaleY = (max_y - min_y) / 2;
+                double shiftZ = (max_z + min_z) / 2;
+                double scaleZ = (max_z - min_z) / 2;
+
+                center += (axes[0] * shiftX + axes[1] * shiftY + axes[2] * shiftZ);
+                Vector3d scale = new Vector3d(scaleX, scaleY, scaleZ);
+
+                Prism cuboid = fitCuboid(mesh, center, scale, axes);
+                Prism cylinder = fitCylinder(mesh, center, scale, axes);
+                //prism = cuboid;
+                if (option == -1)
+                {
+                    if (cuboid.fittingError >= cylinder.fittingError && (cuboid.fittingError - cylinder.fittingError) / Math.Abs(cylinder.fittingError) > 0.2)
+                    {
+                        prism = cylinder;
+                    }
+                    else
+                    {
+                        prism = cuboid;
+                    }
+                }
+                else
+                {
+                    if (option == 0)
+                    {
+                        prism = cuboid;
+                    }
+                    else if (option == 1)
+                    {
+                        prism = cylinder;
+                    }
+                }
+            }
+            return prism;
+        }// FitProxy
+
+        public static Prism fitCuboid(Mesh mesh, Vector3d center, Vector3d scale, Vector3d[] axes)
+        {
+            ConvexHull hull = new ConvexHull(mesh);
             // compute box fitting error
             double boxVolume = scale.x * scale.y * scale.z * 8; // scale.x * 2, etc.
             double boxFitError = 1 - hull.Volume / boxVolume;
@@ -254,7 +346,7 @@ namespace Component
             Matrix4d R = new Matrix4d(r);
             R[3, 3] = 1.0;
 
-            proxy.setMaxMinScaleFromMesh(_mesh.MaxCoord, _mesh.MinCoord);
+            proxy.setMaxMinScaleFromMesh(mesh.MaxCoord, mesh.MinCoord);
             proxy.Transform(T * R * S);
             proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
             proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
@@ -265,9 +357,9 @@ namespace Component
             return proxy;
         }// FitCuboid
 
-        public Prism fitCylinder(Vector3d center, Vector3d scale, Vector3d[] axes)
+        public static Prism fitCylinder(Mesh mesh, Vector3d center, Vector3d scale, Vector3d[] axes)
         {
-            ConvexHull hull = new ConvexHull(this._mesh);
+            ConvexHull hull = new ConvexHull(mesh);
             // compute cylinder fitting error, iterate through each axis
             int whichaxis = 0;
             double minCylFitError = 1e8;
@@ -301,7 +393,7 @@ namespace Component
                 R = Matrix4d.RotationMatrix(rot_axis, angle);
             }
 
-            proxy.setMaxMinScaleFromMesh(_mesh.MaxCoord, _mesh.MinCoord);
+            proxy.setMaxMinScaleFromMesh(mesh.MaxCoord, mesh.MinCoord);
             proxy.Transform(T * R * S);
             proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
             proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
@@ -1390,6 +1482,267 @@ namespace Component
         {
             _parts.Remove(p);
         }
+
+        private int fitOption(int idx)
+        {
+            int option = 0;
+            if (_funcSpaces.Length == 3 && idx == 1)
+            {
+                if (_GRAPH != null && _GRAPH._functionalityValues != null)
+                {
+                    if (_GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Handcart) ||
+                        _GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Basket))
+                    {
+                        option = 1;
+                    }
+                }
+            }
+            return option;
+        }// fitOption
+
+        private int[] indexOfFunctionalSpaceConsidered()
+        {
+            if (_funcSpaces == null)
+            {
+                return null;
+            }
+            int n = _funcSpaces.Length;
+            bool before = n == 2;
+            if (_GRAPH != null && _GRAPH._functionalityValues != null)
+            {
+                if (!_GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Basket))
+                {
+                    n--;
+                    before = false;
+                }
+            }
+            int[] ids = new int[n];
+            if (before)
+            {
+                for (int i = 0; i < n; ++i)
+                {
+                    ids[i] = i;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < n; ++i)
+                {
+                    ids[i] = i + 1;
+                }
+            }
+            return ids;
+        }// indexOfFunctionalSpaceConsidered
+
+        public void analyzeFunctionalSpace()
+        {
+            int[] fsIds = indexOfFunctionalSpaceConsidered();
+            if (fsIds == null)
+            {
+                return;
+            }
+            List<List<double>> weights = new List<List<double>>();
+            for (int i = 0; i < fsIds.Length; ++i)
+            {
+                List<double> iweights = new List<double>();
+                weights.Add(iweights);
+            }
+            int catId = (int)_GRAPH._functionalityValues._parentCategories[0];
+            foreach (Node node in _GRAPH._NODES)
+            {
+                SamplePoints sp = node._PART._partSP;
+                if (sp == null)
+                {
+                    continue;
+                }
+                for (int i = 0; i < fsIds.Length; ++i)
+                {
+                    int fsId = fsIds[i];
+                    for (int j = 0; j < sp._weightsPerCat[catId]._nPoints; ++j)
+                    {
+                        weights[i].Add(sp._weightsPerCat[catId]._weights[j, fsId]);
+                    }
+                }
+            }
+            double ratio = 0.7;
+            double[] threshes = new double[fsIds.Length];
+            for (int i = 0; i < fsIds.Length; ++i)
+            {
+                weights[i].Sort();
+                int count = weights[i].Count;
+                int index = (int)(ratio * count);
+                threshes[i] = weights[i][index];
+            }
+            // do not handle the last - ground functional space      
+            
+            for (int i = 0; i < fsIds.Length; ++i)
+            {
+                // 1. separate to several meshes
+                List<Mesh> meshes = this.findIndependentMeshes(_funcSpaces[i]._mesh);
+                // 2. fit proxy
+                List<Prism> primitives = new List<Prism>();
+                int option = fitOption(i);
+                for (int j = 0; j < meshes.Count; ++j)
+                {
+                    Prism prism = Part.FitProxy(option, meshes[j]);
+                    primitives.Add(prism);
+                }
+                // 3. associate with parts
+                // 3.1 sort parts by #important points - high weights
+                List<Part> parts = new List<Part>();
+                List<int> numOfSalientPoints = new List<int>();
+                foreach (Part part in _parts)
+                {
+                    if (part._partSP == null) {
+                        continue;
+                    }
+                    int npoints = part._partSP._points.Length;
+                    int nSalientPoints = 0;
+                    for (int t = 0; t < npoints; ++t)
+                    {
+                        if (part._partSP._weightsPerCat[catId]._weights[t, i] > threshes[i])
+                        {
+                            ++nSalientPoints;
+                        }
+                    }
+                    int insertId = 0;
+                    for (int t = 0; t < numOfSalientPoints.Count; ++t)
+                    {
+                        if (nSalientPoints < numOfSalientPoints[t])
+                        {
+                            insertId = t + 1;
+                            break;
+                        }
+                    }
+                    parts.Insert(insertId, part);
+                    numOfSalientPoints.Insert(insertId, nSalientPoints);
+                }
+                // 3.2 select parts
+                for (int j = 0; j < primitives.Count; ++j)
+                {
+                    Part selected = null;
+                    // distance of the point to the plane
+                    double mindist_part = double.MaxValue;
+                    bool found = false;
+                    for (int t = 0; t < parts.Count; ++t)
+                    {
+                        Mesh tmesh = parts[t]._MESH;
+                        double mindist = double.MaxValue;
+                        for (int np = 0; np < tmesh.VertexCount; ++np)
+                        {
+                            Vector3d v = tmesh.getVertexPos(np);
+                            foreach (Polygon3D plane in primitives[j]._PLANES)
+                            {
+                                double d = Common.PointDistToPlane(v, plane.center, plane.normal);
+                                if (d < mindist)
+                                {
+                                    mindist = d;
+                                }
+                                if (mindist < Common._thresh)
+                                {
+                                    selected = parts[t]; // the first part (already high rank) that is closeset to the primitive
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (found)
+                            {
+                                break;
+                            }
+                        }
+                        if (found)
+                        {
+                            break;
+                        }
+                        if (mindist < mindist_part)
+                        {
+                            mindist_part = mindist;
+                            selected = parts[t];
+                        }
+                    }// each part
+                    selected._functionalSpacePrims.Add(primitives[j]);
+                }// for each primitive
+            }
+        }// analyzeFunctionalSpace
+
+        private List<Mesh> findIndependentMeshes(Mesh mesh)
+        {
+            List<Mesh> meshses = new List<Mesh>();
+            int n = mesh.VertexCount;
+            bool[] visited = new bool[n];
+            for (int k = 0; k < n; ++k)
+            {
+                if (visited[k]) continue;
+                Queue<int> q = new Queue<int>();
+                List<int> vIndex = new List<int>();
+                q.Enqueue(k);
+                visited[k] = true;
+                // region growing from i
+                while (q.Count > 0)
+                {
+                    int cur = q.Dequeue();
+                    vIndex.Add(cur);
+                    int[] curRow = mesh._VV[cur];
+                    foreach (int j in curRow)
+                    {
+                        if (visited[j]) continue;
+                        q.Enqueue(j);
+                        visited[j] = true;
+                    }
+                }
+                if (vIndex.Count < 10)
+                {
+                    continue;
+                }
+                // vertex position, face
+                Dictionary<int, int> vertexIdMap = new Dictionary<int, int>();
+                double[] vPos = new double[vIndex.Count * 3];
+                for (int i = 0, j = 0; i < vIndex.Count; ++i)
+                {
+                    vertexIdMap.Add(vIndex[i], i);
+                    int idx = vIndex[i] * 3;
+                    vPos[j++] = mesh.VertexPos[idx++];
+                    vPos[j++] = mesh.VertexPos[idx++];
+                    vPos[j++] = mesh.VertexPos[idx++];
+                }
+                // collect face indices belong to this part, avoiding repeat face id
+                HashSet<int> fIndex = new HashSet<int>();
+                List<int> faceVertexIndex = new List<int>();
+                foreach (int i in vIndex)
+                {
+                    foreach (int f in mesh._VF[i])
+                    {
+                        if (!fIndex.Contains(f))
+                        {
+                            int[] vertexIds = new int[3];
+                            for (int t = 0; t < 3; ++t)
+                            {
+                                int vid = mesh.FaceVertexIndex[f + t];
+                                int newVid = -1;
+                                vertexIdMap.TryGetValue(vid, out newVid);
+                                vertexIds[t] = newVid;
+                                if (newVid == -1)
+                                {
+                                    vertexIds = null;
+                                    break;
+                                }
+                            }
+                            if (vertexIds != null)
+                            {
+                                for (int t = 0; t < 3; ++t)
+                                {
+                                    faceVertexIndex.Add(vertexIds[t]);
+                                }
+                            }
+                            fIndex.Add(f);
+                        }
+                    }
+                }// faces
+                Mesh m = new Mesh(vPos, faceVertexIndex.ToArray());
+                meshses.Add(m);
+            }// each 
+            return meshses;
+        }// findIndependentMeshes
 
         // Global get
         public int _NPARTS

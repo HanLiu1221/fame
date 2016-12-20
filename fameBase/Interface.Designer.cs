@@ -110,6 +110,8 @@
             this.crossoverToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mutateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sortResToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rankByCatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rankByMultiToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.autoGenerateToolStripMenuItem = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
@@ -151,9 +153,8 @@
             this.hangerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.rankByCatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.glViewer = new FameBase.GLViewer();
-            this.rankByMultiToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.partFSToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -541,7 +542,8 @@
             this.groundToolStripMenuItem,
             this.functionalSpaceToolStripMenuItem,
             this.samplePointsToolStripMenuItem,
-            this.partSPToolStripMenuItem});
+            this.partSPToolStripMenuItem,
+            this.partFSToolStripMenuItem});
             this.renderOption.Image = ((System.Drawing.Image)(resources.GetObject("renderOption.Image")));
             this.renderOption.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.renderOption.Name = "renderOption";
@@ -827,30 +829,44 @@
             // symmetryToolStripMenuItem
             // 
             this.symmetryToolStripMenuItem.Name = "symmetryToolStripMenuItem";
-            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
             this.symmetryToolStripMenuItem.Text = "Symmetry";
             this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
             // 
             // crossoverToolStripMenuItem
             // 
             this.crossoverToolStripMenuItem.Name = "crossoverToolStripMenuItem";
-            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
             this.crossoverToolStripMenuItem.Text = "Crossover";
             this.crossoverToolStripMenuItem.Click += new System.EventHandler(this.crossoverToolStripMenuItem_Click);
             // 
             // mutateToolStripMenuItem
             // 
             this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
             this.mutateToolStripMenuItem.Text = "Mutate";
             this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
             // 
             // sortResToolStripMenuItem
             // 
             this.sortResToolStripMenuItem.Name = "sortResToolStripMenuItem";
-            this.sortResToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.sortResToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
             this.sortResToolStripMenuItem.Text = "Post analyze";
             this.sortResToolStripMenuItem.Click += new System.EventHandler(this.sortResToolStripMenuItem_Click);
+            // 
+            // rankByCatToolStripMenuItem
+            // 
+            this.rankByCatToolStripMenuItem.Name = "rankByCatToolStripMenuItem";
+            this.rankByCatToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
+            this.rankByCatToolStripMenuItem.Text = "Rank by Cat";
+            this.rankByCatToolStripMenuItem.Click += new System.EventHandler(this.rankByCatToolStripMenuItem_Click);
+            // 
+            // rankByMultiToolStripMenuItem
+            // 
+            this.rankByMultiToolStripMenuItem.Name = "rankByMultiToolStripMenuItem";
+            this.rankByMultiToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
+            this.rankByMultiToolStripMenuItem.Text = "Rank by Multi";
+            this.rankByMultiToolStripMenuItem.Click += new System.EventHandler(this.rankByMultiToolStripMenuItem_Click);
             // 
             // autoGenerateToolStripMenuItem
             // 
@@ -1235,13 +1251,6 @@
             this.connectorToolStripMenuItem.Text = "Connector";
             this.connectorToolStripMenuItem.Click += new System.EventHandler(this.connectorToolStripMenuItem_Click);
             // 
-            // rankByCatToolStripMenuItem
-            // 
-            this.rankByCatToolStripMenuItem.Name = "rankByCatToolStripMenuItem";
-            this.rankByCatToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.rankByCatToolStripMenuItem.Text = "Rank by Cat";
-            this.rankByCatToolStripMenuItem.Click += new System.EventHandler(this.rankByCatToolStripMenuItem_Click);
-            // 
             // glViewer
             // 
             this.glViewer.AccumBits = ((byte)(0));
@@ -1262,12 +1271,12 @@
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
-            // rankByMultiToolStripMenuItem
+            // partFSToolStripMenuItem
             // 
-            this.rankByMultiToolStripMenuItem.Name = "rankByMultiToolStripMenuItem";
-            this.rankByMultiToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.rankByMultiToolStripMenuItem.Text = "Rank by Multi";
-            this.rankByMultiToolStripMenuItem.Click += new System.EventHandler(this.rankByMultiToolStripMenuItem_Click);
+            this.partFSToolStripMenuItem.Name = "partFSToolStripMenuItem";
+            this.partFSToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
+            this.partFSToolStripMenuItem.Text = "Part FS";
+            this.partFSToolStripMenuItem.Click += new System.EventHandler(this.partFSToolStripMenuItem_Click);
             // 
             // Interface
             // 
@@ -1422,6 +1431,7 @@
         private System.Windows.Forms.Label postAnalysisRes;
         private System.Windows.Forms.ToolStripMenuItem rankByCatToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem rankByMultiToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem partFSToolStripMenuItem;
 	}
 }
 

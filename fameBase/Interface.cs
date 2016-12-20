@@ -993,5 +993,14 @@ namespace FameBase
             }
             this.Refresh();
         }
+
+        private void partFSToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.partFSToolStripMenuItem.Checked = !this.partFSToolStripMenuItem.Checked;
+            if (this.partFSToolStripMenuItem.Checked)
+            {
+                this.glViewer.isDrawPartFunctionalSpacePrimitive = true;
+            }
+        }
 	}// Interface
 }// namespace
