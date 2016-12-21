@@ -236,18 +236,26 @@ namespace Component
             }
         }// calPrincipalAxes
 
-        public static Prism FitProxy(int option, Mesh mesh)
+        public static Prism FitProxy(int option, Vector3d[] points)
         {
+            if (points == null || points.Length == 0)
+            {
+                return null;
+            }
             Vector3d[] axes = new Vector3d[3];
-            int n = mesh.VertexCount;
+            int n = points.Length;
             double[,] vArray = new double[n, 3];
             Vector3d center = new Vector3d();
-            for (int i = 0, j = 0; i < n; ++i, j += 3)
+            Vector3d maxCoord = Vector3d.MinCoord;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            for (int i = 0; i < n; ++i)
             {
-                vArray[i, 0] = mesh.VertexPos[j];
-                vArray[i, 1] = mesh.VertexPos[j + 1];
-                vArray[i, 2] = mesh.VertexPos[j + 2];
+                vArray[i, 0] = points[i].x;
+                vArray[i, 1] = points[i].y;
+                vArray[i, 2] = points[i].z;
                 center += new Vector3d(vArray[i, 0], vArray[i, 1], vArray[i, 2]);
+                maxCoord = Vector3d.Max(points[i], maxCoord);
+                minCoord = Vector3d.Min(points[i], minCoord);
             }
             center /= n;
 
@@ -262,14 +270,14 @@ namespace Component
                 axes[0] = Vector3d.XCoord;
                 axes[1] = Vector3d.YCoord;
                 axes[2] = Vector3d.ZCoord;
-                prism = new Prism(mesh.MinCoord, mesh.MaxCoord);
+                prism = new Prism(minCoord, maxCoord);
             }
             else
             {
                 axes[0] = new Vector3d(pca.Components[0].Eigenvector).normalize();
                 axes[1] = new Vector3d(pca.Components[1].Eigenvector).normalize();
                 axes[2] = new Vector3d(pca.Components[2].Eigenvector).normalize();
-                double[,] trans = pca.Transform(mesh.VertexArray, 3);
+                double[,] trans = pca.Transform(vArray, 3);
                 double max_x = double.MinValue;
                 double max_y = double.MinValue;
                 double max_z = double.MinValue;
@@ -298,8 +306,8 @@ namespace Component
                 center += (axes[0] * shiftX + axes[1] * shiftY + axes[2] * shiftZ);
                 Vector3d scale = new Vector3d(scaleX, scaleY, scaleZ);
 
-                Prism cuboid = fitCuboid(mesh, center, scale, axes);
-                Prism cylinder = fitCylinder(mesh, center, scale, axes);
+                Prism cuboid = fitCuboid(points, center, scale, axes);
+                Prism cylinder = fitCylinder(points, center, scale, axes);
                 //prism = cuboid;
                 if (option == -1)
                 {
@@ -326,6 +334,109 @@ namespace Component
             }
             return prism;
         }// FitProxy
+
+        public static Prism fitCuboid(Vector3d[] points, Vector3d center, Vector3d scale, Vector3d[] axes)
+        {
+            if (points == null || points.Length == 0)
+            {
+                return null;
+            }
+            List<int> index = new List<int>();
+            Vector3d maxCoord = Vector3d.MinCoord;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            for (int i = 0; i < points.Length; ++i)
+            {
+                index.Add(i);
+                maxCoord = Vector3d.Max(points[i], maxCoord);
+                minCoord = Vector3d.Min(points[i], minCoord);
+            }
+            ConvexHull hull = new ConvexHull(points, index);
+            // compute box fitting error
+            double boxVolume = scale.x * scale.y * scale.z * 8; // scale.x * 2, etc.
+            double boxFitError = 1 - hull.Volume / boxVolume;
+
+            if (axes[2].Dot(axes[0].Cross(axes[1])) < 0)
+                axes[2] = (new Vector3d() - axes[2]).normalize();
+
+            Prism proxy = Prism.CreateCuboid(new Vector3d(), new Vector3d(1, 1, 1));
+
+            Matrix4d T = Matrix4d.TranslationMatrix(center);
+            Matrix4d S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
+
+            Matrix3d r = new Matrix3d(axes[0], axes[1], axes[2]);
+            Matrix4d R = new Matrix4d(r);
+            R[3, 3] = 1.0;
+
+            proxy.setMaxMinScaleFromMesh(maxCoord, minCoord);
+            proxy.Transform(T * R * S);
+            proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
+            proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
+            proxy._originScale = proxy._scale = scale;
+            proxy.fittingError = boxFitError;
+            proxy.type = Common.PrimType.Cuboid;
+            proxy.updateOrigin();
+            return proxy;
+        }// FitCuboid
+
+        public static Prism fitCylinder(Vector3d[] points, Vector3d center, Vector3d scale, Vector3d[] axes)
+        {
+            if (points == null || points.Length == 0)
+            {
+                return null;
+            }
+            List<int> index = new List<int>();
+            Vector3d maxCoord = Vector3d.MinCoord;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            for (int i = 0; i < points.Length; ++i)
+            {
+                index.Add(i);
+                maxCoord = Vector3d.Max(points[i], maxCoord);
+                minCoord = Vector3d.Min(points[i], minCoord);
+            }
+            ConvexHull hull = new ConvexHull(points, index);
+            // compute cylinder fitting error, iterate through each axis
+            int whichaxis = 0;
+            double minCylFitError = 1e8;
+            double idealClyRadius = 0, clyAxisLen = 0;
+            for (int ax = 0; ax < 3; ++ax)
+            {
+                int i = (ax + 1) % 3;
+                int j = (ax + 2) % 3;
+                double cylRadius = Math.Max(scale[i], scale[j]);
+
+                // volume
+                double cylVolume = cylRadius * cylRadius * Math.PI * scale[ax] * 2;
+                double cylFitError = 1 - hull.Volume / cylVolume;
+                if (minCylFitError > cylFitError)
+                {
+                    minCylFitError = cylFitError;
+                    whichaxis = ax;
+                    idealClyRadius = cylRadius;
+                    clyAxisLen = scale[ax];
+                }
+            }
+            Prism proxy = Prism.CreateCylinder(20); // upright unit-scale cylinder
+            Matrix4d T = Matrix4d.TranslationMatrix(center);
+            Matrix4d S = Matrix4d.ScalingMatrix(idealClyRadius, idealClyRadius, clyAxisLen);
+            Matrix4d R = Matrix4d.IdentityMatrix();
+            Vector3d zaxis = new Vector3d(0, 0, 1);
+            Vector3d rot_axis = zaxis.Cross(axes[whichaxis]).normalize();
+            if (!double.IsNaN(rot_axis.x))
+            {
+                double angle = Math.Acos(zaxis.Dot(axes[whichaxis]));
+                R = Matrix4d.RotationMatrix(rot_axis, angle);
+            }
+
+            proxy.setMaxMinScaleFromMesh(maxCoord, minCoord);
+            proxy.Transform(T * R * S);
+            proxy.coordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
+            proxy.originCoordSys = new CoordinateSystem(center, axes[0], axes[1], axes[2]);
+            proxy._originScale = proxy._scale = scale;
+            proxy.fittingError = minCylFitError;
+            proxy.type = Common.PrimType.Cylinder;
+            proxy.updateOrigin();
+            return proxy;
+        }// FitCylinder
 
         public static Prism fitCuboid(Mesh mesh, Vector3d center, Vector3d scale, Vector3d[] axes)
         {
@@ -532,6 +643,9 @@ namespace Component
         private Vector3d _centerOfMass;
         private Vector3d _centerOfConvexHull;
         private Polygon3D _symPlane;
+
+        // test 
+        public List<List<Vector3d>> pointsTest = new List<List<Vector3d>>();
 
         public Model()
         {
@@ -1486,12 +1600,13 @@ namespace Component
         private int fitOption(int idx)
         {
             int option = 0;
-            if (_funcSpaces.Length == 3 && idx == 1)
+
+            if (_GRAPH != null && _GRAPH._functionalityValues != null)
             {
-                if (_GRAPH != null && _GRAPH._functionalityValues != null)
+                if (_GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Handcart) ||
+                    _GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Basket))
                 {
-                    if (_GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Handcart) ||
-                        _GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Basket))
+                    if ((_funcSpaces.Length == 3 && idx == 1) || (_funcSpaces.Length == 2 && idx == 0))
                     {
                         option = 1;
                     }
@@ -1578,13 +1693,20 @@ namespace Component
             for (int i = 0; i < fsIds.Length; ++i)
             {
                 // 1. separate to several meshes
-                List<Mesh> meshes = this.findIndependentMeshes(_funcSpaces[fsIds[i]]._mesh);
+                double[] fs_weights = _funcSpaces[fsIds[i]]._weights.Clone() as double[];
+                Array.Sort(fs_weights);
+                double thr = fs_weights[(int)(0.9 * fs_weights.Length)];
+                List<List<Vector3d>> pointClouds = findIndependentPointClouds(_funcSpaces[fsIds[i]]._mesh, fs_weights, thr);
+                //if (i == 0)
+                //{
+                //    this.pointsTest = pointClouds;
+                //}
                 // 2. fit proxy
                 List<Prism> primitives = new List<Prism>();
-                int option = fitOption(i);
-                for (int j = 0; j < meshes.Count; ++j)
+                int option = fitOption(fsIds[i]);
+                for (int j = 0; j < pointClouds.Count; ++j)
                 {
-                    Prism prism = Part.FitProxy(option, meshes[j]);
+                    Prism prism = Part.FitProxy(option, pointClouds[j].ToArray());
                     primitives.Add(prism);
                 }
                 // 3. associate with parts
@@ -1744,6 +1866,77 @@ namespace Component
             return meshses;
         }// findIndependentMeshes
 
+        private List<List<Vector3d>> findIndependentPointClouds(Mesh mesh, double[] weights, double thr)
+        {
+            List<List<Vector3d>> res = new List<List<Vector3d>>();
+            int n = mesh.VertexCount;
+            bool[] visited = new bool[n];
+            for (int k = 0; k < n; ++k)
+            {
+                if (visited[k]) continue;
+                Queue<int> q = new Queue<int>();
+                List<int> vIndex = new List<int>();
+                q.Enqueue(k);
+                visited[k] = true;
+                // region growing from i
+                while (q.Count > 0)
+                {
+                    int cur = q.Dequeue();
+                    vIndex.Add(cur);
+                    int[] curRow = mesh._VV[cur];
+                    foreach (int j in curRow)
+                    {
+                        if (visited[j]) continue;
+                        q.Enqueue(j);
+                        visited[j] = true;
+                    }
+                }
+                if (vIndex.Count < 10)
+                {
+                    continue;
+                }
+                // vertex position, face
+                Dictionary<int, int> vertexIdMap = new Dictionary<int, int>();
+                double[] vPos = new double[vIndex.Count * 3];
+                
+                for (int i = 0, j = 0; i < vIndex.Count; ++i)
+                {
+                    vertexIdMap.Add(vIndex[i], i);
+                    int idx = vIndex[i] * 3;
+                    vPos[j++] = mesh.VertexPos[idx++];
+                    vPos[j++] = mesh.VertexPos[idx++];
+                    vPos[j++] = mesh.VertexPos[idx++];
+                }
+                // collect face indices belong to this part, avoiding repeat face id
+                HashSet<int> fIndex = new HashSet<int>();
+                List<int> faceVertexIndex = new List<int>();
+                List<Vector3d> points = new List<Vector3d>();
+                foreach (int i in vIndex)
+                {
+                    foreach (int f in mesh._VF[i])
+                    {
+                        if (weights[f] < thr)
+                        {
+                            continue;
+                        }
+                        if (!fIndex.Contains(f))
+                        {
+                            // add vertex and break
+                            Vector3d v = mesh.getVertexPos(i);
+                            points.Add(v);
+                            // offset
+                            Vector3d nor = mesh.getFaceNormal(f);
+                            Vector3d voff = v - nor * 0.05;
+                            points.Add(voff);
+                            fIndex.Add(f);
+                            break;
+                        }
+                    }
+                }// faces
+                res.Add(points);
+            }// each 
+            return res;
+        }// findIndependentMeshes
         // Global get
         public int _NPARTS
         {

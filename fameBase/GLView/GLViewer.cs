@@ -1772,7 +1772,7 @@ namespace FameBase
                 LoadPartGroupsOfAModelGraph(_currModel._GRAPH, pgName);
             }
             _currModel._GRAPH.initilaizePartGroups();
-            _currModel.analyzeFunctionalSpace();
+            //_currModel.analyzeFunctionalSpace();
             List<Model> models = new List<Model>();
             models.Add(_currModel);
             this.preProcessInputSet(models);
@@ -2014,6 +2014,28 @@ namespace FameBase
                         _inputSetCats.Add((int)cat);
                     }
                 }
+                // correct name conflict
+                bool needSave = false;
+                for (int i = 0; i < model._GRAPH._NODES.Count - 1; ++i)
+                {
+                    string i_part_name = model._GRAPH._NODES[i]._PART._partName;
+                    int id = 1;
+                    for (int j = i + 1; j < model._GRAPH._NODES.Count; ++j)
+                    {
+                        string j_part_name = model._GRAPH._NODES[j]._PART._partName;
+                        if (j_part_name.Equals(i_part_name))
+                        {
+                            model._GRAPH._NODES[j]._PART._partName = j_part_name + "_" + id.ToString();
+                            ++id;
+                            needSave = true;
+                        }
+                    }
+                }
+                if (needSave)
+                {
+                    this.saveAPartBasedModel(model, model._path + model._model_name + ".pam", true);
+                }
+
                 foreach (Node node in model._GRAPH._NODES)
                 {
                     if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
@@ -3992,7 +4014,7 @@ namespace FameBase
                 Stopwatch stopWatch_eval = new Stopwatch();
                 stopWatch_eval.Start();
 
-                if (m._GRAPH.isValid() || (p1 == 14 && p2 == 29))
+                if (m._GRAPH.isValid())// || (p1 == 14 && p2 == 29))
                 {
                     m.composeMesh(true);
                     m._GRAPH.unify();
@@ -4041,7 +4063,14 @@ namespace FameBase
                         ++_modelIndex;
                     }
                     res.Add(m);
-                }// valid
+                }// valid 
+                else
+                {
+                    // screenshot
+                    this.setCurrentModel(m, -1);
+                    Program.GetFormMain().updateStats();
+                    this.captureScreen(imageFolder + m._model_name + "_invalid.png");
+                }
             }// 
             secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to run a crossover: " + secs.ToString() + " senconds.");
@@ -4079,6 +4108,11 @@ namespace FameBase
                 {
                     _similarityMatrixPG.AddTriplet(p1, p2, 0);
                 }
+                Model removed = res[maxId];
+                // screenshot
+                this.setCurrentModel(removed, -1);
+                Program.GetFormMain().updateStats();
+                this.captureScreen(imageFolder + removed._model_name + "_bad_one.png");
             }
             return true;
         }// runACrossover - part groups
@@ -9518,12 +9552,19 @@ namespace FameBase
             {
                 drawParts(_currModel._PARTS);
             }
+            if (_currModel.pointsTest != null)
+            {
+                foreach (List<Vector3d> pnts in _currModel.pointsTest)
+                {
+                    GLDrawer.drawPoints(pnts.ToArray(), Color.Purple, 6.0f);
+                }
+            }
             if (this.isDrawModelSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
             {
                 GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP._blendColors, 10.0f);
             }
             // draw functional space
-            if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._funcSpaces != null)
+            if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._funcSpaces != null && _fsIdx < _currModel._funcSpaces.Length)
             {
                 FunctionalSpace fs = _currModel._funcSpaces[_fsIdx];
                 GLDrawer.drawMeshFace(fs._mesh);
