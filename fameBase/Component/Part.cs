@@ -1578,7 +1578,7 @@ namespace Component
             for (int i = 0; i < fsIds.Length; ++i)
             {
                 // 1. separate to several meshes
-                List<Mesh> meshes = this.findIndependentMeshes(_funcSpaces[i]._mesh);
+                List<Mesh> meshes = this.findIndependentMeshes(_funcSpaces[fsIds[i]]._mesh);
                 // 2. fit proxy
                 List<Prism> primitives = new List<Prism>();
                 int option = fitOption(i);
