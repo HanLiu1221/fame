@@ -1245,9 +1245,34 @@ namespace Component
                     return true;
                 }
             }
-            // if any node that is detached
-            // check if we can walk through one node to all the other nodes
-            resetNodeIndex();
+            for (int i = 0; i < _nodes.Count; ++i)
+            {
+                Mesh m1 = _nodes[i]._PART._MESH;
+                int ndetach = 0;
+                for (int j =0; j < _nodes.Count; ++j)
+                {
+                    if (i == j)
+                    {
+                        continue;
+                    }
+                    Mesh m2 = _nodes[j]._PART._MESH;
+                    if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
+                    {
+                        ndetach++;
+                    }
+                }
+                if (ndetach == _nodes.Count - 1)
+                {
+                    return true;
+                }
+            }
+            if (_nodes.Count == 0)
+            {
+                return true;
+            }
+                // if any node that is detached
+                // check if we can walk through one node to all the other nodes
+                resetNodeIndex();
             bool[] visited = new bool[_nodes.Count];
             Node start = _nodes[0];
             List<Node> queue = new List<Node>();
@@ -1271,7 +1296,8 @@ namespace Component
                             continue;
                         }
                         Mesh m2 = node._PART._MESH;
-                        if (isConnected(m1,m2))
+                        if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord) ||
+                            isConnected(m1,m2))
                         {
                             queue.Add(node);
                         }
@@ -1288,8 +1314,9 @@ namespace Component
             return false;
         }// hasDetachedParts
 
-        private bool isConnected(Mesh m1, Mesh m2)
+        private bool isConnected_vertex(Mesh m1, Mesh m2)
         {
+            // work fro uniform mesh -- vertex are equally distributed
             double thr = 0.01;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;
@@ -1311,6 +1338,47 @@ namespace Component
             }
             return mind < thr;
         }// is connected
+
+        private bool isConnected(Mesh m1, Mesh m2)
+        {
+            // work fro uniform mesh -- vertex are equally distributed
+            double thr = 0.01;
+            double mind = double.MaxValue;
+            Vector3d[] v1 = m1.VertexVectorArray;
+            for (int i = 0; i < v1.Length; ++i)
+            {
+                for (int j = 0; j < m2.FaceCount; ++j)
+                {
+                    Vector3d center = m2.getFaceCenter(j);
+                    Vector3d nor = m2.getFaceNormal(j);
+                    double d = Common.PointDistToPlane(v1[i], center, nor);
+                    if (d < thr)
+                    {
+                        return true;
+                    }
+                    if (d < mind)
+                    {
+                        mind = d;
+                    }
+                }
+            }
+            return mind < thr;
+        }// is connected
+
+        private bool isTwoPolygonInclusive(Vector3d v1_min, Vector3d v1_max, Vector3d v2_min, Vector3d v2_max)
+        {
+            for (int i = 0; i < 3; ++i)
+            {
+                if ( (v1_min[i] <= v2_max[i] && v1_min[i] >= v2_min[i] &&
+                    v1_max[i] <= v2_max[i] && v1_max[i] >= v2_min[i]) ||
+                     (v2_min[i] <= v1_max[i] && v2_min[i] >= v1_min[i] &&
+                    v2_max[i] <= v1_max[i] && v2_max[i] >= v1_min[i]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         private bool isTwoPolyDetached(Vector3d v1_min, Vector3d v2_max)
         {

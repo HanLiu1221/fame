@@ -186,13 +186,13 @@ namespace Geometry
 			{
 				curr.value = value;
 			}
-            if (value == 0)
-            {
-                // remove
-                triplets.Remove(triplet);
-                rowTriplets[row].Remove(triplet);
-                colTriplets[col].Remove(triplet);
-            }
+            //if (value == 0)
+            //{
+            //    // remove
+            //    triplets.Remove(triplet);
+            //    rowTriplets[row].Remove(triplet);
+            //    colTriplets[col].Remove(triplet);
+            //}
 		}
 
 		public List<Triplet> GetRowTriplets(int rowIndex)

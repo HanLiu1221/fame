@@ -84,6 +84,7 @@
             this.functionalSpaceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.samplePointsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partSPToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.partFSToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.selectElement = new System.Windows.Forms.ToolStripDropDownButton();
             this.vertexSelection = new System.Windows.Forms.ToolStripMenuItem();
             this.edgeSelection = new System.Windows.Forms.ToolStripMenuItem();
@@ -124,6 +125,7 @@
             this.prev_mesh = new System.Windows.Forms.Button();
             this.next_mesh = new System.Windows.Forms.Button();
             this.statsLabel = new System.Windows.Forms.Label();
+            this.glViewer = new FameBase.GLViewer();
             this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
@@ -153,8 +155,6 @@
             this.hangerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer = new FameBase.GLViewer();
-            this.partFSToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -627,6 +627,13 @@
             this.partSPToolStripMenuItem.Text = "Part SP";
             this.partSPToolStripMenuItem.Click += new System.EventHandler(this.partSPToolStripMenuItem_Click);
             // 
+            // partFSToolStripMenuItem
+            // 
+            this.partFSToolStripMenuItem.Name = "partFSToolStripMenuItem";
+            this.partFSToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
+            this.partFSToolStripMenuItem.Text = "Part FS";
+            this.partFSToolStripMenuItem.Click += new System.EventHandler(this.partFSToolStripMenuItem_Click);
+            // 
             // selectElement
             // 
             this.selectElement.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -1024,6 +1031,26 @@
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
             // 
+            // glViewer
+            // 
+            this.glViewer.AccumBits = ((byte)(0));
+            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.glViewer.AutoCheckErrors = false;
+            this.glViewer.AutoFinish = false;
+            this.glViewer.AutoMakeCurrent = true;
+            this.glViewer.AutoSwapBuffers = true;
+            this.glViewer.BackColor = System.Drawing.Color.Black;
+            this.glViewer.ColorBits = ((byte)(32));
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
+            this.glViewer.DepthBits = ((byte)(16));
+            this.glViewer.Location = new System.Drawing.Point(216, 3);
+            this.glViewer.Name = "glViewer";
+            this.glViewer.Size = new System.Drawing.Size(676, 638);
+            this.glViewer.StencilBits = ((byte)(0));
+            this.glViewer.TabIndex = 16;
+            // 
             // partBasket
             // 
             this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -1056,33 +1083,33 @@
             this.functionalityToolStripMenuItem,
             this.partNameToolStripMenuItem});
             this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(144, 136);
+            this.partRelatedTools.Size = new System.Drawing.Size(153, 158);
             // 
             // groupToolStripMenuItem
             // 
             this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
             // addEdgeToolStripMenuItem
             // 
             this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.addEdgeToolStripMenuItem.Text = "Add edge";
             this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // delEdgeToolStripMenuItem
             // 
             this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.delEdgeToolStripMenuItem.Text = "Del edge";
             this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // selectToolStripMenuItem
             // 
             this.selectToolStripMenuItem.Name = "selectToolStripMenuItem";
-            this.selectToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.selectToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
@@ -1098,7 +1125,7 @@
             this.hangToolStripMenuItem,
             this.removeallToolStripMenuItem});
             this.functionalityToolStripMenuItem.Name = "functionalityToolStripMenuItem";
-            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.functionalityToolStripMenuItem.Text = "Functionality";
             // 
             // humanbackToolStripMenuItem
@@ -1171,7 +1198,7 @@
             this.groundSupportToolStripMenuItem,
             this.connectorToolStripMenuItem});
             this.partNameToolStripMenuItem.Name = "partNameToolStripMenuItem";
-            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
+            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.partNameToolStripMenuItem.Text = "Part Name";
             // 
             // chairLegToolStripMenuItem
@@ -1220,7 +1247,7 @@
             // 
             this.shelfToolStripMenuItem.Name = "shelfToolStripMenuItem";
             this.shelfToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
-            this.shelfToolStripMenuItem.Text = "Shelf";
+            this.shelfToolStripMenuItem.Text = "ShelfPlank";
             this.shelfToolStripMenuItem.Click += new System.EventHandler(this.shelfToolStripMenuItem_Click);
             // 
             // handleToolStripMenuItem
@@ -1250,33 +1277,6 @@
             this.connectorToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
             this.connectorToolStripMenuItem.Text = "Connector";
             this.connectorToolStripMenuItem.Click += new System.EventHandler(this.connectorToolStripMenuItem_Click);
-            // 
-            // glViewer
-            // 
-            this.glViewer.AccumBits = ((byte)(0));
-            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.glViewer.AutoCheckErrors = false;
-            this.glViewer.AutoFinish = false;
-            this.glViewer.AutoMakeCurrent = true;
-            this.glViewer.AutoSwapBuffers = true;
-            this.glViewer.BackColor = System.Drawing.Color.Black;
-            this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(216, 3);
-            this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(676, 638);
-            this.glViewer.StencilBits = ((byte)(0));
-            this.glViewer.TabIndex = 16;
-            // 
-            // partFSToolStripMenuItem
-            // 
-            this.partFSToolStripMenuItem.Name = "partFSToolStripMenuItem";
-            this.partFSToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
-            this.partFSToolStripMenuItem.Text = "Part FS";
-            this.partFSToolStripMenuItem.Click += new System.EventHandler(this.partFSToolStripMenuItem_Click);
             // 
             // Interface
             // 
