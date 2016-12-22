@@ -15,6 +15,7 @@ using Component;
 
 using System.Runtime.Serialization.Json;
 using System.Web.Script.Serialization;
+using Accord.Statistics.Distributions.Univariate;
 
 namespace FameBase
 {
@@ -1735,6 +1736,8 @@ namespace FameBase
 
         public void loadAPartBasedModel(string filename)
         {
+            this.loadAllCategoryScores();
+            return;
             if (!File.Exists(filename))
             {
                 MessageBox.Show("File does not exist!");
@@ -2200,6 +2203,90 @@ namespace FameBase
             }
             return res;
         }// evaluateFeaturesOfAModel
+
+        private void loadAllCategoryScores()
+        {
+            string scoreFolder = Interface.MODLES_PATH + "categoryScores\\";
+            string[] files = Directory.GetFiles(scoreFolder, "*.score");
+            int nShapes = files.Length;
+            int[] index = new int[Common._NUM_CATEGORIY];
+            string catName = Common.getCategoryName(0);
+            int catId = 0;
+            double[,] scores = new double[nShapes, Common._NUM_CATEGORIY];
+            for (int i = 0; i < nShapes; ++i)
+            {
+                string filename = files[i];
+                double[] score = this.loadAScoreFile(filename);
+                if (!filename.Contains(catName))
+                {
+                    ++catId;
+                    index[catId] = i;
+                    catName = Common.getCategoryName(catId);
+                }
+                for (int j = 0; j < score.Length; ++j)
+                {
+                    scores[i, j] = score[j];
+                }
+            }
+            this.analyzeBetaDistribution(scores, index);
+        }// loadAllCategoryScores
+
+        BetaDistribution[] bd_inClass;
+        BetaDistribution[] bd_outClass;
+        private void analyzeBetaDistribution(double[,] scores, int[] startIds)
+        {
+            int nShapes = scores.GetLength(0);
+            bd_inClass = new BetaDistribution[Common._NUM_CATEGORIY];
+            bd_outClass = new BetaDistribution[Common._NUM_CATEGORIY];
+            for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+            {
+                string catName = Common.getCategoryName(c);
+                List<double> inClass = new List<double>();
+                List<double> outClass = new List<double>();
+                int start = startIds[c];
+                int end = (c == Common._NUM_CATEGORIY - 1 ? nShapes : startIds[c + 1]);
+                for (int i = 0; i < start; ++i)
+                {
+                    outClass.Add(scores[i, c]);
+                }
+                for (int i = start; i < end; ++i)
+                {
+                    inClass.Add(scores[i, c]);
+                }
+                for (int i = end; i < nShapes; ++i)
+                {
+                    outClass.Add(scores[i, c]);
+                }
+                bd_inClass[c] = new BetaDistribution(0, 1);
+                bd_inClass[c].Fit(inClass.ToArray());
+                bd_outClass[c] = new BetaDistribution(0, 1);
+                bd_outClass[c].Fit(inClass.ToArray());
+            }
+        }// analyzeDistribution
+
+        private double[] loadAScoreFile(string filename)
+        {
+            if (filename == null || !File.Exists(filename))
+            {
+                return null;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t', ',' };
+                string s = sr.ReadLine().Trim();
+                string[] strs = s.Split(separator);
+                List<double> res = new List<double>();
+                for (int i = 0; i < strs.Length; ++i)
+                {
+                    double val;
+                    if (double.TryParse(strs[i], out val))
+                    {
+                        res.Add(val);
+                    }
+                }
+                return res.ToArray();
+            }
+        }// loadAScoreFile
 
         private void loadTrainedFeautres()
         {
@@ -3939,12 +4026,12 @@ namespace FameBase
                 return res;
             }
             int pairId = 0;
-            for (int i = 0; i < nPGs - 1; ++i)
+            for (int i = 5; i < nPGs - 1; ++i)
             {
                 for (int j = i + 1; j < nPGs; ++j)
                 {
                     List<Model> ijs = preRunACrossover(i, j, imageFolder, pairId++);
-                    res.AddRange(ijs);
+                    //res.AddRange(ijs);
                 }
             }
             return res;
