@@ -932,9 +932,9 @@ namespace Component
             {
                 double h = _funcFeat._pointFeats[i * dim + 1];
                 _funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
-                //double d = _funcFeat._pointFeats[i * dim + 2];
-                //_funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
-                _funcFeat._pointFeats[i * dim + 2] /= maxd;
+                //_funcFeat._pointFeats[i * dim + 2] /= maxd;
+                double d = _funcFeat._pointFeats[i * dim + 2];
+                _funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
             }
         }// computeSamplePointsFeatures
 
@@ -1018,7 +1018,7 @@ namespace Component
 
         public void computeDistAndAngleToCenterOfMass()
         {
-            int dim = Common._CONVEXHULL_FEAT_DIM;
+            int dim = Common._COM_FEAT_DIM;
             double maxdist = double.MinValue;
             double mindist = double.MaxValue;
             _funcFeat._cenOfMassFeats = new double[dim * _SP._points.Length];

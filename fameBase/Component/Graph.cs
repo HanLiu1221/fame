@@ -1236,20 +1236,12 @@ namespace Component
 
         private bool hasDetachedParts()
         {
-            foreach (Edge e in _edges)
-            {
-                Mesh m1 = e._start._PART._MESH;
-                Mesh m2 = e._end._PART._MESH;
-                if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
-                {
-                    return true;
-                }
-            }
+            // simple boundingbox check
             for (int i = 0; i < _nodes.Count; ++i)
             {
                 Mesh m1 = _nodes[i]._PART._MESH;
                 int ndetach = 0;
-                for (int j =0; j < _nodes.Count; ++j)
+                for (int j = 0; j < _nodes.Count; ++j)
                 {
                     if (i == j)
                     {
@@ -1270,53 +1262,58 @@ namespace Component
             {
                 return true;
             }
-                // if any node that is detached
-                // check if we can walk through one node to all the other nodes
-                resetNodeIndex();
-            bool[] visited = new bool[_nodes.Count];
-            Node start = _nodes[0];
-            List<Node> queue = new List<Node>();
-            queue.Add(start);
-            while (queue.Count > 0)
+            // if any node that is detached
+            // check if we can walk through one node to all the other nodes
+            resetNodeIndex();
+            foreach (Edge e in _edges)
             {
-                List<Node> cur = new List<Node>(queue);
-                foreach (Node node in cur)
+                SamplePoints sp1 = e._start._PART._partSP;
+                SamplePoints sp2 = e._end._PART._partSP;
+                if (sp1 != null && sp2 != null)
                 {
-                    visited[node._INDEX] = true;
-                }
-                queue.Clear();
-                foreach (Node c in cur)
-                {
-                    // include all connected
-                    Mesh m1 = c._PART._MESH;
-                    foreach (Node node in _nodes)
+                    if (!isConnected(sp1, sp2))
                     {
-                        if (visited[node._INDEX] || queue.Contains(node))
-                        {
-                            continue;
-                        }
-                        Mesh m2 = node._PART._MESH;
-                        if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord) ||
-                            isConnected(m1,m2))
-                        {
-                            queue.Add(node);
-                        }
+                        return true;
                     }
                 }
-            }
-            for (int i = 0; i < visited.Length; ++i)
-            {
-                if (!visited[i])
+                else
                 {
-                    return true;
+                    if (!isConnected_vertex_to_face(e._start._PART._MESH, e._end._PART._MESH))
+                    {
+                        return true;
+                    }
                 }
             }
             return false;
         }// hasDetachedParts
 
+        private bool isConnected(SamplePoints sp1, SamplePoints sp2)
+        {
+            double thr = 0.01;
+            double mind = double.MaxValue;
+            for (int i = 0; i < sp1._points.Length; ++i)
+            {
+                Vector3d v1 = sp1._points[i];
+                for (int j = 0; j < sp2._points.Length; ++j)
+                {
+                    Vector3d v2 = sp2._points[j];
+                    double d = (v1 - v2).Length();
+                    if (d < thr)
+                    {
+                        return true;
+                    }
+                    if (d < mind)
+                    {
+                        mind = d;
+                    }
+                }
+            }
+            return mind < thr;
+        }// is connected
+
         private bool isConnected_vertex(Mesh m1, Mesh m2)
         {
-            // work fro uniform mesh -- vertex are equally distributed
+            // work for uniform mesh -- vertex are equally distributed
             double thr = 0.01;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;
@@ -1339,9 +1336,9 @@ namespace Component
             return mind < thr;
         }// is connected
 
-        private bool isConnected(Mesh m1, Mesh m2)
+        private bool isConnected_vertex_to_face(Mesh m1, Mesh m2)
         {
-            // work fro uniform mesh -- vertex are equally distributed
+            // work for uniform mesh -- vertex are equally distributed
             double thr = 0.01;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;

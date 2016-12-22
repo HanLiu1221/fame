@@ -1214,7 +1214,7 @@ namespace FameBase
             // oriented geodesic PCA
             string ogPCAOutputFile = shape2poseDataFolder + model_name + "_og.arff";
             string ogPCACmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
-                               " -radius 0.1 -outfile " + ogPCAOutputFile + " -feat OrientedGeodesicPCA -densePoints " + shape2poseSampleFile +
+                               " -radius 0.001 -outfile " + ogPCAOutputFile + " -feat OrientedGeodesicPCA -densePoints " + shape2poseSampleFile +
                                " -metricFile " + metricOutputFile + " -randseed -1";
             //Process.Start(computelocalfeatureCmd, ogPCACmdPara).WaitForExit();
 
@@ -1244,7 +1244,7 @@ namespace FameBase
             // abs curv geodesic
             string absCurvGeoAvgOutputFile = shape2poseDataFolder + model_name + "_absCga.arff";
             string absCurvGeoAvgCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
-                " -radius 0.1 -outfile " + absCurvGeoAvgOutputFile + " -feat AbsCurvGeodesicAvg -densePoints " + shape2poseSampleFile +
+                " -radius 0.4 -outfile " + absCurvGeoAvgOutputFile + " -feat AbsCurvGeodesicAvg -densePoints " + shape2poseSampleFile +
                 " -metricFile " + metricOutputFile + " -randseed -1";
             //Process.Start(computelocalfeatureCmd, absCurvGeoAvgCmdPara);
 
@@ -1736,8 +1736,6 @@ namespace FameBase
 
         public void loadAPartBasedModel(string filename)
         {
-            this.loadAllCategoryScores();
-            return;
             if (!File.Exists(filename))
             {
                 MessageBox.Show("File does not exist!");
@@ -2260,7 +2258,7 @@ namespace FameBase
                 bd_inClass[c] = new BetaDistribution(0, 1);
                 bd_inClass[c].Fit(inClass.ToArray());
                 bd_outClass[c] = new BetaDistribution(0, 1);
-                bd_outClass[c].Fit(inClass.ToArray());
+                bd_outClass[c].Fit(outClass.ToArray());
             }
         }// analyzeDistribution
 
@@ -5003,6 +5001,7 @@ namespace FameBase
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._conhullFeats[i * d + j])));
                         sb.Append(",");
                     }
+                    d = Common._COM_FEAT_DIM;
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._cenOfMassFeats[i * d + j])));
@@ -9952,7 +9951,7 @@ namespace FameBase
                     {
                         if (_categoryId == -1)
                         {
-                            GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
+                            GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 10.0f);
                         }
                         else
                         {

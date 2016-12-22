@@ -28,6 +28,7 @@ namespace Geometry
         public static int _PCA_FEAT_DIM = 5;
         public static int _RAY_FEAT_DIM = 2;
         public static int _CONVEXHULL_FEAT_DIM = 2;
+        public static int _COM_FEAT_DIM = 2;
         public static int _POINT_FEATURE_DIM = 18;
 
         public static int _MAX_FACE_COUNT = 300000;
@@ -175,7 +176,6 @@ namespace Geometry
 
         public static bool isRayIntersectTriangle(Vector3d origin, Vector3d ray, Vector3d v1, Vector3d v2, Vector3d v3, out double hitDist)
         {
-            bool isHit = false;
             hitDist = 0;
             Vector3d edge1 = v2 - v1;
             Vector3d edge2 = v3 - v1;
@@ -217,10 +217,9 @@ namespace Geometry
             if (rayDistance < 0)
                 return false;
 
-            isHit = true;
             hitDist = rayDistance;
 
-            return isHit;
+            return true;
         }// isRayIntersectTriangle
 
         public static double[] vectorArrayToDoubleArray(Vector3d[] vecs)

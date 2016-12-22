@@ -1306,6 +1306,7 @@ namespace Geometry
             int dim = Common._RAY_FEAT_DIM;
             double[] rayDists = new double[this.vertexCount * dim];
             double maxdist = double.MinValue;
+            int noutside = 0;
             for (int i = 0; i < this.vertexCount; ++i)
             {
                 Vector3d ivec = getVertexPos(i);
@@ -1316,6 +1317,7 @@ namespace Geometry
                 if (fidx == -1)
                 {
                     rayDists[i * dim] = 1;
+                    ++noutside;
                 }
                 else
                 {
@@ -1343,7 +1345,7 @@ namespace Geometry
             int dim = Common._RAY_FEAT_DIM;
             double[] rayDists = new double[vposes.Length * dim];
             double maxdist = double.MinValue;
-            double distThres = 0.01;
+            double distThres = Common._thresh;
             // using the maximum dist of the mesh
             double maxMeshDist = getMaxdist();
             for (int i = 0; i < vposes.Length; ++i)
@@ -1362,7 +1364,7 @@ namespace Geometry
                 {
                     rayDists[i * dim] = dist / maxMeshDist;
                     //rayDists[i * dim] = dist;
-                    if (dist < maxdist)
+                    if (dist > maxdist)
                     {
                         maxdist = dist;
                     }
