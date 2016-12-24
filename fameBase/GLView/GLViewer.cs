@@ -1214,7 +1214,7 @@ namespace FameBase
             // oriented geodesic PCA
             string ogPCAOutputFile = shape2poseDataFolder + model_name + "_og.arff";
             string ogPCACmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
-                               " -radius 0.001 -outfile " + ogPCAOutputFile + " -feat OrientedGeodesicPCA -densePoints " + shape2poseSampleFile +
+                               " -radius 0.1 -outfile " + ogPCAOutputFile + " -feat OrientedGeodesicPCA -densePoints " + shape2poseSampleFile +
                                " -metricFile " + metricOutputFile + " -randseed -1";
             //Process.Start(computelocalfeatureCmd, ogPCACmdPara).WaitForExit();
 
@@ -1244,7 +1244,7 @@ namespace FameBase
             // abs curv geodesic
             string absCurvGeoAvgOutputFile = shape2poseDataFolder + model_name + "_absCga.arff";
             string absCurvGeoAvgCmdPara = shape2poseMeshFile + " -points " + shape2poseSampleFile +
-                " -radius 0.4 -outfile " + absCurvGeoAvgOutputFile + " -feat AbsCurvGeodesicAvg -densePoints " + shape2poseSampleFile +
+                " -radius 0.1 -outfile " + absCurvGeoAvgOutputFile + " -feat AbsCurvGeodesicAvg -densePoints " + shape2poseSampleFile +
                 " -metricFile " + metricOutputFile + " -randseed -1";
             //Process.Start(computelocalfeatureCmd, absCurvGeoAvgCmdPara);
 
@@ -2165,6 +2165,8 @@ namespace FameBase
 
             // 3. load knowledge base - binary features
             this.loadTrainedFeautres();
+
+            this.loadAllCategoryScores();
 
             // 4. set up the current generation
 
@@ -3827,8 +3829,8 @@ namespace FameBase
                         // crossover
                         runstr += "Crossover @iteration " + i.ToString();
                         Program.GetFormMain().writeToConsole(runstr);
-                        cur_kids = preRun(imageFolder_c);
-                        //cur_kids = runAGenerationOfCrossover(_currGenId, rand, imageFolder_c);
+                        //cur_kids = preRun(imageFolder_c);
+                        cur_kids = runAGenerationOfCrossover(_currGenId, rand, imageFolder_c);
                         break;
                 }
                 curGeneration.AddRange(cur_kids);
@@ -4309,7 +4311,7 @@ namespace FameBase
                 Stopwatch stopWatch_eval = new Stopwatch();
                 stopWatch_eval.Start();
 
-                if (true || m._GRAPH.isValid())// || (p1 == 14 && p2 == 29))
+                if (m._GRAPH.isValid())// || (p1 == 14 && p2 == 29))
                 {
                     m.composeMesh(true);
                     m._GRAPH.unify();
@@ -4334,8 +4336,12 @@ namespace FameBase
                     m._GRAPH._functionalityValues.addParentCategories(model1._GRAPH._functionalityValues._parentCategories);
                     m._GRAPH._functionalityValues.addParentCategories(model2._GRAPH._functionalityValues._parentCategories);
                     Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
-                    //this.saveSamplePointsRequiredInfo(m);
-                    secs = stopWatch_cross.ElapsedMilliseconds / 1000;
+                    for (int j = 0; j < values.Count;++j) {
+                        double prob_in = bd_inClass[j].InverseDistributionFunction(values[j]);
+                        double prob_out = bd_outClass[j].InverseDistributionFunction(values[j]);
+                    }
+                        //this.saveSamplePointsRequiredInfo(m);
+                        secs = stopWatch_cross.ElapsedMilliseconds / 1000;
                     Program.writeToConsole("Time to eval an offspring: " + secs.ToString() + " senconds.");
                     // screenshot
                     this.setCurrentModel(m, -1);
@@ -4674,10 +4680,8 @@ namespace FameBase
             {
                 this.reSamplingForANewShape(model);
             }
-            if (!File.Exists(ptsname))
-            {
-                this.saveModelSamplePoints(model, ptsname);
-            }
+            model._SP.updateNormals(model._MESH);
+            this.saveModelSamplePoints(model, ptsname);
         }// saveSamplePointsRequiredInfo
 
         private double[] runFunctionalityTest(Model model)
@@ -5713,9 +5717,9 @@ namespace FameBase
             if (m._SP == null || m._SP._points.Length != nSamplePoints || m._funcFeat == null)
             {
                 m.composeMesh(true);
-                this.saveSamplePointsRequiredInfo(m);
-                bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
             }
+            this.saveSamplePointsRequiredInfo(m);
+            bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
             // n * 18 put all features together
             double[,] point_features = new double[nSamplePoints, Common._POINT_FEATURE_DIM];
             for (int i = 0; i < nSamplePoints; ++i)
