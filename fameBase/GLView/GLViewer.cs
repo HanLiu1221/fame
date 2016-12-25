@@ -4336,7 +4336,8 @@ namespace FameBase
                     m._GRAPH._functionalityValues.addParentCategories(model1._GRAPH._functionalityValues._parentCategories);
                     m._GRAPH._functionalityValues.addParentCategories(model2._GRAPH._functionalityValues._parentCategories);
                     Program.GetFormMain().writePostAnalysisInfo(sb.ToString());
-                    for (int j = 0; j < values.Count;++j) {
+                    for (int j = 0; j < values.Count; ++j)
+                    {
                         double prob_in = bd_inClass[j].InverseDistributionFunction(values[j]);
                         double prob_out = bd_outClass[j].InverseDistributionFunction(values[j]);
                     }
