@@ -803,6 +803,7 @@ namespace Component
             if (redoSP)
             {
                 _SP = new SamplePoints(points.ToArray(), normals.ToArray(), faceIdxs.ToArray(), colors.ToArray(), _mesh.FaceCount);
+                _SP.updateNormals(_mesh);
             }
         }// composeMesh
 
@@ -944,6 +945,8 @@ namespace Component
 
         public void findBestSymPlane(Vector3d[] centers, Vector3d[] normals)
         {
+            //_symPlane = new Polygon3D(new Vector3d(0, 0, 0), new Vector3d(-1, 0, 0));
+            //return;
             if (centers.Length == 1)
             {
                 _symPlane = new Polygon3D(centers[0], normals[0].normalize());
@@ -1600,6 +1603,16 @@ namespace Component
         {
             _parts.Remove(p);
         }
+
+        public void deleteParts(List<int> indices)
+        {
+            indices.Sort();
+            // with parts together
+            for (int i = indices.Count - 1; i >= 0; --i)
+            {
+                _parts.RemoveAt(indices[i]);
+            }
+        }// deleteParts
 
         private int fitOption(int idx)
         {
@@ -2319,6 +2332,7 @@ namespace Component
         public int _npairs = 0;
         public List<double[,]> _unaryF;
         public List<double[,]> _binaryF;
+        public double[] weights;
 
         public TrainedFeaturePerCategory(Common.Category c)
         {

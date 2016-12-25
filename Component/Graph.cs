@@ -1558,6 +1558,24 @@ namespace Component
             return true;
         }// shouldCreateNewPartGroup
 
+        public void deleteNodes(List<Node> selectedNodes)
+        {
+            // with parts together
+            foreach (Node node in selectedNodes)
+            {
+                _nodes.Remove(node);
+            }
+        }// deleteNodes
+        public void deleteNodes(List<int> indices)
+        {
+            indices.Sort();
+            // with parts together
+            for (int i = indices.Count - 1; i >= 0; --i)
+            {
+                _nodes.RemoveAt(indices[i]);
+            }
+        }// deleteNodes
+
         private int getIndex(List<List<int>> com, List<int> cand)
         {
             for (int i = 0; i < com.Count; ++i)
@@ -1921,19 +1939,24 @@ namespace Component
 
     public class FunctionalityFeatures
     {
-        public List<Common.Category> _cats = new List<Common.Category>();
-        public List<double> _funvals = new List<double>();
+        public Common.Category[] _cats = new Common.Category[Common._NUM_CATEGORIY];
+        public double[] _funvals = new double[Common._NUM_CATEGORIY];
         public List<Common.Category> _parentCategories = new List<Common.Category>();
         public double[] _inClassProbs = new double[Common._NUM_CATEGORIY];
         public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
         public double[] _classProbs = new double[Common._NUM_CATEGORIY];
 
-        public FunctionalityFeatures() { }
+        public FunctionalityFeatures() {
+            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            {
+                _cats[i] = (Common.Category)i;
+            }
+        }
 
         public FunctionalityFeatures(List<Common.Category> cats, List<double> vals)
         {
-            _cats = cats;
-            _funvals = vals;
+            _cats = cats.ToArray();
+            _funvals = vals.ToArray();
         }
 
         public Object clone()
