@@ -1052,7 +1052,7 @@ namespace Geometry
                     vArray[v, 1] = neigs[v].y;
                     vArray[v, 2] = neigs[v].z;
                 }
-                PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
+                PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray);
                 pca.Compute();
                 if (pca.Components.Count < 3)
                 {
@@ -1337,13 +1337,14 @@ namespace Geometry
             return rayDists;
         }// computeRadDist
 
-        public double[] computeRayDist(Vector3d[] vposes, Vector3d[] vnormals)
+        public double[] computeRayDist(Vector3d[] vposes, Vector3d[] vnormals, out bool[] shouldUsePoints)
         {
             // dist & angle
             int dim = Common._RAY_FEAT_DIM;
             double[] rayDists = new double[vposes.Length * dim];
             double maxdist = double.MinValue;
             double distThres = 0.01;
+            shouldUsePoints = new bool[vposes.Length];
             // using the maximum dist of the mesh
             double maxMeshDist = getMaxdist();
             for (int i = 0; i < vposes.Length; ++i)
@@ -1366,6 +1367,7 @@ namespace Geometry
                     {
                         maxdist = dist;
                     }
+                    shouldUsePoints[i] = true;
                 }
                 double cosv = inor.Dot(Common.uprightVec);
                 cosv = Common.cutoff(cosv, -1.0, 1.0);

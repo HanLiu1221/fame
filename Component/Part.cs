@@ -152,19 +152,23 @@ namespace Component
             //return;
 
             int n = _mesh.VertexCount;
-            double[,] vArray = new double[n, 3];
+            double[][] vArray = new double[n][];
+            for (int i = 0; i < n; ++i)
+            {
+                vArray[i] = new double[3];
+            }
             Vector3d center = new Vector3d();
             for (int i = 0, j = 0; i < n; ++i, j += 3)
             {
-                vArray[i, 0] = _mesh.VertexPos[j];
-                vArray[i, 1] = _mesh.VertexPos[j + 1];
-                vArray[i, 2] = _mesh.VertexPos[j + 2];
-                center += new Vector3d(vArray[i, 0], vArray[i, 1], vArray[i, 2]);
+                vArray[i][0] = _mesh.VertexPos[j];
+                vArray[i][1] = _mesh.VertexPos[j + 1];
+                vArray[i][2] = _mesh.VertexPos[j + 2];
+                center += new Vector3d(vArray[i][0], vArray[i][1], vArray[i][2]);
             }
             center /= n;           
 
-            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
-            pca.Compute();
+            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(PrincipalComponentMethod.Center);
+            pca.Learn(vArray);
             
             if (pca.Components.Count < 3)
             {
@@ -630,6 +634,7 @@ namespace Component
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
         public int _index = -1;
+        public int nNewNodes = 0;
         
         public FunctionalSpace[] _funcSpaces;
 
@@ -747,7 +752,6 @@ namespace Component
             List<Vector3d> normals = new List<Vector3d>();
             List<int> faceIdxs = new List<int>();
             List<Color> colors = new List<Color>();
-            
             foreach (Part part in _parts)
             {
                 Mesh mesh = part._MESH;

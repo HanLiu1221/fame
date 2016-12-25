@@ -1236,15 +1236,15 @@ namespace Component
 
         private bool hasDetachedParts()
         {
-            foreach (Edge e in _edges)
-            {
-                Mesh m1 = e._start._PART._MESH;
-                Mesh m2 = e._end._PART._MESH;
-                if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
-                {
-                    return true;
-                }
-            }
+            //foreach (Edge e in _edges)
+            //{
+            //    Mesh m1 = e._start._PART._MESH;
+            //    Mesh m2 = e._end._PART._MESH;
+            //    if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
+            //    {
+            //        return true;
+            //    }
+            //}
             for (int i = 0; i < _nodes.Count; ++i)
             {
                 Mesh m1 = _nodes[i]._PART._MESH;
@@ -1889,6 +1889,7 @@ namespace Component
         public double[] _rayFeats;
         public double[] _conhullFeats;
         public double[] _cenOfMassFeats;
+        public bool[] _visibliePoint;
 
         public FuncFeatures() { }
 
@@ -1923,6 +1924,9 @@ namespace Component
         public List<Common.Category> _cats = new List<Common.Category>();
         public List<double> _funvals = new List<double>();
         public List<Common.Category> _parentCategories = new List<Common.Category>();
+        public double[] _inClassProbs = new double[Common._NUM_CATEGORIY];
+        public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
+        public double[] _classProbs = new double[Common._NUM_CATEGORIY];
 
         public FunctionalityFeatures() { }
 
