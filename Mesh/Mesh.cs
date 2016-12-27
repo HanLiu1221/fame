@@ -75,7 +75,8 @@ namespace Geometry
         alglib.kdtree _kdtree;
         public double[] samplePoints;
         public byte[] sampleColors;
-		
+
+        public List<Vector3d> testNormals = new List<Vector3d>();
 		public Mesh()
 		{ }
 
@@ -751,7 +752,7 @@ namespace Geometry
         {
             this.getBoundary();
             this.calculateFaceVertexNormal();
-            this.calculateFaceNormal();
+            //this.calculateFaceNormal();
         }
 
         private void getBoundary()
@@ -849,6 +850,7 @@ namespace Geometry
                     this.vertexNormal[vidx3 * 3], this.vertexNormal[vidx3 * 3 + 1], this.vertexNormal[vidx3 * 3 + 2]);
                 Vector3d normal = v1 + v2 + v3;
                 normal /= 3;
+                normal.normalize();
                 for (int j = 0; j < 3; ++j)
                 {
                     this.faceNormal[3 * i + j] = normal[j];
@@ -870,12 +872,9 @@ namespace Geometry
 				int vidx1 = this.faceVertexIndex[3 * i];
                 int vidx2 = this.faceVertexIndex[3 * i + 1];
                 int vidx3 = this.faceVertexIndex[3 * i + 2];
-                Vector3d v1 = new Vector3d(
-                    this.vertexPos[vidx1 * 3], this.vertexPos[vidx1 * 3 + 1], this.vertexPos[vidx1 * 3 + 2]);
-                Vector3d v2 = new Vector3d(
-                    this.vertexPos[vidx2 * 3], this.vertexPos[vidx2 * 3 + 1], this.vertexPos[vidx2 * 3 + 2]);
-                Vector3d v3 = new Vector3d(
-                    this.vertexPos[vidx3 * 3], this.vertexPos[vidx3 * 3 + 1], this.vertexPos[vidx3 * 3 + 2]);
+                Vector3d v1 = this.getVertexPos(vidx1);
+                Vector3d v2 = this.getVertexPos(vidx2);
+                Vector3d v3 = this.getVertexPos(vidx3);
                 Vector3d v21 = v2 - v1;
                 Vector3d v31 = v3 - v1;
                 Vector3d normal = v21.Cross(v31);
@@ -1300,43 +1299,6 @@ namespace Geometry
             return neigPoints.ToArray();
         }// getNeighborPoints
 
-        public double[] computeRayDist()
-        {
-            // dist & angle
-            int dim = Common._RAY_FEAT_DIM;
-            double[] rayDists = new double[this.vertexCount * dim];
-            double maxdist = double.MinValue;
-            for (int i = 0; i < this.vertexCount; ++i)
-            {
-                Vector3d ivec = getVertexPos(i);
-                Vector3d inor = getVertexNormal(i);
-                int fidx = -1;
-                Vector3d hitpos = closestIntersectionPoint(ivec, inor, out fidx);
-                double dist = (ivec - hitpos).Length();
-                if (fidx == -1)
-                {
-                    rayDists[i * dim] = 1;
-                }
-                else
-                {
-                    rayDists[i * dim] = dist;
-                    if (dist < maxdist)
-                    {
-                        maxdist = dist;
-                    }
-                }
-                double cosv = inor.Dot(Common.uprightVec);
-                cosv = Common.cutoff(cosv, -1.0, 1.0);
-                double angle = Math.Acos(cosv) / Math.PI;
-                rayDists[i * dim + 1] = Common.cutoff(angle, 0.0, 1.0);
-            }
-            for (int i = 0; i < this.vertexCount; ++i)
-            {
-                rayDists[i * dim] /= maxdist;
-            }
-            return rayDists;
-        }// computeRadDist
-
         public double[] computeRayDist(Vector3d[] vposes, Vector3d[] vnormals, out bool[] shouldUsePoints)
         {
             // dist & angle
@@ -1352,12 +1314,18 @@ namespace Geometry
                 Vector3d ivec = vposes[i];
                 Vector3d inor = vnormals[i];
                 ivec = ivec + distThres * inor;
+                Vector3d correctNormal = new Vector3d(inor);
+                //if (correctNormal.Dot(Common.uprightVec) < 0)
+                //{
+                //    correctNormal = new Vector3d() - correctNormal;
+                //}
                 int fidx = -1;
-                Vector3d hitpos = closestIntersectionPoint(ivec, inor, out fidx);
+                Vector3d hitpos = closestIntersectionPoint(ivec, correctNormal, out fidx);
                 double dist = (ivec - hitpos).Length();
                 if (fidx == -1)
                 {
-                    rayDists[i * dim] = 1;
+                    rayDists[i * dim] = 1; // maxMeshDist
+                    shouldUsePoints[i] = true;
                 }
                 else
                 {
@@ -1367,7 +1335,7 @@ namespace Geometry
                     {
                         maxdist = dist;
                     }
-                    shouldUsePoints[i] = true;
+                    shouldUsePoints[i] = false;
                 }
                 double cosv = inor.Dot(Common.uprightVec);
                 cosv = Common.cutoff(cosv, -1.0, 1.0);

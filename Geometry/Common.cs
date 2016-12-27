@@ -184,8 +184,9 @@ namespace Geometry
             Vector3d directionCrossEdge2 = ray.Cross(edge2);
             double determinant = directionCrossEdge2.Dot(edge1);
 
+            double thr = Common._thresh;
             // If the ray is parallel to the triangle plane, there is no collision.
-            if (Math.Abs(determinant) < Common._thresh)
+            if (Math.Abs(determinant) < thr)
             {
                 return false;
             }
@@ -197,7 +198,7 @@ namespace Geometry
             triangleU *= inverseDeterminant;
 
             // Make sure it is inside the triangle.
-            if (triangleU < 0 - Common._thresh || triangleU > 1 + Common._thresh)
+            if (triangleU < 0 - thr || triangleU > 1 + thr)
                 return false;
 
             // Calculate the V parameter of the intersection point.
@@ -206,7 +207,7 @@ namespace Geometry
             triangleV *= inverseDeterminant;
 
             // Make sure it is inside the triangle.
-            if (triangleV < 0 - Common._thresh || triangleU + triangleV > 1 + Common._thresh)
+            if (triangleV < 0 - thr || triangleU + triangleV > 1 + thr)
                 return false;
 
             // Compute the distance along the ray to the triangle.

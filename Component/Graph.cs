@@ -1572,8 +1572,16 @@ namespace Component
             // with parts together
             for (int i = indices.Count - 1; i >= 0; --i)
             {
+                Node del = _nodes[indices[i]];
                 _nodes.RemoveAt(indices[i]);
+                int n = del._edges.Count;
+                for(int j = 0; j < n; ++j)
+                {
+                    Edge e = del._edges[0];
+                    this.deleteAnEdge(e._start, e._end);
+                }
             }
+            resetNodeIndex();
         }// deleteNodes
 
         private int getIndex(List<List<int>> com, List<int> cand)
