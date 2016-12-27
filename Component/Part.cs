@@ -703,7 +703,7 @@ namespace Component
         {
             if (_mesh == null)
             {
-                composeMesh(true);
+                composeMesh();
             }
             computeCenterOfMass();
             computeConvexHull();
@@ -751,7 +751,7 @@ namespace Component
             this.Transform(Q);
         }// unify
 
-        public void composeMesh(bool redoSP)
+        public void composeMesh()
         {
             List<double> vertexPos = new List<double>();
             List<int> faceIndex = new List<int>();
@@ -809,7 +809,7 @@ namespace Component
                 }
             }
             _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
-            if (redoSP)
+            if (points.Count > 0)
             {
                 _SP = new SamplePoints(points.ToArray(), normals.ToArray(), faceIdxs.ToArray(), colors.ToArray(), _mesh.FaceCount);
                 _SP.updateNormals(_mesh);
@@ -831,14 +831,11 @@ namespace Component
         {
             if (sp == null || sp._blendColors == null)
             {
-                composeMesh(true);
+                composeMesh();
             }
             else
             {
                 _SP = sp;
-            }
-            if (_SP != null && (_SP._normals == null || _SP._normals.Length != _SP._points.Length))
-            {
                 _SP.updateNormals(_mesh);
             }
         }

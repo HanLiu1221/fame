@@ -966,7 +966,7 @@ namespace FameBase
             // save mesh
             if (model._MESH == null)
             {
-                model.composeMesh(true);
+                model.composeMesh();
             }
             string meshName = foldername + model_name + ".obj";
             this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
@@ -1746,7 +1746,7 @@ namespace FameBase
                     parts.Add(part);
                 }
                 Model model = new Model(modelMesh, parts);
-                model.checkInSamplePoints(sp);
+                //model.checkInSamplePoints(sp);
                 model._funcSpaces = fss.ToArray();
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 model._model_name = model_name;
@@ -1779,17 +1779,6 @@ namespace FameBase
             {
                 LoadAGraph(_currModel, graphName, false);
             }
-            //_currModel.composeMesh(_currModel._MESH == null);
-            _currModel.composeMesh(true);
-            _currModel._MESH.testNormals = new List<Vector3d>();
-            for (int i = 0; i < _currModel._MESH.FaceCount; ++i)
-            {
-                int vid = _currModel._MESH.FaceVertexIndex[3 * i];
-                Vector3d v = _currModel._MESH.getVertexPos(vid);
-                Vector3d nor = _currModel._MESH.getFaceNormal(i);
-                _currModel._MESH.testNormals.Add(v);
-                _currModel._MESH.testNormals.Add(v + nor * 0.05);
-            }
             // try to load the associated part groups
             string pgName = filename.Substring(0, filename.LastIndexOf('.')) + ".pg";
             if (!File.Exists(pgName))
@@ -1808,6 +1797,16 @@ namespace FameBase
             //List<Model> models = new List<Model>();
             //models.Add(_currModel);
             //this.preProcessInputSet(models);
+            _currModel.composeMesh();
+            _currModel._MESH.testNormals = new List<Vector3d>();
+            for (int i = 0; i < _currModel._MESH.FaceCount; ++i)
+            {
+                int vid = _currModel._MESH.FaceVertexIndex[3 * i];
+                Vector3d v = _currModel._MESH.getVertexPos(vid);
+                Vector3d nor = _currModel._MESH.getFaceNormal(i);
+                _currModel._MESH.testNormals.Add(v);
+                _currModel._MESH.testNormals.Add(v + nor * 0.05);
+            }
             this.setUIMode(0);
             this.Refresh();
         }// loadAPartBasedModel
@@ -1869,6 +1868,7 @@ namespace FameBase
                             pg._ParentModelIndex = _modelIndex;
                         }
                     }
+                    m.composeMesh();
                     m._index = idx;
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this, 0); // ancester
                     _ancesterModelViewers.Add(modelViewer);
@@ -2156,11 +2156,13 @@ namespace FameBase
             _partGroupLibrary = new List<List<PartGroup>>();
             foreach(Model m in models)
             {
+                m._GRAPH.initilaizePartGroups();
                 nPGs += m._GRAPH._partGroups.Count;
                 foreach (PartGroup pg in m._GRAPH._partGroups)
                 {
                     // recompute after having the thresholds
                     pg.computeFeatureVector(_inputSetThreshholds);
+                    pg._ParentModelIndex = m._index;
                     // at the beginning, a part group only maps to itself
                     // after a few generations, it will map to its cloned part groups
                     List<PartGroup> pgs = new List<PartGroup>();
@@ -3102,7 +3104,7 @@ namespace FameBase
                 if (unify)
                 {
                     g.unify();
-                    m.composeMesh(true);
+                    m.composeMesh();
                 }
                 g.init();
                 m.setGraph(g);
@@ -4182,7 +4184,7 @@ namespace FameBase
                 if (m._GRAPH.isValid())// || (p1 == 14 && p2 == 29))
                 {
                     m._GRAPH.unify();
-                    m.composeMesh(true);
+                    m.composeMesh();
                     // record the post analysis feature - REPEAT the last statement, REMOVED after testing
                     StringBuilder sb = new StringBuilder();
                     // add to the model
@@ -4351,6 +4353,7 @@ namespace FameBase
                 }
                 ++ntry;
             }
+
             if (!selected)
             {
                 return false;
@@ -4398,7 +4401,7 @@ namespace FameBase
                 if (m._GRAPH.isValid())// || (p1 == 14 && p2 == 29))
                 {
                     m._GRAPH.unify();
-                    m.composeMesh(true);
+                    m.composeMesh();
                     // record the post analysis feature - REPEAT the last statement, REMOVED after testing
                     StringBuilder sb = new StringBuilder();
                     // add to the model
@@ -5234,7 +5237,7 @@ namespace FameBase
                     Model model = growNewFunctionality(m1, m2, path, idx, rand);
                     if (model != null && model._GRAPH != null && model._GRAPH.isValid())
                     {
-                        model.composeMesh(true);
+                        model.composeMesh();
                         model._GRAPH.reset();
                         model._GRAPH.recomputeSPnormals();
                         growth.Add(model);
@@ -5519,7 +5522,7 @@ namespace FameBase
                 if (model._GRAPH.isValid())
                 {
                     model._GRAPH.unify();
-                    model.composeMesh(true);
+                    model.composeMesh();
                     mutated.Add(model);
                     // screenshot
                     this.setCurrentModel(model, -1);
@@ -5874,9 +5877,8 @@ namespace FameBase
             }
             if (m._SP == null || m._SP._points.Length != nSamplePoints)
             {
-                m.composeMesh(true);
+                m.composeMesh();
             }
-            m.recomputeSamplePointNormals();
             this.saveSamplePointsRequiredInfo(m);
             bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
             //double[,] point_features = this.writeModelSampleFeatureFilesForPrediction(m);
@@ -5998,7 +6000,7 @@ namespace FameBase
             mc._model_name += "_" + testId.ToString();
             mc.deleteParts(indices);
             mc._GRAPH.unify();
-            mc.composeMesh(true);
+            mc.composeMesh();
             this.saveAPartBasedModel(mc, mc._path + mc._model_name + ".pam", true);
             pointFeatures = this.computePointFeatures(mc);
             return mc;
@@ -6071,7 +6073,7 @@ namespace FameBase
                 // delete nodes
                 m1._GRAPH.deleteNodes(indices);
                 m1.deleteParts(indices);
-                m1.composeMesh(true);
+                m1.composeMesh();
                 pointsFeatures = this.computePointFeatures(m1);
                 double score1 = this.computeICONfeaturePerCategory(m1, catIdx, pointsFeatures, useNodes, out patches);
                 double[] probs1 = this.getProbabilityForACat(catIdx, score1);
@@ -6091,7 +6093,7 @@ namespace FameBase
                 // delete nodes
                 m2._GRAPH.deleteNodes(indices);
                 m2.deleteParts(indices);
-                m2.composeMesh(true);
+                m2.composeMesh();
                 double score2 = this.computeICONfeaturePerCategory(m2, catIdx, pointsFeatures, useNodes, out patches);
                 double[] probs2 = this.getProbabilityForACat(catIdx, score2);
                 if (probs1[0] > probs2[0])
@@ -6163,7 +6165,7 @@ namespace FameBase
                 // delete nodes
                 mc._GRAPH.deleteNodes(indices);
                 mc.deleteParts(indices);
-                mc.composeMesh(true);
+                mc.composeMesh();
                 score = this.computeICONfeaturePerCategory(mc, catIdx, pointsFeatures, useNodes, out patches);
                 probs = this.getProbabilityForACat(catIdx, score);
                 if (probs[0] > res[1])
@@ -6485,7 +6487,7 @@ namespace FameBase
                         {
                             // unify first, transform poitns, and then compose
                             m._GRAPH.unify();
-                            m.composeMesh(true);
+                            m.composeMesh();
                             crossed.Add(m);
                             //if (crossed.Count > 15) { return crossed; }
                             // screenshot
@@ -9243,6 +9245,7 @@ namespace FameBase
                     //_ancesterModels.Add(model);
 
                     model.initializeGraph();
+                    model.composeMesh();
                     
                     // Screenshots
                     _currModel = model;

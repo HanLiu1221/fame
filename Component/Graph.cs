@@ -192,7 +192,7 @@ namespace Component
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Count == 1 && node._funcs.Contains(func))
+                if (node._funcs.Count == 1 && !nodes.Contains(node) && node._funcs.Contains(func))
                 {
                     nodes.Add(node);
                 }
@@ -205,7 +205,7 @@ namespace Component
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(func))
+                if (!nodes.Contains(node) && node._funcs.Contains(func))
                 {
                     nodes.Add(node);
                 }
@@ -1407,6 +1407,9 @@ namespace Component
             _partGroups = new List<PartGroup>();
             // 1. connected parts
             List<List<int>> comIndices = new List<List<int>>();
+            // empty
+            _partGroups.Add(new PartGroup(new List<Node>(), 0));
+            comIndices.Add(new List<int>());
             // 1. functionality group
             var allFuncs = Enum.GetValues(typeof(Common.Functionality));
             foreach (Common.Functionality func in allFuncs)
@@ -1476,6 +1479,10 @@ namespace Component
             for (int i = 0; i < nGroups; ++i)
             {
                 PartGroup pg = _partGroups[i];
+                if (pg._NODES.Count == 0)
+                {
+                    continue;
+                }
                 List<int> indices = breadthFirstSearch(pg._NODES);
                 if (getIndex(comIndices, indices) != -1)
                 {
@@ -1490,17 +1497,39 @@ namespace Component
                 PartGroup ppg = new PartGroup(propogationNodes, 0);
                 _partGroups.Add(ppg);
             }
+            // all
+            bool hasAll = false;
+            foreach(PartGroup pg in _partGroups)
+            {
+                if (pg._NODES.Count == _nodes.Count)
+                {
+                    hasAll = true;
+                }
+            }
+            if (!hasAll)
+            {
+                _partGroups.Add(new PartGroup(_nodes, 0));
+                List<int> indices = new List<int>();
+                for (int i = 0; i < _nodes.Count; ++i)
+                {
+                    indices.Add(i);
+                }
+                comIndices.Add(indices);
+            }
         }// initilaizePartGroups
 
         private List<int> breadthFirstSearch(List<Node> nodes)
         {
             List<int> res = new List<int>();
             Queue<Node> queue = new Queue<Node>();
+            bool[] visited = new bool[_nodes.Count];
             foreach (Node node in nodes)
             {
                 queue.Enqueue(node);
+                visited[node._INDEX] = true;
+                res.Add(node._INDEX);
             }
-            bool[] visited = new bool[_nodes.Count];
+            
             while (queue.Count > 0)
             {
                 List<Node> cur = new List<Node>();
@@ -1508,8 +1537,6 @@ namespace Component
                 {
                     Node qn = queue.Dequeue();
                     cur.Add(qn);
-                    visited[qn._INDEX] = true;
-                    res.Add(qn._INDEX);
                 }
                 foreach (Node nd in cur)
                 {
@@ -1521,6 +1548,8 @@ namespace Component
                             continue;
                         }
                         queue.Enqueue(adj);
+                        visited[adj._INDEX] = true;
+                        res.Add(adj._INDEX);
                     }
                 }
             }// while
