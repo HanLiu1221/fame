@@ -65,11 +65,11 @@ namespace Geometry
 			}
 		}
 
-		public int NTuple
+		public int NTriplets
 		{
 			get
 			{
-				return this.nTriplets;
+				return triplets.Count;
 			}
 		}
 	#endregion
@@ -186,6 +186,7 @@ namespace Geometry
 			{
 				curr.value = value;
 			}
+            nTriplets = triplets.Count;
             //if (value == 0)
             //{
             //    // remove
@@ -193,9 +194,18 @@ namespace Geometry
             //    rowTriplets[row].Remove(triplet);
             //    colTriplets[col].Remove(triplet);
             //}
-		}
+        }
 
-		public List<Triplet> GetRowTriplets(int rowIndex)
+        public Triplet GetTriplet(int index)
+        {
+            if (index < 0 || index > nTriplets)
+            {
+                throw new IndexOutOfRangeException();
+            }
+            return triplets[index];
+        }
+
+        public List<Triplet> GetRowTriplets(int rowIndex)
 		{
 			if(rowIndex < 0 || rowIndex >= nRows)
 			{
