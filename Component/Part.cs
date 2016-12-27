@@ -1046,6 +1046,7 @@ namespace Component
             double maxdist = double.MinValue;
             double mindist = double.MaxValue;
             _funcFeat._cenOfMassFeats = new double[dim * _SP._points.Length];
+            _centerOfMass = (_mesh.MaxCoord + _mesh.MinCoord) / 2;
             for (int i = 0; i < _SP._points.Length; ++i)
             {
                 Vector3d v = _SP._points[i];

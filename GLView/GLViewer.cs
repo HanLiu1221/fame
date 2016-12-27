@@ -4192,6 +4192,7 @@ namespace FameBase
                     List<double> values = new List<double>();
                     double[,] point_features = this.computePointFeatures(m);
                     List<PartGroup> patches;
+                    _currFuncScores = null;
                     for (int j = 0; j < Common._NUM_CATEGORIY; ++j)
                     {
                         cats.Add((Common.Category)j);
@@ -5114,7 +5115,7 @@ namespace FameBase
                 for (int i = 0; i < n; ++i)
                 {
                     StringBuilder sb = new StringBuilder();
-                    int d = Common._POINT_FEAT_DIM;
+                    int d = Common._POINT_FEAT_DIM;//3
                     int dimId = 0;
                     for (int j = 0; j < d; ++j)
                     {
@@ -5122,28 +5123,28 @@ namespace FameBase
                         sb.Append(",");
                         point_features[i, dimId++] = model._funcFeat._pointFeats[i * d + j];
                     }
-                    d = Common._CURV_FEAT_DIM;
+                    d = Common._CURV_FEAT_DIM; //4
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._curvFeats[i * d + j])));
                         sb.Append(",");
                         point_features[i, dimId++] = model._funcFeat._curvFeats[i * d + j];
                     }
-                    d = Common._PCA_FEAT_DIM;
+                    d = Common._PCA_FEAT_DIM;//5
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._pcaFeats[i * d + j])));
                         sb.Append(",");
                         point_features[i, dimId++] = model._funcFeat._pcaFeats[i * d + j];
                     }
-                    d = Common._RAY_FEAT_DIM;
+                    d = Common._RAY_FEAT_DIM;//2
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._rayFeats[i * d + j])));
                         sb.Append(",");
                         point_features[i, dimId++] = model._funcFeat._rayFeats[i * d + j];
                     }
-                    d = Common._CONVEXHULL_FEAT_DIM;
+                    d = Common._CONVEXHULL_FEAT_DIM;//2
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._conhullFeats[i * d + j])));
@@ -5751,6 +5752,7 @@ namespace FameBase
             }
             StringBuilder sb = new StringBuilder();
             double[,] pointFeatures;
+            _currFuncScores = null;
             Model mc = this.composeASubMatch(_currModel, out pointFeatures);
             //for (int i = 0; i < _inputSetCats.Count; ++i)
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
@@ -5786,6 +5788,7 @@ namespace FameBase
                 Model im = models[i];
                 double[,] point_features = this.computePointFeatures(im);
                 StringBuilder sb = new StringBuilder();
+                _currFuncScores = null;
                 for (int j = 0; j < n; ++j)
                 {
                     List<PartGroup> patches;
@@ -6179,10 +6182,17 @@ namespace FameBase
             return res;
         }// partialMatching
 
+        double[] _currFuncScores = null;
         private double computeICONfeaturePerCategory(Model m, int catIdx, double[,] pointsFeatures, bool[] useNodes, out List<PartGroup> patches)
         {
-            Graph g = m._GRAPH;
             patches = new List<PartGroup>();
+            if (_currFuncScores == null)
+            {
+                _currFuncScores = this.runFunctionalityTest(m);
+            }
+            return _currFuncScores[catIdx];
+
+            Graph g = m._GRAPH;
             if (g == null)
             {
                 return 1;
