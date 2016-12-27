@@ -28,7 +28,6 @@ namespace Geometry
         public static int _PCA_FEAT_DIM = 5;
         public static int _RAY_FEAT_DIM = 2;
         public static int _CONVEXHULL_FEAT_DIM = 2;
-        public static int _COM_FEAT_DIM = 2;
         public static int _POINT_FEATURE_DIM = 18;
 
         public static int _MAX_FACE_COUNT = 300000;
@@ -43,7 +42,7 @@ namespace Geometry
         public static int _MAX_MATRIX_DIM = 300;
         public static int _MAX_TRY_TIMES = 60;
 
-        public static int _MAX_GEN_HYBRID_NUMBER = 20;
+        public static int _MAX_GEN_HYBRID_NUMBER = 10;
         public static int _MAX_USE_PRESENT_NUMBER = 10;
 
         public static Random rand = new Random();
@@ -176,6 +175,7 @@ namespace Geometry
 
         public static bool isRayIntersectTriangle(Vector3d origin, Vector3d ray, Vector3d v1, Vector3d v2, Vector3d v3, out double hitDist)
         {
+            bool isHit = false;
             hitDist = 0;
             Vector3d edge1 = v2 - v1;
             Vector3d edge2 = v3 - v1;
@@ -184,8 +184,9 @@ namespace Geometry
             Vector3d directionCrossEdge2 = ray.Cross(edge2);
             double determinant = directionCrossEdge2.Dot(edge1);
 
+            double thr = Common._thresh;
             // If the ray is parallel to the triangle plane, there is no collision.
-            if (Math.Abs(determinant) < Common._thresh)
+            if (Math.Abs(determinant) < thr)
             {
                 return false;
             }
@@ -197,7 +198,7 @@ namespace Geometry
             triangleU *= inverseDeterminant;
 
             // Make sure it is inside the triangle.
-            if (triangleU < 0 - Common._thresh || triangleU > 1 + Common._thresh)
+            if (triangleU < 0 - thr || triangleU > 1 + thr)
                 return false;
 
             // Calculate the V parameter of the intersection point.
@@ -206,7 +207,7 @@ namespace Geometry
             triangleV *= inverseDeterminant;
 
             // Make sure it is inside the triangle.
-            if (triangleV < 0 - Common._thresh || triangleU + triangleV > 1 + Common._thresh)
+            if (triangleV < 0 - thr || triangleU + triangleV > 1 + thr)
                 return false;
 
             // Compute the distance along the ray to the triangle.
@@ -217,9 +218,10 @@ namespace Geometry
             if (rayDistance < 0)
                 return false;
 
+            isHit = true;
             hitDist = rayDistance;
 
-            return true;
+            return isHit;
         }// isRayIntersectTriangle
 
         public static double[] vectorArrayToDoubleArray(Vector3d[] vecs)

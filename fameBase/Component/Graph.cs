@@ -192,7 +192,7 @@ namespace Component
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Count == 1 && node._funcs.Contains(func))
+                if (node._funcs.Count == 1 && !nodes.Contains(node) && node._funcs.Contains(func))
                 {
                     nodes.Add(node);
                 }
@@ -205,7 +205,7 @@ namespace Component
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(func))
+                if (!nodes.Contains(node) && node._funcs.Contains(func))
                 {
                     nodes.Add(node);
                 }
@@ -1236,12 +1236,20 @@ namespace Component
 
         private bool hasDetachedParts()
         {
-            // simple boundingbox check
+            //foreach (Edge e in _edges)
+            //{
+            //    Mesh m1 = e._start._PART._MESH;
+            //    Mesh m2 = e._end._PART._MESH;
+            //    if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
+            //    {
+            //        return true;
+            //    }
+            //}
             for (int i = 0; i < _nodes.Count; ++i)
             {
                 Mesh m1 = _nodes[i]._PART._MESH;
                 int ndetach = 0;
-                for (int j = 0; j < _nodes.Count; ++j)
+                for (int j =0; j < _nodes.Count; ++j)
                 {
                     if (i == j)
                     {
@@ -1262,58 +1270,53 @@ namespace Component
             {
                 return true;
             }
-            // if any node that is detached
-            // check if we can walk through one node to all the other nodes
-            resetNodeIndex();
-            foreach (Edge e in _edges)
+                // if any node that is detached
+                // check if we can walk through one node to all the other nodes
+                resetNodeIndex();
+            bool[] visited = new bool[_nodes.Count];
+            Node start = _nodes[0];
+            List<Node> queue = new List<Node>();
+            queue.Add(start);
+            while (queue.Count > 0)
             {
-                SamplePoints sp1 = e._start._PART._partSP;
-                SamplePoints sp2 = e._end._PART._partSP;
-                if (sp1 != null && sp2 != null)
+                List<Node> cur = new List<Node>(queue);
+                foreach (Node node in cur)
                 {
-                    if (!isConnected(sp1, sp2))
+                    visited[node._INDEX] = true;
+                }
+                queue.Clear();
+                foreach (Node c in cur)
+                {
+                    // include all connected
+                    Mesh m1 = c._PART._MESH;
+                    foreach (Node node in _nodes)
                     {
-                        return true;
+                        if (visited[node._INDEX] || queue.Contains(node))
+                        {
+                            continue;
+                        }
+                        Mesh m2 = node._PART._MESH;
+                        if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord) ||
+                            isConnected(m1,m2))
+                        {
+                            queue.Add(node);
+                        }
                     }
                 }
-                else
+            }
+            for (int i = 0; i < visited.Length; ++i)
+            {
+                if (!visited[i])
                 {
-                    if (!isConnected_vertex_to_face(e._start._PART._MESH, e._end._PART._MESH))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
             return false;
         }// hasDetachedParts
 
-        private bool isConnected(SamplePoints sp1, SamplePoints sp2)
-        {
-            double thr = 0.01;
-            double mind = double.MaxValue;
-            for (int i = 0; i < sp1._points.Length; ++i)
-            {
-                Vector3d v1 = sp1._points[i];
-                for (int j = 0; j < sp2._points.Length; ++j)
-                {
-                    Vector3d v2 = sp2._points[j];
-                    double d = (v1 - v2).Length();
-                    if (d < thr)
-                    {
-                        return true;
-                    }
-                    if (d < mind)
-                    {
-                        mind = d;
-                    }
-                }
-            }
-            return mind < thr;
-        }// is connected
-
         private bool isConnected_vertex(Mesh m1, Mesh m2)
         {
-            // work for uniform mesh -- vertex are equally distributed
+            // work fro uniform mesh -- vertex are equally distributed
             double thr = 0.01;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;
@@ -1336,9 +1339,9 @@ namespace Component
             return mind < thr;
         }// is connected
 
-        private bool isConnected_vertex_to_face(Mesh m1, Mesh m2)
+        private bool isConnected(Mesh m1, Mesh m2)
         {
-            // work for uniform mesh -- vertex are equally distributed
+            // work fro uniform mesh -- vertex are equally distributed
             double thr = 0.01;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;
@@ -1404,6 +1407,9 @@ namespace Component
             _partGroups = new List<PartGroup>();
             // 1. connected parts
             List<List<int>> comIndices = new List<List<int>>();
+            // empty
+            _partGroups.Add(new PartGroup(new List<Node>(), 0));
+            comIndices.Add(new List<int>());
             // 1. functionality group
             var allFuncs = Enum.GetValues(typeof(Common.Functionality));
             foreach (Common.Functionality func in allFuncs)
@@ -1473,6 +1479,10 @@ namespace Component
             for (int i = 0; i < nGroups; ++i)
             {
                 PartGroup pg = _partGroups[i];
+                if (pg._NODES.Count == 0)
+                {
+                    continue;
+                }
                 List<int> indices = breadthFirstSearch(pg._NODES);
                 if (getIndex(comIndices, indices) != -1)
                 {
@@ -1487,17 +1497,39 @@ namespace Component
                 PartGroup ppg = new PartGroup(propogationNodes, 0);
                 _partGroups.Add(ppg);
             }
+            // all
+            bool hasAll = false;
+            foreach(PartGroup pg in _partGroups)
+            {
+                if (pg._NODES.Count == _nodes.Count)
+                {
+                    hasAll = true;
+                }
+            }
+            if (!hasAll)
+            {
+                _partGroups.Add(new PartGroup(_nodes, 0));
+                List<int> indices = new List<int>();
+                for (int i = 0; i < _nodes.Count; ++i)
+                {
+                    indices.Add(i);
+                }
+                comIndices.Add(indices);
+            }
         }// initilaizePartGroups
 
         private List<int> breadthFirstSearch(List<Node> nodes)
         {
             List<int> res = new List<int>();
             Queue<Node> queue = new Queue<Node>();
+            bool[] visited = new bool[_nodes.Count];
             foreach (Node node in nodes)
             {
                 queue.Enqueue(node);
+                visited[node._INDEX] = true;
+                res.Add(node._INDEX);
             }
-            bool[] visited = new bool[_nodes.Count];
+            
             while (queue.Count > 0)
             {
                 List<Node> cur = new List<Node>();
@@ -1505,8 +1537,6 @@ namespace Component
                 {
                     Node qn = queue.Dequeue();
                     cur.Add(qn);
-                    visited[qn._INDEX] = true;
-                    res.Add(qn._INDEX);
                 }
                 foreach (Node nd in cur)
                 {
@@ -1518,6 +1548,8 @@ namespace Component
                             continue;
                         }
                         queue.Enqueue(adj);
+                        visited[adj._INDEX] = true;
+                        res.Add(adj._INDEX);
                     }
                 }
             }// while
@@ -1554,6 +1586,32 @@ namespace Component
             }
             return true;
         }// shouldCreateNewPartGroup
+
+        public void deleteNodes(List<Node> selectedNodes)
+        {
+            // with parts together
+            foreach (Node node in selectedNodes)
+            {
+                _nodes.Remove(node);
+            }
+        }// deleteNodes
+        public void deleteNodes(List<int> indices)
+        {
+            indices.Sort();
+            // with parts together
+            for (int i = indices.Count - 1; i >= 0; --i)
+            {
+                Node del = _nodes[indices[i]];
+                _nodes.RemoveAt(indices[i]);
+                int n = del._edges.Count;
+                for(int j = 0; j < n; ++j)
+                {
+                    Edge e = del._edges[0];
+                    this.deleteAnEdge(e._start, e._end);
+                }
+            }
+            resetNodeIndex();
+        }// deleteNodes
 
         private int getIndex(List<List<int>> com, List<int> cand)
         {
@@ -1886,6 +1944,7 @@ namespace Component
         public double[] _rayFeats;
         public double[] _conhullFeats;
         public double[] _cenOfMassFeats;
+        public bool[] _visibliePoint;
 
         public FuncFeatures() { }
 
@@ -1917,16 +1976,24 @@ namespace Component
 
     public class FunctionalityFeatures
     {
-        public List<Common.Category> _cats = new List<Common.Category>();
-        public List<double> _funvals = new List<double>();
+        public Common.Category[] _cats = new Common.Category[Common._NUM_CATEGORIY];
+        public double[] _funvals = new double[Common._NUM_CATEGORIY];
         public List<Common.Category> _parentCategories = new List<Common.Category>();
+        public double[] _inClassProbs = new double[Common._NUM_CATEGORIY];
+        public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
+        public double[] _classProbs = new double[Common._NUM_CATEGORIY];
 
-        public FunctionalityFeatures() { }
+        public FunctionalityFeatures() {
+            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            {
+                _cats[i] = (Common.Category)i;
+            }
+        }
 
         public FunctionalityFeatures(List<Common.Category> cats, List<double> vals)
         {
-            _cats = cats;
-            _funvals = vals;
+            _cats = cats.ToArray();
+            _funvals = vals.ToArray();
         }
 
         public Object clone()

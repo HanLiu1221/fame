@@ -152,19 +152,23 @@ namespace Component
             //return;
 
             int n = _mesh.VertexCount;
-            double[,] vArray = new double[n, 3];
+            double[][] vArray = new double[n][];
+            for (int i = 0; i < n; ++i)
+            {
+                vArray[i] = new double[3];
+            }
             Vector3d center = new Vector3d();
             for (int i = 0, j = 0; i < n; ++i, j += 3)
             {
-                vArray[i, 0] = _mesh.VertexPos[j];
-                vArray[i, 1] = _mesh.VertexPos[j + 1];
-                vArray[i, 2] = _mesh.VertexPos[j + 2];
-                center += new Vector3d(vArray[i, 0], vArray[i, 1], vArray[i, 2]);
+                vArray[i][0] = _mesh.VertexPos[j];
+                vArray[i][1] = _mesh.VertexPos[j + 1];
+                vArray[i][2] = _mesh.VertexPos[j + 2];
+                center += new Vector3d(vArray[i][0], vArray[i][1], vArray[i][2]);
             }
             center /= n;           
 
-            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
-            pca.Compute();
+            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(PrincipalComponentMethod.Center);
+            pca.Learn(vArray);
             
             if (pca.Components.Count < 3)
             {
@@ -522,11 +526,12 @@ namespace Component
             _boundingbox.Transform(T);
             if (_partSP != null)
             {
-                for (int i = 0; i < _partSP._points.Length; ++i)
-                {
-                    _partSP._points[i] = Common.transformVector(_partSP._points[i], T);
-                    _partSP._normals[i] = Common.transformVector(_partSP._normals[i], T);
-                }
+                _partSP.Transform(T);
+                //for (int i = 0; i < _partSP._points.Length; ++i)
+                //{
+                //    _partSP._points[i] = Common.transformVector(_partSP._points[i], T);
+                //    _partSP._normals[i] = Common.transformVector(_partSP._normals[i], T);
+                //}
             }
         }
 
@@ -534,12 +539,20 @@ namespace Component
         {
             _mesh.TransformFromOrigin(T);
             _boundingbox.TransformFromOrigin(T);
+            if (_partSP != null)
+            {
+                _partSP.TransformFromOrigin(T);
+            }
         }
 
         public void updateOriginPos()
         {
             _mesh.updateOriginPos();
             _boundingbox.updateOrigin();
+            if (_partSP != null)
+            {
+                _partSP.updateOrigin();
+            }
         }
 
         public void calculateAxisAlignedBbox()
@@ -630,6 +643,7 @@ namespace Component
         Mesh _mesh; // the whole mesh
         public Graph _GRAPH;
         public int _index = -1;
+        public int nNewNodes = 0;
         
         public FunctionalSpace[] _funcSpaces;
 
@@ -689,7 +703,7 @@ namespace Component
         {
             if (_mesh == null)
             {
-                composeMesh(true);
+                composeMesh();
             }
             computeCenterOfMass();
             computeConvexHull();
@@ -737,7 +751,7 @@ namespace Component
             this.Transform(Q);
         }// unify
 
-        public void composeMesh(bool redoSP)
+        public void composeMesh()
         {
             List<double> vertexPos = new List<double>();
             List<int> faceIndex = new List<int>();
@@ -747,7 +761,6 @@ namespace Component
             List<Vector3d> normals = new List<Vector3d>();
             List<int> faceIdxs = new List<int>();
             List<Color> colors = new List<Color>();
-            
             foreach (Part part in _parts)
             {
                 Mesh mesh = part._MESH;
@@ -796,24 +809,33 @@ namespace Component
                 }
             }
             _mesh = new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
-            if (redoSP)
+            if (points.Count > 0)
             {
                 _SP = new SamplePoints(points.ToArray(), normals.ToArray(), faceIdxs.ToArray(), colors.ToArray(), _mesh.FaceCount);
+                _SP.updateNormals(_mesh);
             }
         }// composeMesh
 
+        public void recomputeSamplePointNormals()
+        {
+            if (_SP != null)
+            {
+                _SP.updateNormals(_mesh);
+            }
+            if (_GRAPH != null)
+            {
+                _GRAPH.recomputeSPnormals();
+            }
+        }
         public void checkInSamplePoints(SamplePoints sp)
         {
             if (sp == null || sp._blendColors == null)
             {
-                composeMesh(true);
+                composeMesh();
             }
             else
             {
                 _SP = sp;
-            }
-            if (_SP != null && (_SP._normals == null || _SP._normals.Length != _SP._points.Length))
-            {
                 _SP.updateNormals(_mesh);
             }
         }
@@ -932,14 +954,16 @@ namespace Component
             {
                 double h = _funcFeat._pointFeats[i * dim + 1];
                 _funcFeat._pointFeats[i * dim + 1] = (h - minh) / diffh;
-                //_funcFeat._pointFeats[i * dim + 2] /= maxd;
-                double d = _funcFeat._pointFeats[i * dim + 2];
-                _funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+                //double d = _funcFeat._pointFeats[i * dim + 2];
+                //_funcFeat._pointFeats[i * dim + 2] = (d - mind) / diffd;
+                _funcFeat._pointFeats[i * dim + 2] /= maxd;
             }
         }// computeSamplePointsFeatures
 
         public void findBestSymPlane(Vector3d[] centers, Vector3d[] normals)
         {
+            //_symPlane = new Polygon3D(new Vector3d(0, 0, 0), new Vector3d(-1, 0, 0));
+            //return;
             if (centers.Length == 1)
             {
                 _symPlane = new Polygon3D(centers[0], normals[0].normalize());
@@ -1018,7 +1042,7 @@ namespace Component
 
         public void computeDistAndAngleToCenterOfMass()
         {
-            int dim = Common._COM_FEAT_DIM;
+            int dim = Common._CONVEXHULL_FEAT_DIM;
             double maxdist = double.MinValue;
             double mindist = double.MaxValue;
             _funcFeat._cenOfMassFeats = new double[dim * _SP._points.Length];
@@ -1597,6 +1621,16 @@ namespace Component
             _parts.Remove(p);
         }
 
+        public void deleteParts(List<int> indices)
+        {
+            indices.Sort();
+            // with parts together
+            for (int i = indices.Count - 1; i >= 0; --i)
+            {
+                _parts.RemoveAt(indices[i]);
+            }
+        }// deleteParts
+
         private int fitOption(int idx)
         {
             int option = 0;
@@ -2022,6 +2056,7 @@ namespace Component
 
     public class SamplePoints
     {
+        public Vector3d[] _points_orgin;
         public Vector3d[] _points;
         public Vector3d[] _normals;
         public int[] _faceIdx; // assoicated with the mesh in a model or part
@@ -2032,6 +2067,9 @@ namespace Component
         private int _totalNfaces = 0;
         public List<PatchWeightPerCategory> _weightsPerCat = null;
 
+        public List<Vector3d> testVisiblePoints = new List<Vector3d>();
+        public List<Vector3d> testNormals = new List<Vector3d>();
+
         // Test
         public Color[][] _highlightedColors;
 
@@ -2041,6 +2079,7 @@ namespace Component
             Color[] blendColors, int totalNFaces)
         {
             _points = points;
+            _points_orgin = points.Clone() as Vector3d[];
             _normals = normals;
             _faceIdx = faceIdxs;
             _totalNfaces = totalNFaces;
@@ -2062,6 +2101,29 @@ namespace Component
             }
         }
 
+        public void Transform(Matrix4d T)
+        {
+            for(int i =0; i < _points.Length; ++i)
+            {
+                Vector3d v = new Vector3d(_points[i]);
+                _points[i] = Common.transformVector(v, T);
+            }
+        }
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            for (int i = 0; i < _points.Length; ++i)
+            {
+                Vector3d v = new Vector3d(_points_orgin[i]);
+                _points[i] = Common.transformVector(v, T);
+            }
+        }
+
+        public void updateOrigin()
+        {
+            this._points_orgin = _points.Clone() as Vector3d[];
+        }
+
         public void updateNormals(Mesh mesh)
         {
             if (_points == null || _faceIdx == null || mesh == null)
@@ -2069,20 +2131,23 @@ namespace Component
                 return;
             }
             int n = _points.Length;
-            _normals = new Vector3d[n];
+            if (_normals == null)
+            {
+                _normals = new Vector3d[n];
+            }
             for (int i = 0; i < n; ++i)
             {
                 int fid = _faceIdx[i];
-                Vector3d A = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3]);
-                Vector3d B = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3 + 1]);
-                Vector3d C = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3 + 2]);
-                //_normals[i] = Common.getBarycentricCoord(A, B, C, _points[i]).normalize();
-                Vector3d p = _points[i];
-                Vector3d nor1 = (p - A).normalize().Cross((p - B).normalize());
-                Vector3d nor2 = (p - B).normalize().Cross((p - C).normalize());
-                Vector3d nor3 = (p - C).normalize().Cross((p - A).normalize());
-                _normals[i] = (nor1 + nor2 + nor3) / 3;
-                _normals[i].normalize();
+                _normals[i] = mesh.getFaceNormal(fid);
+                //Vector3d A = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3]);
+                //Vector3d B = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3 + 1]);
+                //Vector3d C = mesh.getVertexPos(mesh.FaceVertexIndex[fid * 3 + 2]);
+                ////_normals[i] = Common.getBarycentricCoord(A, B, C, _points[i]).normalize();
+                //Vector3d p = _points[i];
+                //Vector3d nor1 = (p - A).normalize().Cross((B - A).normalize());
+                //Vector3d nor2 = (p - B).normalize().Cross((C - B).normalize());
+                //Vector3d nor3 = (p - C).normalize().Cross((A - C).normalize());
+                //_normals[i] = (nor1 + nor2 + nor3).normalize();
             }
         }// updateNormals
 
@@ -2315,6 +2380,7 @@ namespace Component
         public int _npairs = 0;
         public List<double[,]> _unaryF;
         public List<double[,]> _binaryF;
+        public double[] weights;
 
         public TrainedFeaturePerCategory(Common.Category c)
         {
