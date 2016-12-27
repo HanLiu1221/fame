@@ -1001,9 +1001,9 @@ namespace FameBase
                     }
                 }
             }
-            for (int i = 0; i < _currModel._NPARTS; ++i)
+            for (int i = 0; i < model._NPARTS; ++i)
             {
-                Part ipart = _currModel._PARTS[i];
+                Part ipart = model._PARTS[i];
                 if (ipart._partSP == null || ipart._partSP._points == null || ipart._partSP._points.Length == 0 || ipart._partSP._normals == null)
                 {
                     continue;
@@ -1310,8 +1310,24 @@ namespace FameBase
             model.computeDistAndAngleToCenterOfConvexHull();
             model.computeDistAndAngleToCenterOfMass();
 
+            // tes 
+            model._SP.testVisiblePoints = new List<Vector3d>();
+            model._SP.testNormals = new List<Vector3d>();
+            //model._SP.updateNormals(model._MESH);
+            for (int i = 0; i < model._SP._points.Length; ++i)
+            {
+                Vector3d v = model._SP._points[i];
+                if (model._funcFeat._visibliePoint[i])
+                {
+                    model._SP.testVisiblePoints.Add(v);
+                    Vector3d vshift = v + model._SP._normals[i] * 0.05;
+                    model._SP.testNormals.Add(v);
+                    model._SP.testNormals.Add(vshift);
+                }
+            }
             return true;
         }// computeShape2PoseAndIconFeatures
+
 
         private double[] loadShape2Pose_OrientedGeodesicPCAFeatures(string filename)
         {
@@ -1763,7 +1779,17 @@ namespace FameBase
             {
                 LoadAGraph(_currModel, graphName, false);
             }
-            _currModel.composeMesh(_currModel._MESH == null);
+            //_currModel.composeMesh(_currModel._MESH == null);
+            _currModel.composeMesh(true);
+            _currModel._MESH.testNormals = new List<Vector3d>();
+            for (int i = 0; i < _currModel._MESH.FaceCount; ++i)
+            {
+                int vid = _currModel._MESH.FaceVertexIndex[3 * i];
+                Vector3d v = _currModel._MESH.getVertexPos(vid);
+                Vector3d nor = _currModel._MESH.getFaceNormal(i);
+                _currModel._MESH.testNormals.Add(v);
+                _currModel._MESH.testNormals.Add(v + nor * 0.05);
+            }
             // try to load the associated part groups
             string pgName = filename.Substring(0, filename.LastIndexOf('.')) + ".pg";
             if (!File.Exists(pgName))
@@ -2227,11 +2253,21 @@ namespace FameBase
 
         BetaDistribution[] bd_inClass;
         BetaDistribution[] bd_outClass;
+
+        private double correctZeroProb(double prob)
+        {
+            if (prob == 0)
+            {
+                return 0.01;
+            }
+            return prob;
+        }
         private void analyzeBetaDistribution(double[,] scores, int[] startIds)
         {
             int nShapes = scores.GetLength(0);
             bd_inClass = new BetaDistribution[Common._NUM_CATEGORIY];
             bd_outClass = new BetaDistribution[Common._NUM_CATEGORIY];
+            double thr = 0.05;
             for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
             {
                 string catName = Common.getCategoryName(c);
@@ -2239,17 +2275,36 @@ namespace FameBase
                 List<double> outClass = new List<double>();
                 int start = startIds[c];
                 int end = (c == Common._NUM_CATEGORIY - 1 ? nShapes : startIds[c + 1]);
+                double maxOut = double.MinValue;
+                double minIn = double.MaxValue;
+                double shrink = 0.95;
                 for (int i = 0; i < start; ++i)
                 {
-                    outClass.Add(scores[i, c]);
+                    double val = scores[i, c] * shrink;
+                    outClass.Add(val);
+                    maxOut = maxOut > val ? maxOut : val;
                 }
                 for (int i = start; i < end; ++i)
                 {
-                    inClass.Add(scores[i, c]);
+                    double val = scores[i, c] * shrink;
+                    inClass.Add(val);
+                    minIn = minIn < val ? minIn : val;
                 }
                 for (int i = end; i < nShapes; ++i)
                 {
-                    outClass.Add(scores[i, c]);
+                    double val = scores[i, c] * shrink;
+                    outClass.Add(val);
+                    maxOut = maxOut > val ? maxOut : val;
+                }
+                // optim
+                double ratio = 1;
+                if (maxOut - minIn >= thr)
+                {
+                    ratio = (minIn + thr) / maxOut;
+                }
+                for (int i = 0; i < outClass.Count; ++i)
+                {
+                    outClass[i] = outClass[i] * ratio;
                 }
                 bd_inClass[c] = new BetaDistribution(0, 1);
                 bd_inClass[c].Fit(inClass.ToArray());
@@ -3047,6 +3102,7 @@ namespace FameBase
                 if (unify)
                 {
                     g.unify();
+                    m.composeMesh(true);
                 }
                 g.init();
                 m.setGraph(g);
@@ -3063,10 +3119,10 @@ namespace FameBase
             // idx, isGroundTouching, Color, Sym (-1: no sym, idx)
             using (StreamWriter sw = new StreamWriter(filename))
             {
-                sw.WriteLine(_currModel._GRAPH._NNodes.ToString() + " nodes.");
-                for (int i = 0; i < _currModel._GRAPH._NNodes; ++i)
+                sw.WriteLine(g._NNodes.ToString() + " nodes.");
+                for (int i = 0; i < g._NNodes; ++i)
                 {
-                    Node iNode = _currModel._GRAPH._NODES[i];
+                    Node iNode = g._NODES[i];
                     sw.Write(iNode._INDEX.ToString() + " ");
                     int isGround = iNode._isGroundTouching ? 1 : 0;
                     sw.Write(isGround.ToString() + " ");
@@ -3089,8 +3145,8 @@ namespace FameBase
                     }
                     sw.WriteLine();
                 }
-                sw.WriteLine(_currModel._GRAPH._EDGES.Count.ToString() + " edges.");
-                foreach (Edge e in _currModel._GRAPH._EDGES)
+                sw.WriteLine(g._EDGES.Count.ToString() + " edges.");
+                foreach (Edge e in g._EDGES)
                 {
                     sw.Write(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString() + " ");
                     foreach (Contact pnt in e._contacts)
@@ -4125,8 +4181,8 @@ namespace FameBase
 
                 if (m._GRAPH.isValid())// || (p1 == 14 && p2 == 29))
                 {
-                    m.composeMesh(true);
                     m._GRAPH.unify();
+                    m.composeMesh(true);
                     // record the post analysis feature - REPEAT the last statement, REMOVED after testing
                     StringBuilder sb = new StringBuilder();
                     // add to the model
@@ -4341,8 +4397,8 @@ namespace FameBase
 
                 if (m._GRAPH.isValid())// || (p1 == 14 && p2 == 29))
                 {
-                    m.composeMesh(true);
                     m._GRAPH.unify();
+                    m.composeMesh(true);
                     // record the post analysis feature - REPEAT the last statement, REMOVED after testing
                     StringBuilder sb = new StringBuilder();
                     // add to the model
@@ -4351,11 +4407,12 @@ namespace FameBase
                     List<double> probs1 = new List<double>();
                     List<double> probs2 = new List<double>();
                     List<double> probs12 = new List<double>();
-                    double[,] point_features = this.computePointFeatures(m);
+                    //double[,] point_features = this.computePointFeatures(m);
                     for (int j = 0; j < Common._NUM_CATEGORIY; ++j)
                     {
                         cats.Add((Common.Category)j);
-                        double[] val = this.partialMatching(m, j);
+                        //double[] val = this.partialMatching(m, j);
+                        double[] val = { 0, 0, 0, 0 };
                         scores.Add(val[0]);
                         probs1.Add(val[1]);
                         probs2.Add(val[2]);
@@ -4477,11 +4534,11 @@ namespace FameBase
                 {
                     _similarityMatrixPG.AddTriplet(p1, p2, 0);
                 }
-                Model removed = res[maxId];
-                // screenshot
-                this.setCurrentModel(removed, -1);
-                Program.GetFormMain().updateStats();
-                this.captureScreen(imageFolder + removed._model_name + "_bad_one.png");
+                //Model removed = res[maxId];
+                //// screenshot
+                //this.setCurrentModel(removed, -1);
+                //Program.GetFormMain().updateStats();
+                //this.captureScreen(imageFolder + removed._model_name + "_bad_one.png");
             }
             return true;
         }// runACrossover - part groups
@@ -4760,7 +4817,7 @@ namespace FameBase
         private double[] runFunctionalityTest(Model model)
         {
             string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
-
+            model.recomputeSamplePointNormals();
             this.saveSamplePointsRequiredInfo(model);
 
             bool isSuccess = this.computeShape2PoseAndIconFeatures(model);
@@ -5017,7 +5074,8 @@ namespace FameBase
             }
             File.Copy(mesh_file, copyFolder + model._model_name + ".obj", true);
 
-            string folder = Interface.MATLAB_INPUT_PATH + model._model_name + "\\";
+            //string folder = Interface.MATLAB_INPUT_PATH + model._model_name + "\\";
+            string folder = Interface.MATLAB_INPUT_PATH;
             if (!Directory.Exists(folder))
             {
                 Directory.CreateDirectory(folder);
@@ -5460,8 +5518,8 @@ namespace FameBase
                 model._GRAPH._functionalityValues = iModel._GRAPH._functionalityValues.clone() as FunctionalityFeatures;
                 if (model._GRAPH.isValid())
                 {
-                    model.composeMesh(true);
                     model._GRAPH.unify();
+                    model.composeMesh(true);
                     mutated.Add(model);
                     // screenshot
                     this.setCurrentModel(model, -1);
@@ -5703,7 +5761,7 @@ namespace FameBase
                 _currModel._GRAPH._functionalityValues._outClassProbs[cid] = vals[2];
                 _currModel._GRAPH._functionalityValues._classProbs[cid] = vals[3];
             }
-            //++testId;
+            ++testId;
             // save the scores
             string scoreFolder = Interface.MODLES_PATH + "fameScore\\";
             if (!Directory.Exists(scoreFolder))
@@ -5814,11 +5872,11 @@ namespace FameBase
                     nSamplePoints += node._PART._partSP._points.Length;
                 }
             }
-            m.composeMesh(true);
-            //if (m._SP == null || m._SP._points.Length != nSamplePoints)
-            //{
-            //    m.composeMesh(true);
-            //}
+            if (m._SP == null || m._SP._points.Length != nSamplePoints)
+            {
+                m.composeMesh(true);
+            }
+            m.recomputeSamplePointNormals();
             this.saveSamplePointsRequiredInfo(m);
             bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
             //double[,] point_features = this.writeModelSampleFeatureFilesForPrediction(m);
@@ -5866,8 +5924,10 @@ namespace FameBase
             probs[0] = bd_inClass[catId].DistributionFunction(0, score);
             probs[1] = bd_outClass[catId].DistributionFunction(0, score);
             probs[2] = probs[0] * probs[1];
-            double t1 = bd_inClass[catId].DistributionFunction(0, 0.98);
-            double t2 = bd_outClass[catId].DistributionFunction(0, 0.93);
+            for (int i = 0; i < 3; ++i)
+            {
+                probs[i] = this.correctZeroProb(probs[i]);
+            }
             return probs;
         }
 
@@ -5876,58 +5936,59 @@ namespace FameBase
         {
             // once compute the point features, it will be used for all categories
             pointFeatures = null;
-            if (testId > 2)
-            {
-                return null;
-            }
             Graph g = m._GRAPH;
             int nNodes = m._GRAPH._NNodes;
             bool[] useNodes = new bool[nNodes];
             List<int> indices = new List<int>();
-
-            if (testId == 0)
+            useNodes = new bool[nNodes];
+            for (int i = 0; i < nNodes; ++i)
             {
-                useNodes = new bool[nNodes];
-                for (int i = 0; i < nNodes; ++i)
-                {
-                    useNodes[i] = true;
-                }
-                pointFeatures = this.computePointFeatures(m);
-                return m;
+                useNodes[i] = true;
             }
-            if (testId == 1)
+
+            if (_selectedNodes.Count > 0)
             {
-                // other selection
-                useNodes = new bool[nNodes];
                 for (int i = 0; i < nNodes; ++i)
                 {
-                    useNodes[i] = true;
-                }
-                indices = new List<int>();
-                for (int i = 0; i < nNodes; ++i)
-                {
-                    if (g._NODES[i]._PART._partName.Contains("Shelf"))
+                    if (!_selectedNodes.Contains(m._GRAPH._NODES[i]))
                     {
-                        useNodes[i] = false;
                         indices.Add(i);
+                        useNodes[i] = false;
                     }
                 }
             }
-            if (testId == 2)
+            else
             {
-                // other selection
-                useNodes = new bool[nNodes];
-                for (int i = 0; i < nNodes; ++i)
+
+                if (testId == 0)
                 {
-                    useNodes[i] = true;
+                    pointFeatures = this.computePointFeatures(m);
+                    return m;
                 }
-                indices = new List<int>();
-                for (int i = 0; i < nNodes; ++i)
+                if (testId == 1)
                 {
-                    if (g._NODES[i]._PART._partName.Contains("Handcart"))
+                    // other selection
+                    indices = new List<int>();
+                    for (int i = 0; i < nNodes; ++i)
                     {
-                        useNodes[i] = false;
-                        indices.Add(i);
+                        if (g._NODES[i]._PART._partName.Contains("Shelf"))
+                        {
+                            useNodes[i] = false;
+                            indices.Add(i);
+                        }
+                    }
+                }
+                if (testId == 2)
+                {
+                    // other selection
+                    indices = new List<int>();
+                    for (int i = 0; i < nNodes; ++i)
+                    {
+                        if (g._NODES[i]._PART._partName.Contains("Handcart"))
+                        {
+                            useNodes[i] = false;
+                            indices.Add(i);
+                        }
                     }
                 }
             }
@@ -5936,7 +5997,9 @@ namespace FameBase
             mc._GRAPH.deleteNodes(indices);
             mc._model_name += "_" + testId.ToString();
             mc.deleteParts(indices);
+            mc._GRAPH.unify();
             mc.composeMesh(true);
+            this.saveAPartBasedModel(mc, mc._path + mc._model_name + ".pam", true);
             pointFeatures = this.computePointFeatures(mc);
             return mc;
         }// composeASubMatch
@@ -5986,6 +6049,7 @@ namespace FameBase
             res[1] = probs[0];
             res[2] = probs[1];
             res[3] = probs[2];
+            return res;
             // for two parents
             if (m.nNewNodes > 0)
             {
@@ -6419,8 +6483,9 @@ namespace FameBase
                     {
                         if (m._GRAPH.isValid())
                         {
-                            m.composeMesh(true);
+                            // unify first, transform poitns, and then compose
                             m._GRAPH.unify();
+                            m.composeMesh(true);
                             crossed.Add(m);
                             //if (crossed.Count > 15) { return crossed; }
                             // screenshot
@@ -10193,7 +10258,6 @@ namespace FameBase
                 ++i;
             }
         }
-
         private void drawModel()
         {
             if (_currModel == null)
@@ -10220,6 +10284,13 @@ namespace FameBase
             if (this.isDrawModelSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
             {
                 GLDrawer.drawPoints(_currModel._SP._points, _currModel._SP._blendColors, 10.0f);
+                //GLDrawer.drawPoints(_currModel._SP.testVisiblePoints.ToArray(), _currModel._SP._blendColors, 10.0f);
+                // draw normal
+                GLDrawer.drawLines3D(_currModel._SP.testNormals, Color.Blue, 2.0f);
+            }
+            if (this.drawVertex)
+            {
+                GLDrawer.drawLines3D(_currModel._MESH.testNormals, Color.Blue, 2.0f);
             }
             // draw functional space
             if (this.isDrawFuncSpace && _currModel._SP != null && _currModel._funcSpaces != null && _fsIdx < _currModel._funcSpaces.Length)
