@@ -1977,7 +1977,7 @@ namespace Component
     public class FunctionalityFeatures
     {
         public Common.Category[] _cats = new Common.Category[Common._NUM_CATEGORIY];
-        public double[] _funvals = new double[Common._NUM_CATEGORIY];
+        public double[] _funScores = new double[Common._NUM_CATEGORIY];
         public List<Common.Category> _parentCategories = new List<Common.Category>();
         public double[] _inClassProbs = new double[Common._NUM_CATEGORIY];
         public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
@@ -1993,13 +1993,13 @@ namespace Component
         public FunctionalityFeatures(List<Common.Category> cats, List<double> vals)
         {
             _cats = cats.ToArray();
-            _funvals = vals.ToArray();
+            _funScores = vals.ToArray();
         }
 
         public Object clone()
         {
             List<Common.Category> cats = new List<Common.Category>(_cats);
-            List<double> vals = new List<double>(_funvals);
+            List<double> vals = new List<double>(_funScores);
             FunctionalityFeatures ff = new FunctionalityFeatures(cats, vals);
             return ff;
         }

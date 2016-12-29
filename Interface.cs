@@ -1000,5 +1000,19 @@ namespace FameBase
             this.glViewer.isDrawPartFunctionalSpacePrimitive = this.partFSToolStripMenuItem.Checked;
             this.glViewer.Refresh();
         }
-	}// Interface
+
+        private void loadValidityMatrixToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Load a validity matrix",
+                DefaultExt = ".vdm"
+            };
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                this.glViewer.loadValidityMatrix(dialog.FileName);
+                this.updateStats();
+            }
+        }
+    }// Interface
 }// namespace

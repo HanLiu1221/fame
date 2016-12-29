@@ -26,6 +26,8 @@ namespace Component
 
         public SamplePoints _partSP;
         public string _partName;
+        public Common.Category _orignCategory;
+
         public List<Prism> _functionalSpacePrims = new List<Prism>();
 
         public Color _COLOR = Color.LightBlue;
@@ -133,6 +135,7 @@ namespace Component
                 p._partSP = _partSP.clone() as SamplePoints;
             }
             p._partName = _partName.Clone() as string;
+            p._orignCategory = _orignCategory;
             return p;
         }
 
@@ -653,7 +656,7 @@ namespace Component
 
         public SamplePoints _SP;
         public FuncFeatures _funcFeat = null;
-        private ConvexHull _hull;
+        private ConvexHull _hull = null;
         private Vector3d _centerOfMass;
         private Vector3d _centerOfConvexHull;
         private Polygon3D _symPlane;
@@ -887,17 +890,40 @@ namespace Component
         {
             _centerOfMass = new Vector3d();
             double totalVolume = 0;
+            Vector3d refPoint = (_mesh.MinCoord + _mesh.MaxCoord) / 2;
             for (int i = 0; i < _mesh.FaceCount; ++i)
             {
                 int v1 = _mesh.FaceVertexIndex[3 * i];
                 int v2 = _mesh.FaceVertexIndex[3 * i + 1];
                 int v3 = _mesh.FaceVertexIndex[3 * i + 2];
-                Vector3d pos1 = _mesh.getVertexPos(v1);
-                Vector3d pos2 = _mesh.getVertexPos(v2);
-                Vector3d pos3 = _mesh.getVertexPos(v3);
+                Vector3d[] vecs = new Vector3d[4];
+                vecs[0] = _mesh.getVertexPos(v1);
+                vecs[1] = _mesh.getVertexPos(v2);
+                vecs[2] = _mesh.getVertexPos(v3);
+                vecs[3] = refPoint;
+                //double[] arr = new double[16];
+                //int t = 0;
+                //Vector3d mass = new Vector3d();
+                //for (int j = 0; j < 4; ++j)
+                //{
+                //    for (int k = 0; k < 3; ++k)
+                //    {
+                //        arr[t++] = vecs[j][k];
+                //    }
+                //    mass += vecs[j];
+                //}
+                //mass /= 4;
+                //Matrix4d mat = new Matrix4d(arr);
+                //double volume = mat.Determinant() / 6;
+                //_centerOfMass += mass * volume;
+
+                Vector3d pos1 = vecs[0];
+                Vector3d pos2 = vecs[1];
+                Vector3d pos3 = vecs[2];
                 double volume = (pos1.x * pos1.y * pos3.z - pos1.x * pos3.y * pos2.z - pos2.x * pos1.y * pos3.z +
                     pos2.x * pos3.y * pos1.z + pos3.x * pos1.y * pos2.z - pos3.x * pos1.y * pos1.z) / 6;
-                _centerOfMass += (pos1 + pos2 + pos3) / 4 * volume;
+                _centerOfMass += ((pos1 + pos2 + pos3) / 4) * volume;
+
                 totalVolume += volume;
             }
             _centerOfMass /= totalVolume;
@@ -1013,10 +1039,11 @@ namespace Component
 
         public void computeDistAndAngleToCenterOfConvexHull()
         {
-            if (_hull == null)
-            {
-                computeConvexHull();
-            }
+            //if (_hull == null)
+            //{
+            //    computeConvexHull();
+            //}
+            computeConvexHull();
             int dim = Common._CONVEXHULL_FEAT_DIM;
             double maxdist = double.MinValue;
             double mindist = double.MaxValue;
@@ -1042,11 +1069,16 @@ namespace Component
 
         public void computeDistAndAngleToCenterOfMass()
         {
+            //if (!_centerOfMass.isValidVector())
+            //{
+            //    this.computeCenterOfMass();
+            //}
+            //this.computeCenterOfMass();
+            _centerOfMass = (_mesh.MaxCoord + _mesh.MinCoord) / 2;
             int dim = Common._CONVEXHULL_FEAT_DIM;
             double maxdist = double.MinValue;
             double mindist = double.MaxValue;
             _funcFeat._cenOfMassFeats = new double[dim * _SP._points.Length];
-            _centerOfMass = (_mesh.MaxCoord + _mesh.MinCoord) / 2;
             for (int i = 0; i < _SP._points.Length; ++i)
             {
                 Vector3d v = _SP._points[i];
