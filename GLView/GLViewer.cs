@@ -1180,6 +1180,7 @@ namespace FameBase
                     }
                 }
                 s = sr.ReadLine().Trim();
+                strs = s.Split(separator);
                 int npartgroups = int.Parse(strs[0]);
                 if (_partGroupLibrary.Count != npartgroups)
                 {
@@ -1188,6 +1189,7 @@ namespace FameBase
                     return;
                 }
                 s = sr.ReadLine().Trim();
+                strs = s.Split(separator);
                 int nTriplets = int.Parse(strs[0]);
                 _validityMatrixPG = new SparseMatrix(npartgroups, npartgroups);
                 for (int i =0;i < nTriplets; ++i)
@@ -1196,7 +1198,7 @@ namespace FameBase
                     strs = s.Split(separator);
                     int row = int.Parse(strs[0]);
                     int col = int.Parse(strs[1]);
-                    int val = int.Parse(strs[2]);
+                    double val = double.Parse(strs[2]);
                     Triplet triplet = new Triplet(row, col, val);
                     _validityMatrixPG.AddTriplet(triplet);
                 }
@@ -4033,7 +4035,8 @@ namespace FameBase
                         // crossover
                         runstr += "Crossover @iteration " + i.ToString();
                         Program.GetFormMain().writeToConsole(runstr);
-                        //cur_kids = preRun(imageFolder_c);
+                        cur_kids = preRun(imageFolder_c);
+                        this.saveValidityMatrix(validityMatrixFileName);
                         cur_kids = runAGenerationOfCrossover(_currGenId, rand, imageFolder_c);
                         break;
                 }
@@ -5701,18 +5704,22 @@ namespace FameBase
             double[,] pointFeatures;
             _currFuncScores = null;
             Model mc = this.composeASubMatch(_currModel, out pointFeatures);
-            //for (int i = 0; i < _inputSetCats.Count; ++i)
+            double[] scores = this.runFunctionalityTest(mc);
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
             {
                 int cid = i;// _inputSetCats[i];
-                int[] patchIdxs = Common.getCategoryPatchIndicesInFeatureVector((Common.Category)cid);
-                //double val = this.computeICONfeaturePerCategory(_currModel, cid, point_features, useNodes, out patches);
-                double[] vals = this.seperatePartialMatching(mc, cid, pointFeatures);
-                _currModel._GRAPH._functionalityValues._funScores[cid] = vals[0];
-                _currModel._GRAPH._functionalityValues._inClassProbs[cid] = vals[1];
-                _currModel._GRAPH._functionalityValues._outClassProbs[cid] = vals[2];
-                _currModel._GRAPH._functionalityValues._classProbs[cid] = vals[3];
+                double[] probs = this.getProbabilityForACat(i, scores[i]);
+                _currModel._GRAPH._functionalityValues._funScores[cid] = scores[i];
+                _currModel._GRAPH._functionalityValues._inClassProbs[cid] = probs[0];
+                _currModel._GRAPH._functionalityValues._outClassProbs[cid] = probs[1];
+                _currModel._GRAPH._functionalityValues._classProbs[cid] = probs[2];
             }
+            //for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            //{
+            //    int[] patchIdxs = Common.getCategoryPatchIndicesInFeatureVector((Common.Category)cid);
+            //    double val = this.computeICONfeaturePerCategory(_currModel, cid, point_features, useNodes, out patches);
+            //    double[] vals = this.seperatePartialMatching(mc, cid, pointFeatures);
+            //}
             // save the scores
             string scoreFolder = Interface.MODLES_PATH + "fameScore\\";
             if (!Directory.Exists(scoreFolder))
@@ -5721,6 +5728,7 @@ namespace FameBase
             }
             string scoreFileName = scoreFolder +  _currModel._model_name + ".score";
             this.saveScoreFile(scoreFileName, _currModel._GRAPH._functionalityValues._funScores);
+            this.saveAPartBasedModel(_currModel, _currModel._path + _currModel._model_name + ".pam", true);
             Program.GetFormMain().updateStats();
         }// predictFunctionalPatches
 
@@ -5906,6 +5914,9 @@ namespace FameBase
                         useNodes[i] = false;
                     }
                 }
+            } else
+            {
+                return m;
             }
             Model mc = m.Clone() as Model;
             // delete nodes
@@ -5915,7 +5926,7 @@ namespace FameBase
             mc._GRAPH.unify();
             mc.composeMesh();
             this.saveAPartBasedModel(mc, mc._path + mc._model_name + ".pam", true);
-            pointFeatures = this.computePointFeatures(mc);
+            //pointFeatures = this.computePointFeatures(mc);
             return mc;
         }// composeASubMatch
         private double[] seperatePartialMatching(Model m, int catIdx, double[,] pointsFeatures)
@@ -5947,7 +5958,6 @@ namespace FameBase
             int nNodes = g._NNodes;
             bool[] useNodes;
             List<int> indices = new List<int>();
-            double[,] pointsFeatures = null; ;
             List<List<int>> excludedNodeIndices = new List<List<int>>();
             excludedNodeIndices.Add(indices);
             // all
@@ -5991,6 +6001,10 @@ namespace FameBase
                     {
                         indices.Add(i);
                     }
+                }
+                if (indices.Count == m._PARTS.Count || indices.Count == 0)
+                {
+                    continue;
                 }
                 Model mc = m.Clone() as Model;
                 // delete nodes

@@ -1983,7 +1983,8 @@ namespace Component
         public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
         public double[] _classProbs = new double[Common._NUM_CATEGORIY];
 
-        public FunctionalityFeatures() {
+        public FunctionalityFeatures()
+        {
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
             {
                 _cats[i] = (Common.Category)i;
