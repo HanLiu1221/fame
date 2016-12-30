@@ -950,8 +950,8 @@ namespace FameBase
                 {
                     string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
                     saveAGraph(model._GRAPH, graphName);
-                    string pgName = filename.Substring(0, filename.LastIndexOf('.')) + ".pg";
-                    savePartGroupsOfAModelGraph(model._GRAPH._partGroups, pgName);
+                    //string pgName = filename.Substring(0, filename.LastIndexOf('.')) + ".pg";
+                    //savePartGroupsOfAModelGraph(model._GRAPH._partGroups, pgName);
                 }
                 saveModelInfo(model, meshDir, modelName, isOriginalModel);
             }
@@ -1888,14 +1888,14 @@ namespace FameBase
             {
                 if (_currModel._GRAPH != null)
                 {
-                    _currModel._GRAPH.initilaizePartGroups();
+                    _currModel._GRAPH.initializePartGroups();
                 }
             }
             else
             {
                 LoadPartGroupsOfAModelGraph(_currModel._GRAPH, pgName);
             }
-            _currModel._GRAPH.initilaizePartGroups();
+            _currModel._GRAPH.initializePartGroups();
             //_currModel.analyzeFunctionalSpace();
             //List<Model> models = new List<Model>();
             //models.Add(_currModel);
@@ -1971,6 +1971,7 @@ namespace FameBase
                             pg._ParentModelIndex = _modelIndex;
                         }
                     }
+                    m._GRAPH.unify();
                     m.composeMesh();
                     m._index = idx;
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this, 0); // ancester
@@ -2026,7 +2027,51 @@ namespace FameBase
             return _ancesterModelViewers;
         }// loadPartBasedModels
 
-        
+        public void batchLoadTest(string segfolder)
+        {
+            if (!Directory.Exists(segfolder))
+            {
+                MessageBox.Show("Directory does not exist!");
+                return;
+            }
+            this.foldername = segfolder;
+            this.clearContext();
+            this.clearHighlights();
+            this.readModelModelViewMatrix(foldername + "\\view.mat");
+            this.decideWhichToDraw(true, false, false, true, false, false);
+            this.setUIMode(0);
+            string[] files = Directory.GetFiles(segfolder, "*.pam");
+            int idx = 0;
+            Program.writeToConsole("Loading all " + files.Length.ToString() + " models...");
+            foreach (string file in files)
+            {
+                Program.writeToConsole("Loading Model info @" + (idx + 1).ToString() + "...");
+                Model m = loadOnePartBasedModel(file);
+                if (m != null)
+                {
+                    string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
+                    LoadAGraph(m, graphName, false);
+                    string pgName = file.Substring(0, file.LastIndexOf('.')) + ".pg";
+                    LoadPartGroupsOfAModelGraph(m._GRAPH, pgName);
+                    if (m._GRAPH != null && m._GRAPH._partGroups != null)
+                    {
+                        m._GRAPH._partGroups.Add(new PartGroup(new List<Node>(), 0));
+                        foreach (PartGroup pg in m._GRAPH._partGroups)
+                        {
+                            pg._ParentModelIndex = _modelIndex;
+                        }
+                    }
+                    m._GRAPH.unify();
+                    m.composeMesh();
+                    m._index = idx;
+                    this.setCurrentModel(m, idx);
+                    this.runProabilityTest();
+                    ++_modelIndex;
+                }
+            }
+
+        }// loadPartBasedModels
+
         private void preProcessInputSet(List<Model> models)
         {
             // Given n input shapes, do:
@@ -2259,7 +2304,7 @@ namespace FameBase
             _partGroupLibrary = new List<List<PartGroup>>();
             foreach(Model m in models)
             {
-                m._GRAPH.initilaizePartGroups();
+                m._GRAPH.initializePartGroups();
                 nPGs += m._GRAPH._partGroups.Count;
                 foreach (PartGroup pg in m._GRAPH._partGroups)
                 {
@@ -2382,7 +2427,7 @@ namespace FameBase
                 int end = (c == Common._NUM_CATEGORIY - 1 ? nShapes : startIds[c + 1]);
                 double maxOut = double.MinValue;
                 double minIn = double.MaxValue;
-                double shrink = 0.95;
+                double shrink = 0.98;
                 for (int i = 0; i < start; ++i)
                 {
                     double val = scores[i, c] * shrink;
@@ -3061,7 +3106,7 @@ namespace FameBase
             }
             if (graph._partGroups.Count < 2)
             {
-                graph.initilaizePartGroups();
+                graph.initializePartGroups();
             }
         }// LoadPartGroupsOfAModelGraph
 
@@ -3200,9 +3245,12 @@ namespace FameBase
                     cats.Add(Common.getCategory(strs[0]));
                 }
                 
-                if (cats.Count > 0)
+                if (!m._model_name.StartsWith("gen"))
                 {
-                    g._functionalityValues._parentCategories = cats;
+                    char[] sepChar = { '_' };
+                    string[] names = m._model_name.Split(sepChar);
+                    g._functionalityValues._parentCategories = new List<Common.Category>();
+                    g._functionalityValues._parentCategories.Add(Common.getCategory(names[0]));
                 }
                 if (unify)
                 {
@@ -3954,7 +4002,7 @@ namespace FameBase
                 if (increase)
                 {
                     update_prob = Math.Min(1.0, prob * 1.5);
-                    //mv._MODEL._GRAPH.initilaizePartGroups();
+                    //mv._MODEL._GRAPH.initializePartGroups();
                     foreach (PartGroup pg in mv._MODEL._GRAPH._partGroups)
                     {
                         pg._ParentModelIndex = mv._MODEL._index;
@@ -5679,6 +5727,49 @@ namespace FameBase
             return sorted;
         }// rankByHighestCategoryValue
 
+        public void runProabilityTest()
+        {
+            //this.reloadView();
+            predictFunctionalPatches();
+            if (_currModel._GRAPH._functionalityValues == null || _currModel._GRAPH._functionalityValues._funScores[0] == 0)
+            {
+                return;
+            }
+            string imageFolder = @"F:\Projects\fame\data_sets\patch_data\models\Users\User_1\screenCapture\test_split\";
+            string splitFolder = imageFolder + "\\low_prob\\";
+            if (_currModel._GRAPH._functionalityValues != null)
+            {
+                int nHighProb = 0;
+                int nParentProb = 0;
+                for(int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                { 
+                    if (_currModel._GRAPH._functionalityValues._funScores[i] > 0.9)
+                    {
+                        ++nParentProb;
+                    }
+                    if (_currModel._GRAPH._functionalityValues._parentCategories.Contains((Common.Category)i))
+                    {
+                        ++nHighProb;
+                    }
+                }
+                if (nHighProb > 0)
+                {
+                    if (nHighProb > 1)
+                    {
+                        splitFolder = imageFolder + "\\multi_high\\";
+                    }
+                    else
+                    {
+                        splitFolder = imageFolder + "\\high_prob\\";
+                    }
+                }
+            }
+            if (!Directory.Exists(splitFolder))
+            {
+                Directory.CreateDirectory(splitFolder);
+            }
+            this.captureScreen(splitFolder + _currModel._model_name + ".png");
+        }
         public void predictFunctionalPatches()
         {
             if (_currModel == null)
@@ -5696,15 +5787,22 @@ namespace FameBase
             //        node._PART._highlightColors[i] = Color.FromArgb(255, 255, 255, 0);
             //    }
             //}
-            if (_currModel._GRAPH._functionalityValues == null)
+            double[] scores;
+            if (_currModel._GRAPH._functionalityValues == null || _currModel._GRAPH._functionalityValues._funScores[0] == 0)
             {
+                return;
                 _currModel._GRAPH._functionalityValues = new FunctionalityFeatures();
+                double[,] pointFeatures;
+                Model mc = this.composeASubMatch(_currModel, out pointFeatures);
+                scores = this.runFunctionalityTest(mc);
+            } else
+            {
+                scores = _currModel._GRAPH._functionalityValues._funScores;
             }
             StringBuilder sb = new StringBuilder();
-            double[,] pointFeatures;
+            
             _currFuncScores = null;
-            Model mc = this.composeASubMatch(_currModel, out pointFeatures);
-            double[] scores = this.runFunctionalityTest(mc);
+            
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
             {
                 int cid = i;// _inputSetCats[i];
@@ -5880,15 +5978,30 @@ namespace FameBase
         private double[] getProbabilityForACat(int catId, double score)
         {
             double[] probs = new double[3];
-            probs[0] = bd_inClass[catId].DistributionFunction(0, score);
-            probs[1] = bd_outClass[catId].DistributionFunction(0, score);
+            // use probability
+            double cdf1 = bd_inClass[catId].DistributionFunction(score);
+            double cdf2 = bd_outClass[catId].DistributionFunction(score);
+            probs[0] = cdf1;
+            probs[1] = cdf2;
             probs[2] = probs[0] * probs[1];
             for (int i = 0; i < 3; ++i)
             {
                 probs[i] = this.correctZeroProb(probs[i]);
             }
             return probs;
-        }
+        }// getProbabilityForACat
+
+        private double fromCDFtoProbability(BetaDistribution bd, double cdf)
+        {
+            double mag = 100;
+            double upper = Math.Ceiling(cdf * mag);
+            double lower = Math.Floor(cdf * mag);
+            upper /= mag;
+            lower /= mag;
+            double cdf_u = bd.DistributionFunction(upper);
+            double cdf_l = bd.DistributionFunction(lower);
+            return cdf_u - cdf_l;
+        }// fromCDFtoProbability
 
         private Model composeASubMatch(Model m, out double[,] pointFeatures)
         {

@@ -1402,7 +1402,7 @@ namespace Component
         //    computeDistAndAngleToCenterOfMass();
         //}// computeFeatures
 
-        public void initilaizePartGroups()
+        public void initializePartGroups()
         {
             _partGroups = new List<PartGroup>();
             // 1. connected parts
@@ -1457,22 +1457,22 @@ namespace Component
                 // symmetry breaking
                 List<Node> nodes1 = new List<Node>();
                 nodes1.Add(_nodes[i]);
-                //if (shouldCreateNewPartGroup(_partGroups, nodes1))
-                //{
+                if (shouldCreateNewPartGroup(_partGroups, nodes1))
+                {
                     _partGroups.Add(new PartGroup(nodes1, 0));
                     indices = new List<int>();
                     indices.Add(i);
                     comIndices.Add(indices);
-                //}
-                List<Node> nodes2 = new List<Node>();
-                nodes2.Add(sym);
-                if (shouldCreateNewPartGroup(_partGroups, nodes2))
-                {
-                    _partGroups.Add(new PartGroup(nodes2, 0));
-                    indices = new List<int>();
-                    indices.Add(sym._INDEX);
-                    comIndices.Add(indices);
                 }
+                //List<Node> nodes2 = new List<Node>();
+                //nodes2.Add(sym);
+                //if (shouldCreateNewPartGroup(_partGroups, nodes2))
+                //{
+                //    _partGroups.Add(new PartGroup(nodes2, 0));
+                //    indices = new List<int>();
+                //    indices.Add(sym._INDEX);
+                //    comIndices.Add(indices);
+                //}
             }
             // 3. connected parts to exisiting groups
             int nGroups = _partGroups.Count;
@@ -1516,7 +1516,7 @@ namespace Component
                 }
                 comIndices.Add(indices);
             }
-        }// initilaizePartGroups
+        }// initializePartGroups
 
         private List<int> breadthFirstSearch(List<Node> nodes)
         {

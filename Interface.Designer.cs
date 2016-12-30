@@ -59,6 +59,7 @@
             this.loadOriPatchOnlyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadFuncPatchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadFuncSpaceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadValidityMatrixToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tools = new System.Windows.Forms.ToolStripDropDownButton();
             this.viewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.resetViewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -125,6 +126,7 @@
             this.prev_mesh = new System.Windows.Forms.Button();
             this.next_mesh = new System.Windows.Forms.Button();
             this.statsLabel = new System.Windows.Forms.Label();
+            this.glViewer = new FameBase.GLViewer();
             this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
@@ -154,8 +156,7 @@
             this.hangerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer = new FameBase.GLViewer();
-            this.loadValidityMatrixToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.batchLoadTestToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -196,7 +197,8 @@
             this.importModelsToolStripMenuItem,
             this.saveRepPairsToolStripMenuItem,
             this.screenCaptureToolStripMenuItem,
-            this.autoSnapshotsToolStripMenuItem});
+            this.autoSnapshotsToolStripMenuItem,
+            this.batchLoadTestToolStripMenuItem});
             this.model.Image = ((System.Drawing.Image)(resources.GetObject("model.Image")));
             this.model.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.model.Name = "model";
@@ -207,49 +209,49 @@
             // loadAPartBasedModel
             // 
             this.loadAPartBasedModel.Name = "loadAPartBasedModel";
-            this.loadAPartBasedModel.Size = new System.Drawing.Size(156, 22);
+            this.loadAPartBasedModel.Size = new System.Drawing.Size(157, 22);
             this.loadAPartBasedModel.Text = "Load a model";
             this.loadAPartBasedModel.Click += new System.EventHandler(this.loadAPartBasedModel_Click);
             // 
             // saveAModelToolStripMenuItem
             // 
             this.saveAModelToolStripMenuItem.Name = "saveAModelToolStripMenuItem";
-            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.saveAModelToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.saveAModelToolStripMenuItem.Text = "Save a model";
             this.saveAModelToolStripMenuItem.Click += new System.EventHandler(this.saveAModelToolStripMenuItem_Click);
             // 
             // loadPartBasedModels
             // 
             this.loadPartBasedModels.Name = "loadPartBasedModels";
-            this.loadPartBasedModels.Size = new System.Drawing.Size(156, 22);
+            this.loadPartBasedModels.Size = new System.Drawing.Size(157, 22);
             this.loadPartBasedModels.Text = "Load models";
             this.loadPartBasedModels.Click += new System.EventHandler(this.loadPartBasedModels_Click);
             // 
             // importModelsToolStripMenuItem
             // 
             this.importModelsToolStripMenuItem.Name = "importModelsToolStripMenuItem";
-            this.importModelsToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.importModelsToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.importModelsToolStripMenuItem.Text = "Import models";
             this.importModelsToolStripMenuItem.Click += new System.EventHandler(this.importModelsToolStripMenuItem_Click);
             // 
             // saveRepPairsToolStripMenuItem
             // 
             this.saveRepPairsToolStripMenuItem.Name = "saveRepPairsToolStripMenuItem";
-            this.saveRepPairsToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.saveRepPairsToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.saveRepPairsToolStripMenuItem.Text = "Save Rep pairs";
             this.saveRepPairsToolStripMenuItem.Click += new System.EventHandler(this.saveRepPairsToolStripMenuItem_Click);
             // 
             // screenCaptureToolStripMenuItem
             // 
             this.screenCaptureToolStripMenuItem.Name = "screenCaptureToolStripMenuItem";
-            this.screenCaptureToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.screenCaptureToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.screenCaptureToolStripMenuItem.Text = "Screen capture";
             this.screenCaptureToolStripMenuItem.Click += new System.EventHandler(this.screenCaptureToolStripMenuItem_Click);
             // 
             // autoSnapshotsToolStripMenuItem
             // 
             this.autoSnapshotsToolStripMenuItem.Name = "autoSnapshotsToolStripMenuItem";
-            this.autoSnapshotsToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.autoSnapshotsToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.autoSnapshotsToolStripMenuItem.Text = "Auto snapshots";
             this.autoSnapshotsToolStripMenuItem.Click += new System.EventHandler(this.autoSnapshotsToolStripMenuItem_Click);
             // 
@@ -417,6 +419,13 @@
             this.loadFuncSpaceToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
             this.loadFuncSpaceToolStripMenuItem.Text = "Load func space";
             this.loadFuncSpaceToolStripMenuItem.Click += new System.EventHandler(this.loadFuncSpaceToolStripMenuItem_Click);
+            // 
+            // loadValidityMatrixToolStripMenuItem
+            // 
+            this.loadValidityMatrixToolStripMenuItem.Name = "loadValidityMatrixToolStripMenuItem";
+            this.loadValidityMatrixToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
+            this.loadValidityMatrixToolStripMenuItem.Text = "Load validity matrix";
+            this.loadValidityMatrixToolStripMenuItem.Click += new System.EventHandler(this.loadValidityMatrixToolStripMenuItem_Click);
             // 
             // tools
             // 
@@ -838,42 +847,42 @@
             // symmetryToolStripMenuItem
             // 
             this.symmetryToolStripMenuItem.Name = "symmetryToolStripMenuItem";
-            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
+            this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.symmetryToolStripMenuItem.Text = "Symmetry";
             this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
             // 
             // crossoverToolStripMenuItem
             // 
             this.crossoverToolStripMenuItem.Name = "crossoverToolStripMenuItem";
-            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
+            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.crossoverToolStripMenuItem.Text = "Crossover";
             this.crossoverToolStripMenuItem.Click += new System.EventHandler(this.crossoverToolStripMenuItem_Click);
             // 
             // mutateToolStripMenuItem
             // 
             this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
+            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.mutateToolStripMenuItem.Text = "Mutate";
             this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
             // 
             // sortResToolStripMenuItem
             // 
             this.sortResToolStripMenuItem.Name = "sortResToolStripMenuItem";
-            this.sortResToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
+            this.sortResToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.sortResToolStripMenuItem.Text = "Post analyze";
             this.sortResToolStripMenuItem.Click += new System.EventHandler(this.sortResToolStripMenuItem_Click);
             // 
             // rankByCatToolStripMenuItem
             // 
             this.rankByCatToolStripMenuItem.Name = "rankByCatToolStripMenuItem";
-            this.rankByCatToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
+            this.rankByCatToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.rankByCatToolStripMenuItem.Text = "Rank by Cat";
             this.rankByCatToolStripMenuItem.Click += new System.EventHandler(this.rankByCatToolStripMenuItem_Click);
             // 
             // rankByMultiToolStripMenuItem
             // 
             this.rankByMultiToolStripMenuItem.Name = "rankByMultiToolStripMenuItem";
-            this.rankByMultiToolStripMenuItem.Size = new System.Drawing.Size(147, 22);
+            this.rankByMultiToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.rankByMultiToolStripMenuItem.Text = "Rank by Multi";
             this.rankByMultiToolStripMenuItem.Click += new System.EventHandler(this.rankByMultiToolStripMenuItem_Click);
             // 
@@ -1032,6 +1041,26 @@
             this.statsLabel.Size = new System.Drawing.Size(41, 16);
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
+            // 
+            // glViewer
+            // 
+            this.glViewer.AccumBits = ((byte)(0));
+            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.glViewer.AutoCheckErrors = false;
+            this.glViewer.AutoFinish = false;
+            this.glViewer.AutoMakeCurrent = true;
+            this.glViewer.AutoSwapBuffers = true;
+            this.glViewer.BackColor = System.Drawing.Color.Black;
+            this.glViewer.ColorBits = ((byte)(32));
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
+            this.glViewer.DepthBits = ((byte)(16));
+            this.glViewer.Location = new System.Drawing.Point(216, 3);
+            this.glViewer.Name = "glViewer";
+            this.glViewer.Size = new System.Drawing.Size(676, 695);
+            this.glViewer.StencilBits = ((byte)(0));
+            this.glViewer.TabIndex = 16;
             // 
             // partBasket
             // 
@@ -1260,32 +1289,12 @@
             this.connectorToolStripMenuItem.Text = "Connector";
             this.connectorToolStripMenuItem.Click += new System.EventHandler(this.connectorToolStripMenuItem_Click);
             // 
-            // glViewer
+            // batchLoadTestToolStripMenuItem
             // 
-            this.glViewer.AccumBits = ((byte)(0));
-            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.glViewer.AutoCheckErrors = false;
-            this.glViewer.AutoFinish = false;
-            this.glViewer.AutoMakeCurrent = true;
-            this.glViewer.AutoSwapBuffers = true;
-            this.glViewer.BackColor = System.Drawing.Color.Black;
-            this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(216, 3);
-            this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(676, 695);
-            this.glViewer.StencilBits = ((byte)(0));
-            this.glViewer.TabIndex = 16;
-            // 
-            // loadValidityMatrixToolStripMenuItem
-            // 
-            this.loadValidityMatrixToolStripMenuItem.Name = "loadValidityMatrixToolStripMenuItem";
-            this.loadValidityMatrixToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.loadValidityMatrixToolStripMenuItem.Text = "Load validity matrix";
-            this.loadValidityMatrixToolStripMenuItem.Click += new System.EventHandler(this.loadValidityMatrixToolStripMenuItem_Click);
+            this.batchLoadTestToolStripMenuItem.Name = "batchLoadTestToolStripMenuItem";
+            this.batchLoadTestToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.batchLoadTestToolStripMenuItem.Text = "Batch Load Test";
+            this.batchLoadTestToolStripMenuItem.Click += new System.EventHandler(this.batchLoadTestToolStripMenuItem_Click);
             // 
             // Interface
             // 
@@ -1442,6 +1451,7 @@
         private System.Windows.Forms.ToolStripMenuItem rankByMultiToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem partFSToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadValidityMatrixToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem batchLoadTestToolStripMenuItem;
     }
 }
 
