@@ -367,6 +367,7 @@ namespace FameBase
             _selectedEdge = null;
             _selectedContact = null;
             _selectedParts.Clear();
+            _selectedNodes.Clear();
         }// clearHighlights
 
         /******************** Load & Save ********************/
@@ -1782,6 +1783,7 @@ namespace FameBase
                     fss.Add(fs);
                     ++fid;
                 }
+                
                 for (int i = 0; i < n; ++i)
                 {
                     // read a part
@@ -3251,6 +3253,17 @@ namespace FameBase
                     string[] names = m._model_name.Split(sepChar);
                     g._functionalityValues._parentCategories = new List<Common.Category>();
                     g._functionalityValues._parentCategories.Add(Common.getCategory(names[0]));
+                } else
+                {
+                    List<Common.Category> parentCats = new List<Common.Category>();
+                    foreach (Part part in m._PARTS)
+                    {
+                        if (!parentCats.Contains(part._orignCategory))
+                        {
+                            parentCats.Add(part._orignCategory);
+                        }
+                    }
+                    g._functionalityValues._parentCategories = parentCats;
                 }
                 if (unify)
                 {
@@ -5736,23 +5749,32 @@ namespace FameBase
                 return;
             }
             string imageFolder = @"F:\Projects\fame\data_sets\patch_data\models\Users\User_1\screenCapture\test_split\";
-            string splitFolder = imageFolder + "\\low_prob\\";
+            string splitFolder = imageFolder;
             if (_currModel._GRAPH._functionalityValues != null)
             {
                 int nHighProb = 0;
+                int nMedium = 0;
                 int nParentProb = 0;
-                for(int i = 0; i < Common._NUM_CATEGORIY; ++i)
-                { 
-                    if (_currModel._GRAPH._functionalityValues._funScores[i] > 0.9)
-                    {
-                        ++nParentProb;
-                    }
-                    if (_currModel._GRAPH._functionalityValues._parentCategories.Contains((Common.Category)i))
+                for(int j = 0; j < _inputSetCats.Count; ++j)
+                {
+                    int i = _inputSetCats[j];
+                    double prob = _currModel._GRAPH._functionalityValues._classProbs[i];
+                    if (prob > 0.9)
                     {
                         ++nHighProb;
                     }
+                    if (_currModel._GRAPH._functionalityValues._parentCategories.Contains((Common.Category)i))
+                    {
+                        if (prob > 0.9)
+                        {
+                            ++nParentProb;
+                        } else if (prob > 0.5)
+                        {
+                            ++nMedium;
+                        }
+                    }
                 }
-                if (nHighProb > 0)
+                if (nParentProb > 0)
                 {
                     if (nHighProb > 1)
                     {
@@ -5762,6 +5784,12 @@ namespace FameBase
                     {
                         splitFolder = imageFolder + "\\high_prob\\";
                     }
+                } else if (nMedium > 0)
+                {
+                    splitFolder = imageFolder + "\\medium_prob\\";
+                } else
+                {
+                    splitFolder = imageFolder + "\\low_prob\\";
                 }
             }
             if (!Directory.Exists(splitFolder))
@@ -5788,7 +5816,7 @@ namespace FameBase
             //    }
             //}
             double[] scores;
-            if (_currModel._GRAPH._functionalityValues == null || _currModel._GRAPH._functionalityValues._funScores[0] == 0)
+            if (_selectedNodes.Count > 0 || _currModel._GRAPH._functionalityValues == null || _currModel._GRAPH._functionalityValues._funScores[0] == 0)
             {
                 return;
                 _currModel._GRAPH._functionalityValues = new FunctionalityFeatures();
