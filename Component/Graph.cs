@@ -1296,8 +1296,8 @@ namespace Component
                             continue;
                         }
                         Mesh m2 = node._PART._MESH;
-                        if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord) ||
-                            isConnected(m1,m2))
+                        if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
+                            || isConnected(m1, m2))
                         {
                             queue.Add(node);
                         }
@@ -1341,8 +1341,8 @@ namespace Component
 
         private bool isConnected(Mesh m1, Mesh m2)
         {
-            // work fro uniform mesh -- vertex are equally distributed
-            double thr = 0.01;
+            // work for uniform mesh -- vertex are equally distributed
+            double thr = 0.1;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;
             for (int i = 0; i < v1.Length; ++i)
@@ -1362,17 +1362,18 @@ namespace Component
                     }
                 }
             }
-            return mind < thr;
+            return mind < 0.1;
         }// is connected
 
         private bool isTwoPolygonInclusive(Vector3d v1_min, Vector3d v1_max, Vector3d v2_min, Vector3d v2_max)
         {
+            double thr = 0.01;
             for (int i = 0; i < 3; ++i)
             {
-                if ( (v1_min[i] <= v2_max[i] && v1_min[i] >= v2_min[i] &&
-                    v1_max[i] <= v2_max[i] && v1_max[i] >= v2_min[i]) ||
-                     (v2_min[i] <= v1_max[i] && v2_min[i] >= v1_min[i] &&
-                    v2_max[i] <= v1_max[i] && v2_max[i] >= v1_min[i]))
+                if ( (v1_min[i] <= v2_max[i] + thr && v1_min[i] >= v2_min[i] - thr &&
+                    v1_max[i] <= v2_max[i] + thr && v1_max[i] >= v2_min[i] - thr) ||
+                     (v2_min[i] <= v1_max[i] + thr && v2_min[i] >= v1_min[i] - thr &&
+                    v2_max[i] <= v1_max[i] + thr && v2_max[i] >= v1_min[i] - thr))
                 {
                     return true;
                 }
@@ -1382,7 +1383,8 @@ namespace Component
 
         private bool isTwoPolyDetached(Vector3d v1_min, Vector3d v2_max)
         {
-            return v1_min.x > v2_max.x || v1_min.y > v2_max.y || v1_min.z > v2_max.z;
+            double thr = 0.05;
+            return v1_min.x > v2_max.x + thr || v1_min.y > v2_max.y + thr || v1_min.z > v2_max.z + thr;
         }// isTwoPolyOverlap
 
         // Functionality features
@@ -1427,6 +1429,18 @@ namespace Component
                 }
                 if (getIndex(comIndices, indices) == -1 && shouldCreateNewPartGroup(_partGroups, nodes))
                 {
+                    comIndices.Add(indices);
+                    _partGroups.Add(ng);
+                }
+                if (func == Common.Functionality.HAND_PLACE && nodes.Count > 1)
+                {
+                    // main functionality part
+
+                    List<Node> single = new List<Node>();
+                    single.Add(nodes[0]);
+                    ng = new PartGroup(single, 0);
+                    indices = new List<int>();
+                    indices.Add(nodes[0]._INDEX);
                     comIndices.Add(indices);
                     _partGroups.Add(ng);
                 }
@@ -1603,6 +1617,12 @@ namespace Component
             {
                 Node del = _nodes[indices[i]];
                 _nodes.RemoveAt(indices[i]);
+                if (del.symmetry != null && !indices.Contains(del.symmetry._INDEX))
+                {
+                    Node sym = del.symmetry;
+                    del.symmetry = null;
+                    sym.symmetry = null;
+                }
                 int n = del._edges.Count;
                 for(int j = 0; j < n; ++j)
                 {

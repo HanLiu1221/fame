@@ -1219,11 +1219,23 @@ namespace Component
             foreach (Node node in oldNodes)
             {
                 _parts.Remove(node._PART);
+                if (node.symmetry != null)
+                {
+                    Node sym = node.symmetry;
+                    node.symmetry = null;
+                    sym.symmetry = null;
+                }
             }
             foreach (Node node in newNodes)
             {
                 node._PART.updateOriginPos();
                 _parts.Add(node._PART);
+                if (node.symmetry != null)
+                {
+                    Node sym = node.symmetry;
+                    node.symmetry = null;
+                    sym.symmetry = null;
+                }
             }
             // topology
             _GRAPH.replaceNodes(oldNodes, newNodes);            
@@ -1530,14 +1542,26 @@ namespace Component
         private string getPartGroupName()
         {
             int n = 0;
-            foreach (Part part in _parts)
+            string group_name = "group_0";
+            bool exisit = true;
+            while (exisit)
             {
-                if (part._partName != null && part._partName.StartsWith("group"))
+                exisit = false;
+                foreach (Part part in _parts)
+                {
+                    if (part._partName != null && part._partName.Equals(group_name))
+                    {
+                        exisit = true;
+                        break;
+                    }
+                }
+                if (exisit)
                 {
                     ++n;
+                    group_name = "group_" + n.ToString();
                 }
             }
-            return "group_" + n.ToString();
+            return group_name;
         }// getPartGroupName
 
         public string getPartName()
@@ -1592,8 +1616,9 @@ namespace Component
                 // merge points weights
                 for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
                 {
-                    mergedWeights[i]._weights = new double[totalSamplePoints, _SP._weightsPerCat[i]._nPatches];
-                    mergedWeights[i]._nPatches = _SP._weightsPerCat[i]._nPatches;
+                    int iNumPatches = Common.getNumberOfFunctionalPatchesPerCategory((Common.Category)i);
+                    mergedWeights[i]._weights = new double[totalSamplePoints, iNumPatches];
+                    mergedWeights[i]._nPatches = iNumPatches;
                     mergedWeights[i]._nPoints = totalSamplePoints;
                     int nsp = 0;
                     foreach (Part part in parts)
@@ -2282,6 +2307,18 @@ namespace Component
         {
             _nodes = new List<Node>(nodes);
             _featureVector = featureVectors;
+        }
+
+        public bool containsMainFuncPart()
+        {
+            foreach(Node node in _nodes)
+            {
+                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public void computeFeatureVector(List<double> thresholds)

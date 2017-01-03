@@ -1018,12 +1018,13 @@ namespace FameBase
         private void batchLoadTestToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var dialog = new FolderBrowserDialog() {
-                SelectedPath = @"F:\Projects\fame\data_sets\patch_data\models\Users\User_1\models\crossover\gen_1\"
+                SelectedPath = @"F:\Projects\fame\data_sets\patch_data\models\Users\User_4\models\crossover\gen_1\"
             };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
-                this.glViewer.batchLoadTest(folderName);
+                //this.glViewer.batchLoadTest(folderName);
+                this.glViewer.batchLoadPartGroupScores(folderName);
             }
         }
     }// Interface
