@@ -2313,7 +2313,7 @@ namespace Component
         {
             foreach(Node node in _nodes)
             {
-                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HANG))
                 {
                     return true;
                 }

@@ -1018,7 +1018,7 @@ namespace FameBase
         private void batchLoadTestToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var dialog = new FolderBrowserDialog() {
-                SelectedPath = @"F:\Projects\fame\data_sets\patch_data\models\Users\User_4\models\crossover\gen_1\"
+                SelectedPath = @"F:\Projects\fame\data_sets\patch_data\models\Users\User_4_0102_preRun\models\crossover\gen_1\"
             };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {

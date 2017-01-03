@@ -309,7 +309,10 @@ namespace Component
                     foreach (Contact c in e._contacts)
                     {
                         Node closest = getNodeNearestToContact(nodes_in_oppo_list, c);
-                        this.addAnEdge(cur, closest, c._pos3d);
+                        if (closest != null)
+                        {
+                            this.addAnEdge(cur, closest, c._pos3d);
+                        }
                     }
                 }
             }
