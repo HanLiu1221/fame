@@ -4765,6 +4765,7 @@ namespace FameBase
                 if (!hasAnyFunctionalPart)
                 {
                     // screenshot
+                    this.isDrawFunctionalSpaceAgent = true;
                     this.setCurrentModel(m, -1);
                     Program.GetFormMain().updateStats();
                     this.captureScreen(imageFolder + "invald\\" + m._model_name + "_obstructed.png");
@@ -4776,6 +4777,7 @@ namespace FameBase
                     {
                         _validityMatrixPG.RemoveATriplet(p2, p1);
                     }
+                    this.isDrawFunctionalSpaceAgent = false;
                     continue;
                 }
 
@@ -4798,6 +4800,7 @@ namespace FameBase
                 }
 
                 // valid graph
+                this.tryRestoreFunctionalNodes(m);
                 m._GRAPH.unify();
                 m.composeMesh();
                 // record the post analysis feature - REPEAT the last statement, REMOVED after testing
@@ -4894,23 +4897,20 @@ namespace FameBase
                 saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 m._index = _modelIndex;
                 ++_modelIndex;
-                if (!this._isPreRun)
+                double val = 0;
+                if (triplet != null)
                 {
-                    double val = 0;
-                    if (triplet != null)
-                    {
-                        val = triplet.value;
-                    }
-                    if (id == 0)
-                    {
-                        m._partGroupPair = new PartGroupPair(p1, p2, val);
-                        m._GRAPH._partGroups.Add(pg1);
-                    }
-                    else
-                    {
-                        m._partGroupPair = new PartGroupPair(p2, p1, val); // --> p2, p1
-                        m._GRAPH._partGroups.Add(pg2);
-                    }
+                    val = triplet.value;
+                }
+                if (id == 0)
+                {
+                    m._partGroupPair = new PartGroupPair(p1, p2, val);
+                    m._GRAPH._partGroups.Add(pg1);
+                }
+                else
+                {
+                    m._partGroupPair = new PartGroupPair(p2, p1, val); // --> p2, p1
+                    m._GRAPH._partGroups.Add(pg2);
                 }
                 res.Add(m);
             }
@@ -4946,8 +4946,41 @@ namespace FameBase
             //}
             return true;
         }// runACrossover - part groups
-
   
+        public void test()
+        {
+            if (_currModel!= null && _currModel._GRAPH!= null)
+            {
+                //_currModel._GRAPH.hasAnyNonObstructedFunctionalPart(-1);
+                _currModel._GRAPH.isPhysicalValid();
+                this.tryRestoreFunctionalNodes(_currModel);
+            }
+        }
+        private void tryRestoreFunctionalNodes(Model m)
+        {
+            List<Node> mainFuncNodes = new List<Node>();
+            foreach(Node node in m._GRAPH._NODES)
+            {
+                if (this.isMainFunctionalNode(node))
+                {
+                    mainFuncNodes.Add(node);
+                }
+            }
+            if (mainFuncNodes.Count < 3)
+            {
+                foreach(Node node in mainFuncNodes)
+                {
+                    this.tryRestoreAFunctionalNode(m, node);
+                }
+            }
+        }// tryRestoreFunctionalNodes
+
+        private bool isMainFunctionalNode(Node node)
+        {
+            return node._funcs.Contains(Common.Functionality.HAND_PLACE) ||
+                node._funcs.Contains(Common.Functionality.HUMAN_HIP) ||
+                node._funcs.Contains(Common.Functionality.HANG);
+        }
         private bool tryRestoreAFunctionalNode(Model m, Node node)
         {
             //Random rand = new Random();

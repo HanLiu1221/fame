@@ -1172,7 +1172,8 @@ namespace Component
         private bool isFunctionalSpaceAgentOversized(Prism prism)
         {
             double volume = Common.ComputePolygonVolume(prism);
-            if (volume > 2)
+            Console.WriteLine("volume: " + volume.ToString());
+            if (volume > 0.5)
             {
                 return true;
             }
@@ -1192,20 +1193,19 @@ namespace Component
                 {
                     continue;
                 }
-                bool enclosed = true;
+                // some bounding box is cylinder, not easy to evaluate, use cuboid instead
+                Vector3d vmin = node._PART._BOUNDINGBOX.MinCoord;
+                Vector3d vmax = node._PART._BOUNDINGBOX.MaxCoord;
+                Prism cuboid = new Prism(vmin, vmax);
+                int nEnclosePnt = 0;
                 foreach(Vector3d v in prism._POINTS3D)
                 {
-                    // some bounding box is cylinder, not easy to evaluate, use cuboid instead
-                    Vector3d vmin = node._PART._BOUNDINGBOX.MinCoord;
-                    Vector3d vmax = node._PART._BOUNDINGBOX.MaxCoord;
-                    Prism cuboid = new Prism(vmin, vmax);
-                    if (!Common.PointInPolygon(v, cuboid))
+                    if (Common.PointInPolygon(v, cuboid))
                     {
-                        enclosed = false;
-                        break;
+                        ++nEnclosePnt;
                     }
                 }
-                if (enclosed)
+                if (nEnclosePnt >= 4)
                 {
                     return true;
                 }
@@ -1298,24 +1298,33 @@ namespace Component
             return occupy > 0.5;
         }// ifFunctionalSpaceObstructed
 
-        private bool isPhysicalValid()
+        public bool isPhysicalValid()
         {
             // if the functional part is tilted
-            bool hasAtleastOneFlatSurface = false;
+            int nFuncParts = 0;
+            foreach (Node node in _nodes)
+            {
+                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                {
+                    ++nFuncParts;
+                }
+            }
+            int nMaxTitled = Math.Min(1, nFuncParts);
+            int nTitled = 0;
             foreach (Node node in _nodes)
             {
                 if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
                 {
                     Vector3d nor = node._PART._BOUNDINGBOX._PLANES[0].normal;
                     double angle = Math.Acos(nor.Dot(Common.uprightVec));
-                    if (angle < Math.PI / 8)
+                    if (angle > 0.2)
                     {
-                        hasAtleastOneFlatSurface = true;
-                        break;
+                        ++nTitled;
                     }
+                    Console.WriteLine("functional part angle: " + angle.ToString());
                 }
             }
-            if (!hasAtleastOneFlatSurface)
+            if (nTitled > nMaxTitled)
             {
                 return false;
             }

@@ -1039,5 +1039,10 @@ namespace FameBase
             this.glViewer.isDrawFunctionalSpaceAgent = this.fSAgentToolStripMenuItem.Checked;
             this.glViewer.Refresh();
         }
+
+        private void testToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.test();
+        }
     }// Interface
 }// namespace
