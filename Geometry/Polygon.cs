@@ -725,7 +725,11 @@ namespace Geometry
         {
             Vector3d[] pnts = _points3d.Clone() as Vector3d[];
             Prism p = new Prism(pnts);
-            p.coordSys = coordSys.Clone() as CoordinateSystem;
+            if (coordSys != null)
+            {
+                p.coordSys = coordSys.Clone() as CoordinateSystem;
+            }
+            p.computeMaxMin();
             return p;
         }
 
@@ -838,6 +842,7 @@ namespace Geometry
         private void updateScale()
         {
             _center = new Vector3d();
+            computeMaxMin();
             for (int i = 0; i < _points3d.Length; ++i)
             {
                 _center += _points3d[i];

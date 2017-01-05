@@ -190,6 +190,7 @@ namespace FameBase
         private List<int> _inputSetCats;
         List<double> _inputSetThreshholds;
         Dictionary<string, Vector3d> _functionalPartScales = new Dictionary<string, Vector3d>();
+        List<NodeFunctionalSpaceAgent> _nodeFSAs = new List<NodeFunctionalSpaceAgent>();
 
         /******************** Vars ********************/
         Model _currModel;
@@ -932,6 +933,7 @@ namespace FameBase
                         model._PARTS[i]._partName = model.getPartName();
                     }
                     string partName = model._PARTS[i]._partName;
+                    partName = model.avoidRepeatPartName(i);
                     sw.WriteLine("% Part #" + i.ToString() + " " + partName);
                     // bounding box
                     Part ipart = model._PARTS[i];
@@ -2188,6 +2190,7 @@ namespace FameBase
             _inputSetCats = new List<int>();
             _inputSetThreshholds = new List<double>();
             _functionalPartScales = new Dictionary<string, Vector3d>();
+            _nodeFSAs = new List<NodeFunctionalSpaceAgent>();
             // 1. load all part groups
             // 2. normalize all weights per category
             int ndim = Common.__TOTAL_FUNCTONAL_PATCHES;
@@ -2216,6 +2219,11 @@ namespace FameBase
                                 node._PART._partSP._highlightedColors[i][j] = Color.LightGray;
                             }
                         }
+                    }
+                    if (node._functionalSpaceAgent != null)
+                    {
+                        NodeFunctionalSpaceAgent nfsa = new NodeFunctionalSpaceAgent(node._PART._partName, node._functionalSpaceAgent);
+                        _nodeFSAs.Add(nfsa);
                     }
                 }
                 for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
@@ -3371,13 +3379,31 @@ namespace FameBase
                         }
                     }
                 }
-                
+
+                if (unify)
+                {
+                    g.unify();
+                    m.composeMesh();
+                }
+                g.init();
+
+                string fsaName = filename.Substring(0, filename.LastIndexOf('.')) + ".fsa";
+                if (File.Exists(fsaName))
+                {
+                    this.loadFunctionalSpaceAgent(g, fsaName);
+                }
                 if (!m._model_name.StartsWith("gen"))
                 {
                     char[] sepChar = { '_' };
                     string[] names = m._model_name.Split(sepChar);
                     g._functionalityValues._parentCategories = new List<Common.Category>();
                     g._functionalityValues._parentCategories.Add(Common.getCategory(names[0]));
+                    // save the fsa to store new info                    
+                    if (!File.Exists(fsaName))
+                    {
+                        g.fitNodeFunctionalSpaceAgent();
+                        this.saveFunctionalSpaceAgent(g, fsaName); // always save the original fs
+                    } 
                 } else
                 {
                     List<Common.Category> parentCats = new List<Common.Category>();
@@ -3390,15 +3416,8 @@ namespace FameBase
                     }
                     g._functionalityValues._parentCategories = parentCats;
                 }
-                if (unify)
-                {
-                    g.unify();
-                    m.composeMesh();
-                }
-                g.init();
-                m.setGraph(g);
-                g.fitNodeFunctionalSpaceAgent();
                 this.calculateProbability(m);
+                m.setGraph(g);
             }
         }// LoadAGraph
 
@@ -3465,6 +3484,76 @@ namespace FameBase
                 }
             }
         }// saveAGraph
+
+        public void saveFunctionalSpaceAgent(Graph g, string filename)
+        {
+            if (g == null)
+            {
+                return;
+            }
+            int nFSA = 0;
+            foreach(Node node in g._NODES)
+            {
+                if (node._functionalSpaceAgent != null)
+                {
+                    ++nFSA;
+                }
+            }
+            // idx, isGroundTouching, Color, Sym (-1: no sym, idx)
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine(nFSA.ToString() + " functional spaces.");
+                for (int i = 0; i < g._NNodes; ++i)
+                {
+                    Node iNode = g._NODES[i];
+                    if (iNode._functionalSpaceAgent == null)
+                    {
+                        continue;
+                    }
+                    sw.WriteLine(iNode._INDEX.ToString() + " ");
+                    // prism
+                    foreach (Vector3d v in iNode._functionalSpaceAgent._POINTS3D)
+                    {
+                        sw.Write(vector3dToString(v, " ", " "));
+                    }
+                    sw.WriteLine();
+                }
+            }
+        }// saveFunctionalSpaceAgent
+
+        public void loadFunctionalSpaceAgent(Graph g, string filename)
+        {
+            if (g == null)
+            {
+                return;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                string s = sr.ReadLine().Trim();
+                string[] strs = s.Split(separator);
+                int nFSA = int.Parse(strs[0]);
+                for (int i = 0; i < nFSA; ++i)
+                {
+                    // read a part
+                    // bbox vertices:
+                    s = sr.ReadLine().Trim(); // description of #i part
+                    strs = s.Split(separator);
+                    int nodeIdx = int.Parse(strs[0]);
+                    // prism vertices
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    int nVertices = strs.Length / 3;
+                    Vector3d[] pnts = new Vector3d[nVertices];
+                    for (int j = 0, k = 0; j < nVertices; ++j)
+                    {
+                        pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
+                    }
+                    Prism prim = new Prism(pnts);
+                    g._NODES[nodeIdx]._functionalSpaceAgent = prim;
+                }
+            }
+        }// loadFunctionalSpaceAgent
 
         public void refreshModelViewers()
         {
@@ -4260,6 +4349,7 @@ namespace FameBase
             {
                 this.registerANewUser();
             }
+            this._isPreRun = true;
 
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
@@ -4671,8 +4761,7 @@ namespace FameBase
                 Stopwatch stopWatch_eval = new Stopwatch();
                 stopWatch_eval.Start();
 
-                m._GRAPH.fitNodeFunctionalSpaceAgent();
-                bool hasAnyFunctionalPart = m._GRAPH.hasAnyNonObstructedFunctionalPart();
+                bool hasAnyFunctionalPart = m._GRAPH.hasAnyNonObstructedFunctionalPart(-1);
                 if (!hasAnyFunctionalPart)
                 {
                     // screenshot
@@ -4909,7 +4998,6 @@ namespace FameBase
                     * Matrix4d.TranslationMatrix(new Vector3d() - center);
                 this.deformNodesAndEdges(nodes, T);
                 
-
                 Program.GetFormMain().writeToConsole("Re-scale a functional part of model: " + m._model_name);
             }
             return needReScale;
@@ -6544,7 +6632,7 @@ namespace FameBase
                 useNodes[i] = true;
             }
             //pointsFeatures = this.computePointFeatures(m);
-            double[] scores = this.runFunctionalityTest(m);
+            double[] scores = new double[Common._NUM_CATEGORIY];// this.runFunctionalityTest(m);
             double[] probs;
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
             {
@@ -6591,7 +6679,19 @@ namespace FameBase
                 mc._GRAPH.unify();
                 mc.composeMesh();
                 this.saveAPartBasedModel(mc, mc._path + mc._model_name + ".pam", true);
-                scores = this.runFunctionalityTest(mc);
+                // check functional space
+                // but not easy to check, since some other parts may serve the functionality
+                // e.g., chair seat is replaced by shelves, we don't know which fs to evaluate
+                //bool hasFunctionalSpace = mc._GRAPH.hasAnyNonObstructedFunctionalPart(cid);
+                //if (!hasFunctionalSpace)
+                //{
+                //    res[cid, 0] = 0;
+                //    res[cid, 1] = 0;
+                //    res[cid, 2] = 0;
+                //    res[cid, 3] = 0;
+                //    continue;
+                //}
+                scores = new double[Common._NUM_CATEGORIY];//this.runFunctionalityTest(mc);
                 probs = this.getProbabilityForACat(cid, scores[cid]);
                 if (probs[0] > res[cid, 1])
                 {

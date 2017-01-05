@@ -339,6 +339,7 @@ namespace Component
                     }
                 }
             }
+            prism.computeMaxMin();
             return prism;
         }// FitProxy
 
@@ -1264,6 +1265,13 @@ namespace Component
             m._path = this._path.Clone() as string;
             m._model_name = this._model_name.Clone() as string;
             m._GRAPH = _GRAPH.Clone(parts) as Graph;
+            for (int i = 0; i < this._GRAPH._NNodes; ++i)
+            {
+                if (this._GRAPH._NODES[i]._functionalSpaceAgent != null)
+                {
+                    m._GRAPH._NODES[i]._functionalSpaceAgent = this._GRAPH._NODES[i]._functionalSpaceAgent.Clone() as Prism;
+                }
+            }
             return m;
         }
 
@@ -1576,6 +1584,25 @@ namespace Component
             }
             return "part_" + n.ToString();
         }// getPartName
+
+        public string avoidRepeatPartName(int index)
+        {
+            int n = 0;
+            string partName = _parts[index]._partName.ToLower();
+            for (int i =0; i < index; ++i)
+            {
+                Part part = _parts[i];
+                if (part._partName != null && part._partName.ToLower().StartsWith(partName))
+                {
+                    ++n;
+                }
+            }
+            if (n > 0)
+            {
+                partName += "_" + n.ToString();
+            }
+            return partName;
+        }// avoidRepeatPartName
 
         private SamplePoints groupSamplePoints(List<Part> parts)
         {
@@ -2442,6 +2469,17 @@ namespace Component
             _score = val;
         }
     }// PartGroupPair
+
+    public class NodeFunctionalSpaceAgent
+    {
+        public string _nodeName = "";
+        public Prism _functionalSpaceAgent = null;
+        public NodeFunctionalSpaceAgent(string name, Prism prism)
+        {
+            _nodeName = name.ToLower();
+            _functionalSpaceAgent = prism;
+        }
+    }// NodeFunctionalSpaceAgent
 
     public class TrainedFeaturePerCategory
     {

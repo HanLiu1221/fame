@@ -131,6 +131,12 @@ namespace FameBase
             return cv;
         }
 
+        public static Color getRandomColor()
+        {
+            Random rand = new Random();
+            Color c = Color.FromArgb(rand.Next(255), rand.Next(255), rand.Next(255));
+            return c;
+        }
         public static void drawTriangle(Triangle3D t)
         {
             Gl.glVertex3dv(t.u.ToArray());

@@ -1128,24 +1128,38 @@ namespace Component
                 string name = node._PART._partName.ToLower();
                 if (name.Contains("container"))
                 {
-                    node._functionalSpaceAgent = new Prism(node._PART._BOUNDINGBOX._POINTS3D);
+                    node._functionalSpaceAgent = approximateFunctionalSpace(node, 0);
                 }
                 else
                 {
-                    node._functionalSpaceAgent = approximateFunctionalSpace(node);
+                    node._functionalSpaceAgent = approximateFunctionalSpace(node, 1);
                 }
             }
         }// fitNodeFunctionalSpaceAgent
 
-        public bool hasAnyNonObstructedFunctionalPart()
+        public bool hasAnyNonObstructedFunctionalPart(int catId)
         {
             bool hasFunctionalPart = false;
             foreach(Node node in _nodes)
             {
-                if (node._functionalSpaceAgent == null)
+                string name = node._PART._partName.ToLower();
+                if (node._functionalSpaceAgent == null) 
                 {
                     continue;
-                }               
+                }     
+                if (catId >= 0)
+                {
+                    string catName = Common.getCategoryName(catId).ToLower();
+                    if (!name.Contains(catName))
+                    {
+                        continue;
+                    }
+                }         
+                if (this.isFunctionalSpaceAgentOversized(node._functionalSpaceAgent) ||
+                    this.isFunctionalSpaceEnclosed(node))
+                {
+                    continue;
+                } 
                 if (!this.ifFunctionalSpaceObstructed(node))
                 {
                     hasFunctionalPart = true;
@@ -1155,27 +1169,95 @@ namespace Component
             return hasFunctionalPart; 
         }// hasAnyNonObstructedFunctionalPart
 
-        private Prism approximateFunctionalSpace(Node node)
+        private bool isFunctionalSpaceAgentOversized(Prism prism)
         {
+            double volume = Common.ComputePolygonVolume(prism);
+            if (volume > 2)
+            {
+                return true;
+            }
+            return false;
+        }// isFunctionalSpaceAgentOversized
+
+        private bool isFunctionalSpaceEnclosed(Node cur)
+        {
+            Prism prism = cur._functionalSpaceAgent;
+            if (prism == null)
+            {
+                return false;
+            }
+            foreach(Node node in _nodes)
+            {
+                if (node == cur)
+                {
+                    continue;
+                }
+                bool enclosed = true;
+                foreach(Vector3d v in prism._POINTS3D)
+                {
+                    // some bounding box is cylinder, not easy to evaluate, use cuboid instead
+                    Vector3d vmin = node._PART._BOUNDINGBOX.MinCoord;
+                    Vector3d vmax = node._PART._BOUNDINGBOX.MaxCoord;
+                    Prism cuboid = new Prism(vmin, vmax);
+                    if (!Common.PointInPolygon(v, cuboid))
+                    {
+                        enclosed = false;
+                        break;
+                    }
+                }
+                if (enclosed)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// isFunctionalSpaceEnclosed
+
+        private Prism approximateFunctionalSpace(Node node, int option)
+        {
+            double shift = 0.05;
+            if (option == 0)
+            {
+                // basket container
+                shift *= 2;
+                Vector3d lower = new Vector3d(node._PART._BOUNDINGBOX.MinCoord.x + shift,
+                node._PART._BOUNDINGBOX.MinCoord.y, node._PART._BOUNDINGBOX.MinCoord.z + shift);
+                Vector3d upper = new Vector3d(node._PART._BOUNDINGBOX.MaxCoord.x - shift,
+                     node._PART._BOUNDINGBOX.MaxCoord.y - shift, node._PART._BOUNDINGBOX.MaxCoord.z - shift);
+                return new Prism(lower, upper);
+            }
             // find the upper bounding box
-            double minMaxY = 1.0;
+            double minMaxY = 0;
+            foreach (Node nd in _nodes)
+            {
+                if (nd._PART._BOUNDINGBOX.MaxCoord.y > minMaxY)
+                {
+                    minMaxY = nd._PART._BOUNDINGBOX.MaxCoord.y;
+                }
+            }
+            minMaxY += 0.1;
+            shift = minMaxY / 20;
+
             for (int i = 0; i < _nodes.Count; ++i)
             {
-                if (_nodes[i] == node || _nodes[i]._PART._BOUNDINGBOX.MaxCoord.y < node._PART._BOUNDINGBOX.MinCoord.y)
+                if (_nodes[i] == node || _nodes[i]._PART._BOUNDINGBOX.MinCoord.y < node._PART._BOUNDINGBOX.MaxCoord.y + shift)
                 {
                     continue;
                 }
                 // check if the node is above
                 Vector3d center = _nodes[i]._PART._BOUNDINGBOX.CENTER;
-                if (center.x < node._PART._BOUNDINGBOX.MaxCoord.x && center.x > node._PART._BOUNDINGBOX.MaxCoord.x
-                    && center.z < node._PART._BOUNDINGBOX.MaxCoord.z && center.z > node._PART._BOUNDINGBOX.MaxCoord.z)
+                if (center.x < node._PART._BOUNDINGBOX.MaxCoord.x - shift && center.x > node._PART._BOUNDINGBOX.MinCoord.x + shift
+                    && center.z < node._PART._BOUNDINGBOX.MaxCoord.z -shift  && center.z > node._PART._BOUNDINGBOX.MinCoord.z + shift)
                 {
                     minMaxY = minMaxY < _nodes[i]._PART._BOUNDINGBOX.MinCoord.y ? minMaxY : _nodes[i]._PART._BOUNDINGBOX.MinCoord.y;
                 }
             }
-            Vector3d bot = new Vector3d(node._PART._BOUNDINGBOX.MinCoord.x, node._PART._BOUNDINGBOX.MaxCoord.y, node._PART._BOUNDINGBOX.MinCoord.z);
-            Vector3d top = new Vector3d(node._PART._BOUNDINGBOX.MaxCoord.x, minMaxY, node._PART._BOUNDINGBOX.MaxCoord.z);
+            Vector3d bot = new Vector3d(node._PART._BOUNDINGBOX.MinCoord.x + shift,
+                node._PART._BOUNDINGBOX.MaxCoord.y, node._PART._BOUNDINGBOX.MinCoord.z + shift);
+            Vector3d top = new Vector3d(node._PART._BOUNDINGBOX.MaxCoord.x - shift,
+                minMaxY - shift, node._PART._BOUNDINGBOX.MaxCoord.z - shift);
             Prism prism = new Prism(bot, top);
+            prism.computeMaxMin();
             return prism;
         }// approximateFunctionalSpace
 
@@ -1218,8 +1300,28 @@ namespace Component
 
         private bool isPhysicalValid()
         {
+            // if the functional part is tilted
+            bool hasAtleastOneFlatSurface = false;
+            foreach (Node node in _nodes)
+            {
+                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                {
+                    Vector3d nor = node._PART._BOUNDINGBOX._PLANES[0].normal;
+                    double angle = Math.Acos(nor.Dot(Common.uprightVec));
+                    if (angle < Math.PI / 8)
+                    {
+                        hasAtleastOneFlatSurface = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasAtleastOneFlatSurface)
+            {
+                return false;
+            }
+            
             // center of mass falls in the supporting polygon
-            _centerOfMass = new Vector3d();
+                _centerOfMass = new Vector3d();
             List<Vector2d> centers2d = new List<Vector2d>();
             List<Vector3d> groundPnts = new List<Vector3d>();
             foreach (Node node in _nodes)
@@ -1891,6 +1993,10 @@ namespace Component
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
             cloned._funcs = new List<Common.Functionality>(_funcs);
+            if (this._functionalSpaceAgent != null)
+            {
+                cloned._functionalSpaceAgent = this._functionalSpaceAgent.Clone() as Prism;
+            }
             return cloned;
         }// Clone
 
@@ -1898,6 +2004,10 @@ namespace Component
         {
             _part.Transform(T);
             _pos = _part._BOUNDINGBOX.CENTER;
+            if (_functionalSpaceAgent != null)
+            {
+                _functionalSpaceAgent.Transform(T);
+            }
         }
 
         public void setPart(Part p)
