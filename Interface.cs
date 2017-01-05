@@ -1027,5 +1027,17 @@ namespace FameBase
                 this.glViewer.batchLoadPartGroupScores(folderName);
             }
         }
+
+        private void partialMatchingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.partialMatchingForAnInputModel();
+        }
+
+        private void fSAgentToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.fSAgentToolStripMenuItem.Checked = !this.fSAgentToolStripMenuItem.Checked;
+            this.glViewer.isDrawFunctionalSpaceAgent = this.fSAgentToolStripMenuItem.Checked;
+            this.glViewer.Refresh();
+        }
     }// Interface
 }// namespace

@@ -452,7 +452,7 @@ namespace Component
 
         public void updateEntity()
         {
-            // body nodes have been updated
+            // body nodes have been _updated
             _entity.create(_src._POS, _dst._POS);
             _faceVertices = _entity.getFaceVertices();
         }

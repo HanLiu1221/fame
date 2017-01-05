@@ -46,6 +46,9 @@ namespace Geometry
         public static int _MAX_USE_PRESENT_NUMBER = 10;
         public static int _NUM_INTER_BEFORE_RERUN = 5;
 
+        public static double _NOVELTY_MINIMUM = 0.5;
+        public static double _NOVELTY_MAXIMUM = 1.0;
+
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };
@@ -124,6 +127,19 @@ namespace Geometry
             double d = (pos - center).Dot(normal) / normal.Length();
             return Math.Abs(d);
         }
+
+        public static double ComputePolygonVolume(Prism poly)
+        {
+            Vector3d xyz = poly.MaxCoord - poly.MinCoord;
+            return xyz.x * xyz.y * xyz.z;
+        }// ComputePolygonVolume
+
+        public static bool PointInPolygon(Vector3d pos, Prism poly)
+        {
+            return pos.x < poly.MaxCoord.x && pos.x > poly.MinCoord.x &&
+                pos.y < poly.MaxCoord.y && pos.y > poly.MinCoord.y &&
+                pos.z < poly.MaxCoord.z && pos.z > poly.MinCoord.z;
+        }// PointInPolygon
 
         public static void switchXYZ_mesh(Mesh mesh, int mode)
         {

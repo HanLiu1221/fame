@@ -957,7 +957,7 @@ namespace Component
         {
             foreach (Node node in _nodes)
             {
-                node.updated = false;
+                node._updated = false;
                 node._allNeigborUpdated = false;
             }
             foreach (Edge e in _edges)
@@ -1105,10 +1105,6 @@ namespace Component
             {
                 return false;
             }
-            //if (isLoseOriginalFunctionality())
-            //{
-            //    return false;
-            //}
             if (hasDetachedParts())
             {
                 return false;
@@ -1117,12 +1113,108 @@ namespace Component
             {
                 return false;
             }
-            //if (isViolateOriginalScales())
-            //{
-            //    return false;
-            //}
             return true;
         }// isValid
+
+        public void fitNodeFunctionalSpaceAgent()
+        {
+            foreach (Node node in _nodes)
+            {
+                if (!node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                {
+                    continue;
+                }
+                // analyze the functional node
+                string name = node._PART._partName.ToLower();
+                if (name.Contains("container"))
+                {
+                    node._functionalSpaceAgent = new Prism(node._PART._BOUNDINGBOX._POINTS3D);
+                }
+                else
+                {
+                    node._functionalSpaceAgent = approximateFunctionalSpace(node);
+                }
+            }
+        }// fitNodeFunctionalSpaceAgent
+
+        public bool hasAnyNonObstructedFunctionalPart()
+        {
+            bool hasFunctionalPart = false;
+            foreach(Node node in _nodes)
+            {
+                if (node._functionalSpaceAgent == null)
+                {
+                    continue;
+                }               
+                if (!this.ifFunctionalSpaceObstructed(node))
+                {
+                    hasFunctionalPart = true;
+                    break; 
+                }
+            }
+            return hasFunctionalPart; 
+        }// hasAnyNonObstructedFunctionalPart
+
+        private Prism approximateFunctionalSpace(Node node)
+        {
+            // find the upper bounding box
+            double minMaxY = 1.0;
+            for (int i = 0; i < _nodes.Count; ++i)
+            {
+                if (_nodes[i] == node || _nodes[i]._PART._BOUNDINGBOX.MaxCoord.y < node._PART._BOUNDINGBOX.MinCoord.y)
+                {
+                    continue;
+                }
+                // check if the node is above
+                Vector3d center = _nodes[i]._PART._BOUNDINGBOX.CENTER;
+                if (center.x < node._PART._BOUNDINGBOX.MaxCoord.x && center.x > node._PART._BOUNDINGBOX.MaxCoord.x
+                    && center.z < node._PART._BOUNDINGBOX.MaxCoord.z && center.z > node._PART._BOUNDINGBOX.MaxCoord.z)
+                {
+                    minMaxY = minMaxY < _nodes[i]._PART._BOUNDINGBOX.MinCoord.y ? minMaxY : _nodes[i]._PART._BOUNDINGBOX.MinCoord.y;
+                }
+            }
+            Vector3d bot = new Vector3d(node._PART._BOUNDINGBOX.MinCoord.x, node._PART._BOUNDINGBOX.MaxCoord.y, node._PART._BOUNDINGBOX.MinCoord.z);
+            Vector3d top = new Vector3d(node._PART._BOUNDINGBOX.MaxCoord.x, minMaxY, node._PART._BOUNDINGBOX.MaxCoord.z);
+            Prism prism = new Prism(bot, top);
+            return prism;
+        }// approximateFunctionalSpace
+
+        private bool ifFunctionalSpaceObstructed(Node node)
+        {
+            if (node._functionalSpaceAgent == null)
+            {
+                return false;
+            }
+            List<Vector3d> points = new List<Vector3d>();
+            foreach(Node other in _nodes)
+            {
+                if (other == node || other._PART._partSP == null)
+                {
+                    continue;
+                }
+                foreach(Vector3d pnt in other._PART._partSP._points)
+                {
+                    if (Common.PointInPolygon(pnt, node._functionalSpaceAgent))
+                    {
+                        points.Add(pnt);
+                    }
+                }
+            }
+            if (points.Count < 10)
+            {
+                return false;
+            }
+            // fit
+            Prism poly = Part.FitProxy(0, points.ToArray());
+            double volume_poly = Common.ComputePolygonVolume(poly);
+            double volume = Common.ComputePolygonVolume(node._functionalSpaceAgent);
+            if (volume == 0)
+            {
+                return true;
+            }
+            double occupy = volume_poly / volume;
+            return occupy > 0.5;
+        }// ifFunctionalSpaceObstructed
 
         private bool isPhysicalValid()
         {
@@ -1695,13 +1787,14 @@ namespace Component
         public List<Node> _adjNodes;
         public Vector3d _pos;
         public bool _isGroundTouching = false;
-        public bool updated = false;
+        public bool _updated = false;
         public bool _allNeigborUpdated = false;
         public Node symmetry = null;
         public Symmetry symm = null;
         public List<Common.Functionality> _funcs = new List<Common.Functionality>();
         public Vector3d _ratios = new Vector3d();
         public bool[] _isFunctionalPatch = new bool[Common.__TOTAL_FUNCTONAL_PATCHES];
+        public Prism _functionalSpaceAgent;
 
         public Node(Part p, int idx)
         {
@@ -1821,7 +1914,7 @@ namespace Component
             }
             foreach (Node node in _adjNodes)
             {
-                if (!node.updated)
+                if (!node._updated)
                 {
                     return false;
                 }
@@ -2005,7 +2098,7 @@ namespace Component
         public double[] _inClassProbs = new double[Common._NUM_CATEGORIY];
         public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
         public double[] _classProbs = new double[Common._NUM_CATEGORIY];
-
+        public double _noveltyVal = Common._NOVELTY_MINIMUM;
         public FunctionalityFeatures()
         {
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
