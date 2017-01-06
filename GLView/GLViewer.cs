@@ -1023,7 +1023,7 @@ namespace FameBase
                 if (isOriginalModel)
                 {
                     // Note - this is not necessary for new shapes
-                    string partMeshIndexName = foldername + "part_" + i.ToString() + ".mi";
+                    string partMeshIndexName = foldername + ipart._partName + ".mi";
                     this.savePartMeshIndexInfo(ipart, partMeshIndexName);
                 }
             }
@@ -1966,7 +1966,9 @@ namespace FameBase
             _ancesterModels = new List<Model>();
             foreach (string file in files)
             {
-                Program.writeToConsole("Loading Model info @" + (idx+1).ToString() + "...");
+                string modelName = file.Substring(file.LastIndexOf('\\') + 1);
+                modelName = modelName.Substring(0, modelName.LastIndexOf('.'));
+                Program.writeToConsole("Loading Model info @" + (idx+1).ToString() + " " + modelName + "...");
                 Model m = loadOnePartBasedModel(file);
                 if (m != null)
                 {
@@ -1989,36 +1991,6 @@ namespace FameBase
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this, 0); // ancester
                     _ancesterModelViewers.Add(modelViewer);
                     ++_modelIndex;
-
-                    //// test
-                    //if (m._model_name.StartsWith("Chair"))
-                    //{
-                    //    m._GRAPH._partGroups.Clear();
-                    //    List<Node> nodes = new List<Node>();
-                    //    foreach (Node node in m._GRAPH._NODES)
-                    //    {
-                    //        if (node._PART._partName.Contains("Back"))
-                    //        {
-                    //            nodes.Add(node);
-                    //        }
-                    //    }
-                    //    PartGroup pg = new PartGroup(nodes, 1);
-                    //    m._GRAPH._partGroups.Add(pg);
-                    //}
-                    //if (m._model_name.StartsWith("Shelf"))
-                    //{
-                    //    m._GRAPH._partGroups.Clear();
-                    //    List<Node> nodes = new List<Node>();
-                    //    foreach (Node node in m._GRAPH._NODES)
-                    //    {
-                    //        if (!node._PART._partName.Contains("GroundSupport"))
-                    //        {
-                    //            nodes.Add(node);
-                    //        }
-                    //    }
-                    //    PartGroup pg = new PartGroup(nodes, 1);
-                    //    m._GRAPH._partGroups.Add(pg);
-                    //}
                 }
             }
             if (_ancesterModelViewers.Count > 0)
@@ -2054,12 +2026,20 @@ namespace FameBase
             char[] separator = { '_' };
             int n = _validityMatrixPG.NRow;
             _validityMatrixPG = new SparseMatrix(n, n);
+            // record the top N ranked shapes
+            int topN = 10;
+            Triplet[] topNValidity = new Triplet[topN];
+            Triplet[] topNNovelty = new Triplet[topN];
+            string[] topVailityModels = new string[topN];
+            double[] topNValidityValues = new double[topN];
+            double[] topNNoveltyValues = new double[topN];
+            string[] topNoveltyModels = new string[topN];
             foreach (string file in files)
             {
-                string model_name = file.Substring(file.LastIndexOf('\\'));
+                string model_name = file.Substring(file.LastIndexOf('\\') + 1);
                 model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
                 Program.writeToConsole("Loading Model info @" + (idx + 1).ToString() + " " + model_name + "...");
-                if (file.Contains("invalid"))
+                if (file.Contains("invalid") || file.Contains("obstructed"))
                 {
                     continue;
                 }
@@ -2088,15 +2068,64 @@ namespace FameBase
                     double val = maxValidity * novelty;
                     _validityMatrixPG.AddTriplet(pg1, pg2, val);
                 }
+                if (model_name == null)
+                {
+                    int test = 0;
+                }
+                Triplet tripValidity = new Triplet(pg1, pg2, maxValidity);
+                Triplet tripNovelty = new Triplet(pg1, pg2, novelty);
+                insertAVal(topNValidity, topVailityModels, topNValidityValues, tripValidity, model_name);
+                insertAVal(topNNovelty, topNoveltyModels, topNNoveltyValues, tripNovelty, model_name);
             }
             string validityMatrixFolder = Interface.MODLES_PATH + "ValidityMatrix\\";
-            string validityMatrixFileName = validityMatrixFolder + "User_4_gen_" + _currGenId.ToString() + ".vdm";
+            string validityMatrixFileName = validityMatrixFolder + "Set_1_dec_gen_" + _currGenId.ToString() + ".vdm";
             this.saveValidityMatrix(validityMatrixFileName);
 
             string today = DateTime.Today.ToString("MMdd");
-            validityMatrixFileName = validityMatrixFolder + "User_4_" +today + ".vdm";
+            validityMatrixFileName = validityMatrixFolder + "Set_1_dec_" + today + ".vdm";
             this.saveValidityMatrix(validityMatrixFileName);
+
+            // save the models
+            string topValidityFolder = segfolder.Substring(0, segfolder.LastIndexOf('\\') + 1) + "topValidity\\";
+            string topNoveltyFolder = segfolder.Substring(0, segfolder.LastIndexOf('\\') + 1) + "topNovelty\\";
+            for (int i = 0; i < topN; ++i)
+            {
+                int rank = topN - i;
+                string filename = topValidityFolder + "Rank_" + rank.ToString() + "_" + topVailityModels[i] + ".png";
+                this.loadAPartBasedModel(segfolder +"\\" + topVailityModels[i] + ".pam");
+                Program.GetFormMain().writePostAnalysisInfo("Validity probability: " + topNValidityValues[i]);
+                this.captureScreen(filename);
+
+                filename = topNoveltyFolder + "Rank_" + rank.ToString() + "_" + topNoveltyModels[i] + ".png";
+                this.loadAPartBasedModel(segfolder + "\\" + topNoveltyModels[i] + ".pam");
+                Program.GetFormMain().writePostAnalysisInfo("Novelty score: " + topNNoveltyValues[i]);
+                this.captureScreen(filename);
+            }
         }// loadPartBasedModels
+
+        private void insertAVal(Triplet[] triplets, string[] modelNames, double[] values, Triplet trip, string modelName)
+        {
+            int i = 0;
+            for (; i < values.Length; ++ i)
+            {
+                if (trip.value < values[i])
+                {
+                    break;
+                }
+            }
+            if (i <= 0)
+            {
+                return;
+            }
+            for (int j = 0; j < i - 1; ++j)
+            {
+                values[j] = values[j + 1];
+                triplets[j] = triplets[j + 1];
+            }
+            values[i - 1] = trip.value;
+            triplets[i - 1] = trip;
+            modelNames[i - 1] = modelName;
+        }// insertAVal
 
         private double[] readOnlyFuncValues(string filename)
         {
@@ -4428,9 +4457,13 @@ namespace FameBase
             List<Model> curGeneration = new List<Model>();
 
             // pre-process
-            //cur_kids = preRun(imageFolder_c);
-            //this.saveValidityMatrix(validityMatrixFileName);
-            //this._isPreRun = true;
+            this._isPreRun = true;
+            curGeneration = preRun(imageFolder_c);
+            string today = DateTime.Today.ToString("MMdd");
+            validityMatrixFileName = validityMatrixFolder + "Set_1_dec_" + today + ".vdm";
+            this.saveValidityMatrix(validityMatrixFileName);
+            return _currGenModelViewers;
+
 
             for (int i = 0; i < maxIter; ++i)
             {
@@ -4674,10 +4707,11 @@ namespace FameBase
                     {
                         continue;
                     }
-                    if (!_partGroupLibrary[j][0].containsMainFuncPart())
-                    {
-                        continue;
-                    }
+                    //this.reloadView();
+                    //if (!_partGroupLibrary[j][0].containsMainFuncPart())
+                    //{
+                    //    continue;
+                    //}
                     List<Model> ijs;
                     runACrossover(i, j, 1, new Random(), imageFolder, pairId++, out ijs);
                 }
@@ -4847,6 +4881,17 @@ namespace FameBase
                         sb.Append(" P_1_2: ");
                         sb.Append(this.double2String(m._GRAPH._functionalityValues._classProbs[cid]));
                         sb.Append("\n");
+                    }
+
+                    int cid1 = (int)model1._GRAPH._functionalityValues._parentCategories[0];
+                    int cid2 = (int)model2._GRAPH._functionalityValues._parentCategories[0];
+                    double maxValidity = Math.Max(m._GRAPH._functionalityValues._classProbs[cid1], m._GRAPH._functionalityValues._classProbs[cid2]);
+                    if (id == 0)
+                    {
+                        _validityMatrixPG.AddTriplet(p1, p2, maxValidity);
+                    }else
+                    {
+                        _validityMatrixPG.AddTriplet(p2, p1, maxValidity);
                     }
                 }
                 else
@@ -6526,7 +6571,15 @@ namespace FameBase
                     }
                 }
             }
-            m._GRAPH._functionalityValues._noveltyVal = Common._NOVELTY_MINIMUM + Common._NOVELTY_MINIMUM / _inputSetCats.Count * nHighProb;
+            double novelty = 0;
+            for (int j = 0; j < _inputSetCats.Count; ++j)
+            {
+                int cid = _inputSetCats[j];
+                double prob = m._GRAPH._functionalityValues._classProbs[cid];
+                novelty += prob * prob;
+            }
+            novelty /= _inputSetCats.Count;
+            m._GRAPH._functionalityValues._noveltyVal = novelty;// Common._NOVELTY_MINIMUM + Common._NOVELTY_MINIMUM / _inputSetCats.Count * nHighProb;
             if (nParentProb > 0)
             {
                 if (nHighProb > 1)
@@ -6574,6 +6627,15 @@ namespace FameBase
                 }
             }
             double novelty = Common._NOVELTY_MINIMUM + Common._NOVELTY_MINIMUM / _inputSetCats.Count * nHighProb;
+
+            novelty = 0;
+            for (int j = 0; j < _inputSetCats.Count; ++j)
+            {
+                int cid = _inputSetCats[j];
+                double prob = probs[cid];
+                novelty += prob * prob;
+            }
+            novelty /= _inputSetCats.Count;
             return novelty;
         }// getNoveltyValue
         private double fromCDFtoProbability(BetaDistribution bd, double cdf)
@@ -6665,7 +6727,7 @@ namespace FameBase
                 useNodes[i] = true;
             }
             //pointsFeatures = this.computePointFeatures(m);
-            double[] scores = new double[Common._NUM_CATEGORIY];// this.runFunctionalityTest(m);
+            double[] scores = this.runFunctionalityTest(m);
             double[] probs;
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
             {
@@ -6715,16 +6777,16 @@ namespace FameBase
                 // check functional space
                 // but not easy to check, since some other parts may serve the functionality
                 // e.g., chair seat is replaced by shelves, we don't know which fs to evaluate
-                //bool hasFunctionalSpace = mc._GRAPH.hasAnyNonObstructedFunctionalPart(cid);
-                //if (!hasFunctionalSpace)
-                //{
-                //    res[cid, 0] = 0;
-                //    res[cid, 1] = 0;
-                //    res[cid, 2] = 0;
-                //    res[cid, 3] = 0;
-                //    continue;
-                //}
-                scores = new double[Common._NUM_CATEGORIY];//this.runFunctionalityTest(mc);
+                bool hasFunctionalSpace = mc._GRAPH.hasAnyNonObstructedFunctionalPart(-1);
+                if (!hasFunctionalSpace)
+                {
+                    res[cid, 0] = 0;
+                    res[cid, 1] = 0;
+                    res[cid, 2] = 0;
+                    res[cid, 3] = 0;
+                    continue;
+                }
+                scores = this.runFunctionalityTest(mc);
                 probs = this.getProbabilityForACat(cid, scores[cid]);
                 if (probs[0] > res[cid, 1])
                 {
