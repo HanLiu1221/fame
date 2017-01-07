@@ -1856,7 +1856,7 @@ namespace FameBase
                     parts.Add(part);
                 }
                 Model model = new Model(modelMesh, parts);
-                //model.checkInSamplePoints(sp);
+                model.checkInSamplePoints(sp);
                 model._funcSpaces = fss.ToArray();
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 model._model_name = model_name;
@@ -2018,6 +2018,7 @@ namespace FameBase
                 MessageBox.Show("Directory does not exist!");
                 return;
             }
+            this.decideWhichToDraw(true, false, false, true, false, false);
             this.foldername = segfolder;
             this.setUIMode(0);
             string[] files = Directory.GetFiles(segfolder, "*.pam");
@@ -2027,9 +2028,7 @@ namespace FameBase
             int n = _validityMatrixPG.NRow;
             _validityMatrixPG = new SparseMatrix(n, n);
             // record the top N ranked shapes
-            int topN = 10;
-            Triplet[] topNValidity = new Triplet[topN];
-            Triplet[] topNNovelty = new Triplet[topN];
+            int topN = 20;
             string[] topVailityModels = new string[topN];
             double[] topNValidityValues = new double[topN];
             double[] topNNoveltyValues = new double[topN];
@@ -2065,17 +2064,11 @@ namespace FameBase
                 double novelty = this.getNoveltyValue(probs, parentCatIds);
                 if (maxValidity > 0.5)
                 {
-                    double val = maxValidity * novelty;
+                    double val = maxValidity;// * novelty;
                     _validityMatrixPG.AddTriplet(pg1, pg2, val);
                 }
-                if (model_name == null)
-                {
-                    int test = 0;
-                }
-                Triplet tripValidity = new Triplet(pg1, pg2, maxValidity);
-                Triplet tripNovelty = new Triplet(pg1, pg2, novelty);
-                insertAVal(topNValidity, topVailityModels, topNValidityValues, tripValidity, model_name);
-                insertAVal(topNNovelty, topNoveltyModels, topNNoveltyValues, tripNovelty, model_name);
+                insertAVal(topVailityModels, topNValidityValues, maxValidity, model_name);
+                insertAVal(topNoveltyModels, topNNoveltyValues, novelty, model_name);
             }
             string validityMatrixFolder = Interface.MODLES_PATH + "ValidityMatrix\\";
             string validityMatrixFileName = validityMatrixFolder + "Set_1_dec_gen_" + _currGenId.ToString() + ".vdm";
@@ -2093,22 +2086,23 @@ namespace FameBase
                 int rank = topN - i;
                 string filename = topValidityFolder + "Rank_" + rank.ToString() + "_" + topVailityModels[i] + ".png";
                 this.loadAPartBasedModel(segfolder +"\\" + topVailityModels[i] + ".pam");
-                Program.GetFormMain().writePostAnalysisInfo("Validity probability: " + topNValidityValues[i]);
+                Program.GetFormMain().writePostAnalysisInfo(this.getFunctionalityValuesString(_currModel, false));
                 this.captureScreen(filename);
 
                 filename = topNoveltyFolder + "Rank_" + rank.ToString() + "_" + topNoveltyModels[i] + ".png";
                 this.loadAPartBasedModel(segfolder + "\\" + topNoveltyModels[i] + ".pam");
-                Program.GetFormMain().writePostAnalysisInfo("Novelty score: " + topNNoveltyValues[i]);
+                _currModel._GRAPH._functionalityValues._noveltyVal = topNNoveltyValues[i];
+                Program.GetFormMain().writePostAnalysisInfo(this.getFunctionalityValuesString(_currModel, false));
                 this.captureScreen(filename);
             }
         }// loadPartBasedModels
 
-        private void insertAVal(Triplet[] triplets, string[] modelNames, double[] values, Triplet trip, string modelName)
+        private void insertAVal(string[] modelNames, double[] values, double val, string modelName)
         {
             int i = 0;
             for (; i < values.Length; ++ i)
             {
-                if (trip.value < values[i])
+                if (val < values[i])
                 {
                     break;
                 }
@@ -2120,10 +2114,9 @@ namespace FameBase
             for (int j = 0; j < i - 1; ++j)
             {
                 values[j] = values[j + 1];
-                triplets[j] = triplets[j + 1];
+                modelNames[j] = modelNames[j + 1];
             }
-            values[i - 1] = trip.value;
-            triplets[i - 1] = trip;
+            values[i - 1] = val;
             modelNames[i - 1] = modelName;
         }// insertAVal
 
@@ -2143,7 +2136,7 @@ namespace FameBase
                     string[] strs = s.Split(separator);
                     int catId = (int)Common.getCategory(strs[0]);
                     res[catId] = double.Parse(strs[1]);
-                    while (sr.Peek() > -1)
+                    for (int i = 1; i < Common._NUM_CATEGORIY; ++i)
                     {
                         s = sr.ReadLine().Trim();
                         strs = s.Split(separator);
@@ -2361,7 +2354,7 @@ namespace FameBase
                     //MessageBox.Show("Model #" + model._model_name + " lack catgory info or part groups.");
                     continue;
                 }
-                foreach (Common.Category cat in model._GRAPH._functionalityValues._cats)
+                foreach (Common.Category cat in model._GRAPH._functionalityValues._parentCategories)
                 {
                     if (!_inputSetCats.Contains((int)cat))
                     {
@@ -2640,14 +2633,17 @@ namespace FameBase
             this.loadTrainedFeautres();
             this.loadAllCategoryScores();
             // update inpnt cats
-            _inputSetCats = new List<int>();
-            int[] excluded = { 0, 2, 5, 7, 8, 11, 14 };
-            List<int> excludedList = new List<int>(excluded);
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            if (_inputSetCats == null || _inputSetCats.Count == 0)
             {
-                if (!excludedList.Contains(i))
+                _inputSetCats = new List<int>();
+                int[] excluded = { 0, 2, 5, 7, 8, 11, 14 };
+                List<int> excludedList = new List<int>(excluded);
+                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
                 {
-                    _inputSetCats.Add(i);
+                    if (!excludedList.Contains(i))
+                    {
+                        _inputSetCats.Add(i);
+                    }
                 }
             }
         }
@@ -3633,7 +3629,7 @@ namespace FameBase
 
         private string getFunctionalityValuesString(Model m, bool needRanks)
         {
-            if (!this._isPreRun || m == null || m._GRAPH == null || m._GRAPH._functionalityValues == null
+            if (m == null || m._GRAPH == null || m._GRAPH._functionalityValues == null
                 || m._GRAPH._functionalityValues._cats == null || _inputSetCats == null)
             {
                 return "";
@@ -4303,7 +4299,8 @@ namespace FameBase
             // compute 
             int pairId = tmp.NTriplets;
             Random rand = new Random();
-            //this._isPreRun = true;
+            this._isPreRun = true;
+            string imageFolder = imageFolder_c + "recompute_" + _currGenId.ToString() + "\\";
             for (int i = 0; i < nPGs; ++i)
             {
                 for (int j = oldPGs; j < nPGs; ++j)
@@ -4317,8 +4314,8 @@ namespace FameBase
                         continue;
                     }
                     //List<Model> ijs;
-                    //runACrossover(i, j, _currGenId, new Random(), imageFolder_c, pairId++, out ijs);
-                    _validityMatrixPG.AddTriplet(i, j, 0.5 + rand.NextDouble() / 2); 
+                    //runACrossover(i, j, _currGenId, new Random(), imageFolder, pairId++, out ijs);
+                    _validityMatrixPG.AddTriplet(i, j, 0.5 + rand.NextDouble() / 2);
                     _validityMatrixPG.AddTriplet(j, i, 0.5 + rand.NextDouble() / 2);
                 }
             }
@@ -4348,6 +4345,7 @@ namespace FameBase
             ++_userReCompute;
             this.loadValidityMatrix(validityMatrixFileName);
             this._isPreRun = false;
+            ++_currGenId; // to view at diff model folders
             _userSelectedModelsBeforeRecompute = new List<Model>();
         }// expandValidityMatrix
 
@@ -4378,7 +4376,6 @@ namespace FameBase
             {
                 this.registerANewUser();
             }
-            this._isPreRun = true;
 
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
@@ -4457,12 +4454,12 @@ namespace FameBase
             List<Model> curGeneration = new List<Model>();
 
             // pre-process
-            this._isPreRun = true;
-            curGeneration = preRun(imageFolder_c);
-            string today = DateTime.Today.ToString("MMdd");
-            validityMatrixFileName = validityMatrixFolder + "Set_1_dec_" + today + ".vdm";
-            this.saveValidityMatrix(validityMatrixFileName);
-            return _currGenModelViewers;
+            //this._isPreRun = true;
+            //curGeneration = preRun(imageFolder_c);
+            //string today = DateTime.Today.ToString("MMdd");
+            //validityMatrixFileName = validityMatrixFolder + "Set_1_dec_" + today + ".vdm";
+            //this.saveValidityMatrix(validityMatrixFileName);
+            //return _currGenModelViewers;
 
 
             for (int i = 0; i < maxIter; ++i)
@@ -4787,6 +4784,12 @@ namespace FameBase
             List<Model> results = this.crossOverOp(model1, model2, gen, idx, p1, p2, out pg1, out pg2);
             long secs = stopWatch_cross.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to run crossover: " + secs.ToString() + " senconds.");
+
+            if (!_isPreRun && results.Count == 2)
+            {
+                // use only one
+                results.RemoveAt(1);
+            }
             int id = -1;
             foreach (Model m in results)
             {
@@ -4996,8 +4999,8 @@ namespace FameBase
         {
             if (_currModel!= null && _currModel._GRAPH!= null)
             {
-                //_currModel._GRAPH.hasAnyNonObstructedFunctionalPart(-1);
-                _currModel._GRAPH.isPhysicalValid();
+                bool hasFuncPart = _currModel._GRAPH.hasAnyNonObstructedFunctionalPart(-1);
+                //_currModel._GRAPH.isPhysicalValid();
                 this.tryRestoreFunctionalNodes(_currModel);
             }
         }
@@ -6300,7 +6303,9 @@ namespace FameBase
             else
             {
                 mc = _currModel;
+                mc.composeMesh();
                 scores = _currModel._GRAPH._functionalityValues._funScores;
+                scores = this.runFunctionalityTest(mc);
             }
             if (mc._GRAPH._functionalityValues == null)
             {
@@ -6606,10 +6611,18 @@ namespace FameBase
             int nHighProb = 0;
             int nMedium = 0;
             int nParentProb = 0;
+            double novelVal = 0;
+            int nhigh = 0;
             for (int j = 0; j < _inputSetCats.Count; ++j)
+                //for (int j = 0; j < Common._NUM_CATEGORIY; ++j)
             {
-                int cid = _inputSetCats[j];
+                int cid =  _inputSetCats[j];
                 double prob = probs[cid];
+                if (prob > 0.6)
+                {
+                    nhigh++;
+                    novelVal += prob;
+                }
                 if (prob > 0.9)
                 {
                     ++nHighProb;
@@ -6626,16 +6639,27 @@ namespace FameBase
                     }
                 }
             }
-            double novelty = Common._NOVELTY_MINIMUM + Common._NOVELTY_MINIMUM / _inputSetCats.Count * nHighProb;
+            double novelty = Common._NOVELTY_MINIMUM + Common._NOVELTY_MINIMUM / _inputSetCats.Count * nhigh;
 
-            novelty = 0;
-            for (int j = 0; j < _inputSetCats.Count; ++j)
-            {
-                int cid = _inputSetCats[j];
-                double prob = probs[cid];
-                novelty += prob * prob;
-            }
-            novelty /= _inputSetCats.Count;
+            //novelty = 0;
+            //for (int j = 0; j < _inputSetCats.Count; ++j)
+            //{
+            //    int cid = _inputSetCats[j];
+            //    double prob = probs[cid];
+            //    //novelty += prob * prob;
+            //    novelty += prob;
+            //}
+            //novelty /= _inputSetCats.Count;
+            //if (nHighProb == 0)
+            //{
+            //    novelVal = 0;
+            //}
+            //else
+            //{
+            //    novelVal /= nhigh;
+            //    Console.WriteLine("# high prob > 0.8: " + nhigh.ToString());
+            //}
+            //novelty = novelVal;
             return novelty;
         }// getNoveltyValue
         private double fromCDFtoProbability(BetaDistribution bd, double cdf)
@@ -8986,7 +9010,7 @@ namespace FameBase
                             _selectedParts = new List<Part>();
                         }
                         this.selectBbox(q, isCtrl);
-                        //Program.GetFormMain().updateStats();
+                        Program.GetFormMain().updateStats();
                         break;
                     }
                 default:

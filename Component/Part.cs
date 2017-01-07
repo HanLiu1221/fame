@@ -168,7 +168,13 @@ namespace Component
                 vArray[i][2] = _mesh.VertexPos[j + 2];
                 center += new Vector3d(vArray[i][0], vArray[i][1], vArray[i][2]);
             }
-            center /= n;           
+            center /= n;
+
+            //axes[0] = Vector3d.XCoord;
+            //axes[1] = Vector3d.YCoord;
+            //axes[2] = Vector3d.ZCoord;
+            //this.calculateAxisAlignedBbox();
+            //return;
 
             PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(PrincipalComponentMethod.Center);
             pca.Learn(vArray);

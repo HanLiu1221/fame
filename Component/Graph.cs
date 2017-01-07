@@ -1205,7 +1205,7 @@ namespace Component
                         ++nEnclosePnt;
                     }
                 }
-                if (nEnclosePnt >= 4)
+                if (nEnclosePnt > 4)
                 {
                     return true;
                 }
@@ -1221,7 +1221,7 @@ namespace Component
                 // basket container
                 shift *= 2;
                 Vector3d lower = new Vector3d(node._PART._BOUNDINGBOX.MinCoord.x + shift,
-                node._PART._BOUNDINGBOX.MinCoord.y, node._PART._BOUNDINGBOX.MinCoord.z + shift);
+                node._PART._BOUNDINGBOX.MinCoord.y + shift, node._PART._BOUNDINGBOX.MinCoord.z + shift);
                 Vector3d upper = new Vector3d(node._PART._BOUNDINGBOX.MaxCoord.x - shift,
                      node._PART._BOUNDINGBOX.MaxCoord.y - shift, node._PART._BOUNDINGBOX.MaxCoord.z - shift);
                 return new Prism(lower, upper);
@@ -1237,7 +1237,9 @@ namespace Component
             }
             minMaxY += 0.1;
             shift = minMaxY / 20;
+            //shift = 0.2;
 
+            bool isTop = true;
             for (int i = 0; i < _nodes.Count; ++i)
             {
                 if (_nodes[i] == node || _nodes[i]._PART._BOUNDINGBOX.MinCoord.y < node._PART._BOUNDINGBOX.MaxCoord.y + shift)
@@ -1250,10 +1252,15 @@ namespace Component
                     && center.z < node._PART._BOUNDINGBOX.MaxCoord.z -shift  && center.z > node._PART._BOUNDINGBOX.MinCoord.z + shift)
                 {
                     minMaxY = minMaxY < _nodes[i]._PART._BOUNDINGBOX.MinCoord.y ? minMaxY : _nodes[i]._PART._BOUNDINGBOX.MinCoord.y;
+                    isTop = false;
                 }
             }
             Vector3d bot = new Vector3d(node._PART._BOUNDINGBOX.MinCoord.x + shift,
                 node._PART._BOUNDINGBOX.MaxCoord.y, node._PART._BOUNDINGBOX.MinCoord.z + shift);
+            if (isTop)
+            {
+                minMaxY = Math.Max(1, minMaxY);
+            }
             Vector3d top = new Vector3d(node._PART._BOUNDINGBOX.MaxCoord.x - shift,
                 minMaxY - shift, node._PART._BOUNDINGBOX.MaxCoord.z - shift);
             Prism prism = new Prism(bot, top);
