@@ -179,7 +179,7 @@ namespace Component
             PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(PrincipalComponentMethod.Center);
             pca.Learn(vArray);
             
-            if (pca.Components.Count < 3)
+            if (option == 2 || pca.Components.Count < 3)
             {
                 // using axis aligned axes
                 axes[0] = Vector3d.XCoord;
@@ -1532,7 +1532,16 @@ namespace Component
             {
                 return null;
             }
-            if (parts[0]._VERTEXINDEX == null)
+            bool hasNull = false;
+            foreach (Part part in parts)
+            {
+                if (part._VERTEXINDEX == null)
+                {
+                    hasNull = true;
+                    break;
+                }
+            }
+            if (hasNull)
             {
                 return groupPartsSeparately(parts);
             }
@@ -2328,6 +2337,7 @@ namespace Component
         List<Node> _nodes = new List<Node>();
         public double[] _featureVector = new double[Common.__TOTAL_FUNCTONAL_PATCHES];
         public int _gen = 0;
+        public bool _isSymmBreak = false;
 
         public PartGroup(List<Node> nodes, int g)
         {

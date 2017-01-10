@@ -1044,5 +1044,11 @@ namespace FameBase
         {
             this.glViewer.test();
         }
+
+        private void refitaxisalignedToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.refit_by_axis_aligned_cuboid();
+            this.glViewer.Refresh();
+        }
     }// Interface
 }// namespace

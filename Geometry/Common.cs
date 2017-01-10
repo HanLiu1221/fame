@@ -319,37 +319,38 @@ namespace Geometry
 
         public static Category getCategory(string str)
         {
-            switch (str)
+            string sstr = str.ToLower();
+            switch (sstr)
             {
-                case "Backpack":
+                case "backpack":
                     return Category.Backpack;
-                case "Basket":
+                case "basket":
                     return Category.Basket;
-                case "Bicycle":
+                case "bicycle":
                     return Category.Bicycle;
-                case "Chair":
+                case "chair":
                     return Category.Chair;
-                case "Desk":
+                case "desk":
                     return Category.Desk;
-                case "DryingRack":
+                case "dryingrack":
                     return Category.DryingRack;
-                case "Handcart":
+                case "handcart":
                     return Category.Handcart;
-                case "Hanger":
+                case "hanger":
                     return Category.Hanger;
-                case "Hook":
+                case "hook":
                     return Category.Hook;
-                case "Shelf":
+                case "shelf":
                     return Category.Shelf;
-                case "Stand":
+                case "stand":
                     return Category.Stand;
-                case "Stroller":
+                case "stroller":
                     return Category.Stroller;
-                case "Table":
+                case "table":
                     return Category.Table;
-                case "TVBench":
+                case "tvbench":
                     return Category.TVBench;
-                case "Vase":
+                case "vase":
                     return Category.Vase;
                 default:
                     return Category.None;

@@ -20,7 +20,6 @@ namespace Component
         double _maxNodeBboxScale; // max scale of a box
         double _minNodeBboxScale; // min scale of a box
         double _maxAdjNodesDist; // max distance between two nodes
-
         
         private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
 
@@ -1617,8 +1616,9 @@ namespace Component
         //    computeDistAndAngleToCenterOfMass();
         //}// computeFeatures
 
-        public void initializePartGroups()
+        public void initializePartGroups(string modelName)
         {
+            string model_name = modelName.ToLower();
             _partGroups = new List<PartGroup>();
             // 1. connected parts
             List<List<int>> comIndices = new List<List<int>>();
@@ -1648,7 +1648,6 @@ namespace Component
                 if (func == Common.Functionality.HAND_PLACE && nodes.Count > 1)
                 {
                     // main functionality part
-
                     List<Node> single = new List<Node>();
                     single.Add(nodes[0]);
                     ng = new PartGroup(single, 0);
@@ -1656,6 +1655,17 @@ namespace Component
                     indices.Add(nodes[0]._INDEX);
                     comIndices.Add(indices);
                     _partGroups.Add(ng);
+                    // 
+                    if (model_name.Contains("handcart") && nodes.Count == 2)
+                    {
+                        single = new List<Node>();
+                        single.Add(nodes[1]);
+                        ng = new PartGroup(single, 0);
+                        indices = new List<int>();
+                        indices.Add(nodes[1]._INDEX);
+                        comIndices.Add(indices);
+                        _partGroups.Add(ng);
+                    }
                 }
             }
             // 2. symmetry parts
@@ -1690,6 +1700,7 @@ namespace Component
                     indices = new List<int>();
                     indices.Add(i);
                     comIndices.Add(indices);
+                    pg._isSymmBreak = true;
                 }
                 //List<Node> nodes2 = new List<Node>();
                 //nodes2.Add(sym);
@@ -1722,7 +1733,51 @@ namespace Component
                     propogationNodes.Add(_nodes[idx]);
                 }
                 PartGroup ppg = new PartGroup(propogationNodes, 0);
-                _partGroups.Add(ppg);
+                //_partGroups.Add(ppg);
+                _partGroups[i] = ppg; //! in this way, only use connected nodes
+            }
+            // special case
+            if (model_name.ToLower().Equals("handcart_22") || model_name.ToLower().Equals("handcart_1"))
+            {
+                int[] setIdxs = { 3, 4};
+                List<int> indices = new List<int>(setIdxs);
+                if (model_name.ToLower().Equals("handcart_1"))
+                {
+                    indices = new List<int>();
+                    indices.Add(1); indices.Add(3);
+                }
+                if (getIndex(comIndices, indices) == -1)
+                {
+                    List<Node> setNodes = new List<Node>();
+                    foreach (int idx in indices)
+                    {
+                        setNodes.Add(_nodes[idx]);
+                    }
+                    PartGroup pg = new PartGroup(setNodes, 0);
+                    _partGroups.Add(pg);
+                    comIndices.Add(indices);
+                    pg._isSymmBreak = true;
+                }
+
+                indices = new List<int>();
+                indices.Add(5); indices.Add(6);
+                if (model_name.ToLower().Equals("handcart_1"))
+                {
+                    indices = new List<int>();
+                    indices.Add(2); indices.Add(5);
+                }
+                if (getIndex(comIndices, indices) == -1)
+                {
+                    List<Node> setNodes = new List<Node>();
+                    foreach (int idx in indices)
+                    {
+                        setNodes.Add(_nodes[idx]);
+                    }
+                    PartGroup pg = new PartGroup(setNodes, 0);
+                    _partGroups.Add(pg);
+                    comIndices.Add(indices);
+                    pg._isSymmBreak = true;
+                }
             }
             // all
             bool hasAll = false;
@@ -2225,6 +2280,7 @@ namespace Component
         public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
         public double[] _classProbs = new double[Common._NUM_CATEGORIY];
         public double _noveltyVal = Common._NOVELTY_MINIMUM;
+        public double _validityVal = 0;
         public FunctionalityFeatures()
         {
             for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
