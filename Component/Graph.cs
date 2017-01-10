@@ -1236,6 +1236,7 @@ namespace Component
             }
             minMaxY += 0.1;
             shift = minMaxY / 20;
+            shift = Math.Max(0.1, minMaxY);
             //shift = 0.2;
 
             bool isTop = true;
@@ -1765,6 +1766,28 @@ namespace Component
                 {
                     indices = new List<int>();
                     indices.Add(2); indices.Add(5);
+                }
+                if (getIndex(comIndices, indices) == -1)
+                {
+                    List<Node> setNodes = new List<Node>();
+                    foreach (int idx in indices)
+                    {
+                        setNodes.Add(_nodes[idx]);
+                    }
+                    PartGroup pg = new PartGroup(setNodes, 0);
+                    _partGroups.Add(pg);
+                    comIndices.Add(indices);
+                    pg._isSymmBreak = true;
+                }
+            }
+            if (model_name.ToLower().Equals("handcart_4") || model_name.ToLower().Equals("handcart_1"))
+            {
+                List<int> indices = indices = new List<int>();
+                indices.Add(0); indices.Add(1); indices.Add(2); indices.Add(7);
+                if (model_name.ToLower().Equals("handcart_1"))
+                {
+                    indices = new List<int>();
+                    indices.Add(2); indices.Add(5); indices.Add(4); indices.Add(6);
                 }
                 if (getIndex(comIndices, indices) == -1)
                 {

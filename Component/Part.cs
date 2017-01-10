@@ -2343,7 +2343,7 @@ namespace Component
         {
             _nodes = new List<Node>(nodes);
             _gen = g;
-            this.computeFeatureVector(null);
+            //this.computeFeatureVector(null);
         }
 
         public PartGroup(List<Node> nodes, double[] featureVectors)

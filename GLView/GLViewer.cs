@@ -2416,6 +2416,10 @@ namespace FameBase
                         _functionalPartScales.Add(part_name, node._ratios);
                     }
                     SamplePoints sp = node._PART._partSP;
+                    if (sp == null)
+                    {
+                        continue;
+                    }
                     int d = 0;
                     for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
                     {
@@ -4438,6 +4442,11 @@ namespace FameBase
                 "_gen_" + _currGenId.ToString() + ".vdm";
 
             // set user selection
+            string selectedModelPath = userFolder + "\\selected\\";
+            if (!Directory.Exists(selectedModelPath))
+            {
+                Directory.CreateDirectory(selectedModelPath);
+            }
             for (int i = 0; i < _currGenModelViewers.Count; ++i) 
             {
                 ModelViewer mv = _currGenModelViewers[i];
@@ -4471,8 +4480,10 @@ namespace FameBase
                 else
                 {
                     _validityMatrixPG.AddTriplet(p1, p2, update_prob);
+                    // put in a selected folder                
+                    this.saveAPartBasedModel(mv._MODEL, selectedModelPath + mv._MODEL._model_name + ".pam", false);
                 }
-                this.updateSimilarGroups(p1, p2, increase);
+                //this.updateSimilarGroups(p1, p2, increase);
             }
             // after user selction
             this.saveValidityMatrix(validityMatrixFileName);
@@ -4503,13 +4514,13 @@ namespace FameBase
             List<Model> curGeneration = new List<Model>();
 
             // pre-process
-            this._isPreRun = true;
-            curGeneration = preRun(imageFolder_c);
-            string today = DateTime.Today.ToString("MMdd");
-            validityMatrixFileName = validityMatrixFolder + "Set_Handcart_Chair_Jan_" + today + ".vdm";
-            this.saveValidityMatrix(validityMatrixFileName);
-            string timingFilename = validityMatrixFolder + "Set_Handcart_Chair_Jan_" + today + ".time";
-            return _currGenModelViewers;
+            //this._isPreRun = true;
+            //curGeneration = preRun(imageFolder_c);
+            //string today = DateTime.Today.ToString("MMdd");
+            //validityMatrixFileName = validityMatrixFolder + "Set_Handcart_Chair_Jan_" + today + ".vdm";
+            //this.saveValidityMatrix(validityMatrixFileName);
+            //string timingFilename = validityMatrixFolder + "Set_Handcart_Chair_Jan_" + today + ".time";
+            //return _currGenModelViewers;
 
 
             for (int i = 0; i < maxIter; ++i)
@@ -5070,20 +5081,40 @@ namespace FameBase
         private void tryRestoreFunctionalNodes(Model m)
         {
             List<Node> mainFuncNodes = new List<Node>();
+            Vector3d maxCoord = Vector3d.MinCoord;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            
+            bool isCart = false;
             foreach(Node node in m._GRAPH._NODES)
             {
                 if (this.isMainFunctionalNode(node))
                 {
                     mainFuncNodes.Add(node);
+                    if (node._PART._partName.ToLower().Contains("handart"))
+                    {
+                        isCart = true;
+                    }
                 }
+                maxCoord = Vector3d.Max(maxCoord, node._PART._BOUNDINGBOX.MaxCoord);
+                minCoord = Vector3d.Min(minCoord, node._PART._BOUNDINGBOX.MinCoord);
             }
-            if (mainFuncNodes.Count < 3)
+            Vector3d center = (maxCoord + minCoord) / 2;
+            if (mainFuncNodes.Count > 0 && mainFuncNodes.Count < 3)
             {
                 foreach(Node node in mainFuncNodes)
                 {
                     this.tryRestoreAFunctionalNode(m, node);
                 }
             }
+            //if (mainFuncNodes.Count == 2 && isCart)
+            //{
+            //    double miny = 0.3;
+            //    double yscale = miny / (maxCoord.y - minCoord.y);
+            //    Matrix4d scale = Matrix4d.ScalingMatrix(0, yscale, 0);
+            //    Matrix4d Q = Matrix4d.TranslationMatrix(center) * Matrix4d.ScalingMatrix(scale)
+            //       * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            //    this.deformNodesAndEdges(nodes, T);
+            //}
         }// tryRestoreFunctionalNodes
 
         private bool isMainFunctionalNode(Node node)
