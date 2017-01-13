@@ -956,8 +956,8 @@ namespace FameBase
                 {
                     string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
                     saveAGraph(model._GRAPH, graphName);
-                    //string pgName = filename.Substring(0, filename.LastIndexOf('.')) + ".pg";
-                    //savePartGroupsOfAModelGraph(model._GRAPH._partGroups, pgName);
+                    string pgName = filename.Substring(0, filename.LastIndexOf('.')) + ".pg";
+                    savePartGroupsOfAModelGraph(model._GRAPH._partGroups, pgName);
                 }
                 saveModelInfo(model, meshDir, modelName, isOriginalModel);
             }
@@ -1935,7 +1935,7 @@ namespace FameBase
 
         public void loadAPartBasedModel(string filename)
         {
-            _currModel = this.loadAPartBasedModelAgent(filename, true);
+            _currModel = this.loadAPartBasedModelAgent(filename, false);
             this.setUIMode(0);
             this.Refresh();
         }// loadAPartBasedModel
@@ -2305,7 +2305,10 @@ namespace FameBase
                     for (int j = 0; j < nPatches; ++j)
                     {
                         weights[j].Sort();
-                        threshes[j] = weights[j][topNs];
+                        if (weights[j].Count > 0)
+                        {
+                            threshes[j] = weights[j][topNs];
+                        }
                     }
                     for (int n = 0; n < model._GRAPH._NNodes; ++n)
                     {
@@ -2468,7 +2471,10 @@ namespace FameBase
             _partGroupLibrary = new List<List<PartGroup>>();
             foreach(Model m in models)
             {
-                m._GRAPH.initializePartGroups(m._model_name);
+                if (m._GRAPH._partGroups.Count == 0)
+                {
+                    m._GRAPH.initializePartGroups(m._model_name);
+                }
                 nPGs += m._GRAPH._partGroups.Count;
                 foreach (PartGroup pg in m._GRAPH._partGroups)
                 {
@@ -2664,7 +2670,7 @@ namespace FameBase
             if (_inputSetCats == null || _inputSetCats.Count == 0)
             {
                 _inputSetCats = new List<int>();
-                int[] excluded = { 0, 2, 5, 7, 8, 11, 14 };
+                int[] excluded = { 0, 2, 7, 8, 10, 11, 12, 13, 14 };
                 List<int> excludedList = new List<int>(excluded);
                 for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
                 {
@@ -3264,10 +3270,13 @@ namespace FameBase
                     s = sr.ReadLine().Trim();
                     strs = s.Split(separator);
                     List<Node> nodes = new List<Node>();
-                    for (int j = 0; j < strs.Length; ++j)
+                    if (strs[0] != "") // empty
                     {
-                        int idx = int.Parse(strs[j]);
-                        nodes.Add(graph._NODES[idx]);
+                        for (int j = 0; j < strs.Length; ++j)
+                        {
+                            int idx = int.Parse(strs[j]);
+                            nodes.Add(graph._NODES[idx]);
+                        }
                     }
                     s = sr.ReadLine().Trim();
                     strs = s.Split(separator);
@@ -3288,10 +3297,10 @@ namespace FameBase
                     graph._partGroups.Add(pg);
                 }
             }
-            if (graph._partGroups.Count < 2)
-            {
-                graph.initializePartGroups(model_name);
-            }
+            //if (graph._partGroups.Count < 2)
+            //{
+            //    graph.initializePartGroups(model_name);
+            //}
         }// LoadPartGroupsOfAModelGraph
 
         public void savePartGroupsOfAModelGraph(List<PartGroup> pgs, string filename)
@@ -3445,7 +3454,7 @@ namespace FameBase
                     }
                 }
 
-                if (unify)
+                if (unify )
                 {
                     g.unify();
                     m.composeMesh();
@@ -3670,7 +3679,7 @@ namespace FameBase
         private string getFunctionalityValuesString(Model m, bool needRanks)
         {
             if (m == null || m._GRAPH == null || m._GRAPH._functionalityValues == null
-                || m._GRAPH._functionalityValues._cats == null || _inputSetCats == null)
+                || m._GRAPH._functionalityValues._cats == null || _inputSetCats == null || _inputSetCats.Contains((int)Common.Category.None))
             {
                 return "";
             }
@@ -4788,16 +4797,17 @@ namespace FameBase
         private List<Model> runAGenerationOfCrossover(int gen, Random rand, string imageFolder)
         {
             List<Model> crossed = new List<Model>();
-            while (crossed.Count < Common._MAX_GEN_HYBRID_NUMBER)
-            {
-                List<Model> res = new List<Model>();
-                if (!this.runACrossover(-1, -1, gen, rand, imageFolder, _modelViewIndex + crossed.Count, out res)) { 
-                    // couldn't find any more
-                    MessageBox.Show("Do not have any good choices.");
-                    break;
-                }
-                crossed.AddRange(res);
-            }
+            //while (crossed.Count < Common._MAX_GEN_HYBRID_NUMBER)
+            //{
+            //    List<Model> res = new List<Model>();
+            //    if (!this.runACrossover(-1, -1, gen, rand, imageFolder, _modelViewIndex + crossed.Count, out res)) { 
+            //        // couldn't find any more
+            //        MessageBox.Show("Do not have any good choices.");
+            //        break;
+            //    }
+            //    crossed.AddRange(res);
+            //}
+            this.runACrossover(0, 1, gen, rand, imageFolder, _modelViewIndex + crossed.Count, out crossed);
             return crossed;
         }// runAGenerationOfCrossover
 
@@ -4854,11 +4864,11 @@ namespace FameBase
             long secs = stopWatch_cross.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to run crossover: " + secs.ToString() + " senconds.");
 
-            if (!_isPreRun && results.Count == 2)
-            {
-                // use only one
-                results.RemoveAt(1);
-            }
+            //if (!_isPreRun && results.Count == 2)
+            //{
+            //    // use only one
+            //    results.RemoveAt(1);
+            //}
             int id = -1;
             foreach (Model m in results)
             {
@@ -4868,42 +4878,42 @@ namespace FameBase
                 stopWatch_eval.Start();
 
                 bool hasAnyFunctionalPart = m._GRAPH.hasAnyNonObstructedFunctionalPart(-1);
-                if (!hasAnyFunctionalPart)
-                {
-                    // screenshot
-                    this.isDrawFunctionalSpaceAgent = true;
-                    this.setCurrentModel(m, -1);
-                    Program.GetFormMain().updateStats();
-                    this.captureScreen(imageFolder + "invald\\" + m._model_name + "_obstructed.png");
-                    saveAPartBasedModel(m, m._path + m._model_name + "_obstructed.pam", false);
-                    if (id == 0)
-                    {
-                        _validityMatrixPG.RemoveATriplet(p1, p2);
-                    } else
-                    {
-                        _validityMatrixPG.RemoveATriplet(p2, p1);
-                    }
-                    this.isDrawFunctionalSpaceAgent = false;
-                    continue;
-                }
+                //if (!hasAnyFunctionalPart)
+                //{
+                //    // screenshot
+                //    this.isDrawFunctionalSpaceAgent = true;
+                //    this.setCurrentModel(m, -1);
+                //    Program.GetFormMain().updateStats();
+                //    this.captureScreen(imageFolder + "invald\\" + m._model_name + "_obstructed.png");
+                //    saveAPartBasedModel(m, m._path + m._model_name + "_obstructed.pam", false);
+                //    if (id == 0)
+                //    {
+                //        _validityMatrixPG.RemoveATriplet(p1, p2);
+                //    } else
+                //    {
+                //        _validityMatrixPG.RemoveATriplet(p2, p1);
+                //    }
+                //    this.isDrawFunctionalSpaceAgent = false;
+                //    continue;
+                //}
 
-                if (!m._GRAPH.isValid())
-                {
-                    // screenshot
-                    this.setCurrentModel(m, -1);
-                    Program.GetFormMain().updateStats();
-                    this.captureScreen(imageFolder + "invald\\" + m._model_name + "_invalid.png");
-                    saveAPartBasedModel(m, m._path + m._model_name + "_invalid.pam", false);
-                    if (id == 0)
-                    {
-                        _validityMatrixPG.RemoveATriplet(p1, p2);
-                    }
-                    else
-                    {
-                        _validityMatrixPG.RemoveATriplet(p2, p1);
-                    }
-                    continue;
-                }
+                //if (!m._GRAPH.isValid())
+                //{
+                //    // screenshot
+                //    this.setCurrentModel(m, -1);
+                //    Program.GetFormMain().updateStats();
+                //    this.captureScreen(imageFolder + "invald\\" + m._model_name + "_invalid.png");
+                //    saveAPartBasedModel(m, m._path + m._model_name + "_invalid.pam", false);
+                //    if (id == 0)
+                //    {
+                //        _validityMatrixPG.RemoveATriplet(p1, p2);
+                //    }
+                //    else
+                //    {
+                //        _validityMatrixPG.RemoveATriplet(p2, p1);
+                //    }
+                //    continue;
+                //}
 
                 // valid graph
                 this.tryRestoreFunctionalNodes(m);
@@ -4985,7 +4995,7 @@ namespace FameBase
                 // screenshot
                 this.setCurrentModel(m, -1);
                 Program.GetFormMain().updateStats();
-
+                res.Add(m);
                 // save at diff folder
                 string splitFolder = imageFolder;
                 if (this._isPreRun && m._GRAPH._functionalityValues != null)
@@ -5033,7 +5043,7 @@ namespace FameBase
                     m._partGroupPair = new PartGroupPair(p2, p1, val); // --> p2, p1
                     m._GRAPH._partGroups.Add(pg2);
                 }
-                res.Add(m);
+                
             }
             secs = stopWatch.ElapsedMilliseconds / 1000;
             Program.writeToConsole("Time to run a crossover: " + secs.ToString() + " senconds.");
@@ -6489,7 +6499,7 @@ namespace FameBase
             foreach (Common.Category cat in g._functionalityValues._parentCategories)
             {
                 int cid = (int)cat;
-                if (g._functionalityValues._funScores[cid] > g._functionalityValues._validityVal)
+                if (cid < Common._NUM_CATEGORIY && g._functionalityValues._funScores[cid] > g._functionalityValues._validityVal)
                 {
                     g._functionalityValues._validityVal = g._functionalityValues._funScores[cid];
                 }
@@ -6674,6 +6684,10 @@ namespace FameBase
             for (int j = 0; j < _inputSetCats.Count; ++j)
             {
                 int cid = _inputSetCats[j];
+                if (cid >= Common._NUM_CATEGORIY)
+                {
+                    continue;
+                }
                 double prob = m._GRAPH._functionalityValues._classProbs[cid];
                 if (prob > 0.9)
                 {
@@ -9357,6 +9371,21 @@ namespace FameBase
             this.cal2D();
             this.Refresh();
         }// groupParts
+
+
+        public void createAPartGroup()
+        {
+            if (_currModel == null || _selectedNodes.Count == 0)
+            {
+                return;
+            }
+            _currModel._GRAPH.addAPartGroup(_selectedNodes);
+        }// createAPartGroup
+
+        public void clearPartGroups()
+        {
+            _currModel._GRAPH._partGroups.Clear();
+        }
 
         public ModelViewer addSelectedPartsToBasket()
         {

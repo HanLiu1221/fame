@@ -1050,5 +1050,15 @@ namespace FameBase
             this.glViewer.refit_by_axis_aligned_cuboid();
             this.glViewer.Refresh();
         }
+
+        private void partGroupToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.createAPartGroup();
+        }
+
+        private void clearPGsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.clearPartGroups();
+        }
     }// Interface
 }// namespace

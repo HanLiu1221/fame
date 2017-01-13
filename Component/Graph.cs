@@ -141,10 +141,10 @@ namespace Component
 
         public void analyzeOriginFeatures()
         {
-            double[] vals = calScale();
-            _maxAdjNodesDist = vals[0];
-            _minNodeBboxScale = vals[1];
-            _maxNodeBboxScale = vals[2];
+            //double[] vals = calScale();
+            //_maxAdjNodesDist = vals[0];
+            //_minNodeBboxScale = vals[1];
+            //_maxNodeBboxScale = vals[2];
             _origin_funcs = this.getGraphFuncs();
         }// analyzeOriginFeatures
 
@@ -1617,6 +1617,16 @@ namespace Component
         //    computeDistAndAngleToCenterOfMass();
         //}// computeFeatures
 
+
+        public void addAPartGroup(List<Node> selectedNodes)
+        {
+            if (!this.shouldCreateNewPartGroup(_partGroups, selectedNodes))
+            {
+                return;
+            }
+            PartGroup ng = new PartGroup(selectedNodes, 0);
+            _partGroups.Add(ng);
+        }
         public void initializePartGroups(string modelName)
         {
             string model_name = modelName.ToLower();
@@ -1861,7 +1871,7 @@ namespace Component
             return res;
         }// breadthFirstSearch
 
-        private bool shouldCreateNewPartGroup(List<PartGroup> _partGroups, List<Node> nodes)
+        private bool shouldCreateNewPartGroup(List<PartGroup> partGroups, List<Node> nodes)
         {
             // case 1: one node only, but there already exists a node as part group that
             //          has the same functionality
@@ -1870,7 +1880,7 @@ namespace Component
                 return true;
             }
             List<Common.Functionality> funcs = nodes[0]._funcs;
-            foreach (PartGroup pg in _partGroups)
+            foreach (PartGroup pg in partGroups)
             {
                 if (pg._NODES.Count == 1)
                 {
