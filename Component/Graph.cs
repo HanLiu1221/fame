@@ -1905,10 +1905,23 @@ namespace Component
         public void deleteNodes(List<Node> selectedNodes)
         {
             // with parts together
-            foreach (Node node in selectedNodes)
+            foreach (Node del in selectedNodes)
             {
-                _nodes.Remove(node);
+                _nodes.Remove(del);
+                if (del.symmetry != null && !selectedNodes.Contains(del.symmetry))
+                {
+                    Node sym = del.symmetry;
+                    del.symmetry = null;
+                    sym.symmetry = null;
+                }
+                int n = del._edges.Count;
+                for (int j = 0; j < n; ++j)
+                {
+                    Edge e = del._edges[0];
+                    this.deleteAnEdge(e._start, e._end);
+                }
             }
+            resetNodeIndex();
         }// deleteNodes
         public void deleteNodes(List<int> indices)
         {

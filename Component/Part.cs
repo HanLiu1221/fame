@@ -176,8 +176,7 @@ namespace Component
             //this.calculateAxisAlignedBbox();
             //return;
 
-            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(PrincipalComponentMethod.Center);
-            pca.Learn(vArray);
+            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray);
             
             if (option == 2 || pca.Components.Count < 3)
             {

@@ -780,6 +780,7 @@ namespace FameBase
 
             Gl.glEnable(Gl.GL_LIGHTING);
             Gl.glEnable(Gl.GL_NORMALIZE);
+            Gl.glEnable(Gl.GL_DEPTH_TEST);
 
             float[] mat = new float[4] { c.R / 255f, c.G / 255f, c.B / 255f, 1.0f };
             Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT, mat);
@@ -803,13 +804,13 @@ namespace FameBase
                     Gl.glColor4ub(fc.R, fc.G, fc.B, fc.A);
                     Gl.glBegin(Gl.GL_TRIANGLES);
                     //Vector3d centroid = (v1 + v2 + v3) / 3;
-                    //Vector3d normal = new Vector3d(m.FaceNormal[i * 3], m.FaceNormal[i * 3 + 1], m.FaceNormal[i * 3 + 2]);
+                    Vector3d normal = new Vector3d(m.FaceNormal[i * 3], m.FaceNormal[i * 3 + 1], m.FaceNormal[i * 3 + 2]);
                     //if ((centroid - new Vector3d(0, 0, 1.5)).Dot(normal) > 0)
                     //{
                     //    normal *= -1.0;
                     //}
                     //normal *= -1;
-                    //Gl.glNormal3dv(normal.ToArray());
+                    Gl.glNormal3dv(normal.ToArray());
                     Vector3d n1 = new Vector3d(m.VertexNormal[vidx1 * 3], m.VertexNormal[vidx1 * 3 + 1], m.VertexNormal[vidx1 * 3 + 2]);
                     Gl.glNormal3dv(n1.ToArray());
                     Gl.glVertex3d(v1.x, v1.y, v1.z);
@@ -837,14 +838,25 @@ namespace FameBase
                         m.VertexPos[vidx2 * 3], m.VertexPos[vidx2 * 3 + 1], m.VertexPos[vidx2 * 3 + 2]);
                     Vector3d v3 = new Vector3d(
                         m.VertexPos[vidx3 * 3], m.VertexPos[vidx3 * 3 + 1], m.VertexPos[vidx3 * 3 + 2]);
-                    Vector3d n1 = new Vector3d(m.VertexNormal[vidx1 * 3], m.VertexNormal[vidx1 * 3 + 1], m.VertexNormal[vidx1 * 3 + 2]);
-                    Gl.glNormal3dv(n1.ToArray());
-                    Gl.glVertex3d(v1.x, v1.y, v1.z);
                     Vector3d n2 = new Vector3d(m.VertexNormal[vidx2 * 3], m.VertexNormal[vidx2 * 3 + 1], m.VertexNormal[vidx2 * 3 + 2]);
-                    Gl.glNormal3dv(n2.ToArray());
-                    Gl.glVertex3d(v2.x, v2.y, v2.z);
+                    Vector3d n1 = new Vector3d(m.VertexNormal[vidx1 * 3], m.VertexNormal[vidx1 * 3 + 1], m.VertexNormal[vidx1 * 3 + 2]);
                     Vector3d n3 = new Vector3d(m.VertexNormal[vidx3 * 3], m.VertexNormal[vidx3 * 3 + 1], m.VertexNormal[vidx3 * 3 + 2]);
-                    Gl.glNormal3dv(n3.ToArray());
+                    Vector3d normal = new Vector3d(m.FaceNormal[i * 3], m.FaceNormal[i * 3 + 1], m.FaceNormal[i * 3 + 2]);
+                    Vector3d centroid = (v1 + v2 + v3) / 3;
+                    if ((centroid - new Vector3d(0, 0, 1.5)).Dot(normal) < 0)
+                    {
+                        normal *= -1.0;
+                    }
+
+                   
+                    //Gl.glNormal3dv(n1.ToArray());
+                    Gl.glNormal3dv(normal.ToArray());
+                    Gl.glVertex3d(v1.x, v1.y, v1.z);
+                    //Gl.glNormal3dv(n2.ToArray());
+                    Gl.glNormal3dv(normal.ToArray());
+                    Gl.glVertex3d(v2.x, v2.y, v2.z);                   
+                    //Gl.glNormal3dv(n3.ToArray());
+                    Gl.glNormal3dv(normal.ToArray());
                     Gl.glVertex3d(v3.x, v3.y, v3.z);
                 }
                 Gl.glEnd();

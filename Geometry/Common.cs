@@ -278,6 +278,10 @@ namespace Geometry
             return sb.ToString();
         }// getTopPredictedCategories
 
+        public static bool isKnownCategory(int index)
+        {
+            return index >= 0 && index < 15;
+        }
         public static string getCategoryName(int index)
         {
             switch (index)

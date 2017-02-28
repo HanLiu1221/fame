@@ -1669,7 +1669,7 @@ namespace FameBase
         {
             if (part._VERTEXINDEX == null || part._FACEVERTEXINDEX == null)
             {
-                MessageBox.Show("The part lack index info from the model mesh.");
+                //MessageBox.Show("The part lack index info from the model mesh.");
                 return;
             }
             using (StreamWriter sw = new StreamWriter(filename))
@@ -1905,7 +1905,7 @@ namespace FameBase
             }
             // try to load the associated part groups
             string pgName = filename.Substring(0, filename.LastIndexOf('.')) + ".pg";
-            if (!File.Exists(pgName))
+            if (!File.Exists(pgName) && initializePG)
             {
                 if (model._GRAPH != null)
                 {
@@ -1916,10 +1916,7 @@ namespace FameBase
             {
                 LoadPartGroupsOfAModelGraph(model._GRAPH, pgName, model._model_name);
             }
-            if (initializePG)
-            {
-                model._GRAPH.initializePartGroups(model._model_name);
-            }
+
             //model.composeMesh();
             //model._MESH.testNormals = new List<Vector3d>();
             //for (int i = 0; i < model._MESH.FaceCount; ++i)
@@ -2383,9 +2380,10 @@ namespace FameBase
                 }
                 foreach (Common.Category cat in model._GRAPH._functionalityValues._parentCategories)
                 {
-                    if (!_inputSetCats.Contains((int)cat))
+                    int cid = (int)cat;
+                    if (!_inputSetCats.Contains(cid) && Common.isKnownCategory(cid))
                     {
-                        _inputSetCats.Add((int)cat);
+                        _inputSetCats.Add(cid);
                     }
                 }
                 // correct name conflict
@@ -2674,7 +2672,7 @@ namespace FameBase
                 List<int> excludedList = new List<int>(excluded);
                 for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
                 {
-                    if (!excludedList.Contains(i))
+                    if (!excludedList.Contains(i) && Common.isKnownCategory(i))
                     {
                         _inputSetCats.Add(i);
                     }
@@ -3454,7 +3452,7 @@ namespace FameBase
                     }
                 }
 
-                if (unify )
+                if (unify  )
                 {
                     g.unify();
                     m.composeMesh();
@@ -3492,6 +3490,10 @@ namespace FameBase
                 }
                 m.setGraph(g);
                 this.calculateProbability(m);
+                foreach(Node node in m._GRAPH._NODES)
+                {
+                    node._PART._MESH.afterUpdatePos();
+                }
             }
         }// LoadAGraph
 
@@ -4523,13 +4525,13 @@ namespace FameBase
             List<Model> curGeneration = new List<Model>();
 
             // pre-process
-            //this._isPreRun = true;
-            //curGeneration = preRun(imageFolder_c);
-            //string today = DateTime.Today.ToString("MMdd");
-            //validityMatrixFileName = validityMatrixFolder + "Set_Handcart_Chair_Jan_" + today + ".vdm";
-            //this.saveValidityMatrix(validityMatrixFileName);
-            //string timingFilename = validityMatrixFolder + "Set_Handcart_Chair_Jan_" + today + ".time";
-            //return _currGenModelViewers;
+            this._isPreRun = true;
+            curGeneration = preRun(imageFolder_c);
+            string today = DateTime.Today.ToString("MMdd");
+            validityMatrixFileName = validityMatrixFolder + "Set_Teaser_1_" + today + ".vdm";
+            this.saveValidityMatrix(validityMatrixFileName);
+            string timingFilename = validityMatrixFolder + "Set_Teaser_1_" + today + ".time";
+            return _currGenModelViewers;
 
 
             for (int i = 0; i < maxIter; ++i)
@@ -4779,8 +4781,8 @@ namespace FameBase
                     //{
                     //    continue;
                     //}
-                    //List<Model> ijs;
-                    //runACrossover(i, j, 1, new Random(), imageFolder, pairId++, out ijs);
+                    List<Model> ijs;
+                    runACrossover(i, j, 1, new Random(), imageFolder, pairId++, out ijs);
                     Random rand = new Random();
                     _validityMatrixPG.AddTriplet(i, j, 0.5 + rand.NextDouble() / 2);
                     _validityMatrixPG.AddTriplet(j, i, 0.5 + rand.NextDouble() / 2);
@@ -4797,17 +4799,18 @@ namespace FameBase
         private List<Model> runAGenerationOfCrossover(int gen, Random rand, string imageFolder)
         {
             List<Model> crossed = new List<Model>();
-            //while (crossed.Count < Common._MAX_GEN_HYBRID_NUMBER)
-            //{
-            //    List<Model> res = new List<Model>();
-            //    if (!this.runACrossover(-1, -1, gen, rand, imageFolder, _modelViewIndex + crossed.Count, out res)) { 
-            //        // couldn't find any more
-            //        MessageBox.Show("Do not have any good choices.");
-            //        break;
-            //    }
-            //    crossed.AddRange(res);
-            //}
-            this.runACrossover(0, 1, gen, rand, imageFolder, _modelViewIndex + crossed.Count, out crossed);
+            while (crossed.Count < Common._MAX_GEN_HYBRID_NUMBER)
+            {
+                List<Model> res = new List<Model>();
+                if (!this.runACrossover(-1, -1, gen, rand, imageFolder, _modelViewIndex + crossed.Count, out res))
+                {
+                    // couldn't find any more
+                    MessageBox.Show("Do not have any good choices.");
+                    break;
+                }
+                crossed.AddRange(res);
+            }
+            //this.runACrossover(-1, -1, gen, rand, imageFolder, _modelViewIndex + crossed.Count, out crossed);
             return crossed;
         }// runAGenerationOfCrossover
 
@@ -4889,7 +4892,8 @@ namespace FameBase
                 //    if (id == 0)
                 //    {
                 //        _validityMatrixPG.RemoveATriplet(p1, p2);
-                //    } else
+                //    }
+                //    else
                 //    {
                 //        _validityMatrixPG.RemoveATriplet(p2, p1);
                 //    }
@@ -4897,23 +4901,23 @@ namespace FameBase
                 //    continue;
                 //}
 
-                //if (!m._GRAPH.isValid())
-                //{
-                //    // screenshot
-                //    this.setCurrentModel(m, -1);
-                //    Program.GetFormMain().updateStats();
-                //    this.captureScreen(imageFolder + "invald\\" + m._model_name + "_invalid.png");
-                //    saveAPartBasedModel(m, m._path + m._model_name + "_invalid.pam", false);
-                //    if (id == 0)
-                //    {
-                //        _validityMatrixPG.RemoveATriplet(p1, p2);
-                //    }
-                //    else
-                //    {
-                //        _validityMatrixPG.RemoveATriplet(p2, p1);
-                //    }
-                //    continue;
-                //}
+                if (!m._GRAPH.isValid())
+                {
+                    // screenshot
+                    this.setCurrentModel(m, -1);
+                    Program.GetFormMain().updateStats();
+                    this.captureScreen(imageFolder + "invald\\" + m._model_name + "_invalid.png");
+                    saveAPartBasedModel(m, m._path + m._model_name + "_invalid.pam", false);
+                    if (id == 0)
+                    {
+                        _validityMatrixPG.RemoveATriplet(p1, p2);
+                    }
+                    else
+                    {
+                        _validityMatrixPG.RemoveATriplet(p2, p1);
+                    }
+                    continue;
+                }
 
                 // valid graph
                 this.tryRestoreFunctionalNodes(m);
@@ -4934,7 +4938,8 @@ namespace FameBase
 
                 if (this._isPreRun)
                 {
-                    double[,] vals = this.partialMatching(m, false);
+                    //double[,] vals = this.partialMatching(m, false);
+                    double[,] vals = new double[Common._NUM_CATEGORIY, 4];
 
                     for (int j = 0; j < Common._NUM_CATEGORIY; ++j)
                     {
@@ -4967,7 +4972,11 @@ namespace FameBase
 
                     int cid1 = (int)model1._GRAPH._functionalityValues._parentCategories[0];
                     int cid2 = (int)model2._GRAPH._functionalityValues._parentCategories[0];
-                    double maxValidity = Math.Max(m._GRAPH._functionalityValues._classProbs[cid1], m._GRAPH._functionalityValues._classProbs[cid2]);
+                    double maxValidity = 0;
+                    if (Common.isKnownCategory(cid1) && Common.isKnownCategory(cid2))
+                    {
+                        Math.Max(m._GRAPH._functionalityValues._classProbs[cid1], m._GRAPH._functionalityValues._classProbs[cid2]);
+                    }
                     if (id == 0)
                     {
                         _validityMatrixPG.AddTriplet(p1, p2, maxValidity);
@@ -6400,6 +6409,7 @@ namespace FameBase
             {
                 //return;
                 //_currModel._GRAPH._functionalityValues = new FunctionalityFeatures();
+                _currModel.composeMesh();
                 double[,] pointFeatures;
                 mc = this.composeASubMatch(_currModel, out pointFeatures);
                 scores = this.runFunctionalityTest(mc);
@@ -6448,6 +6458,8 @@ namespace FameBase
             }
             this.getNoveltyValue(_currModel);
             Program.GetFormMain().writePostAnalysisInfo(this.getFunctionalityValuesString(mc, false));
+            string graphName = _currModel._path + _currModel._model_name + ".graph";
+            this.saveAGraph(_currModel._GRAPH, graphName);
         }// predictFunctionalPatches
 
         public void partialMatchingForAnInputModel()
@@ -9597,6 +9609,7 @@ namespace FameBase
 
         public void deleteParts()
         {
+            _currModel._GRAPH.deleteNodes(_selectedNodes);
             foreach (Part p in _selectedParts)
             {
                 _currModel.removeAPart(p);
