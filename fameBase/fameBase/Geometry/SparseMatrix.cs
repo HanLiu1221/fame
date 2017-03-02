@@ -44,7 +44,7 @@ namespace Geometry
 	public class SparseMatrix
 	{
 		private List<Triplet> triplets = null;
-		private int nRows, nCols;
+		private int nRows, nCols, nTriplets;
 		private List<List<Triplet>> rowTriplets = null;
 		private List<List<Triplet>> colTriplets = null;
 
@@ -92,6 +92,7 @@ namespace Geometry
             triplets = new List<Triplet>(m.triplets);
             nRows = m.nRows;
             nCols = m.nCols;
+            nTriplets = triplets.Count;
             MakeRowColTriplets();
         }
 
@@ -100,6 +101,7 @@ namespace Geometry
             triplets = new List<Triplet>(m.triplets);
             nRows = r;
             nCols = c;
+            nTriplets = triplets.Count;
             MakeRowColTriplets();
         }
 
@@ -108,6 +110,7 @@ namespace Geometry
 			triplets = new List<Triplet>(triplets);
 			nRows = nrow;
 			nCols = ncol;
+			nTriplets = triplets.Count;
 			MakeRowColTriplets();
 		}
 
@@ -116,7 +119,8 @@ namespace Geometry
 			triplets = new List<Triplet>(triplets);
 			nRows = 0;
 			nCols = 0;
-			for (int i = 0; i < NTriplets; ++i)
+			nTriplets = triplets.Count;
+			for (int i = 0; i < nTriplets; ++i)
 			{
 				nRows = triplets[i].row > nRows ? triplets[i].row : nRows;
 				nCols = triplets[i].col > nCols ? triplets[i].col : nCols;
@@ -129,6 +133,9 @@ namespace Geometry
 			triplets = new List<Triplet>();
 			rowTriplets = new List<List<Triplet>>();
 			colTriplets = new List<List<Triplet>>();
+			nRows = 0;
+			nCols = 0;
+			nTriplets = 0;
 		}
 
 		private void MakeRowColTriplets()
@@ -143,7 +150,7 @@ namespace Geometry
 			{
                 colTriplets.Add(new List<Triplet>());
 			}
-			for (int i = 0; i < NTriplets; ++i)
+			for (int i = 0; i < nTriplets; ++i)
 			{
 				rowTriplets[triplets[i].row].Add(triplets[i]);
 				colTriplets[triplets[i].col].Add(triplets[i]);
@@ -179,6 +186,7 @@ namespace Geometry
 			{
 				curr.value = value;
 			}
+            nTriplets = triplets.Count;
             //if (value == 0)
             //{
             //    // remove
@@ -188,29 +196,13 @@ namespace Geometry
             //}
         }
 
-        public void RemoveATriplet(int row, int col)
-        {
-            Triplet curr = this.GetTriplet(row, col);
-            if (curr != null)
-            {
-                triplets.Remove(curr);
-                rowTriplets[row].Remove(curr);
-                colTriplets[col].Remove(curr);
-            }
-        }
-
         public Triplet GetTriplet(int index)
         {
-            if (index < 0 || index > NTriplets)
+            if (index < 0 || index > nTriplets)
             {
                 throw new IndexOutOfRangeException();
             }
             return triplets[index];
-        }
-
-        public List<Triplet> GetTriplets()
-        {
-            return triplets;
         }
 
         public List<Triplet> GetRowTriplets(int rowIndex)

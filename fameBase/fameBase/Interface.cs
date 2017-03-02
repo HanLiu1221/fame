@@ -21,25 +21,25 @@ namespace FameBase
 
         /*********Var**********/
         // test paths
-        public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
-        public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
-        public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
-        public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
-        // FOR showing predicted results
-        public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch_data\meshes\";
-        public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch_data\samples\";
-        public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
-        public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
-
-        //public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models\";
-        //public static string PATCH_PATH = @"D:\fame\data_sets\patch_data\";
-        //public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only\";
-        //public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        //public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
+        //public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
+        //public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
+        //public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
         //// FOR showing predicted results
-        //public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
-        //public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch_data\samples\";
-        //public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point_feature\";
-        //public static string WEIGHT_PATH = @"D:\fame\data_sets\patch_data\weights\";
+        //public static string MESH_PATH = @"E:\Projects\fame\data_sets\patch_data\meshes\";
+        //public static string POINT_SAMPLE_PATH = @"E:\Projects\fame\data_sets\patch_data\samples\";
+        //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
+        //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
+
+        public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models\";
+        public static string PATCH_PATH = @"D:\fame\data_sets\patch_data\";
+        public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only\";
+        public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        // FOR showing predicted results
+        public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
+        public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch_data\samples\";
+        public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point_feature\";
+        public static string WEIGHT_PATH = @"D:\fame\data_sets\patch_data\weights\";
 
         private void open3D_Click(object sender, EventArgs e)
         {
@@ -1000,65 +1000,5 @@ namespace FameBase
             this.glViewer.isDrawPartFunctionalSpacePrimitive = this.partFSToolStripMenuItem.Checked;
             this.glViewer.Refresh();
         }
-
-        private void loadValidityMatrixToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var dialog = new OpenFileDialog()
-            {
-                Title = "Load a validity matrix",
-                DefaultExt = ".vdm"
-            };
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
-                this.glViewer.loadValidityMatrix(dialog.FileName);
-                this.updateStats();
-            }
-        }
-
-        private void batchLoadTestToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var dialog = new FolderBrowserDialog() {
-                SelectedPath = @"F:\Projects\fame\data_sets\patch_data\models\Users\User_1_Set_1_Jan\models\crossover\gen_1\"
-            };
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                string folderName = dialog.SelectedPath;
-                //this.glViewer.batchLoadTest(folderName);
-                this.glViewer.batchLoadPartGroupScores(folderName);
-            }
-        }
-
-        private void partialMatchingToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.partialMatchingForAnInputModel();
-        }
-
-        private void fSAgentToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.fSAgentToolStripMenuItem.Checked = !this.fSAgentToolStripMenuItem.Checked;
-            this.glViewer.isDrawFunctionalSpaceAgent = this.fSAgentToolStripMenuItem.Checked;
-            this.glViewer.Refresh();
-        }
-
-        private void testToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.test();
-        }
-
-        private void refitaxisalignedToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.refit_by_axis_aligned_cuboid();
-            this.glViewer.Refresh();
-        }
-
-        private void partGroupToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.createAPartGroup();
-        }
-
-        private void clearPGsToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.clearPartGroups();
-        }
-    }// Interface
+	}// Interface
 }// namespace
