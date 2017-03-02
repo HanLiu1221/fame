@@ -208,15 +208,6 @@ namespace Geometry
 			z = array[2];
 		}
 
-        public Vector3d(double[] array, int idx)
-        {
-            if (idx <= 0 || array.Length < idx + 3) return;
-            // for mesh vertex
-            x = array[idx];
-            y = array[idx + 1];
-            z = array[idx + 2];
-        }
-
         public Vector3d(Vector3d v)
         {
             this.x = v.x;
@@ -308,11 +299,6 @@ namespace Geometry
 				x * v.y - y * v.x);
 		}
 
-        public bool isValidVector()
-        {
-            return Common.isValidNumber(x) && Common.isValidNumber(y) && Common.isValidNumber(z);
-        }
-
 		// following the guiderlines of implementing operator == and overide Equals, GetHashCode
 		// to avoid warning...
 		public override bool Equals(Object obj)
@@ -382,16 +368,16 @@ namespace Geometry
             return v;
         }
 
-        static public Vector3d MaxCoord = new Vector3d(double.MaxValue, double.MaxValue, double.MaxValue);
+        static public Vector3d MaxCoord()
+        {
+            return new Vector3d(double.MaxValue, double.MaxValue, double.MaxValue);
+        }
 
-        static public Vector3d MinCoord = new Vector3d(double.MinValue, double.MinValue, double.MinValue);
-
-        static public Vector3d XCoord = new Vector3d(1, 0, 0);
-
-        static public Vector3d YCoord = new Vector3d(0, 1, 0);
-
-        static public Vector3d ZCoord = new Vector3d(0, 0, 1);
-    }//class-Vector3d
+        static public Vector3d MinCoord()
+        {
+            return new Vector3d(double.MinValue, double.MinValue, double.MinValue);
+        }
+	}//class-Vector3d
 
 	public class Vector4d
 	{ 
@@ -480,11 +466,6 @@ namespace Geometry
 			if (w == 0) return ToVector3D();
 			return new Vector3d(x / w, y / w, z / w);
 		}
-
-        public Vector3d XYZ()
-        {
-            return new Vector3d(x, y, z);
-        }
 
 		public double Length()
 		{

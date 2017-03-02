@@ -125,34 +125,6 @@ namespace Geometry
             return m;
         }
 
-        public Matrix4d getRotationMatrixAlongAxis(int axis)
-        {
-            Matrix4d m = Matrix4d.IdentityMatrix();
-            double alpha = Math.Acos(currPos.Dot(startPos));
-            if (axis == 0)
-            {
-                m[1, 1] = Math.Cos(alpha);
-                m[1, 2] = Math.Sin(alpha);
-                m[2, 1] = -Math.Sin(alpha);
-                m[2, 2] = Math.Cos(alpha);
-            }
-            if (axis == 1)
-            {
-                m[0, 0] = Math.Cos(alpha);
-                m[0, 2] = -Math.Sin(alpha);
-                m[2, 0] = Math.Sin(alpha);
-                m[2, 2] = Math.Cos(alpha);
-            }
-            if (axis == 2)
-            {
-                m[0, 0] = Math.Cos(alpha);
-                m[0, 1] = Math.Sin(alpha);
-                m[1, 0] = -Math.Sin(alpha);
-                m[1, 1] = Math.Cos(alpha);
-            }
-            return m;
-        }// getRotationMatrixAlongAxis
-
         private Matrix4d getRotationMatrix(int perspective)
         {
 			if (perspective == 2)
@@ -188,6 +160,7 @@ namespace Geometry
 			}
 			else
 			{
+
 				Vector3d vn = currPos.Cross(startPos) / (currPos.Length() * startPos.Length());
 				Vector4d quaternion = new Vector4d(vn.x, vn.y, vn.z, currPos.Dot(startPos)) / (currPos.Length() * startPos.Length());
 				quaternion.normalize();

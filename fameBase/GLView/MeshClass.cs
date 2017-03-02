@@ -8,7 +8,7 @@ using Geometry;
 
 using TrimeshWrapper;
 
-namespace FameBase
+namespace SketchPlatform
 {
     public unsafe class MeshClass
     {
@@ -36,11 +36,11 @@ namespace FameBase
         }
         private Mesh mesh;
         public int tabIndex; // list of meshes
-        private float[] _material = { 0.62f, 0.74f, 0.85f, 1.0f };
-        private float[] _ambient = { 0.2f, 0.2f, 0.2f, 1.0f };
-        private float[] _diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
-        private float[] _specular = { 1.0f, 1.0f, 1.0f, 1.0f };
-        private float[] _position = { 1.0f, 1.0f, 1.0f, 0.0f };
+        private float[] material = { 0.62f, 0.74f, 0.85f, 1.0f };
+        private float[] ambient = { 0.2f, 0.2f, 0.2f, 1.0f };
+        private float[] diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
+        private float[] specular = { 1.0f, 1.0f, 1.0f, 1.0f };
+        private float[] position = { 1.0f, 1.0f, 1.0f, 0.0f };
 
         /******************** Function ********************/
         private double[] modelViewMat = new double[16];
@@ -50,7 +50,6 @@ namespace FameBase
         private List<int> selectedEdges = new List<int>();
         private List<int> selectedFaces = new List<int>();
         private bool unSelect = false;
-        private string meshName = "";
 
         static private void ArrayConvCtoSB(ref sbyte[] to_sbyte, char[] from_char)
         {
@@ -329,29 +328,17 @@ namespace FameBase
             }
         }//selectMeshFaces
 
-        public string _MESHNAME
-        {
-            get
-            {
-                return this.meshName;
-            }
-            set
-            {
-                this.meshName = value;
-            }
-        }
-
         /******************** Render ********************/
         public void renderShaded()
         {
             //Gl.glEnable(Gl.GL_COLOR_MATERIAL);
             //Gl.glColorMaterial(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE);
             //Gl.glEnable(Gl.GL_CULL_FACE);
-            //Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE, _material);
-            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_AMBIENT, _ambient);
-            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_DIFFUSE, _diffuse);
-            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_SPECULAR, _specular);
-            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_POSITION, _position);
+            //Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT_AND_DIFFUSE, material);
+            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_AMBIENT, ambient);
+            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_DIFFUSE, diffuse);
+            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_SPECULAR, specular);
+            //Gl.glLightfv(Gl.GL_LIGHT0, Gl.GL_POSITION, position);
             //Gl.glEnable(Gl.GL_LIGHT0);
             //Gl.glDepthFunc(Gl.GL_LESS);
             Gl.glEnable(Gl.GL_DEPTH_TEST);
@@ -359,7 +346,7 @@ namespace FameBase
             Gl.glEnable(Gl.GL_NORMALIZE);
 
 
-            Gl.glColor3ub(GLDrawer.ModelColor.R, GLDrawer.ModelColor.G, GLDrawer.ModelColor.B);
+            Gl.glColor3ub(GLViewer.ModelColor.R, GLViewer.ModelColor.G, GLViewer.ModelColor.B);
 
             fixed (double* vp = this.mesh.VertexPos)
             fixed (double* vn = this.mesh.FaceNormal)
@@ -386,7 +373,7 @@ namespace FameBase
         public void renderWireFrame()
         {
             Gl.glEnable(Gl.GL_LINE_SMOOTH);
-            Gl.glColor3ub(GLDrawer.ColorSet[1].R, GLDrawer.ColorSet[1].G, GLDrawer.ColorSet[1].B);
+            Gl.glColor3ub(GLViewer.ColorSet[1].R, GLViewer.ColorSet[1].G, GLViewer.ColorSet[1].B);
             Gl.glBegin(Gl.GL_LINES);
             for (int i = 0; i < this.mesh.Edges.Length; ++i)
             {
@@ -407,7 +394,7 @@ namespace FameBase
         public void renderVertices()
         {
             Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glColor3ub(GLDrawer.ColorSet[2].R, GLDrawer.ColorSet[2].G, GLDrawer.ColorSet[2].B);
+            Gl.glColor3ub(GLViewer.ColorSet[2].R, GLViewer.ColorSet[2].G, GLViewer.ColorSet[2].B);
             Gl.glPointSize(2.0f);
             Gl.glBegin(Gl.GL_POINTS);
             for (int i = 0; i < this.mesh.VertexCount; ++i)
@@ -416,44 +403,7 @@ namespace FameBase
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_POINT_SMOOTH);
-            //Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-        }
-
-        public void drawSamplePoints()
-        {
-            if (mesh.samplePoints == null)
-            {
-                return;
-            }
-            Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glColor3ub(GLDrawer.ColorSet[2].R, GLDrawer.ColorSet[2].G, GLDrawer.ColorSet[2].B);
-            Gl.glPointSize(4.0f);
-            Gl.glEnable(Gl.GL_DEPTH_TEST);
-            Gl.glBegin(Gl.GL_POINTS);
-            for (int i = 0; i < this.mesh.samplePoints.Length; i += 3)
-            {
-                Gl.glColor3ub(this.mesh.sampleColors[i], this.mesh.sampleColors[i + 1], this.mesh.sampleColors[i + 2]);
-                Gl.glBegin(Gl.GL_POINTS);
-                Gl.glVertex3d(this.mesh.samplePoints[i], this.mesh.samplePoints[i + 1], this.mesh.samplePoints[i + 2]);
-                Gl.glEnd();
-            }
-            Gl.glEnd();
-            Gl.glDisable(Gl.GL_POINT_SMOOTH);
-        }
-
-        public void renderVertices_color()
-        {
-            Gl.glEnable(Gl.GL_POINT_SMOOTH);
-            Gl.glPointSize(2.0f);
-            for (int i = 0; i < this.mesh.VertexCount; ++i)
-            {
-                Gl.glColor3ub(this.mesh.VertexColor[i * 3], this.mesh.VertexColor[i * 3 + 1], this.mesh.VertexColor[i * 3 + 2]);
-                Gl.glBegin(Gl.GL_POINTS);
-                Gl.glVertex3d(this.mesh.VertexPos[i * 3], this.mesh.VertexPos[i * 3 + 1], this.mesh.VertexPos[i * 3 + 2]);
-                Gl.glEnd();
-            }
-            Gl.glDisable(Gl.GL_POINT_SMOOTH);
-            //Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+            Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         }
 
         public void drawSelectedVertex()

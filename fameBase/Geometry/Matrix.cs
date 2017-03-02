@@ -809,36 +809,6 @@ namespace Geometry
 			return mat;
 		}
 
-        public static Matrix4d ReflectionalMatrix(Vector3d plane_normal)
-        {
-            // create an coordinates sys, with plane_normal as x-axis
-            Vector3d x = plane_normal;
-            Vector3d y;
-            if (x.x == 0 && x.y == 0)
-                y = new Vector3d(1, 0, 0);
-            else
-                y = (new Vector3d(-x.y, x.x, 0)).normalize();
-            Vector3d z = x.Cross(y).normalize();
-            Matrix3d R = new Matrix3d(x, y, z).Transpose();
-            Matrix3d InvR = R.Inverse();
-            Matrix4d U = new Matrix4d(R);
-            Matrix4d V = new Matrix4d(InvR);
-            Matrix4d I = Matrix4d.IdentityMatrix();
-            I[0, 0] = -1; // reflect matrix along yz plane
-            return V * I * U;
-        }
-
-        public static Vector3d GetMirrorSymmetryPoint(Vector3d pt, Vector3d normal, Vector3d center)
-        {
-            Matrix4d R = ReflectionalMatrix(normal);
-            return center + (R * new Vector4d(pt - center, 0)).XYZ();
-        }
-
-        public static Vector3d GetMirrorSymmetryVector(Vector3d vec, Vector3d normal)
-        {
-            Matrix4d R = ReflectionalMatrix(normal);
-            return (R * new Vector4d(vec, 0)).XYZ();
-        }
 	}//class-Matrix4d
 
 	public class MatrixNd
@@ -898,24 +868,6 @@ namespace Geometry
 				arr[i] = mat.arr[i];
 			}
 		}
-
-        public MatrixNd(SparseMatrix mat)
-        {
-            M = mat.NRow;
-            N = mat.NCol;
-            length = M * N;
-            arr = new double[length];
-            for (int i = 0; i < M; ++i)
-            {
-                foreach (Triplet tri in mat.GetRowTriplets(i))
-                {
-                    int r = tri.row;
-                    int c = tri.col;
-                    double val = tri.value;
-                    arr[r * M + c] = val;
-                }
-            }
-        }
 
 		public double this[int row, int col]
 		{
@@ -996,26 +948,6 @@ namespace Geometry
 			}
 			return mat;
 		}
-
-        static public MatrixNd operator *(MatrixNd m1, MatrixNd m2)
-        {
-            if (m1.Col != m2.Row)
-            {
-                return null;
-            }
-            MatrixNd mat = new MatrixNd(m1.Row, m2.Col);
-            for (int i = 0; i < m1.Row; ++i)
-            {
-                for (int j = 0; j < m2.Col; ++j)
-                {
-                    for (int k = 0; k < m1.Col; ++k)
-                    {
-                        mat[i, j] += m1[i, k] * m2[k, j];
-                    }
-                }
-            }
-            return mat;
-        }
 
 		static public MatrixNd operator /(double factor, MatrixNd m)
 		{

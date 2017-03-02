@@ -41,12 +41,12 @@ namespace Geometry
 		}
 	}//class-Triplet	
 
-	public class SparseMatrix
+	public class sparseMatrix
 	{
 		private List<Triplet> triplets = null;
-		private int nRows, nCols;
-		private List<List<Triplet>> rowTriplets = null;
-		private List<List<Triplet>> colTriplets = null;
+		private int nRows, nCols, nTriplets;
+		static private List<List<Triplet>> rowTriplets = null;
+		static private List<List<Triplet>> colTriplets = null;
 
 		#region Count-info
 		public int NRow
@@ -65,58 +65,43 @@ namespace Geometry
 			}
 		}
 
-		public int NTriplets
+		public int NTuple
 		{
 			get
 			{
-				return triplets.Count;
+				return this.nTriplets;
 			}
 		}
 	#endregion
 
-		public SparseMatrix()
+		public sparseMatrix()
 		{
 			clear();
 		}
 
-		public SparseMatrix(int m,int n)
+		public sparseMatrix(int m,int n)
 		{
 			clear();
 			nRows = m;
 			nCols = n;
-            MakeRowColTriplets();
 		}
 
-        public SparseMatrix(SparseMatrix m)
-        {
-            triplets = new List<Triplet>(m.triplets);
-            nRows = m.nRows;
-            nCols = m.nCols;
-            MakeRowColTriplets();
-        }
-
-        public SparseMatrix(SparseMatrix m, int r, int c)
-        {
-            triplets = new List<Triplet>(m.triplets);
-            nRows = r;
-            nCols = c;
-            MakeRowColTriplets();
-        }
-
-		public SparseMatrix(List<Triplet> triplets, int nrow, int ncol)
+		public sparseMatrix(List<Triplet> triplets, int nrow, int ncol)
 		{
 			triplets = new List<Triplet>(triplets);
 			nRows = nrow;
 			nCols = ncol;
+			nTriplets = triplets.Count;
 			MakeRowColTriplets();
 		}
 
-		public SparseMatrix(List<Triplet> triplets)
+		public sparseMatrix(List<Triplet> triplets)
 		{
 			triplets = new List<Triplet>(triplets);
 			nRows = 0;
 			nCols = 0;
-			for (int i = 0; i < NTriplets; ++i)
+			nTriplets = triplets.Count;
+			for (int i = 0; i < nTriplets; ++i)
 			{
 				nRows = triplets[i].row > nRows ? triplets[i].row : nRows;
 				nCols = triplets[i].col > nCols ? triplets[i].col : nCols;
@@ -129,21 +114,24 @@ namespace Geometry
 			triplets = new List<Triplet>();
 			rowTriplets = new List<List<Triplet>>();
 			colTriplets = new List<List<Triplet>>();
+			nRows = 0;
+			nCols = 0;
+			nTriplets = 0;
 		}
 
 		private void MakeRowColTriplets()
 		{
-			rowTriplets = new List<List<Triplet>>();
-			colTriplets = new List<List<Triplet>>();
+			rowTriplets = new List<List<Triplet>>(nRows);
+			colTriplets = new List<List<Triplet>>(nCols);
 			for (int i = 0; i < nRows; ++i)
 			{
-				rowTriplets.Add(new List<Triplet>());
+				rowTriplets[i] = new List<Triplet>();
 			}
 			for (int i = 0; i < nCols; ++i)
 			{
-                colTriplets.Add(new List<Triplet>());
+				colTriplets[i] = new List<Triplet>();
 			}
-			for (int i = 0; i < NTriplets; ++i)
+			for (int i = 0; i < nTriplets; ++i)
 			{
 				rowTriplets[triplets[i].row].Add(triplets[i]);
 				colTriplets[triplets[i].col].Add(triplets[i]);
@@ -179,41 +167,9 @@ namespace Geometry
 			{
 				curr.value = value;
 			}
-            //if (value == 0)
-            //{
-            //    // remove
-            //    triplets.Remove(triplet);
-            //    rowTriplets[row].Remove(triplet);
-            //    colTriplets[col].Remove(triplet);
-            //}
-        }
+		}
 
-        public void RemoveATriplet(int row, int col)
-        {
-            Triplet curr = this.GetTriplet(row, col);
-            if (curr != null)
-            {
-                triplets.Remove(curr);
-                rowTriplets[row].Remove(curr);
-                colTriplets[col].Remove(curr);
-            }
-        }
-
-        public Triplet GetTriplet(int index)
-        {
-            if (index < 0 || index > NTriplets)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            return triplets[index];
-        }
-
-        public List<Triplet> GetTriplets()
-        {
-            return triplets;
-        }
-
-        public List<Triplet> GetRowTriplets(int rowIndex)
+		public List<Triplet> GetRowTriplets(int rowIndex)
 		{
 			if(rowIndex < 0 || rowIndex >= nRows)
 			{
@@ -279,38 +235,10 @@ namespace Geometry
             {
                 rowTriplets[tri.row].Add(tri);
             }
-		}
-
-        public int[][] getRowIndex()
-        {
-            int[][] rowIndex = new int[NRow][];
-            for (int i = 0; i < rowTriplets.Count; ++i)
-            {
-                rowIndex[i] = new int[rowTriplets[i].Count];
-                for (int j = 0; j < rowTriplets[i].Count; ++j)
-                {
-                    rowIndex[i][j] = rowTriplets[i][j].col;
-                }
-            }
-            return rowIndex;
-        }
-
-        public int[][] getColIndex()
-        {
-            int[][] colIndex = new int[NCol][];
-            for (int i = 0; i < colTriplets.Count; ++i)
-            {
-                colIndex[i] = new int[colTriplets[i].Count];
-                for (int j = 0; j < colTriplets[i].Count; ++j)
-                {
-                    colIndex[i][j] = colTriplets[i][j].row;
-                }
-            }
-            return colIndex;
-        }
+		} 
 
 		// operators
-		static public SparseMatrix operator +(SparseMatrix mat1, SparseMatrix mat2)
+		static public sparseMatrix operator +(sparseMatrix mat1, sparseMatrix mat2)
 		{
 			if (mat1 == null || mat2 == null)
 			{
@@ -322,7 +250,7 @@ namespace Geometry
 				Console.WriteLine("Dimension not matched.");
 				return null;
 			}
-			SparseMatrix mat = new SparseMatrix(m, n);
+			sparseMatrix mat = new sparseMatrix(m, n);
 			List<Triplet> newTriplets = new List<Triplet>();
 			for (int r = 0; r < m; ++r )
 			{
@@ -367,28 +295,28 @@ namespace Geometry
 				}
 				newTriplets.AddRange(trips);
 			}//for-each-row
-			mat = new SparseMatrix(newTriplets, m, n);
+			mat = new sparseMatrix(newTriplets, m, n);
 			return mat;
 		}
 
-		static public SparseMatrix operator -(SparseMatrix mat1, SparseMatrix mat2)
+		static public sparseMatrix operator -(sparseMatrix mat1, sparseMatrix mat2)
 		{
 			if (mat1 == null || mat2 == null)
 			{
 				return null;
 			}
-			SparseMatrix minus_mat2 = -1.0 * mat2;
+			sparseMatrix minus_mat2 = -1.0 * mat2;
 			return mat1 + minus_mat2;
 		}
 
-		static public SparseMatrix operator *(double factor, SparseMatrix mat)
+		static public sparseMatrix operator *(double factor, sparseMatrix mat)
 		{
 			if (mat == null)
 			{
 				return null;
 			}
 			int m = mat.NRow, n = mat.NCol;
-			SparseMatrix new_mat = new SparseMatrix(m, n);
+			sparseMatrix new_mat = new sparseMatrix(m, n);
 			List<Triplet> newTriplets = new List<Triplet>();
 			for (int r = 0; r < m; ++r)
 			{
@@ -398,11 +326,11 @@ namespace Geometry
 					newTriplets.Add(new Triplet(r, rowr[j].col, rowr[j].value * factor));
 				}
 			}//for-each-row
-			mat = new SparseMatrix(newTriplets);
+			mat = new sparseMatrix(newTriplets);
 			return mat;
 		}
 
-		static public SparseMatrix operator /(SparseMatrix mat, double factor)
+		static public sparseMatrix operator /(sparseMatrix mat, double factor)
 		{
 			if (mat == null)
 			{
@@ -415,7 +343,7 @@ namespace Geometry
 			return 1.0/factor * mat;
 		}
 
-		static public SparseMatrix operator *(SparseMatrix mat1, SparseMatrix mat2)
+		static public sparseMatrix operator *(sparseMatrix mat1, sparseMatrix mat2)
 		{
 			if (mat1 == null || mat2 == null)
 			{
@@ -427,7 +355,7 @@ namespace Geometry
 				Console.WriteLine("Dimension not matched.");
 				return null;
 			}
-			SparseMatrix mat = new SparseMatrix(m, n);
+			sparseMatrix mat = new sparseMatrix(m, n);
 			List<Triplet> newTriplets = new List<Triplet>();
 			for (int r = 0; r < m; ++r)
 			{
@@ -462,39 +390,8 @@ namespace Geometry
 					}
 				}
 			}//for-each-row
-			mat = new SparseMatrix(newTriplets);
+			mat = new sparseMatrix(newTriplets);
 			return mat;
 		}
-
-        // comparable class
-        private class RowCompare : IComparer<Triplet>
-        {
-            public int Compare(Triplet t1, Triplet t2)
-            {
-                return t1.col - t2.col;
-            }
-        }
-
-        private class ColCompare : IComparer<Triplet>
-        {
-            public int Compare(Triplet t1, Triplet t2)
-            {
-                return t1.row - t2.row;
-            }
-        }
-
-        public void sort()
-        {
-            RowCompare rowCompare = new RowCompare();
-            ColCompare colCompare = new ColCompare();
-            foreach (List<Triplet> r in rowTriplets)
-            {
-                r.Sort(rowCompare);
-            }
-            foreach (List<Triplet> c in colTriplets)
-            {
-                c.Sort(colCompare);
-            }
-        }
-	}//class-SparseMatrix
+	}//class-sparseMatrix
 }
