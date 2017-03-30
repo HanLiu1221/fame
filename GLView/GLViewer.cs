@@ -417,7 +417,7 @@ namespace FameBase
             //if (_currModel._GRAPH != null && _currModel._GRAPH._functionalityValues != null &&_currModel._GRAPH._functionalityValues._parentCategories.Count > 0)
             //{
             //    string catStr = "";
-            //    foreach (Common.Category cat in _currModel._GRAPH._functionalityValues._parentCategories)
+            //    foreach (Functionality.Category cat in _currModel._GRAPH._functionalityValues._parentCategories)
             //    {
             //        catStr += cat + " ";
             //    }
@@ -1422,7 +1422,7 @@ namespace FameBase
                 return false;
             }
 
-            int dim = Common._CURV_FEAT_DIM;
+            int dim = Functionality._CURV_FEAT_DIM;
             model._funcFeat._curvFeats = new double[dim * nSamplePoints];
             for (int i = 0; i < nSamplePoints; ++i)
             {
@@ -1935,7 +1935,7 @@ namespace FameBase
                     }
                     char[] sepChar = { '_' };
                     string[] names = part._partName.Split(sepChar);
-                    part._orignCategory = Common.getCategory(names[0]);
+                    part._orignCategory = Functionality.getCategory(names[0]);
                     parts.Add(part);
                 }
                 Model model = new Model(modelMesh, parts);
@@ -2124,8 +2124,8 @@ namespace FameBase
                 }
                 string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
                 double[] vals = this.readOnlyFuncValues(graphName);
-                double[] probs = new double[Common._NUM_CATEGORIY];
-                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                double[] probs = new double[Functionality._NUM_CATEGORIY];
+                for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
                 {
                     double[] probArr = this.getProbabilityForACat(i, vals[i]);
                     probs[i] = probArr[2];
@@ -2211,7 +2211,7 @@ namespace FameBase
 
         private double[] readOnlyFuncValues(string filename)
         {
-            double[] res = new double[Common._NUM_CATEGORIY];
+            double[] res = new double[Functionality._NUM_CATEGORIY];
             using (StreamReader sr = new StreamReader(filename))
             {
                 char[] separator = { ' ', '\t' };
@@ -2223,18 +2223,18 @@ namespace FameBase
                         continue;
                     }
                     string[] strs = s.Split(separator);
-                    int catId = (int)Common.getCategory(strs[0]);
+                    int catId = (int)Functionality.getCategory(strs[0]);
                     res[catId] = double.Parse(strs[1]);
-                    for (int i = 1; i < Common._NUM_CATEGORIY; ++i)
+                    for (int i = 1; i < Functionality._NUM_CATEGORIY; ++i)
                     {
                         s = sr.ReadLine().Trim();
                         strs = s.Split(separator);
-                        catId = (int)Common.getCategory(strs[0]);
-                        if (catId == (int)Common.Category.None)
+                        catId = (int)Functionality.getCategory(strs[0]);
+                        if (catId == (int)Functionality.Category.None)
                         {
                             break;
                         }
-                        if (catId < Common._NUM_CATEGORIY )
+                        if (catId < Functionality._NUM_CATEGORIY )
                         { 
                             double val = 0;
                             double.TryParse(strs[1], out val);
@@ -2304,7 +2304,7 @@ namespace FameBase
             _nodeFSAs = new List<NodeFunctionalSpaceAgent>();
             // 1. load all part groups
             // 2. normalize all weights per category
-            int ndim = Common.__TOTAL_FUNCTONAL_PATCHES;
+            int ndim = Functionality.__TOTAL_FUNCTONAL_PATCHES;
             double[] minw = new double[ndim];
             double[] maxw = new double[ndim];
             for (int i = 0; i < ndim; ++i)
@@ -2321,8 +2321,8 @@ namespace FameBase
                     SamplePoints sp = node._PART._partSP;
                     if (sp != null)
                     {
-                        node._PART._partSP._highlightedColors = new Color[Common._NUM_CATEGORIY][];
-                        for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                        node._PART._partSP._highlightedColors = new Color[Functionality._NUM_CATEGORIY][];
+                        for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
                         {
                             node._PART._partSP._highlightedColors[i] = new Color[node._PART._partSP._points.Length];
                             for (int j = 0; j < node._PART._partSP._points.Length; ++j)
@@ -2337,9 +2337,9 @@ namespace FameBase
                         _nodeFSAs.Add(nfsa);
                     }
                 }
-                for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+                for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
                 {
-                    int nPatches = Common.getNumberOfFunctionalPatchesPerCategory((Common.Category)c);
+                    int nPatches = Functionality.getNumberOfFunctionalPatchesPerCategory((Functionality.Category)c);
                     List<List<double>> weights = new List<List<double>>();
                     for (int j = 0; j < nPatches; ++j)
                     {
@@ -2446,10 +2446,10 @@ namespace FameBase
                     //MessageBox.Show("Model #" + model._model_name + " lack catgory info or part groups.");
                     continue;
                 }
-                foreach (Common.Category cat in model._GRAPH._functionalityValues._parentCategories)
+                foreach (Functionality.Category cat in model._GRAPH._functionalityValues._parentCategories)
                 {
                     int cid = (int)cat;
-                    if (!_inputSetCats.Contains(cid) && Common.isKnownCategory(cid))
+                    if (!_inputSetCats.Contains(cid) && Functionality.isKnownCategory(cid))
                     {
                         _inputSetCats.Add(cid);
                     }
@@ -2478,7 +2478,7 @@ namespace FameBase
 
                 foreach (Node node in model._GRAPH._NODES)
                 {
-                    if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                    if (node._funcs.Contains(Functionality.Functions.HAND_PLACE))
                     {
                         string part_name = node._PART._partName;
                         node.calRatios();
@@ -2490,7 +2490,7 @@ namespace FameBase
                         continue;
                     }
                     int d = 0;
-                    for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+                    for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
                     {
                         for (int i = 0; i < sp._weightsPerCat[c]._nPatches; ++i)
                         {
@@ -2517,7 +2517,7 @@ namespace FameBase
             //    {
             //        SamplePoints sp = node._PART._partSP;
             //        int d = 0;
-            //        for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+            //        for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
             //        {
             //            for (int i = 0; i < sp._weightsPerCat[c]._nPatches; ++i)
             //            {
@@ -2616,10 +2616,10 @@ namespace FameBase
             string scoreFolder = Interface.MODLES_PATH + "categoryScores\\";
             string[] files = Directory.GetFiles(scoreFolder, "*.score");
             int nShapes = files.Length;
-            int[] index = new int[Common._NUM_CATEGORIY];
-            string catName = Common.getCategoryName(0);
+            int[] index = new int[Functionality._NUM_CATEGORIY];
+            string catName = Functionality.getCategoryName(0);
             int catId = 0;
-            double[,] scores = new double[nShapes, Common._NUM_CATEGORIY];
+            double[,] scores = new double[nShapes, Functionality._NUM_CATEGORIY];
             for (int i = 0; i < nShapes; ++i)
             {
                 string filename = files[i];
@@ -2628,7 +2628,7 @@ namespace FameBase
                 {
                     ++catId;
                     index[catId] = i;
-                    catName = Common.getCategoryName(catId);
+                    catName = Functionality.getCategoryName(catId);
                 }
                 for (int j = 0; j < score.Length; ++j)
                 {
@@ -2652,16 +2652,16 @@ namespace FameBase
         private void analyzeBetaDistribution(double[,] scores, int[] startIds)
         {
             int nShapes = scores.GetLength(0);
-            bd_inClass = new BetaDistribution[Common._NUM_CATEGORIY];
-            bd_outClass = new BetaDistribution[Common._NUM_CATEGORIY];
+            bd_inClass = new BetaDistribution[Functionality._NUM_CATEGORIY];
+            bd_outClass = new BetaDistribution[Functionality._NUM_CATEGORIY];
             double thr = 0.05;
-            for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+            for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
             {
-                string catName = Common.getCategoryName(c);
+                string catName = Functionality.getCategoryName(c);
                 List<double> inClass = new List<double>();
                 List<double> outClass = new List<double>();
                 int start = startIds[c];
-                int end = (c == Common._NUM_CATEGORIY - 1 ? nShapes : startIds[c + 1]);
+                int end = (c == Functionality._NUM_CATEGORIY - 1 ? nShapes : startIds[c + 1]);
                 double maxOut = double.MinValue;
                 double minIn = double.MaxValue;
                 double shrink = 0.98;
@@ -2738,9 +2738,9 @@ namespace FameBase
                 _inputSetCats = new List<int>();
                 int[] excluded = { 0, 2, 7, 8, 10, 11, 12, 13, 14 };
                 List<int> excludedList = new List<int>(excluded);
-                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
                 {
-                    if (!excludedList.Contains(i) && Common.isKnownCategory(i))
+                    if (!excludedList.Contains(i) && Functionality.isKnownCategory(i))
                     {
                         _inputSetCats.Add(i);
                     }
@@ -2751,16 +2751,16 @@ namespace FameBase
         {
             string featureFolder = Interface.MODLES_PATH + "patchFeature\\";
             _trainingFeaturesPerCategory = new List<TrainedFeaturePerCategory>();
-            for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+            for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
             {
-                string catName = Common.getCategoryName(c);
+                string catName = Functionality.getCategoryName(c);
                 string folder = featureFolder + catName + "\\";
                 if (!Directory.Exists(folder))
                 {
                     MessageBox.Show("Missing binary feature folder: " + catName);
                     return;
                 }
-                TrainedFeaturePerCategory tf = new TrainedFeaturePerCategory((Common.Category)c);   
+                TrainedFeaturePerCategory tf = new TrainedFeaturePerCategory((Functionality.Category)c);   
                 // unary
                 for (int i = 0; i < tf._nPatches; ++i)
                 {
@@ -2770,7 +2770,7 @@ namespace FameBase
                         MessageBox.Show("Missing binary feature data: " + catName);
                         return;
                     }
-                    double[,] res = this.loadTrainedFeaturePerCategory(filename, Common._NUM_UNARY_FEATURE);
+                    double[,] res = this.loadTrainedFeaturePerCategory(filename, Functionality._NUM_UNARY_FEATURE);
                     tf._unaryF.Add(res);
                 }
                 // binary
@@ -2784,7 +2784,7 @@ namespace FameBase
                             MessageBox.Show("Missing binary feature data: " + catName);
                             return;
                         }
-                        double[,] res = this.loadTrainedFeaturePerCategory(filename, Common._NUM_BINARY_FEATURE);
+                        double[,] res = this.loadTrainedFeaturePerCategory(filename, Functionality._NUM_BINARY_FEATURE);
                         tf._binaryF.Add(res);
                     }
                 }
@@ -2846,11 +2846,11 @@ namespace FameBase
             //}
             //simdist /= n;
 
-            int ndim = Common.__TOTAL_FUNCTONAL_PATCHES;
+            int ndim = Functionality.__TOTAL_FUNCTONAL_PATCHES;
             int d = 0;
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
-                int np = Common.getNumberOfFunctionalPatchesPerCategory((Common.Category)i);
+                int np = Functionality.getNumberOfFunctionalPatchesPerCategory((Functionality.Category)i);
                 if (_inputSetCats.Contains(i))
                 {
                     for (int j = 0; j < np; ++j)
@@ -3077,9 +3077,9 @@ namespace FameBase
             //{
             //    return "";
             //}
-            //_categoryId = (_categoryId + 1) % Common._NUM_CATEGORIY;
+            //_categoryId = (_categoryId + 1) % Functionality._NUM_CATEGORIY;
             //this.Refresh();
-            //string str = Common.getCategoryName(_categoryId);
+            //string str = Functionality.getCategoryName(_categoryId);
             //return str;
 
             // Functional Space
@@ -3100,9 +3100,9 @@ namespace FameBase
             //{
             //    return "";
             //}
-            //_categoryId = (_categoryId - 1 + Common._NUM_CATEGORIY) % Common._NUM_CATEGORIY;
+            //_categoryId = (_categoryId - 1 + Functionality._NUM_CATEGORIY) % Functionality._NUM_CATEGORIY;
             //this.Refresh();
-            //string str = Common.getCategoryName(_categoryId);
+            //string str = Functionality.getCategoryName(_categoryId);
             //return str;
 
             // Functional Space
@@ -3431,7 +3431,7 @@ namespace FameBase
                     if (node._isGroundTouching)
                     {
                         hasGroundTouching = true;
-                        node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
+                        node.addFunctionality(Functionality.Functions.GROUND_TOUCHING);
                     }
                     if (strs.Length > 4)
                     {
@@ -3451,7 +3451,7 @@ namespace FameBase
                     {
                         for (int f = 6; f < strs.Length; ++f)
                         {
-                            Common.Functionality func = getFunctionalityFromString(strs[f]);
+                            Functionality.Functions func = getFunctionalityFromString(strs[f]);
                             node.addFunctionality(func);
                         }
                     }
@@ -3493,11 +3493,11 @@ namespace FameBase
                     }
                 }
                 g._functionalityValues = new FunctionalityFeatures();
-                List<Common.Category> cats = new List<Common.Category>();
+                List<Functionality.Category> cats = new List<Functionality.Category>();
                 if (sr.Peek() > -1)
                 {
                     // functionality
-                    for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+                    for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
                     {
                         if (sr.Peek() == -1)
                         {
@@ -3505,9 +3505,9 @@ namespace FameBase
                         }
                         s = sr.ReadLine().Trim();
                         strs = s.Split(separator);
-                        int cid = (int)Common.getCategory(strs[0]);
+                        int cid = (int)Functionality.getCategory(strs[0]);
                         g._functionalityValues._funScores[cid] = double.Parse(strs[1]);
-                        cats.Add(Common.getCategory(strs[0]));
+                        cats.Add(Functionality.getCategory(strs[0]));
                     }
                     if (sr.Peek() > -1)
                     {
@@ -3515,7 +3515,7 @@ namespace FameBase
                         strs = s.Split(separator);
                         for (int c = 0; c < strs.Length; ++c)
                         {
-                            g._functionalityValues._parentCategories.Add(Common.getCategory(strs[c]));
+                            g._functionalityValues._parentCategories.Add(Functionality.getCategory(strs[c]));
                         }
                     }
                 }
@@ -3536,8 +3536,8 @@ namespace FameBase
                 {
                     char[] sepChar = { '_' };
                     string[] names = m._model_name.Split(sepChar);
-                    g._functionalityValues._parentCategories = new List<Common.Category>();
-                    g._functionalityValues._parentCategories.Add(Common.getCategory(names[0]));
+                    g._functionalityValues._parentCategories = new List<Functionality.Category>();
+                    g._functionalityValues._parentCategories.Add(Functionality.getCategory(names[0]));
                     // save the fsa to store new info                    
                     if (!File.Exists(fsaName))
                     {
@@ -3546,7 +3546,7 @@ namespace FameBase
                     } 
                 } else
                 {
-                    List<Common.Category> parentCats = new List<Common.Category>();
+                    List<Functionality.Category> parentCats = new List<Functionality.Category>();
                     foreach (Part part in m._PARTS)
                     {
                         if (!parentCats.Contains(part._orignCategory))
@@ -3594,7 +3594,7 @@ namespace FameBase
                     // functionality
                     if (iNode._funcs != null)
                     {
-                        foreach (Common.Functionality func in iNode._funcs)
+                        foreach (Functionality.Functions func in iNode._funcs)
                         {
                             sw.Write(" " + func.ToString());
                         }
@@ -3619,9 +3619,9 @@ namespace FameBase
                     }
                     // parent categories
                     StringBuilder sb = new StringBuilder();
-                    foreach (Common.Category pc in g._functionalityValues._parentCategories)
+                    foreach (Functionality.Category pc in g._functionalityValues._parentCategories)
                     {
-                        sb.Append(Common.getCategoryName((int)pc));
+                        sb.Append(Functionality.getCategoryName((int)pc));
                         sb.Append(" ");
                     }
                     sw.WriteLine(sb.ToString());
@@ -3749,7 +3749,7 @@ namespace FameBase
         private string getFunctionalityValuesString(Model m, bool needRanks)
         {
             if (m == null || m._GRAPH == null || m._GRAPH._functionalityValues == null
-                || m._GRAPH._functionalityValues._cats == null || _inputSetCats == null || _inputSetCats.Contains((int)Common.Category.None))
+                || m._GRAPH._functionalityValues._cats == null || _inputSetCats == null || _inputSetCats.Contains((int)Functionality.Category.None))
             {
                 return "";
             }
@@ -3759,7 +3759,7 @@ namespace FameBase
             for (int i = 0; i <_inputSetCats.Count; ++i)
             {
                 int cid = _inputSetCats[i];
-                sb.Append(Common.getCategoryName(cid));
+                sb.Append(Functionality.getCategoryName(cid));
                 sb.Append(" validity: ");
                 sb.Append(this.double2String(m._GRAPH._functionalityValues._funScores[cid]));
                 sb.Append(" P_1: ");
@@ -4063,7 +4063,7 @@ namespace FameBase
             sw.WriteLine("stroke");
         }
 
-        /*****************Functionality-aware evolution*************************/
+        /*****************Functions-aware evolution*************************/
 
         public void markSymmetry()
         {
@@ -4076,7 +4076,7 @@ namespace FameBase
 
         public void markFunctionPart(int i)
         {
-            Common.Functionality func = getFunctionalityFromIndex(i);
+            Functionality.Functions func = getFunctionalityFromIndex(i);
 
             foreach (Node node in _selectedNodes)
             {
@@ -4111,45 +4111,45 @@ namespace FameBase
             return n;
         }// numOfPartNameStartsWith
 
-        private Common.Functionality getFunctionalityFromIndex(int i)
+        private Functionality.Functions getFunctionalityFromIndex(int i)
         {
             switch (i)
             {
                 case 1:
-                    return Common.Functionality.HUMAN_BACK;
+                    return Functionality.Functions.HUMAN_BACK;
                 case 2:
-                    return Common.Functionality.HUMAN_HIP;
+                    return Functionality.Functions.HUMAN_HIP;
                 case 3:
-                    return Common.Functionality.HAND_HOLD;
+                    return Functionality.Functions.HAND_HOLD;
                 case 4:
-                    return Common.Functionality.HAND_PLACE;
+                    return Functionality.Functions.HAND_PLACE;
                 case 5:
-                    return Common.Functionality.SUPPORT;
+                    return Functionality.Functions.SUPPORT;
                 case 6:
-                    return Common.Functionality.HANG;
+                    return Functionality.Functions.HANG;
                 case 0:
                 default:
-                    return Common.Functionality.GROUND_TOUCHING;
+                    return Functionality.Functions.GROUND_TOUCHING;
             }
         }// getFunctionalityFromIndex
 
-        private Common.Functionality getFunctionalityFromString(string s)
+        private Functionality.Functions getFunctionalityFromString(string s)
         {
             switch (s)
             {
                 case "HUMAN_BACK":
-                    return Common.Functionality.HUMAN_BACK;
+                    return Functionality.Functions.HUMAN_BACK;
                 case "HUMAN_HIP":
-                    return Common.Functionality.HUMAN_HIP;
+                    return Functionality.Functions.HUMAN_HIP;
                 case "HAND_HOLD":
-                    return Common.Functionality.HAND_HOLD;
+                    return Functionality.Functions.HAND_HOLD;
                 case "HAND_PLACE":
-                    return Common.Functionality.HAND_PLACE;
+                    return Functionality.Functions.HAND_PLACE;
                 case "SUPPORT":
-                    return Common.Functionality.SUPPORT;
+                    return Functionality.Functions.SUPPORT;
                 case "GROUND_TOUCHING":
                 default:
-                    return Common.Functionality.GROUND_TOUCHING;
+                    return Functionality.Functions.GROUND_TOUCHING;
             }
         }// getFunctionalityFromIndex
 
@@ -4396,7 +4396,7 @@ namespace FameBase
                     {
                         continue;
                     }
-                    Common.Category cat = pg._NODES[0]._PART._orignCategory;
+                    Functionality.Category cat = pg._NODES[0]._PART._orignCategory;
                     for (int j = 1; j < pg._NODES.Count; ++j)
                     {
                         if (pg._NODES[j]._PART._orignCategory != cat)
@@ -4573,7 +4573,7 @@ namespace FameBase
             }
             // parent shapes at the current generation
             //List<Model> parents = new List<Model>(_userSelectedModels);           
-            if (_currGenId % Common._NUM_INTER_BEFORE_RERUN == 0)
+            if (_currGenId % Functionality._NUM_INTER_BEFORE_RERUN == 0)
             {
                 // expand the matrix
                 this.expandValidityMatrix();
@@ -4643,7 +4643,7 @@ namespace FameBase
             //    _currentModelIndexMap.Add(curGeneration[i]._index, i);
             //}
             //List<ModelViewer> sorted = this.rankByHighestCategoryValue(curGeneration, 3);
-            int nModels = Math.Min(Common._MAX_USE_PRESENT_NUMBER, curGeneration.Count);
+            int nModels = Math.Min(Functionality._MAX_USE_PRESENT_NUMBER, curGeneration.Count);
             ////List<ModelViewer> sorted = new List<ModelViewer>();
             ////for (int i = 0; i < nModels; ++i )
             ////{
@@ -4674,13 +4674,13 @@ namespace FameBase
             // after user choice, update similar pairs by func
             PartGroup pg1 = _partGroupLibrary[p1][0]; // the parts are the same, just with different parent shapes
             PartGroup pg2 = _partGroupLibrary[p2][0];
-            List<Common.Functionality> funcs1 = this.getFunctionalityOfAPartGroup(pg1);
-            List<Common.Functionality> funcs2 = this.getFunctionalityOfAPartGroup(pg2);
+            List<Functionality.Functions> funcs1 = this.getFunctionalityOfAPartGroup(pg1);
+            List<Functionality.Functions> funcs2 = this.getFunctionalityOfAPartGroup(pg2);
             int n = _partGroupLibrary.Count;
             for (int i = 0; i < n - 1; ++i)
             {
                 PartGroup ipg = _partGroupLibrary[i][0];
-                List<Common.Functionality> ifuncs = this.getFunctionalityOfAPartGroup(ipg);
+                List<Functionality.Functions> ifuncs = this.getFunctionalityOfAPartGroup(ipg);
                 for (int j = i + 1; j < n; ++j)
                 {
                     if (i == p1 && j == p2)
@@ -4688,7 +4688,7 @@ namespace FameBase
                         continue;
                     }
                     PartGroup jpg = _partGroupLibrary[j][0];
-                    List<Common.Functionality> jfuncs = this.getFunctionalityOfAPartGroup(jpg);
+                    List<Functionality.Functions> jfuncs = this.getFunctionalityOfAPartGroup(jpg);
                     if ((this.containsSameFunctionalities(ifuncs, funcs1) && this.containsSameFunctionalities(jfuncs, funcs2))
                         || (this.containsSameFunctionalities(ifuncs, funcs2) && this.containsSameFunctionalities(jfuncs, funcs1)))
                     {
@@ -4709,12 +4709,12 @@ namespace FameBase
             }
         }// updateSimilarGroups
 
-        private List<Common.Functionality> getFunctionalityOfAPartGroup(PartGroup pg)
+        private List<Functionality.Functions> getFunctionalityOfAPartGroup(PartGroup pg)
         {
-            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            List<Functionality.Functions> funcs = new List<Functionality.Functions>();
             foreach (Node node in pg._NODES)
             {
-                foreach (Common.Functionality func in node._funcs)
+                foreach (Functionality.Functions func in node._funcs)
                 {
                     if (!funcs.Contains(func))
                     {
@@ -4725,13 +4725,13 @@ namespace FameBase
             return funcs;
         }// getFunctionalityOfAPartGroup
 
-        private bool containsSameFunctionalities(List<Common.Functionality> funcs1, List<Common.Functionality> funcs2)
+        private bool containsSameFunctionalities(List<Functionality.Functions> funcs1, List<Functionality.Functions> funcs2)
         {
             if (funcs1 == null || funcs2 == null||funcs1.Count != funcs2.Count)
             {
                 return false;
             }
-            foreach (Common.Functionality func in funcs1)
+            foreach (Functionality.Functions func in funcs1)
             {
                 if (!funcs2.Contains(func))
                 {
@@ -4758,7 +4758,7 @@ namespace FameBase
                 models.Add(model);
                 double[] ss = runFunctionalityTest(model);
                 //// TEST
-                //double[] ss = new double[Common._NUM_CATEGORIY];
+                //double[] ss = new double[Functionality._NUM_CATEGORIY];
                 //for (int k = 0; k < ss.Length; ++k)
                 //{
                 //    ss[k] = rand.NextDouble();
@@ -4867,7 +4867,7 @@ namespace FameBase
         private List<Model> runAGenerationOfCrossover(int gen, Random rand, string imageFolder)
         {
             List<Model> crossed = new List<Model>();
-            while (crossed.Count < Common._MAX_GEN_HYBRID_NUMBER)
+            while (crossed.Count < Functionality._MAX_GEN_HYBRID_NUMBER)
             {
                 List<Model> res = new List<Model>();
                 if (!this.runACrossover(-1, -1, gen, rand, imageFolder, _modelViewIndex + crossed.Count, out res))
@@ -4902,7 +4902,7 @@ namespace FameBase
             if (p1 == -1 && p2 == -1)
             {
                 bool selected = false;
-                while (!selected && ntry < Common._MAX_TRY_TIMES)
+                while (!selected && ntry < Functionality._MAX_TRY_TIMES)
                 {
                     int triId = rand.Next(nTriplets);
                     triplet = _validityMatrixPG.GetTriplet(triId);
@@ -4994,7 +4994,7 @@ namespace FameBase
                 // record the post analysis feature - REPEAT the last statement, REMOVED after testing
                 StringBuilder sb = new StringBuilder();
                 // add to the model
-                List<Common.Category> cats = new List<Common.Category>();
+                List<Functionality.Category> cats = new List<Functionality.Category>();
                 List<double> scores = new List<double>();
                 List<double> probs1 = new List<double>();
                 List<double> probs2 = new List<double>();
@@ -5007,11 +5007,11 @@ namespace FameBase
                 if (this._isPreRun)
                 {
                     //double[,] vals = this.partialMatching(m, false);
-                    double[,] vals = new double[Common._NUM_CATEGORIY, 4];
+                    double[,] vals = new double[Functionality._NUM_CATEGORIY, 4];
 
-                    for (int j = 0; j < Common._NUM_CATEGORIY; ++j)
+                    for (int j = 0; j < Functionality._NUM_CATEGORIY; ++j)
                     {
-                        cats.Add((Common.Category)j);
+                        cats.Add((Functionality.Category)j);
                         scores.Add(vals[j, 0]);
                         probs1.Add(vals[j, 1]);
                         probs2.Add(vals[j, 2]);
@@ -5026,7 +5026,7 @@ namespace FameBase
                     for (int j = 0; j < _inputSetCats.Count; ++j)
                     {
                         int cid = _inputSetCats[j];
-                        sb.Append(Common.getCategoryName(cid));
+                        sb.Append(Functionality.getCategoryName(cid));
                         sb.Append(" Score: ");
                         sb.Append(scores[cid].ToString());
                         sb.Append(" P_1: ");
@@ -5041,7 +5041,7 @@ namespace FameBase
                     int cid1 = (int)model1._GRAPH._functionalityValues._parentCategories[0];
                     int cid2 = (int)model2._GRAPH._functionalityValues._parentCategories[0];
                     double maxValidity = 0;
-                    if (Common.isKnownCategory(cid1) && Common.isKnownCategory(cid2))
+                    if (Functionality.isKnownCategory(cid1) && Functionality.isKnownCategory(cid2))
                     {
                         Math.Max(m._GRAPH._functionalityValues._classProbs[cid1], m._GRAPH._functionalityValues._classProbs[cid2]);
                     }
@@ -5206,9 +5206,9 @@ namespace FameBase
 
         private bool isMainFunctionalNode(Node node)
         {
-            return node._funcs.Contains(Common.Functionality.HAND_PLACE) ||
-                node._funcs.Contains(Common.Functionality.HUMAN_HIP) ||
-                node._funcs.Contains(Common.Functionality.HANG);
+            return node._funcs.Contains(Functionality.Functions.HAND_PLACE) ||
+                node._funcs.Contains(Functionality.Functions.HUMAN_HIP) ||
+                node._funcs.Contains(Functionality.Functions.HANG);
         }
         private bool tryRestoreAFunctionalNode(Model m, Node node)
         {
@@ -5357,18 +5357,18 @@ namespace FameBase
             string weightFolder = Interface.WEIGHT_PATH + model._model_name;
             List<int> possibleN = new List<int>();
             List<List<int>> patchSPindices = new List<List<int>>();
-            Dictionary<int, List<Common.Category>> maps = new Dictionary<int, List<Common.Category>>();
-            foreach (Common.Category cat in model._GRAPH._functionalityValues._cats)
+            Dictionary<int, List<Functionality.Category>> maps = new Dictionary<int, List<Functionality.Category>>();
+            foreach (Functionality.Category cat in model._GRAPH._functionalityValues._cats)
             {
                 //List<SamplePoints> sps = this.getPatchesFromCategory(cat, model, weightFolder);
                 //patches.AddRange(sps);
                 List<List<int>> sps = this.getPatchesFromCategory(cat, model, weightFolder);
                 patchSPindices.AddRange(sps);
-                int pn = Common.getNumberOfFunctionalPatchesPerCategory(cat);
+                int pn = Functionality.getNumberOfFunctionalPatchesPerCategory(cat);
                 if (!possibleN.Contains(pn))
                 {
                     possibleN.Add(pn);
-                    List<Common.Category> catIdx = new List<Common.Category>();
+                    List<Functionality.Category> catIdx = new List<Functionality.Category>();
                     catIdx.Add(cat);
                     maps.Add(pn, catIdx);
                 }else{
@@ -5378,14 +5378,14 @@ namespace FameBase
 
             int totalPatches = patchSPindices.Count;
             int comId = 0;
-            int nCats = Enum.GetNames(typeof(Common.Category)).Length;
+            int nCats = Enum.GetNames(typeof(Functionality.Category)).Length;
             double[] highestScores = new double[nCats];
             for (int i = 0; i < nCats; ++i)
             {
                 highestScores[i] = 0;
             }
             double max_score_all = 0;
-            Dictionary<Common.Category, SamplePoints> dict = new Dictionary<Common.Category, SamplePoints>();
+            Dictionary<Functionality.Category, SamplePoints> dict = new Dictionary<Functionality.Category, SamplePoints>();
             for (int i = 0; i < possibleN.Count; ++i)
             {
                 List<List<int>> com = new List<List<int>>();
@@ -5445,7 +5445,7 @@ namespace FameBase
                     }
                 }// each combination
             }
-            foreach (Common.Category cat in model._GRAPH._functionalityValues._cats)
+            foreach (Functionality.Category cat in model._GRAPH._functionalityValues._cats)
             {
                 Model best_patches = model.Clone() as Model;
                 best_patches._path = funcFolder + "gen_" + gen.ToString() + "\\";
@@ -5577,9 +5577,9 @@ namespace FameBase
             }
         }
 
-        private List<List<int>> getPatchesFromCategory(Common.Category cat, Model model, string weightFolder)
+        private List<List<int>> getPatchesFromCategory(Functionality.Category cat, Model model, string weightFolder)
         {
-            int nPatches = Common.getNumberOfFunctionalPatchesPerCategory(cat);
+            int nPatches = Functionality.getNumberOfFunctionalPatchesPerCategory(cat);
             double thr_ratio = 0.5;
             string wight_name_filter = model._model_name + "_predict_" + cat;
             string[] weightFiles = Directory.GetFiles(weightFolder, "*.csv");
@@ -5681,9 +5681,9 @@ namespace FameBase
             {
                 for (int i = 0; i < scores.Length; ++i)
                 {
-                    sw.WriteLine(Common.getCategoryName(i) + " " + scores[i].ToString());
+                    sw.WriteLine(Functionality.getCategoryName(i) + " " + scores[i].ToString());
                 }
-                string tops = Common.getTopPredictedCategories(scores);
+                string tops = Functionality.getTopPredictedCategories(scores);
                 sw.WriteLine(tops);
                 Program.writeToConsole(tops);
             }
@@ -5697,14 +5697,14 @@ namespace FameBase
             }
             List<string> patchFileNamesForPredictions = new List<string>();
             // select those patches with certain functioanlity for a category
-            foreach (Common.Category cat in model._GRAPH._functionalityValues._cats)
+            foreach (Functionality.Category cat in model._GRAPH._functionalityValues._cats)
             {
-                List<Common.Functionality> funcs = Common.getFunctionalityFromCategory(cat);
+                List<Functionality.Functions> funcs = Functionality.getFunctionalityFromCategory(cat);
                 List<Node> subPatches = new List<Node>();
                 foreach (Node node in model._GRAPH._NODES)
                 {
-                    List<Common.Functionality> funcs_node = node._funcs;
-                    foreach (Common.Functionality f in funcs_node)
+                    List<Functionality.Functions> funcs_node = node._funcs;
+                    foreach (Functionality.Functions f in funcs_node)
                     {
                         if (funcs.Contains(f))
                         {
@@ -5774,14 +5774,14 @@ namespace FameBase
 
             string featureFileName = model._model_name + "_point_feature.csv";
             string feat_file = folder + featureFileName;
-            double[,] point_features = new double[model._SP._points.Length, Common._POINT_FEATURE_DIM];
+            double[,] point_features = new double[model._SP._points.Length, Functionality._POINT_FEATURE_DIM];
             using (StreamWriter sw = new StreamWriter(feat_file))
             {
                 int n = model._SP._points.Length;
                 for (int i = 0; i < n; ++i)
                 {
                     StringBuilder sb = new StringBuilder();
-                    int d = Common._POINT_FEAT_DIM;//3
+                    int d = Functionality._POINT_FEAT_DIM;//3
                     int dimId = 0;
                     for (int j = 0; j < d; ++j)
                     {
@@ -5789,28 +5789,28 @@ namespace FameBase
                         sb.Append(",");
                         point_features[i, dimId++] = model._funcFeat._pointFeats[i * d + j];
                     }
-                    d = Common._CURV_FEAT_DIM; //4
+                    d = Functionality._CURV_FEAT_DIM; //4
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._curvFeats[i * d + j])));
                         sb.Append(",");
                         point_features[i, dimId++] = model._funcFeat._curvFeats[i * d + j];
                     }
-                    d = Common._PCA_FEAT_DIM;//5
+                    d = Functionality._PCA_FEAT_DIM;//5
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._pcaFeats[i * d + j])));
                         sb.Append(",");
                         point_features[i, dimId++] = model._funcFeat._pcaFeats[i * d + j];
                     }
-                    d = Common._RAY_FEAT_DIM;//2
+                    d = Functionality._RAY_FEAT_DIM;//2
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._rayFeats[i * d + j])));
                         sb.Append(",");
                         point_features[i, dimId++] = model._funcFeat._rayFeats[i * d + j];
                     }
-                    d = Common._CONVEXHULL_FEAT_DIM;//2
+                    d = Functionality._CONVEXHULL_FEAT_DIM;//2
                     for (int j = 0; j < d; ++j)
                     {
                         sb.Append(this.formatOutputStr(Common.correct(model._funcFeat._conhullFeats[i * d + j])));
@@ -5923,10 +5923,10 @@ namespace FameBase
         private Model growNewFunctionality(Model m1, Model m2, string path, int idx, Random rand)
         {
             // find the new func in m2 and add to m1
-            List<Common.Functionality> funcs1 = m1._GRAPH.getGraphFuncs();
-            List<Common.Functionality> funcs2 = m2._GRAPH.getGraphFuncs();
-            List<Common.Functionality> cands = new List<Common.Functionality>();
-            foreach (Common.Functionality f2 in funcs2)
+            List<Functionality.Functions> funcs1 = m1._GRAPH.getGraphFuncs();
+            List<Functionality.Functions> funcs2 = m2._GRAPH.getGraphFuncs();
+            List<Functionality.Functions> cands = new List<Functionality.Functions>();
+            foreach (Functionality.Functions f2 in funcs2)
             {
                 if (!funcs1.Contains(f2))
                 {
@@ -5937,7 +5937,7 @@ namespace FameBase
                 return null;
             }
             int i = rand.Next(cands.Count);
-            Common.Functionality addf = cands[i];
+            Functionality.Functions addf = cands[i];
             Model m1_clone = m1.Clone() as Model;
             m1_clone._path = path;
             m1_clone._model_name = m1._model_name + "_grow_" + idx.ToString();
@@ -5983,14 +5983,14 @@ namespace FameBase
             }
             sourcePos /= ne;
             Vector3d targetPos;
-            if (addf == Common.Functionality.HAND_PLACE || addf == Common.Functionality.HUMAN_HIP)
+            if (addf == Functionality.Functions.HAND_PLACE || addf == Functionality.Functions.HUMAN_HIP)
             {
                 targetPos = new Vector3d(
                 attach._PART._BOUNDINGBOX.CENTER.x,
                 attach._PART._BOUNDINGBOX.MaxCoord.y,
                 attach._PART._BOUNDINGBOX.CENTER.z);
             }
-            else if (addf == Common.Functionality.SUPPORT)
+            else if (addf == Functionality.Functions.SUPPORT)
             {
                 targetPos = new Vector3d(
                 attach._PART._BOUNDINGBOX.CENTER.x,
@@ -6020,7 +6020,7 @@ namespace FameBase
             Node place_g1 = null;
             foreach (Node node in g1._NODES)
             {
-                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.HAND_PLACE))
                 {
                     place_g1 = node;
                     break;
@@ -6097,9 +6097,9 @@ namespace FameBase
             if (option == 1)
             {
                 // add a new functionality
-                List<Common.Functionality> funcs1 = g1.getGraphFuncs();
-                List<Common.Functionality> funcs2 = g2.getGraphFuncs();
-                foreach (Common.Functionality f in funcs1)
+                List<Functionality.Functions> funcs1 = g1.getGraphFuncs();
+                List<Functionality.Functions> funcs2 = g2.getGraphFuncs();
+                foreach (Functionality.Functions f in funcs1)
                 {
                     funcs2.Remove(f);
                 }
@@ -6107,7 +6107,7 @@ namespace FameBase
                 {
                     Random rand = new Random();
                     int fidx = rand.Next(funcs2.Count);
-                    Common.Functionality func = funcs2[fidx];
+                    Functionality.Functions func = funcs2[fidx];
                     foreach (Node node in g2._NODES)
                     {
                         if (node._funcs.Contains(func))
@@ -6132,7 +6132,7 @@ namespace FameBase
                     for (int i = 0; i < node._edges.Count; ++i)
                     {
                         Node adj = node._edges[i]._start == node ? node._edges[i]._end : node._edges[i]._start;
-                        if (adj._funcs.Contains(Common.Functionality.SUPPORT))
+                        if (adj._funcs.Contains(Functionality.Functions.SUPPORT))
                         //&& adj._PART._BOUNDINGBOX.MaxCoord.y < node._PART._BOUNDINGBOX.MaxCoord.y)
                         {
                             ++ns;
@@ -6418,7 +6418,7 @@ namespace FameBase
                     {
                         ++nHighProb;
                     }
-                    if (_currModel._GRAPH._functionalityValues._parentCategories.Contains((Common.Category)i))
+                    if (_currModel._GRAPH._functionalityValues._parentCategories.Contains((Functionality.Category)i))
                     {
                         if (prob > 0.9)
                         {
@@ -6465,7 +6465,7 @@ namespace FameBase
             }
             //foreach (Node node in _currModel._GRAPH._NODES)
             //{
-            //    for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            //    for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             //    {
             //        node._PART._highlightColors[i] = Color.FromArgb(255, 255, 255, 0);
             //    }
@@ -6500,7 +6500,7 @@ namespace FameBase
                 mc._GRAPH._functionalityValues = new FunctionalityFeatures();
             }
             mc._GRAPH._functionalityValues._validityVal = 0;
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
                 int cid = i;// _inputSetCats[i];
                 double[] probs = this.getProbabilityForACat(i, scores[i]);
@@ -6543,7 +6543,7 @@ namespace FameBase
             this._isPreRun = true;
             double[,] vals = this.partialMatching(_currModel, true);
             
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
                 int cid = i; // _inputSetCats[i];
                 _currModel._GRAPH._functionalityValues._funScores[cid] = vals[i, 0];
@@ -6567,7 +6567,7 @@ namespace FameBase
                 this.loadTrainedInfo();
             }
             Graph g = m._GRAPH;
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
                 int cid = i;
                 double[] probs = this.getProbabilityForACat(cid, g._functionalityValues._funScores[cid]);
@@ -6576,10 +6576,10 @@ namespace FameBase
                 g._functionalityValues._classProbs[cid] = probs[2];
             }
             g._functionalityValues._validityVal = 0;
-            foreach (Common.Category cat in g._functionalityValues._parentCategories)
+            foreach (Functionality.Category cat in g._functionalityValues._parentCategories)
             {
                 int cid = (int)cat;
-                if (cid < Common._NUM_CATEGORIY && g._functionalityValues._funScores[cid] > g._functionalityValues._validityVal)
+                if (cid < Functionality._NUM_CATEGORIY && g._functionalityValues._funScores[cid] > g._functionalityValues._validityVal)
                 {
                     g._functionalityValues._validityVal = g._functionalityValues._funScores[cid];
                 }
@@ -6609,7 +6609,7 @@ namespace FameBase
                     double val = this.computeICONfeaturePerCategory(im, _inputSetCats[j], point_features, useNodes, out patches);
                     distCats[i, j] = val;
 
-                    sb.Append(Common.getCategoryName(_inputSetCats[j]));
+                    sb.Append(Functionality.getCategoryName(_inputSetCats[j]));
                     sb.Append(" ");
                     sb.Append(distCats[i, j].ToString());
                     sb.Append("\n");
@@ -6695,31 +6695,31 @@ namespace FameBase
             bool isSuccess = this.computeShape2PoseAndIconFeatures(m);
             //double[,] point_features = this.writeModelSampleFeatureFilesForPrediction(m);
             // n * 18 put all features together
-            double[,] point_features = new double[nSamplePoints, Common._POINT_FEATURE_DIM];
+            double[,] point_features = new double[nSamplePoints, Functionality._POINT_FEATURE_DIM];
             for (int i = 0; i < nSamplePoints; ++i)
             {
                 int dimId = 0;
-                int d = Common._POINT_FEAT_DIM;
+                int d = Functionality._POINT_FEAT_DIM;
                 for (int j = 0; j < d; ++j)
                 {
                     point_features[i, dimId++] = m._funcFeat._pointFeats[i * d + j];
                 }
-                d = Common._CURV_FEAT_DIM;
+                d = Functionality._CURV_FEAT_DIM;
                 for (int j = 0; j < d; ++j)
                 {
                     point_features[i, dimId++] = m._funcFeat._curvFeats[i * d + j];
                 }
-                d = Common._PCA_FEAT_DIM;
+                d = Functionality._PCA_FEAT_DIM;
                 for (int j = 0; j < d; ++j)
                 {
                     point_features[i, dimId++] = m._funcFeat._pcaFeats[i * d + j];
                 }
-                d = Common._RAY_FEAT_DIM;
+                d = Functionality._RAY_FEAT_DIM;
                 for (int j = 0; j < d; ++j)
                 {
                     point_features[i, dimId++] = m._funcFeat._rayFeats[i * d + j];
                 }
-                d = Common._CONVEXHULL_FEAT_DIM;
+                d = Functionality._CONVEXHULL_FEAT_DIM;
                 for (int j = 0; j < d; ++j)
                 {
                     point_features[i, dimId++] = m._funcFeat._conhullFeats[i * d + j];
@@ -6764,7 +6764,7 @@ namespace FameBase
             for (int j = 0; j < _inputSetCats.Count; ++j)
             {
                 int cid = _inputSetCats[j];
-                if (cid >= Common._NUM_CATEGORIY)
+                if (cid >= Functionality._NUM_CATEGORIY)
                 {
                     continue;
                 }
@@ -6773,7 +6773,7 @@ namespace FameBase
                 {
                     ++nHighProb;
                 }
-                if (m._GRAPH._functionalityValues._parentCategories.Contains((Common.Category)cid))
+                if (m._GRAPH._functionalityValues._parentCategories.Contains((Functionality.Category)cid))
                 {
                     if (prob > 0.9)
                     {
@@ -6793,7 +6793,7 @@ namespace FameBase
                 novelty += prob * prob;
             }
             novelty /= _inputSetCats.Count;
-            m._GRAPH._functionalityValues._noveltyVal = Common._NOVELTY_MINIMUM + Common._NOVELTY_MINIMUM / _inputSetCats.Count * nHighProb;
+            m._GRAPH._functionalityValues._noveltyVal = Functionality._NOVELTY_MINIMUM + Functionality._NOVELTY_MINIMUM / _inputSetCats.Count * nHighProb;
             if (nParentProb > 0)
             {
                 if (nHighProb > 1)
@@ -6823,7 +6823,7 @@ namespace FameBase
             double novelVal = 0;
             int nhigh = 0;
             for (int j = 0; j < _inputSetCats.Count; ++j)
-                //for (int j = 0; j < Common._NUM_CATEGORIY; ++j)
+                //for (int j = 0; j < Functionality._NUM_CATEGORIY; ++j)
             {
                 int cid =  _inputSetCats[j];
                 double prob = probs[cid];
@@ -6848,7 +6848,7 @@ namespace FameBase
                     }
                 }
             }
-            double novelty = Common._NOVELTY_MINIMUM + Common._NOVELTY_MINIMUM / _inputSetCats.Count * nhigh;
+            double novelty = Functionality._NOVELTY_MINIMUM + Functionality._NOVELTY_MINIMUM / _inputSetCats.Count * nhigh;
 
             //novelty = 0;
             //for (int j = 0; j < _inputSetCats.Count; ++j)
@@ -6948,7 +6948,7 @@ namespace FameBase
 
         private double[,] partialMatching(Model m, bool doPartialMatching)
         {
-            double[,] res = new double[Common._NUM_CATEGORIY, 4]; // score + 3 prob
+            double[,] res = new double[Functionality._NUM_CATEGORIY, 4]; // score + 3 prob
             Graph g = m._GRAPH;
             int nNodes = g._NNodes;
             bool[] useNodes;
@@ -6964,7 +6964,7 @@ namespace FameBase
             //pointsFeatures = this.computePointFeatures(m);
             double[] scores = this.runFunctionalityTest(m);
             double[] probs;
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
                 probs = this.getProbabilityForACat(i, scores[i]);
                 res[i, 0] = scores[i];
@@ -6978,7 +6978,7 @@ namespace FameBase
             }
             // considering parent categories
             int id = 0;
-            foreach (Common.Category c in m._GRAPH._functionalityValues._parentCategories)
+            foreach (Functionality.Category c in m._GRAPH._functionalityValues._parentCategories)
             {
                 int cid = (int)c;
                 if (res[cid, 1] >= 0.9)
@@ -7049,8 +7049,8 @@ namespace FameBase
             {
                 return 1;
             }
-            Common.Category cat = (Common.Category)catIdx;
-            int[] patchIdxs = Common.getCategoryPatchIndicesInFeatureVector(cat);
+            Functionality.Category cat = (Functionality.Category)catIdx;
+            int[] patchIdxs = Functionality.getCategoryPatchIndicesInFeatureVector(cat);
             int nPatches = patchIdxs.Length;
             TrainedFeaturePerCategory trainedFeaturePerCat = _trainingFeaturesPerCategory[catIdx];
             // 1. estimate the functional patches - already pre-processed
@@ -7211,7 +7211,7 @@ namespace FameBase
                     List<double> weights2 = weights[q]; // w.r.t. patch q
                     // histogram
                     // * weight at each entry
-                    double[] binaryFeatureBins = new double[Common._NUM_BINARY_FEATURE];
+                    double[] binaryFeatureBins = new double[Functionality._NUM_BINARY_FEATURE];
                     for (int i = 0; i < points1.Count; ++i)
                     {
                         for (int j = 0; j < points2.Count; ++j)
@@ -7367,8 +7367,8 @@ namespace FameBase
         private bool selectNodesForCrossover(Graph g1, Graph g2, Random rand)
         {
             // select functionality, one or more
-            List<Common.Functionality> funcs = new List<Common.Functionality>();
-            int max_func_search = Common._NUM_FUNCTIONALITY;
+            List<Functionality.Functions> funcs = new List<Functionality.Functions>();
+            int max_func_search = Functionality._NUM_FUNCTIONALITY;
             int search = 0;
             g1.selectedNodes.Clear();
             g2.selectedNodes.Clear();
@@ -7381,7 +7381,7 @@ namespace FameBase
                     // only switch 1 functionality at one time
                     funcs = this.selectFunctionality(rand, 1);
                     funcs.Clear();
-                    funcs.Add(Common.Functionality.SUPPORT);
+                    funcs.Add(Functionality.Functions.SUPPORT);
                     if (option == 0)
                     {
                         g1.selectedNodes = g1.getNodesByFunctionality(funcs);
@@ -7402,7 +7402,7 @@ namespace FameBase
                 g2.selectedNodes.Clear();
                 // symmetry
                 List<int> visitedFuncs = new List<int>();
-                int nDiffFuncs = Enum.GetNames(typeof(Common.Functionality)).Length;
+                int nDiffFuncs = Enum.GetNames(typeof(Functionality.Functions)).Length;
                 while (!this.isValidSelection(g1, g2) && visitedFuncs.Count < nDiffFuncs)
                 {
                     int nf = rand.Next(nDiffFuncs);
@@ -7411,7 +7411,7 @@ namespace FameBase
                         nf = rand.Next(nDiffFuncs);
                     }
                     visitedFuncs.Add(nf);
-                    Common.Functionality func = this.getFunctionalityFromIndex(nf);
+                    Functionality.Functions func = this.getFunctionalityFromIndex(nf);
                     g1.selectedNodes = g1.selectSymmetryFuncNodes(func);
                     g2.selectedNodes = g2.selectSymmetryFuncNodes(func);
                 }
@@ -7467,10 +7467,10 @@ namespace FameBase
                 return false;
             }
 
-            //List<Common.Functionality> g1_selected_funcs = getAllFuncs(g1.selectedNodes);
-            //List<Common.Functionality> g2_selected_funcs = getAllFuncs(g2.selectedNodes);
-            //List<Common.Functionality> g1_unselected_funcs = getAllFuncs(g1_unselected);
-            //List<Common.Functionality> g2_unselected_funcs = getAllFuncs(g2_unselected);
+            //List<Functionality.Functions> g1_selected_funcs = getAllFuncs(g1.selectedNodes);
+            //List<Functionality.Functions> g2_selected_funcs = getAllFuncs(g2.selectedNodes);
+            //List<Functionality.Functions> g1_unselected_funcs = getAllFuncs(g1_unselected);
+            //List<Functionality.Functions> g2_unselected_funcs = getAllFuncs(g2_unselected);
 
             //if (this.hasfunctionIntersection(g1_selected_funcs, g2_unselected_funcs) ||
             //    this.hasfunctionIntersection(g1_unselected_funcs, g2_selected_funcs))
@@ -7480,12 +7480,12 @@ namespace FameBase
             return true;
         }// isValidSelection
 
-        private List<Common.Functionality> getAllFuncs(List<Node> nodes)
+        private List<Functionality.Functions> getAllFuncs(List<Node> nodes)
         {
-            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            List<Functionality.Functions> funcs = new List<Functionality.Functions>();
             foreach (Node node in nodes)
             {
-                foreach (Common.Functionality f in node._funcs)
+                foreach (Functionality.Functions f in node._funcs)
                 {
                     if (!funcs.Contains(f))
                     {
@@ -7496,9 +7496,9 @@ namespace FameBase
             return funcs;
         }// getAllFuncs
 
-        private bool hasfunctionIntersection(List<Common.Functionality> funcs1, List<Common.Functionality> funcs2)
+        private bool hasfunctionIntersection(List<Functionality.Functions> funcs1, List<Functionality.Functions> funcs2)
         {
-            foreach (Common.Functionality f1 in funcs1)
+            foreach (Functionality.Functions f1 in funcs1)
             {
                 if (funcs2.Contains(f1))
                 {
@@ -7819,7 +7819,7 @@ namespace FameBase
                 if (Math.Abs(ydist) < Common._thresh)
                 {
                     node._isGroundTouching = true;
-                    node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
+                    node.addFunctionality(Functionality.Functions.GROUND_TOUCHING);
                 }
             }
         }// adjustGroundTouching
@@ -7875,12 +7875,12 @@ namespace FameBase
             return r;
         }// runMutateOrCrossover
 
-        private List<Common.Functionality> selectFunctionality(Random rand, int maxNfunc)
+        private List<Functionality.Functions> selectFunctionality(Random rand, int maxNfunc)
         {
-            int n = Common._NUM_FUNCTIONALITY;
+            int n = Functionality._NUM_FUNCTIONALITY;
             int r = rand.Next(n) + 1;
             r = Math.Min(r, maxNfunc);
-            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            List<Functionality.Functions> funcs = new List<Functionality.Functions>();
             for (int i = 0; i < r; ++i)
             {
                 int j = rand.Next(n);
@@ -7888,7 +7888,7 @@ namespace FameBase
                 {
                     j = 2;
                 }
-                Common.Functionality f = getFunctionalityFromIndex(j);
+                Functionality.Functions f = getFunctionalityFromIndex(j);
                 if (!funcs.Contains(f))
                 {
                     funcs.Add(f);
@@ -8661,7 +8661,7 @@ namespace FameBase
             return false;
         }// hasInvalidVec
 
-        /*****************end - Functionality-aware evolution*************************/
+        /*****************end - Functions-aware evolution*************************/
 
 
         //########## set modes ##########//
@@ -9985,11 +9985,11 @@ namespace FameBase
                 // in case the order of files are not the same in diff folders
                 string model_name_filter = model_name + "_";
                 List<PatchWeightPerCategory> patchWeights = new List<PatchWeightPerCategory>();
-                for (int nc = 0; nc < Common._NUM_CATEGORIY; ++nc)
+                for (int nc = 0; nc < Functionality._NUM_CATEGORIY; ++nc)
                 {
                     // weights
                     List<string> cur_wfiles = new List<string>();
-                    string cat_name = Common.getCategoryName(nc);
+                    string cat_name = Functionality.getCategoryName(nc);
                     int fid = 0;
                     string model_wight_name_filter = model_name_filter + "predict_" + cat_name + "_";
                     model_wight_name_filter = model_wight_name_filter.ToLower();
@@ -10241,10 +10241,10 @@ namespace FameBase
                 _currModel = model;
                 // weights                
                 string model_name_filter = model_name + "_";
-                for (int nc = 0; nc < Common._NUM_CATEGORIY; ++nc)
+                for (int nc = 0; nc < Functionality._NUM_CATEGORIY; ++nc)
                 {
                     List<string> cur_wfiles = new List<string>();
-                    string nCategory = Common.getCategoryName(nc);
+                    string nCategory = Functionality.getCategoryName(nc);
                     //if (nCategory != "TVBench")
                     //{
                     //    continue;

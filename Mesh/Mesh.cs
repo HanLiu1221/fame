@@ -1038,7 +1038,7 @@ namespace Geometry
         public Vector3d[] computePointPCA()
         {
             // return eigen values (1 vec) and eigen vectors (3 vecs)
-            int dim = Common._PCA_FEAT_DIM;
+            int dim = Component.Functionality._PCA_FEAT_DIM;
             Vector3d[] pcaInfo = new Vector3d[this.vertexCount * dim];
             for (int i = 0; i < this.vertexCount; ++i)
             {
@@ -1302,7 +1302,7 @@ namespace Geometry
         public double[] computeRayDist(Vector3d[] vposes, Vector3d[] vnormals, out bool[] shouldUsePoints)
         {
             // dist & angle
-            int dim = Common._RAY_FEAT_DIM;
+            int dim = Component.Functionality._RAY_FEAT_DIM;
             double[] rayDists = new double[vposes.Length * dim];
             double maxdist = double.MinValue;
             double distThres = 0.01;

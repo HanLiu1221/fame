@@ -21,7 +21,7 @@ namespace Component
         double _minNodeBboxScale; // min scale of a box
         double _maxAdjNodesDist; // max distance between two nodes
         
-        private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
+        private List<Functionality.Functions> _origin_funcs = new List<Functionality.Functions>();
 
         // test
         public List<List<Node>> selectedNodePairs = new List<List<Node>>();
@@ -80,12 +80,12 @@ namespace Component
             return new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
         }// composeMesh       
 
-        public List<Common.Functionality> getGraphFuncs()
+        public List<Functionality.Functions> getGraphFuncs()
         {
-            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            List<Functionality.Functions> funcs = new List<Functionality.Functions>();
             foreach (Node node in _nodes)
             {
-                foreach (Common.Functionality f in node._funcs)
+                foreach (Functionality.Functions f in node._funcs)
                 {
                     if (!funcs.Contains(f))
                     {
@@ -135,7 +135,7 @@ namespace Component
             cloned._maxAdjNodesDist = _maxAdjNodesDist;
             cloned._minNodeBboxScale = _minNodeBboxScale;
             cloned._maxNodeBboxScale = _maxNodeBboxScale;
-            cloned._origin_funcs = new List<Common.Functionality>(_origin_funcs);
+            cloned._origin_funcs = new List<Functionality.Functions>(_origin_funcs);
             return cloned;
         }// clone
 
@@ -186,7 +186,7 @@ namespace Component
             return vals;
         }// calScale
 
-        public List<Node> getNodesByUniqueFunctionality(Common.Functionality func)
+        public List<Node> getNodesByUniqueFunctionality(Functionality.Functions func)
         {
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -199,7 +199,7 @@ namespace Component
             return nodes;
         }// getNodesByUniqueFunctionality
 
-        public List<Node> getNodesByFunctionality(Common.Functionality func)
+        public List<Node> getNodesByFunctionality(Functionality.Functions func)
         {
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -212,11 +212,11 @@ namespace Component
             return nodes;
         }// getNodesByFunctionality
 
-        public List<Node> getNodesByFunctionality(List<Common.Functionality> funcs)
+        public List<Node> getNodesByFunctionality(List<Functionality.Functions> funcs)
         {
             // sample functional parts (connected!)
             List<Node> nodes = new List<Node>();
-            foreach (Common.Functionality f in funcs)
+            foreach (Functionality.Functions f in funcs)
             {
                 List<Node> cur = getNodesByFunctionality(f);
                 foreach (Node node in cur)
@@ -477,7 +477,7 @@ namespace Component
             return center;
         }// getGroundTouchingNode
 
-        public List<Node> selectFuncNodes(Common.Functionality func)
+        public List<Node> selectFuncNodes(Functionality.Functions func)
         {
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -490,7 +490,7 @@ namespace Component
             return nodes;
         }// selectFuncNodes
 
-        public List<Node> selectSymmetryFuncNodes(Common.Functionality func)
+        public List<Node> selectSymmetryFuncNodes(Functionality.Functions func)
         {
             List<Node> sym_nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -522,7 +522,7 @@ namespace Component
                 if (Math.Abs(ydist) < Common._thresh)
                 {
                     node._isGroundTouching = true;
-                    node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
+                    node.addFunctionality(Functionality.Functions.GROUND_TOUCHING);
                 }
             }
         }// markGroundTouchingNodes
@@ -778,7 +778,7 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 if (node._edges.Count > nMaxConn)
-                //&& (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HUMAN_HIP)))
+                //&& (node._funcs.Contains(Functionality.Functions.HAND_PLACE) || node._funcs.Contains(Functionality.Functions.HUMAN_HIP)))
                 {
                     nMaxConn = node._edges.Count;
                     key = node;
@@ -1081,7 +1081,7 @@ namespace Component
             Node attach = null;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Common.Functionality.HUMAN_BACK) || node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.HUMAN_BACK) || node._funcs.Contains(Functionality.Functions.HAND_PLACE))
                 {
                     if (node._PART._MESH.MinCoord.z < minz)
                     {
@@ -1119,7 +1119,7 @@ namespace Component
         {
             foreach (Node node in _nodes)
             {
-                if (!node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (!node._funcs.Contains(Functionality.Functions.HAND_PLACE))
                 {
                     continue;
                 }
@@ -1148,7 +1148,7 @@ namespace Component
                 }     
                 if (catId >= 0)
                 {
-                    string catName = Common.getCategoryName(catId).ToLower();
+                    string catName = Functionality.getCategoryName(catId).ToLower();
                     if (!name.Contains(catName))
                     {
                         continue;
@@ -1311,7 +1311,7 @@ namespace Component
             int nFuncParts = 0;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.HAND_PLACE))
                 {
                     ++nFuncParts;
                 }
@@ -1320,7 +1320,7 @@ namespace Component
             int nTitled = 0;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.HAND_PLACE))
                 {
                     Vector3d nor = node._PART._BOUNDINGBOX._PLANES[0].normal;
                     double angle = Math.Acos(nor.Dot(Common.uprightVec));
@@ -1345,7 +1345,7 @@ namespace Component
                 Vector3d v = node._PART._BOUNDINGBOX.CENTER;
                 _centerOfMass += v;
                 centers2d.Add(new Vector2d(v.x, v.z));
-                if (node._funcs.Contains(Common.Functionality.GROUND_TOUCHING))
+                if (node._funcs.Contains(Functionality.Functions.GROUND_TOUCHING))
                 {
                     groundPnts.Add(node._PART._BOUNDINGBOX.MinCoord);
                     groundPnts.Add(node._PART._BOUNDINGBOX.MaxCoord);
@@ -1432,12 +1432,12 @@ namespace Component
 
         private bool isLoseOriginalFunctionality()
         {
-            List<Common.Functionality> funs = this.getGraphFuncs();
+            List<Functionality.Functions> funs = this.getGraphFuncs();
             if (funs.Count < _origin_funcs.Count)
             {
                 return true;
             }
-            //foreach (Common.Functionality f in _origin_funcs)
+            //foreach (Functionality.Functions f in _origin_funcs)
             //{
             //    if (!funs.Contains(f))
             //    {
@@ -1600,7 +1600,7 @@ namespace Component
             return v1_min.x > v2_max.x + thr || v1_min.y > v2_max.y + thr || v1_min.z > v2_max.z + thr;
         }// isTwoPolyOverlap
 
-        // Functionality features
+        // Functions features
         //public void computeFeatures()
         //{
         //    // 1. point featurs
@@ -1637,8 +1637,8 @@ namespace Component
             _partGroups.Add(new PartGroup(new List<Node>(), 0));
             comIndices.Add(new List<int>());
             // 1. functionality group
-            var allFuncs = Enum.GetValues(typeof(Common.Functionality));
-            foreach (Common.Functionality func in allFuncs)
+            var allFuncs = Enum.GetValues(typeof(Functionality.Functions));
+            foreach (Functionality.Functions func in allFuncs)
             {
                 List<Node> nodes = this.getNodesByFunctionality(func);
                 if (nodes.Count == 0)
@@ -1656,7 +1656,7 @@ namespace Component
                     comIndices.Add(indices);
                     _partGroups.Add(ng);
                 }
-                if (func == Common.Functionality.HAND_PLACE && nodes.Count > 1)
+                if (func == Functionality.Functions.HAND_PLACE && nodes.Count > 1)
                 {
                     // main functionality part
                     List<Node> single = new List<Node>();
@@ -1879,13 +1879,13 @@ namespace Component
             {
                 return true;
             }
-            List<Common.Functionality> funcs = nodes[0]._funcs;
+            List<Functionality.Functions> funcs = nodes[0]._funcs;
             foreach (PartGroup pg in partGroups)
             {
                 if (pg._NODES.Count == 1)
                 {
                     bool iden = false;
-                    foreach (Common.Functionality f in funcs)
+                    foreach (Functionality.Functions f in funcs)
                     {
                         if (pg._NODES[0]._funcs.Contains(f))
                         {
@@ -2010,9 +2010,9 @@ namespace Component
         public bool _allNeigborUpdated = false;
         public Node symmetry = null;
         public Symmetry symm = null;
-        public List<Common.Functionality> _funcs = new List<Common.Functionality>();
+        public List<Functionality.Functions> _funcs = new List<Functionality.Functions>();
         public Vector3d _ratios = new Vector3d();
-        public bool[] _isFunctionalPatch = new bool[Common.__TOTAL_FUNCTONAL_PATCHES];
+        public bool[] _isFunctionalPatch = new bool[Functionality.__TOTAL_FUNCTONAL_PATCHES];
         public Prism _functionalSpaceAgent;
 
         public Node(Part p, int idx)
@@ -2070,13 +2070,13 @@ namespace Component
             return null;
         }// getEdge
 
-        public void addFunctionality(Common.Functionality func)
+        public void addFunctionality(Functionality.Functions func)
         {
             if (!_funcs.Contains(func))
             {
                 _funcs.Add(func);
             }
-            if (func == Common.Functionality.GROUND_TOUCHING)
+            if (func == Functionality.Functions.GROUND_TOUCHING)
             {
                 _isGroundTouching = true;
             }
@@ -2100,7 +2100,7 @@ namespace Component
         {
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
-            cloned._funcs = new List<Common.Functionality>(_funcs);
+            cloned._funcs = new List<Functionality.Functions>(_funcs);
             return cloned;
         }// Clone
 
@@ -2109,7 +2109,7 @@ namespace Component
             Part p = _part.Clone() as Part;
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
-            cloned._funcs = new List<Common.Functionality>(_funcs);
+            cloned._funcs = new List<Functionality.Functions>(_funcs);
             if (this._functionalSpaceAgent != null)
             {
                 cloned._functionalSpaceAgent = this._functionalSpaceAgent.Clone() as Prism;
@@ -2319,23 +2319,23 @@ namespace Component
 
     public class FunctionalityFeatures
     {
-        public Common.Category[] _cats = new Common.Category[Common._NUM_CATEGORIY];
-        public double[] _funScores = new double[Common._NUM_CATEGORIY];
-        public List<Common.Category> _parentCategories = new List<Common.Category>();
-        public double[] _inClassProbs = new double[Common._NUM_CATEGORIY];
-        public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
-        public double[] _classProbs = new double[Common._NUM_CATEGORIY];
-        public double _noveltyVal = Common._NOVELTY_MINIMUM;
+        public Functionality.Category[] _cats = new Functionality.Category[Functionality._NUM_CATEGORIY];
+        public double[] _funScores = new double[Functionality._NUM_CATEGORIY];
+        public List<Functionality.Category> _parentCategories = new List<Functionality.Category>();
+        public double[] _inClassProbs = new double[Functionality._NUM_CATEGORIY];
+        public double[] _outClassProbs = new double[Functionality._NUM_CATEGORIY];
+        public double[] _classProbs = new double[Functionality._NUM_CATEGORIY];
+        public double _noveltyVal = Functionality._NOVELTY_MINIMUM;
         public double _validityVal = 0;
         public FunctionalityFeatures()
         {
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
-                _cats[i] = (Common.Category)i;
+                _cats[i] = (Functionality.Category)i;
             }
         }
 
-        public FunctionalityFeatures(List<Common.Category> cats, List<double> vals)
+        public FunctionalityFeatures(List<Functionality.Category> cats, List<double> vals)
         {
             _cats = cats.ToArray();
             _funScores = vals.ToArray();
@@ -2343,15 +2343,15 @@ namespace Component
 
         public Object clone()
         {
-            List<Common.Category> cats = new List<Common.Category>(_cats);
+            List<Functionality.Category> cats = new List<Functionality.Category>(_cats);
             List<double> vals = new List<double>(_funScores);
             FunctionalityFeatures ff = new FunctionalityFeatures(cats, vals);
             return ff;
         }
 
-        public void addParentCategories(List<Common.Category> parents)
+        public void addParentCategories(List<Functionality.Category> parents)
         {
-            foreach (Common.Category cat in parents) {
+            foreach (Functionality.Category cat in parents) {
                 if (!_parentCategories.Contains(cat))
                 {
                     _parentCategories.Add(cat);

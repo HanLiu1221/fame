@@ -1174,7 +1174,7 @@
             this.removeallToolStripMenuItem});
             this.functionalityToolStripMenuItem.Name = "functionalityToolStripMenuItem";
             this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(143, 22);
-            this.functionalityToolStripMenuItem.Text = "Functionality";
+            this.functionalityToolStripMenuItem.Text = "Functions";
             // 
             // humanbackToolStripMenuItem
             // 

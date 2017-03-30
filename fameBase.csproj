@@ -152,6 +152,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Component\Functionality.cs" />
     <Compile Include="Component\Graph.cs" />
     <Compile Include="Component\HumanPose.cs" />
     <Compile Include="Component\Part.cs" />

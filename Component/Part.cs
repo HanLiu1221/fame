@@ -26,14 +26,14 @@ namespace Component
 
         public SamplePoints _partSP;
         public string _partName;
-        public Common.Category _orignCategory;
+        public Functionality.Category _orignCategory;
 
         public List<Prism> _functionalSpacePrims = new List<Prism>();
 
         public Color _COLOR = Color.LightBlue;
 
         // Test
-        public Color[] _highlightColors = new Color[Common._NUM_CATEGORIY];
+        public Color[] _highlightColors = new Color[Functionality._NUM_CATEGORIY];
 
         public Part(Mesh m)
         {
@@ -952,7 +952,7 @@ namespace Component
                 computeModeBox();
             }
             int n = _SP._points.Length;
-            int dim = Common._POINT_FEAT_DIM;
+            int dim = Functionality._POINT_FEAT_DIM;
             this._funcFeat._pointFeats = new double[n * dim];
             double maxh = double.MinValue;
             double minh = double.MaxValue;
@@ -1052,7 +1052,7 @@ namespace Component
             //    computeConvexHull();
             //}
             computeConvexHull();
-            int dim = Common._CONVEXHULL_FEAT_DIM;
+            int dim = Functionality._CONVEXHULL_FEAT_DIM;
             double maxdist = double.MinValue;
             double mindist = double.MaxValue;
             _funcFeat._conhullFeats = new double[dim * _SP._points.Length];
@@ -1083,7 +1083,7 @@ namespace Component
             //}
             //this.computeCenterOfMass();
             _centerOfMass = (_mesh.MaxCoord + _mesh.MinCoord) / 2;
-            int dim = Common._CONVEXHULL_FEAT_DIM;
+            int dim = Functionality._CONVEXHULL_FEAT_DIM;
             double maxdist = double.MinValue;
             double mindist = double.MaxValue;
             _funcFeat._cenOfMassFeats = new double[dim * _SP._points.Length];
@@ -1380,9 +1380,9 @@ namespace Component
                 List<Color> samplePntsColors = new List<Color>();
                 int[] faceIdxs = fIndex.ToArray();
                 List<PatchWeightPerCategory> weightsPerCat = new List<PatchWeightPerCategory>();
-                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
                 {
-                    weightsPerCat.Add(new PatchWeightPerCategory(Common.getCategoryName(i)));
+                    weightsPerCat.Add(new PatchWeightPerCategory(Functionality.getCategoryName(i)));
                 }
                 // find corresponding sample points from each triangle face 
                 // each face can have 0, 1,...n sample points
@@ -1410,7 +1410,7 @@ namespace Component
                         spPerPart.AddRange(spIds);
                         // collect weights per part
                         int totalSamplePoints = spPerPart.Count;
-                        for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+                        for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
                         {
                             weightsPerCat[c]._weights = new double[spPerPart.Count, _SP._weightsPerCat[c]._nPatches];
                             for (int np = 0; np < totalSamplePoints; ++np)
@@ -1628,9 +1628,9 @@ namespace Component
             List<int> samplePntsFaceIdxs = new List<int>();
             List<Color> samplePntsColors = new List<Color>();
             List<PatchWeightPerCategory> mergedWeights = new List<PatchWeightPerCategory>();
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
-                mergedWeights.Add(new PatchWeightPerCategory(Common.getCategoryName(i)));
+                mergedWeights.Add(new PatchWeightPerCategory(Functionality.getCategoryName(i)));
             }
             int totalSamplePoints = 0;
             foreach (Part part in parts)
@@ -1657,9 +1657,9 @@ namespace Component
             if (totalSamplePoints > 0)
             {
                 // merge points weights
-                for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+                for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
                 {
-                    int iNumPatches = Common.getNumberOfFunctionalPatchesPerCategory((Common.Category)i);
+                    int iNumPatches = Functionality.getNumberOfFunctionalPatchesPerCategory((Functionality.Category)i);
                     mergedWeights[i]._weights = new double[totalSamplePoints, iNumPatches];
                     mergedWeights[i]._nPatches = iNumPatches;
                     mergedWeights[i]._nPoints = totalSamplePoints;
@@ -1738,8 +1738,8 @@ namespace Component
 
             if (_GRAPH != null && _GRAPH._functionalityValues != null)
             {
-                if (_GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Handcart) ||
-                    _GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Basket))
+                if (_GRAPH._functionalityValues._parentCategories.Contains(Functionality.Category.Handcart) ||
+                    _GRAPH._functionalityValues._parentCategories.Contains(Functionality.Category.Basket))
                 {
                     if ((_funcSpaces.Length == 3 && idx == 1) || (_funcSpaces.Length == 2 && idx == 0))
                     {
@@ -1760,7 +1760,7 @@ namespace Component
             bool before = n == 2;
             if (_GRAPH != null && _GRAPH._functionalityValues != null)
             {
-                if (!_GRAPH._functionalityValues._parentCategories.Contains(Common.Category.Basket))
+                if (!_GRAPH._functionalityValues._parentCategories.Contains(Functionality.Category.Basket))
                 {
                     n--;
                     before = false;
@@ -2336,7 +2336,7 @@ namespace Component
     {
         int _parentShapeIdx = -1;
         List<Node> _nodes = new List<Node>();
-        public double[] _featureVector = new double[Common.__TOTAL_FUNCTONAL_PATCHES];
+        public double[] _featureVector = new double[Functionality.__TOTAL_FUNCTONAL_PATCHES];
         public int _gen = 0;
         public bool _isSymmBreak = false;
 
@@ -2357,7 +2357,7 @@ namespace Component
         {
             foreach(Node node in _nodes)
             {
-                if (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HANG))
+                if (node._funcs.Contains(Functionality.Functions.HAND_PLACE) || node._funcs.Contains(Functionality.Functions.HANG))
                 {
                     return true;
                 }
@@ -2371,7 +2371,7 @@ namespace Component
             {
                 return;
             }
-            int ndim = Common.__TOTAL_FUNCTONAL_PATCHES;
+            int ndim = Functionality.__TOTAL_FUNCTONAL_PATCHES;
             double[] means = new double[ndim];
             double[] stds = new double[ndim];
             double[] sums = new double[ndim];
@@ -2381,7 +2381,7 @@ namespace Component
                 // accummulate the weight fields
                 SamplePoints sp = node._PART._partSP;
                 int d = 0;
-                for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+                for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
                 {
                     if (sp == null || sp._weightsPerCat == null || sp._weightsPerCat.Count == 0)
                     {
@@ -2417,7 +2417,7 @@ namespace Component
             {
                 SamplePoints sp = node._PART._partSP;
                 int d = 0;
-                for (int c = 0; c < Common._NUM_CATEGORIY; ++c)
+                for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
                 {
                     for (int i = 0; i < sp._weightsPerCat[c]._nPatches; ++i)
                     {
@@ -2500,17 +2500,17 @@ namespace Component
 
     public class TrainedFeaturePerCategory
     {
-        public Common.Category _cat;
+        public Functionality.Category _cat;
         public int _nPatches = 0;
         public int _npairs = 0;
         public List<double[,]> _unaryF;
         public List<double[,]> _binaryF;
         public double[] weights;
 
-        public TrainedFeaturePerCategory(Common.Category c)
+        public TrainedFeaturePerCategory(Functionality.Category c)
         {
             _cat = c;
-            _nPatches = Common.getNumberOfFunctionalPatchesPerCategory(c);
+            _nPatches = Functionality.getNumberOfFunctionalPatchesPerCategory(c);
             _npairs = _nPatches * (_nPatches + 1) / 2;
             _unaryF = new List<double[,]>();
             _binaryF = new List<double[,]>();
