@@ -98,16 +98,17 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Accord">
-      <HintPath>bin\Dlls\Accord.dll</HintPath>
+    <Reference Include="Accord, Version=3.3.0.0, Culture=neutral, PublicKeyToken=fa1a88e29555ccf7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Program Files (x86)\Accord.NET\Framework\Release\net45\Accord.dll</HintPath>
     </Reference>
     <Reference Include="Accord.Math, Version=3.3.0.0, Culture=neutral, PublicKeyToken=fa1a88e29555ccf7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Dlls\Accord.Math.dll</HintPath>
+      <HintPath>..\..\..\..\Program Files (x86)\Accord.NET\Framework\Release\net45\Accord.Math.dll</HintPath>
     </Reference>
     <Reference Include="Accord.Statistics, Version=3.3.0.0, Culture=neutral, PublicKeyToken=fa1a88e29555ccf7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Dlls\Accord.Statistics.dll</HintPath>
+      <HintPath>..\..\..\..\Program Files (x86)\Accord.NET\Framework\Release\net45\Accord.Statistics.dll</HintPath>
     </Reference>
     <Reference Include="alglibnet2, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>

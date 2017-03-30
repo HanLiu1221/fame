@@ -394,6 +394,14 @@ namespace FameBase
             MeshClass mc = new MeshClass(m);
             this._meshClasses.Add(mc);
             this.currMeshClass = mc;
+            if (_currModel != null) // insert parts
+            {
+                _currModel.addAPart(new Part(m));
+            }
+            else
+            {
+                _currModel = new Model(m);
+            }
         }// importMesh
 
         public string getStats()
@@ -473,7 +481,7 @@ namespace FameBase
                 // save a mesh for the current model
                 if (_currModel._NPARTS > 0)
                 {
-                    this.saveModelObj(filename);
+                    this.saveModelObj(_currModel, filename);
                     return;
                 }
                 mesh = _currModel._MESH;
@@ -694,12 +702,12 @@ namespace FameBase
             return sb.ToString();
         }// colorToString
 
-        private void saveModelObj(string filename)
+        private void saveModelObj(Model model, string filename)
         {
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 int start = 0;
-                foreach (Part p in _currModel._PARTS)
+                foreach (Part p in model._PARTS)
                 {
                     Mesh mesh = p._MESH;
 
@@ -714,7 +722,7 @@ namespace FameBase
                         sw.WriteLine(s);
                     }
                 }
-                foreach (Part p in _currModel._PARTS)
+                foreach (Part p in model._PARTS)
                 {
                     Mesh mesh = p._MESH;
                     // face
@@ -975,7 +983,8 @@ namespace FameBase
                 model.composeMesh();
             }
             string meshName = foldername + model_name + ".obj";
-            this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
+            //this.saveObj(model._MESH, meshName, GLDrawer.MeshColor);
+            this.saveModelObj(model, meshName);
             // save .off file & .pts file for shape2pose feature computation
             string shape2poseDataFolder = model._path + "shape2pose\\" + model._model_name + "\\";
             string offname = shape2poseDataFolder + model._model_name + ".off";
@@ -1444,6 +1453,65 @@ namespace FameBase
             }
             return true;
         }// computeShape2PoseAndIconFeatures
+
+        public void LFD_test()
+        {
+            this.LFD(_ancesterModels);
+        }
+
+        private void LFD(List<Model> models)
+        {
+            // compare the similarity between shapes to select a set of diverse shapes
+            string path = @"..\..\external\LFD\";
+            string alighmentCmd = path + "3DAlignment.exe";
+            string lfdCmd = path + "GroundTruth.exe";
+            string prstCmdPara = "";
+            string listFile = path + "list.txt";
+            string prefix = "Models/";
+            string model_path = path + prefix;
+
+            if (!Directory.Exists(model_path))
+            {
+                Directory.CreateDirectory(model_path);
+            }
+
+            // 1. write .obj file name to "list.txt"
+            if (models == null || models.Count < 2)
+            {
+                MessageBox.Show("Not enough models for comparison.");
+                return;
+            }
+            using (StreamWriter sw = new StreamWriter(listFile))
+            {
+                foreach (Model model in models)
+                {
+                    string name = prefix + model._model_name;
+                    sw.WriteLine(name);
+                    string fullfilename = model_path + model._model_name + ".obj";
+                    this.saveModelObj(model, fullfilename);
+                }
+            }
+
+
+            // 2. call "3DAlignment.exe" for computing features
+
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = alighmentCmd;
+            startInfo.Arguments = prstCmdPara;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+
+            // 2. read model names from "list.txt" to compute the similarity of pairs of models using "GroundTruth.exe"
+            process = new Process();
+            startInfo = new ProcessStartInfo();
+            startInfo.FileName = lfdCmd;
+            startInfo.Arguments = prstCmdPara;
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+        }
 
 
         private double[] loadShape2Pose_OrientedGeodesicPCAFeatures(string filename)
@@ -6854,6 +6922,7 @@ namespace FameBase
             //pointFeatures = this.computePointFeatures(mc);
             return mc;
         }// composeASubMatch
+
         private double[] seperatePartialMatching(Model m, int catIdx, double[,] pointsFeatures)
         {
             double[] res = new double[4]; // score + 3 prob
@@ -6876,6 +6945,7 @@ namespace FameBase
             res[3] = probs[2];
             return res;
         }// seperatePartialMatching
+
         private double[,] partialMatching(Model m, bool doPartialMatching)
         {
             double[,] res = new double[Common._NUM_CATEGORIY, 4]; // score + 3 prob
@@ -10942,12 +11012,8 @@ namespace FameBase
                 Gl.glEnable(Gl.GL_DEPTH_TEST);
             }
 
-            this.drawCurrentMesh();
-
-            this.drawImportMeshes();
-
             // Draw all meshes
-            if (_currModel != null && _meshClasses.Count == 0)
+            if (_currModel != null)
             {
                 this.drawModel();
                 if (_currModel._GRAPH != null && this.isDrawGraph)
@@ -10955,6 +11021,10 @@ namespace FameBase
                     this.drawGraph(_currModel._GRAPH);
                 }
             }
+
+            this.drawCurrentMesh();
+
+            this.drawImportMeshes();            
 
             this.drawHumanPose();
 
@@ -10998,11 +11068,6 @@ namespace FameBase
 
         private void drawCurrentMesh()
         {
-            //if (this._meshClasses.Count > 0)
-            //{
-            //    this.drawAllMeshes();
-            //    return;
-            //}
             if (this.currMeshClass == null || _currModel != null)
             {
                 return;
@@ -11037,41 +11102,12 @@ namespace FameBase
             }
         }// drawCurrentMesh
 
-        private void drawAllMeshes()
+        private void drawImportMeshes()
         {
-            if (_currModel != null)
+            if (_currModel != null || _meshClasses.Count < 2) // the current mesh is already drawn if there is only one
             {
                 return;
             }
-            foreach (MeshClass mc in this._meshClasses)
-            {
-                if (this.isDrawMesh)
-                {
-                    GLDrawer.drawMeshFace(mc.Mesh, GLDrawer.MeshColor, false);
-                }
-                if (this.drawEdge)
-                {
-                    mc.renderWireFrame();
-                }
-                if (this.drawVertex)
-                {
-                    if (mc.Mesh.VertexColor != null && mc.Mesh.VertexColor.Length > 0)
-                    {
-                        mc.renderVertices_color();
-                    }
-                    else
-                    {
-                        mc.renderVertices();
-                    }
-                }
-                mc.drawSelectedVertex();
-                mc.drawSelectedEdges();
-                mc.drawSelectedFaces();
-            }
-        }// drawAllMeshes
-
-        private void drawImportMeshes()
-        {
             int i = 0;
             foreach (MeshClass mc in this._meshClasses)
             {

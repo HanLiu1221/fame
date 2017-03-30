@@ -176,7 +176,8 @@ namespace Component
             //this.calculateAxisAlignedBbox();
             //return;
 
-            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray);
+            PrincipalComponentAnalysis pca = new PrincipalComponentAnalysis(vArray, AnalysisMethod.Center);
+            pca.Compute();
             
             if (option == 2 || pca.Components.Count < 3)
             {
@@ -718,6 +719,7 @@ namespace Component
             computeConvexHull();
             bool needMerge = _parts == null ? true : _parts.Count == 0;
             this.initializeParts();
+            this.unify();
             //if (needMerge)
             //{
             //    this.mergeNearbyParts();
