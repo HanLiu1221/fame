@@ -1627,6 +1627,7 @@ namespace Component
             PartGroup ng = new PartGroup(selectedNodes, 0);
             _partGroups.Add(ng);
         }
+
         public void initializePartGroups(string modelName)
         {
             string model_name = modelName.ToLower();
@@ -1637,6 +1638,11 @@ namespace Component
             _partGroups.Add(new PartGroup(new List<Node>(), 0));
             comIndices.Add(new List<int>());
             // 1. functionality group
+            // Note that in different models, some parts have multiple functionality due to the segmentation
+            // e.g., one piece of furniture, like chair seat and back are not separable
+            // In the element level, one segment can only have one function, if a segment has multiple functions,
+            // that means it contains unserparable parts, this information should be encoded for pairing with 
+            // element(s) from another shape having the same functions.
             var allFuncs = Enum.GetValues(typeof(Functionality.Functions));
             foreach (Functionality.Functions func in allFuncs)
             {
@@ -1656,7 +1662,7 @@ namespace Component
                     comIndices.Add(indices);
                     _partGroups.Add(ng);
                 }
-                if (func == Functionality.Functions.HAND_PLACE && nodes.Count > 1)
+                if (Functionality.IsMainFunction(func))
                 {
                     // main functionality part
                     List<Node> single = new List<Node>();
@@ -2010,6 +2016,8 @@ namespace Component
         public bool _allNeigborUpdated = false;
         public Node symmetry = null;
         public Symmetry symm = null;
+        // only if the node contains multiple semantic parts that cannot be segmented in the mesh
+        // or, maybe try to even separate the mesh
         public List<Functionality.Functions> _funcs = new List<Functionality.Functions>();
         public Vector3d _ratios = new Vector3d();
         public bool[] _isFunctionalPatch = new bool[Functionality.__TOTAL_FUNCTONAL_PATCHES];

@@ -21,11 +21,13 @@ namespace Component
         List<Part> _jointParts = new List<Part>();
         List<Joint> _joints = new List<Joint>();
         Vector3d[] axes;
-        int[] _vertexIndexInParentMesh;
+
+        // Deprecated, since it costs to trace such indices, especially when crossover happens
+        int[] _vertexIndexInParentMesh; 
         int[] _faceVIndexInParentMesh;
 
         public SamplePoints _partSP;
-        public string _partName;
+        public string _partName; // original_model_name + "_" + part_name + "_" + #num (only change the number to avoid repetitions)
         public Functionality.Category _orignCategory;
 
         public List<Prism> _functionalSpacePrims = new List<Prism>();
@@ -658,7 +660,9 @@ namespace Component
         public FunctionalSpace[] _funcSpaces;
 
         public string _path = "";
-        public string _model_name = "";
+        public string _model_name = ""; // parent1 + parent2 + ... can be very long, so use "gen_#gid_#nid"
+        public List<string> _parent_names = new List<string>();
+        public List<string> _original_names = new List<string>();
         public PartGroupPair _partGroupPair; // kid hybrids, created from which two part groups
 
         public SamplePoints _SP;
@@ -762,6 +766,20 @@ namespace Component
             this.Transform(Q);
         }// unify
 
+        public void setParentNames(List<Model> models)
+        {
+            _parent_names = new List<string>();
+            _original_names = new List<string>();
+            // start with parent names
+            // originals names
+            foreach (Model m in models)
+            {
+                _parent_names.Add(m._model_name);
+                _original_names.AddRange(m._parent_names); // parents' parents' also become originals
+                _original_names.AddRange(m._original_names);
+            }
+        }// setParentNames
+
         public void composeMesh()
         {
             List<double> vertexPos = new List<double>();
@@ -826,6 +844,40 @@ namespace Component
                 _SP.updateNormals(_mesh);
             }
         }// composeMesh
+
+        public string graphValidityCheck()
+        {
+            // graph
+            if (this._GRAPH == null)
+            {
+                return "Model graph is not constructed yet.";
+            }
+            StringBuilder sb = new StringBuilder();
+            // connection
+            int nIsolatedNodes = 0;
+            bool hasMainFunction = true;
+            foreach (Node node in this._GRAPH._NODES)
+            {
+                if (node._edges == null || node._edges.Count == 0)
+                {
+                    ++nIsolatedNodes;
+                }
+                foreach (Functionality.Functions f in node._funcs)
+                {
+                    if (Functionality.IsMainFunction(f))
+                    {
+                        hasMainFunction = true;
+                    }
+                }
+            }
+            sb.Append("There exisits: " + nIsolatedNodes.ToString() + " isolated nodes.");
+            // functions
+            if (!hasMainFunction)
+            {
+                sb.Append("\nLack a main functional node.");
+            }
+            return sb.ToString();
+        }// graphValidityCheck
 
         public void recomputeSamplePointNormals()
         {
@@ -1332,10 +1384,15 @@ namespace Component
             {
                 return;
             }
+            _parts = this.initializePartsFromMesh(_mesh, _SP);
+        }// initializeParts
+
+        private List<Part> initializePartsFromMesh(Mesh mesh, SamplePoints meshSP)
+        {
             // find point cluster to form initial parts
-            int n = _mesh.VertexCount;
+            int n = mesh.VertexCount;
             bool[] visited = new bool[n];
-            _parts = new List<Part>();
+            List<Part> parts = new List<Part>();
             for (int k = 0; k < n; ++k)
             {
                 if (visited[k]) continue;
@@ -1348,7 +1405,7 @@ namespace Component
                 {
                     int cur = q.Dequeue();
                     vIndex.Add(cur);
-                    int[] curRow = _mesh._VV[cur];
+                    int[] curRow = mesh._VV[cur];
                     foreach (int j in curRow)
                     {
                         if (visited[j]) continue;
@@ -1361,19 +1418,19 @@ namespace Component
                 for (int i = 0, j = 0; i < vIndex.Count; ++i)
                 {
                     int idx = vIndex[i] * 3;
-                    vPos[j++] = _mesh.VertexPos[idx++];
-                    vPos[j++] = _mesh.VertexPos[idx++];
-                    vPos[j++] = _mesh.VertexPos[idx++];
+                    vPos[j++] = mesh.VertexPos[idx++];
+                    vPos[j++] = mesh.VertexPos[idx++];
+                    vPos[j++] = mesh.VertexPos[idx++];
                 }
                 // collect face indices belong to this part, avoiding repeat face id
                 HashSet<int> fIndex = new HashSet<int>();
                 foreach (int i in vIndex)
                 {
-                    foreach (int f in _mesh._VF[i])
+                    foreach (int f in mesh._VF[i])
                     {
                         fIndex.Add(f);
                     }
-                }                
+                }
                 List<Vector3d> samplePnts = new List<Vector3d>();
                 List<Vector3d> samplePntsNormals = new List<Vector3d>();
                 List<int> samplePntsFaceIdxs = new List<int>();
@@ -1386,25 +1443,25 @@ namespace Component
                 }
                 // find corresponding sample points from each triangle face 
                 // each face can have 0, 1,...n sample points
-                if (_SP != null && _SP._fidxMapSPid != null)
+                if (meshSP != null && meshSP._fidxMapSPid != null)
                 {
                     List<int> spPerPart = new List<int>();
                     for (int f = 0; f < fIndex.Count; ++f)
                     {
-                        if (!_SP._fidxMapSPid.ContainsKey(faceIdxs[f]))
+                        if (!meshSP._fidxMapSPid.ContainsKey(faceIdxs[f]))
                         {
                             continue;
                         }
                         // sample points  on face f
-                        List<int> spIds = _SP._fidxMapSPid[faceIdxs[f]];
+                        List<int> spIds = meshSP._fidxMapSPid[faceIdxs[f]];
                         foreach (int spid in spIds)
                         {
-                            samplePnts.Add(_SP._points[spid]);
-                            samplePntsNormals.Add(_SP._normals[spid]);
+                            samplePnts.Add(meshSP._points[spid]);
+                            samplePntsNormals.Add(meshSP._normals[spid]);
                             samplePntsFaceIdxs.Add(f);
-                            if (_SP._blendColors != null && _SP._blendColors.Length > 0)
+                            if (meshSP._blendColors != null && meshSP._blendColors.Length > 0)
                             {
-                                samplePntsColors.Add(_SP._blendColors[spid]);
+                                samplePntsColors.Add(meshSP._blendColors[spid]);
                             }
                         }
                         spPerPart.AddRange(spIds);
@@ -1412,17 +1469,17 @@ namespace Component
                         int totalSamplePoints = spPerPart.Count;
                         for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
                         {
-                            weightsPerCat[c]._weights = new double[spPerPart.Count, _SP._weightsPerCat[c]._nPatches];
+                            weightsPerCat[c]._weights = new double[spPerPart.Count, meshSP._weightsPerCat[c]._nPatches];
                             for (int np = 0; np < totalSamplePoints; ++np)
                             {
                                 int idx = spPerPart[np];
-                                for (int d = 0; d < _SP._weightsPerCat[c]._nPatches; ++d)
+                                for (int d = 0; d < meshSP._weightsPerCat[c]._nPatches; ++d)
                                 {
-                                    weightsPerCat[c]._weights[np, d] = _SP._weightsPerCat[c]._weights[idx, d];
+                                    weightsPerCat[c]._weights[np, d] = meshSP._weightsPerCat[c]._weights[idx, d];
                                 }
                             }
                             weightsPerCat[c]._nPoints = totalSamplePoints;
-                            weightsPerCat[c]._nPatches = _SP._weightsPerCat[c]._nPatches;
+                            weightsPerCat[c]._nPatches = meshSP._weightsPerCat[c]._nPatches;
                         }
                     }
                 }
@@ -1431,13 +1488,52 @@ namespace Component
                 //{
                 //    continue;
                 //}
-                SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(), 
+                SamplePoints sp = new SamplePoints(samplePnts.ToArray(), samplePntsNormals.ToArray(),
                     samplePntsFaceIdxs.ToArray(), samplePntsColors.ToArray(), faceIdxs.Length);
                 sp._weightsPerCat = weightsPerCat;
-                Part part = new Part(_mesh, vIndex.ToArray(), vPos, faceIdxs, sp);
-                _parts.Add(part);
+                Part part = new Part(mesh, vIndex.ToArray(), vPos, faceIdxs, sp);
+                parts.Add(part);
             }
-        }// initializeParts
+            return parts;
+        }// initializePartsFromMesh
+
+        public void unGroupParts(List<Part> parts)
+        {
+            foreach (Part part in parts)
+            {
+                this.unGroupAPart(part);
+            }
+        }// unGroupParts
+
+        private void unGroupAPart(Part part)
+        {
+            List<Part> parts = this.initializePartsFromMesh(part._MESH, part._partSP);
+            if (parts.Count == 1)
+            {
+                // cannot be segmented, then each triangle surface is a part..
+                for (int f = 0; f < part._MESH.FaceCount; ++f)
+                {
+                    int[] faceIdxs = { f };
+                    int[] vIndex = new int[3];
+                    vIndex[0] = part._MESH.FaceVertexIndex[3 * f];
+                    vIndex[1] = part._MESH.FaceVertexIndex[3 * f + 1];
+                    vIndex[2] = part._MESH.FaceVertexIndex[3 * f + 2];
+                    // vertex position, face
+                    double[] vPos = new double[vIndex.Length * 3];
+                    for (int i = 0, j = 0; i < vIndex.Length; ++i)
+                    {
+                        int idx = vIndex[i] * 3;
+                        vPos[j++] = part._MESH.VertexPos[idx++];
+                        vPos[j++] = part._MESH.VertexPos[idx++];
+                        vPos[j++] = part._MESH.VertexPos[idx++];
+                    }
+                    Part partf = new Part(part._MESH, vIndex, vPos, faceIdxs, null); // add sample points if needed
+                    parts.Add(partf);
+                }
+            }
+            _parts.Remove(part);
+            _parts.AddRange(parts);
+        }// sepearteParts
 
         private void mergeNearbyParts()
         {
@@ -1527,24 +1623,11 @@ namespace Component
             }// while
         }// mergeNearbyParts
 
-        public Part groupParts(List<Part> parts)
+        public Part groupParts_use_model_mesh_index(List<Part> parts)
         {
             if (parts == null || parts.Count == 0)
             {
                 return null;
-            }
-            bool hasNull = false;
-            foreach (Part part in parts)
-            {
-                if (part._VERTEXINDEX == null)
-                {
-                    hasNull = true;
-                    break;
-                }
-            }
-            if (hasNull)
-            {
-                return groupPartsSeparately(parts);
             }
             List<int> vIndex = new List<int>();
             List<double> vPos = new List<double>();
@@ -1562,6 +1645,34 @@ namespace Component
             _parts.Add(newPart);
             return newPart;
         }// group parts
+
+        public Part groupParts(List<Part> parts)
+        {
+            List<double> vPos = new List<double>();
+            List<int> fIndex = new List<int>();
+            // merge meshes
+            int start = 0;
+            foreach (Part part in parts)
+            {
+                Mesh m = part._MESH;
+                vPos.AddRange(m.VertexPos.ToList());
+                for (int i = 0, j = 0; i < m.FaceCount; ++i, j += 3)
+                {
+                    fIndex.Add(start + m.FaceVertexIndex[j]);
+                    fIndex.Add(start + m.FaceVertexIndex[j + 1]);
+                    fIndex.Add(start + m.FaceVertexIndex[j + 2]);
+                }
+                start += m.VertexCount;
+                _parts.Remove(part);
+            }
+            // without sample points
+            Mesh merged = new Mesh(vPos.ToArray(), fIndex.ToArray());
+            Part newPart = new Part(merged);
+            newPart._partName = getPartGroupName();
+            _parts.Add(newPart);
+            composeMesh(); // recompose mesh
+            return newPart;
+        }// groupParts
 
         private string getPartGroupName()
         {
@@ -1686,31 +1797,6 @@ namespace Component
             sp._weightsPerCat = mergedWeights;
             return sp;
         }// groupSamplePoints
-
-        public Part groupPartsSeparately(List<Part> parts)
-        {
-            List<double> vPos = new List<double>();
-            List<int> fIndex = new List<int>();
-            // merge meshes
-            int start = 0;
-            foreach (Part part in parts)
-            {
-                Mesh m = part._MESH;
-                vPos.AddRange(m.VertexPos.ToList());
-                for (int i = 0, j = 0; i < m.FaceCount; ++i, j += 3)
-                {
-                    fIndex.Add(start + m.FaceVertexIndex[j]);
-                    fIndex.Add(start + m.FaceVertexIndex[j + 1]);
-                    fIndex.Add(start + m.FaceVertexIndex[j + 2]);
-                }
-                start += m.VertexCount;
-                _parts.Remove(part);
-            }
-            Mesh merged = new Mesh(vPos.ToArray(), fIndex.ToArray());
-            Part newPart = new Part(merged);
-            _parts.Add(newPart);
-            return newPart;
-        }// group parts
 
         public void addAPart(Part p)
         {

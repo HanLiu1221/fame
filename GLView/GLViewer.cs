@@ -356,7 +356,6 @@ namespace FameBase
         {
             this.currMeshClass = null;
             _currModel = null;
-            _selectedParts = new List<Part>();
             _ancesterModels.Clear();
             _ancesterModelViewers.Clear();
             _currHumanPose = null;
@@ -385,6 +384,7 @@ namespace FameBase
             _currModel = new Model(m);
             _ancesterModels = new List<Model>();
             _ancesterModels.Add(_currModel);
+            Program.GetFormMain().outputSystemStatus("Mesh is unified and a segmented model is created.");
         }// loadMesh
 
         public void importMesh(string filename, bool multiple)
@@ -933,6 +933,18 @@ namespace FameBase
                 //{
                 //    model._GRAPH.unify();
                 //}
+                sw.Write("%parents: ");
+                foreach (string name in model._parent_names)
+                {
+                    sw.Write(name + " ");
+                }
+                sw.WriteLine();
+                sw.Write("%original: ");
+                foreach (string name in model._original_names)
+                {
+                    sw.Write(name + " ");
+                }
+                sw.WriteLine();
                 sw.WriteLine(model._NPARTS.ToString() + " parts");
                 for (int i = 0; i < model._NPARTS; ++i)
                 {
@@ -1817,12 +1829,27 @@ namespace FameBase
                 string model_name = filename.Substring(filename.LastIndexOf('\\') + 1);
                 model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
                 char[] separator = { ' ', '\t' };
-                string s = "%";
-                while (s.Length > 0 && s[0] == '%')
-                {
-                    s = sr.ReadLine().Trim();
-                }
+                // parent & orignal name
+                string s = sr.ReadLine().Trim();
                 string[] strs = s.Split(separator);
+                List<string> parent_names = new List<string>();
+                List<string> original_names = new List<string>();
+                if (s[0] == '%')
+                {
+                    for (int i = 1; i < strs.Length; ++i)
+                    {
+                        parent_names.Add(strs[i]);
+                    }
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    for (int i = 1; i < strs.Length; ++i)
+                    {
+                        original_names.Add(strs[i]);
+                    }
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                }
+                // n parts
                 int n = 0;
                 try
                 {
@@ -1943,6 +1970,8 @@ namespace FameBase
                 model._funcSpaces = fss.ToArray();
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 model._model_name = model_name;
+                model._parent_names = parent_names;
+                model._original_names = original_names;
                 return model;
             }
         }// loadOnePartBasedModel
@@ -2002,6 +2031,13 @@ namespace FameBase
         {
             _currModel = this.loadAPartBasedModelAgent(filename, false);
             this.setUIMode(0);
+            // model check
+            if (_currModel != null)
+            {
+                Program.GetFormMain().outputSystemStatus(_currModel._model_name + " loaded.");
+                String s = _currModel.graphValidityCheck();
+                Program.GetFormMain().outputSystemStatus(s);
+            }
             this.Refresh();
         }// loadAPartBasedModel
 
@@ -7563,17 +7599,22 @@ namespace FameBase
 
             List<Node> updatedNodes1;
             List<Node> updatedNodes2;
+            List<Model> parents = new List<Model>(); // to set parent names
+            parents.Add(m1);
+            parents.Add(m2);
             // switch
             switchNodes(newM1._GRAPH, newM2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
             newM1.replaceNodes(nodes1, updatedNodes2);
             newM1.nNewNodes = updatedNodes2.Count;
             pg1 = new PartGroup(updatedNodes2, gen);
+            newM1.setParentNames(parents);
             crossModels.Add(newM1);
 
             // if insert, we do not know where to insert
             newM2.replaceNodes(nodes2, updatedNodes1);
             pg2 = new PartGroup(updatedNodes1, gen);
             newM2.nNewNodes = updatedNodes1.Count;
+            newM2.setParentNames(parents);
             crossModels.Add(newM2);
 
             return crossModels;
@@ -8943,11 +8984,9 @@ namespace FameBase
             this.highlightQuad = null;
             _isRightClick = e.Button == System.Windows.Forms.MouseButtons.Right;
 
-            this.ContextMenuStrip = Program.GetFormMain().getRightButtonMenu();
-            this.ContextMenuStrip = Program.GetFormMain().getRightButtonMenu();
             if (this.ContextMenuStrip != null)
             {
-                this.ContextMenuStrip.Hide();
+                this.ContextMenuStrip = null; // set hide() is not working, only when set it to null
             }
 
             switch (this.currUIMode)
@@ -9454,6 +9493,18 @@ namespace FameBase
             this.Refresh();
         }// groupParts
 
+        public void unGroupParts()
+        {
+            if (_currModel == null)
+            {
+                return;
+            }
+            _currModel.unGroupParts(_selectedParts);
+            _selectedParts.Clear();
+            _currModel._GRAPH = null;
+            this.cal2D();
+            this.Refresh();
+        }// unGroupParts
 
         public void createAPartGroup()
         {

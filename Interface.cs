@@ -348,11 +348,23 @@ namespace FameBase
             this.Refresh();
         }
 
+        private void unGroupToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.unGroupParts();
+            this.updateStats();
+            this.Refresh();
+        }
+
         public void updateStats()
         {
             string stats = this.glViewer.getStats();
             this.statsLabel.Text = stats;
             this.Refresh();
+        }
+
+        public void outputSystemStatus(String s)
+        {
+            this.outputTextWindow.AppendText(s + System.Environment.NewLine);
         }
 
         public ContextMenuStrip getRightButtonMenu()
@@ -1065,5 +1077,7 @@ namespace FameBase
         {
             this.glViewer.LFD_test();
         }
+
+
     }// Interface
 }// namespace

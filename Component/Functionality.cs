@@ -71,6 +71,12 @@ namespace Component
         {
             return index >= 0 && index < 15;
         }
+
+        public static bool IsMainFunction(Functions f)
+        {
+            return f == Functions.HAND_PLACE || f == Functions.HUMAN_HIP;
+        }
+
         public static string getCategoryName(int index)
         {
             switch (index)
