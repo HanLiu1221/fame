@@ -3664,7 +3664,7 @@ namespace FameBase
                     g._functionalityValues._parentCategories = parentCats;
                 }
                 m.setGraph(g);
-                this.calculateProbability(m);
+                //this.calculateProbability(m);
                 foreach(Node node in m._GRAPH._NODES)
                 {
                     node._PART._MESH.afterUpdatePos();

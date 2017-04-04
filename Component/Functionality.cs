@@ -15,7 +15,7 @@ namespace Component
         /********** Variables **********/
         public static int _TOTAL_FUNCTONAL_PATCHES = 35; // ncat * npatch
         public static int _NUM_FUNCTIONALITY = 6;
-        public static int _NUM_CATEGORIY = 15;
+        public static int _NUM_CATEGORIY = 16;
         public static int _NUM_UNARY_FEATURE = 420;
         public static int _NUM_BINARY_FEATURE = 110;
         public static int[] _PAIR_INDEX_1 = { 0 }; // 1 functional patch
