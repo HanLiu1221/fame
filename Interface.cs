@@ -17,6 +17,7 @@ namespace FameBase
 		{
 			InitializeComponent();
             this.glViewer.Init();
+            this.category_panel.Hide();
 		}
 
         /*********Var**********/
@@ -237,7 +238,7 @@ namespace FameBase
             };
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                this.glViewer.saveAPartBasedModel(this.glViewer.getCurrModel(), dialog.FileName, true);
+                this.glViewer.saveTheCurrentModel(dialog.FileName, true);
             }
         }
 
@@ -1078,6 +1079,20 @@ namespace FameBase
             this.glViewer.LFD_test();
         }
 
+        public void showCategorySelection()
+        {
+            this.category_panel.Show();
+        }
 
+        private void category_yes_Click(object sender, EventArgs e)
+        {
+            this.category_panel.Hide();
+            this.glViewer._selected_cat = this.categoryList.SelectedItem.ToString();
+        }
+
+        private void category_cancel_Click(object sender, EventArgs e)
+        {
+            this.category_panel.Hide();
+        }
     }// Interface
 }// namespace

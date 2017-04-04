@@ -235,10 +235,12 @@ namespace FameBase
         private Dictionary<int, Model> _modelIndexMap = new Dictionary<int, Model>();
         // part groups in the first generation are kept unchanged
         // they will be cloned in the evolution, so will be used for new crossover
-        List<List<PartGroup>> _partGroupLibrary = new List<List<PartGroup>>();
+        List<List<PartGroup>> _partGroups = new List<List<PartGroup>>();
         private int _numOfEmptyGroupUsed = 0;
         private int _maxUseEmptyGroup = 0;
         private int _nValidSymBreakUsed = 0;
+
+        List<PartGroup> _partGroupLibrary;
 
         List<TrainedFeaturePerCategory> _trainingFeaturesPerCategory;
 
@@ -254,11 +256,6 @@ namespace FameBase
             {
                 this.currUIMode = value;
             }
-        }
-
-        public Model getCurrModel()
-        {
-            return _currModel;
         }
 
         private void LoadTextures()					// load textures for canvas and brush
@@ -898,6 +895,26 @@ namespace FameBase
             this.Refresh();
         }// switchXYZ
 
+        public string _selected_cat = "";
+        public void saveTheCurrentModel(string filename, bool isOriginal)
+        {
+            // call from UI
+            if (_currModel._CAT == null || _currModel._CAT == Functionality.Category.None)
+            {
+                Functionality.Category cat = Functionality.getCategory(_selected_cat);
+                if (cat == Functionality.Category.None)
+                {
+                    Program.GetFormMain().showCategorySelection();
+                    return;
+                }
+                else
+                {
+                    _currModel._CAT = cat;
+                }
+            }
+            this.saveAPartBasedModel(_currModel, filename, isOriginal);
+        }// saveTheCurrentModel
+
         public void saveAPartBasedModel(Model model, string filename, bool isOriginalModel)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
@@ -945,6 +962,7 @@ namespace FameBase
                     sw.Write(name + " ");
                 }
                 sw.WriteLine();
+                sw.WriteLine("%Category name: " + Functionality.getCategoryName((int)model._CAT));
                 sw.WriteLine(model._NPARTS.ToString() + " parts");
                 for (int i = 0; i < model._NPARTS; ++i)
                 {
@@ -1158,7 +1176,7 @@ namespace FameBase
                     sb.Append(" ");
                 }
                 sw.WriteLine(sb.ToString());
-                sw.WriteLine(_partGroupLibrary.Count.ToString());
+                sw.WriteLine(_partGroups.Count.ToString());
                 sw.WriteLine(_validityMatrixPG.NTriplets.ToString());
                 // matrix
                 for(int i = 0; i < _validityMatrixPG.NTriplets; ++i)
@@ -1220,7 +1238,7 @@ namespace FameBase
                 s = sr.ReadLine().Trim();
                 strs = s.Split(separator);
                 int npartgroups = int.Parse(strs[0]);
-                if (_partGroupLibrary.Count != npartgroups)
+                if (_partGroups.Count != npartgroups)
                 {
                     // should use a more consistent way to store the part groups !
                     MessageBox.Show("Matrix does not match the input set.");
@@ -1230,7 +1248,7 @@ namespace FameBase
                 strs = s.Split(separator);
                 int nTriplets = int.Parse(strs[0]);
                 _validityMatrixPG = new SparseMatrix(npartgroups, npartgroups);
-                for (int i =0;i < nTriplets; ++i)
+                for (int i = 0; i < nTriplets; ++i)
                 {
                     s = sr.ReadLine().Trim();
                     strs = s.Split(separator);
@@ -1828,6 +1846,7 @@ namespace FameBase
             {
                 string model_name = filename.Substring(filename.LastIndexOf('\\') + 1);
                 model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
+                string cat_name = "";
                 char[] separator = { ' ', '\t' };
                 // parent & orignal name
                 string s = sr.ReadLine().Trim();
@@ -1848,6 +1867,12 @@ namespace FameBase
                     }
                     s = sr.ReadLine().Trim();
                     strs = s.Split(separator);
+                    if (s[0] == '%')
+                    {
+                        cat_name = strs[strs.Length - 1];
+                        s = sr.ReadLine().Trim();
+                        strs = s.Split(separator);
+                    }
                 }
                 // n parts
                 int n = 0;
@@ -1972,6 +1997,7 @@ namespace FameBase
                 model._model_name = model_name;
                 model._parent_names = parent_names;
                 model._original_names = original_names;
+                model._CAT = Functionality.getCategory(cat_name);
                 return model;
             }
         }// loadOnePartBasedModel
@@ -2084,45 +2110,51 @@ namespace FameBase
             {
                 string modelName = file.Substring(file.LastIndexOf('\\') + 1);
                 modelName = modelName.Substring(0, modelName.LastIndexOf('.'));
-                Program.writeToConsole("Loading Model info @" + (idx+1).ToString() + " " + modelName + "...");
+                Program.writeToConsole("Loading Model info #" + (idx+1).ToString() + " " + modelName + "...");
                 Model m = loadOnePartBasedModel(file);
                 if (m != null)
                 {
                     _ancesterModels.Add(m);
+                    // load graph
                     string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
                     LoadAGraph(m, graphName, false);
+                    if (m._GRAPH == null)
+                    {
+                        MessageBox.Show("Cannot find the GRAPH Info of model: " + modelName);
+                        return _ancesterModelViewers;
+                    }
+                    // load part groups
                     string pgName = file.Substring(0, file.LastIndexOf('.')) + ".pg";
                     LoadPartGroupsOfAModelGraph(m._GRAPH, pgName, m._model_name);
-                    if (m._GRAPH != null && m._GRAPH._partGroups != null)
+                    if (m._GRAPH._partGroups == null)
                     {
-                        m._GRAPH._partGroups.Add(new PartGroup(new List<Node>(), 0));
-                        foreach (PartGroup pg in m._GRAPH._partGroups)
-                        {
-                            pg._ParentModelIndex = _modelIndex;
-                        }
+                        MessageBox.Show("Cannot find the PART GROUP Info of model: " + modelName);
+                        return _ancesterModelViewers;
                     }
-                    m._GRAPH.unify();
-                    m.composeMesh();
+
                     m._index = idx;
+                    foreach (PartGroup pg in m._GRAPH._partGroups)
+                    {
+                        pg._ParentModelIndex = _modelIndex;
+                    }
+
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this, 0); // ancester
                     _ancesterModelViewers.Add(modelViewer);
                     ++_modelIndex;
                 }
             }
+            // set the default model as the last one
             if (_ancesterModelViewers.Count > 0)
             {
                 this.setCurrentModel(_ancesterModelViewers[_ancesterModelViewers.Count - 1]._MODEL, _ancesterModelViewers.Count - 1);
             }
             this.readModelModelViewMatrix(foldername + "\\view.mat");
 
-            // try to load replaceable pairs
-            tryLoadReplaceablePairs();
             this.setUIMode(0);
 
             // pre-process models
-            this.preProcessInputSet(_ancesterModels);
-
-            //this.postAnalysis(_modelLibrary);
+            //this.preProcessInputSet(_ancesterModels);
+            this.calculatePartGroupCompatibility(_ancesterModels);
 
             return _ancesterModelViewers;
         }// loadPartBasedModels
@@ -2169,8 +2201,8 @@ namespace FameBase
                 string[] strs = model_name.Split(separator);
                 int pg1 = int.Parse(strs[5]);
                 int pg2 = int.Parse(strs[6]);
-                Model parent1 = _ancesterModels[_partGroupLibrary[pg1][0]._ParentModelIndex];
-                Model parent2 = _ancesterModels[_partGroupLibrary[pg2][0]._ParentModelIndex];
+                Model parent1 = _ancesterModels[_partGroups[pg1][0]._ParentModelIndex];
+                Model parent2 = _ancesterModels[_partGroups[pg2][0]._ParentModelIndex];
                 int cid1 = (int)parent1._GRAPH._functionalityValues._parentCategories[0];
                 int cid2 = (int)parent2._GRAPH._functionalityValues._parentCategories[0];
                 double maxValidity = Math.Max(probs[cid1], probs[cid2]);
@@ -2327,6 +2359,45 @@ namespace FameBase
 
         }// loadPartBasedModels
 
+        private void calculatePartGroupCompatibility(List<Model> models)
+        {
+            if (models == null || models.Count == 0)
+            {
+                return;
+            }
+            // evaluate pairs of part groups
+            _partGroupLibrary = new List<PartGroup>();
+            // list all part groups and index
+            int id = 0;
+            foreach (Model m in models)
+            {
+                foreach (PartGroup pg in m._GRAPH._partGroups)
+                {
+                    pg._INDEX = id++;
+                    _partGroupLibrary.Add(pg);
+                }
+            }
+            int n = _partGroupLibrary.Count;
+            _validityMatrixPG = new SparseMatrix(n, n);
+            for (int i = 0; i < n - 1; ++i)
+            {
+                Model m1 = _ancesterModels[_partGroupLibrary[i]._ParentModelIndex];
+                for (int j = i + 1; j < n; ++j)
+                {
+                    Model m2 = _ancesterModels[_partGroupLibrary[j]._ParentModelIndex];
+                    double[] comp = Functionality.GetPartGroupCompatibility(m1, m2, _partGroupLibrary[i], _partGroupLibrary[j]);
+                    if (comp[0] > 0)
+                    {
+                        _validityMatrixPG.AddTriplet(i, j, comp[0]);
+                    }
+                    if (comp[1] > 0)
+                    {
+                        _validityMatrixPG.AddTriplet(j, i, comp[1]);
+                    }
+                }
+            }
+        }// calculatePartGroupCompatibility
+
         private void preProcessInputSet(List<Model> models)
         {
             // Given n input shapes, do:
@@ -2340,7 +2411,7 @@ namespace FameBase
             _nodeFSAs = new List<NodeFunctionalSpaceAgent>();
             // 1. load all part groups
             // 2. normalize all weights per category
-            int ndim = Functionality.__TOTAL_FUNCTONAL_PATCHES;
+            int ndim = Functionality._TOTAL_FUNCTONAL_PATCHES;
             double[] minw = new double[ndim];
             double[] maxw = new double[ndim];
             for (int i = 0; i < ndim; ++i)
@@ -2514,7 +2585,7 @@ namespace FameBase
 
                 foreach (Node node in model._GRAPH._NODES)
                 {
-                    if (node._funcs.Contains(Functionality.Functions.HAND_PLACE))
+                    if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
                     {
                         string part_name = node._PART._partName;
                         node.calRatios();
@@ -2570,7 +2641,7 @@ namespace FameBase
             
             // 2. analyze the feature vector for each part group
             int nPGs = 0;
-            _partGroupLibrary = new List<List<PartGroup>>();
+            _partGroups = new List<List<PartGroup>>();
             foreach(Model m in models)
             {
                 if (m._GRAPH._partGroups.Count == 0)
@@ -2587,10 +2658,10 @@ namespace FameBase
                     // after a few generations, it will map to its cloned part groups
                     List<PartGroup> pgs = new List<PartGroup>();
                     pgs.Add(pg);
-                    _partGroupLibrary.Add(pgs);
+                    _partGroups.Add(pgs);
                 }
             }
-            int nps = _partGroupLibrary.Count;
+            int nps = _partGroups.Count;
             _nPairsPG = nps * (nps - 1) / 2 - nps;
             _validityMatrixPG = new SparseMatrix(nPGs, nPGs);
 
@@ -2601,19 +2672,19 @@ namespace FameBase
             //    //_validityMatrixPG.AddTriplet(i, i, 3.0);
             //    for (int j = i + 1; j < nPGs; ++j)
             //    {
-            //        if (_partGroupLibrary[i][0]._ParentModelIndex == _partGroupLibrary[j][0]._ParentModelIndex)
+            //        if (_partGroups[i][0]._ParentModelIndex == _partGroups[j][0]._ParentModelIndex)
             //        {
             //            continue;
             //        }                        
-            //        double simdist = compareTwoPartGroups(_partGroupLibrary[i][0], _partGroupLibrary[j][0]);
+            //        double simdist = compareTwoPartGroups(_partGroups[i][0], _partGroups[j][0]);
             //        _validityMatrixPG.AddTriplet(i, j, simdist);
             //        _validityMatrixPG.AddTriplet(j, i, simdist);
             //        sorted.Add(simdist);
             //        StringBuilder sb = new StringBuilder();
             //        sb.Append("Two part groups: \n");
-            //        sb.Append(this.getPartGroupNames(_partGroupLibrary[i][0]));
+            //        sb.Append(this.getPartGroupNames(_partGroups[i][0]));
             //        sb.Append("\n");
-            //        sb.Append(this.getPartGroupNames(_partGroupLibrary[j][0]));
+            //        sb.Append(this.getPartGroupNames(_partGroups[j][0]));
             //        sb.Append("\n");
             //        sb.Append("Similarity value: " + simdist.ToString());
             //        Program.writeToConsole(sb.ToString());
@@ -2882,7 +2953,7 @@ namespace FameBase
             //}
             //simdist /= n;
 
-            int ndim = Functionality.__TOTAL_FUNCTONAL_PATCHES;
+            int ndim = Functionality._TOTAL_FUNCTONAL_PATCHES;
             int d = 0;
             for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
@@ -3087,13 +3158,13 @@ namespace FameBase
 
         public string[] collectSimValuesOfPartGroups()
         {
-            if (_pairPG2 + 1 >= _partGroupLibrary.Count)
+            if (_pairPG2 + 1 >= _partGroups.Count)
             {
                 _pairPG1++;
                 _pairPG2 = _pairPG1;
             }
             ++_pairPG2;
-            if (_pairPG1 >= _partGroupLibrary.Count)
+            if (_pairPG1 >= _partGroups.Count)
             {
                 MessageBox.Show("Start over.");
                 _pairPG1 = 0;
@@ -3168,8 +3239,8 @@ namespace FameBase
 
         private double setCurrPairOfPartGroups()
         {
-            PartGroup pg1 = _partGroupLibrary[_pairPG1][0];
-            PartGroup pg2 = _partGroupLibrary[_pairPG2][0];
+            PartGroup pg1 = _partGroups[_pairPG1][0];
+            PartGroup pg2 = _partGroups[_pairPG2][0];
             double sim = this.compareTwoPartGroups(pg1, pg2);
             _pgPairVisualization = new List<Part>();
             Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d(-0.5, 0, 0));
@@ -3938,7 +4009,7 @@ namespace FameBase
         {
             if (!File.Exists(filename))
             {
-                MessageBox.Show("Default view matrix does not exist.");
+                Program.GetFormMain().outputSystemStatus("Default view matrix does not exist.");
                 return;
             }
             using (StreamReader sr = new StreamReader(filename))
@@ -4158,7 +4229,7 @@ namespace FameBase
                 case 3:
                     return Functionality.Functions.HAND_HOLD;
                 case 4:
-                    return Functionality.Functions.HAND_PLACE;
+                    return Functionality.Functions.PLACEMENT;
                 case 5:
                     return Functionality.Functions.SUPPORT;
                 case 6:
@@ -4179,8 +4250,8 @@ namespace FameBase
                     return Functionality.Functions.HUMAN_HIP;
                 case "HAND_HOLD":
                     return Functionality.Functions.HAND_HOLD;
-                case "HAND_PLACE":
-                    return Functionality.Functions.HAND_PLACE;
+                case "PLACEMENT":
+                    return Functionality.Functions.PLACEMENT;
                 case "SUPPORT":
                     return Functionality.Functions.SUPPORT;
                 case "GROUND_TOUCHING":
@@ -4452,10 +4523,10 @@ namespace FameBase
                     List<PartGroup> pgs = new List<PartGroup>();
                     pg._ParentModelIndex = model._index;
                     pgs.Add(pg);
-                    _partGroupLibrary.Add(pgs);
+                    _partGroups.Add(pgs);
                 }
             }
-            int nPGs = _partGroupLibrary.Count;
+            int nPGs = _partGroups.Count;
             SparseMatrix tmp = new SparseMatrix(_validityMatrixPG);
             int oldPGs = tmp.NRow;
             _validityMatrixPG = new SparseMatrix(nPGs, nPGs);
@@ -4472,11 +4543,11 @@ namespace FameBase
             {
                 for (int j = oldPGs; j < nPGs; ++j)
                 {
-                    if (_partGroupLibrary[i][0]._ParentModelIndex == _partGroupLibrary[j][0]._ParentModelIndex)
+                    if (_partGroups[i][0]._ParentModelIndex == _partGroups[j][0]._ParentModelIndex)
                     {
                         continue;
                     }
-                    if (!_partGroupLibrary[j][0].containsMainFuncPart())
+                    if (!_partGroups[j][0].containsMainFuncPart())
                     {
                         continue;
                     }
@@ -4491,11 +4562,11 @@ namespace FameBase
             {
                 for (int j = i + 1; j < nPGs; ++j)
                 {
-                    if (_partGroupLibrary[i][0]._ParentModelIndex == _partGroupLibrary[j][0]._ParentModelIndex)
+                    if (_partGroups[i][0]._ParentModelIndex == _partGroups[j][0]._ParentModelIndex)
                     {
                         continue;
                     }
-                    if (!_partGroupLibrary[j][0].containsMainFuncPart())
+                    if (!_partGroups[j][0].containsMainFuncPart())
                     {
                         continue;
                     }
@@ -4583,7 +4654,7 @@ namespace FameBase
                     foreach (PartGroup pg in mv._MODEL._GRAPH._partGroups)
                     {
                         pg._ParentModelIndex = mv._MODEL._index;
-                        _partGroupLibrary[p1].Add(pg);
+                        _partGroups[p1].Add(pg);
                     }
                     _modelIndexMap.Add(mv._MODEL._index, mv._MODEL);
                     _userSelectedModelsBeforeRecompute.Add(mv._MODEL);
@@ -4705,17 +4776,152 @@ namespace FameBase
             return _currGenModelViewers;
         }// autoGenerate
 
+        public List<ModelViewer> runEvolution()
+        {
+            // Register a user ID
+            if (!Directory.Exists(userFolder))
+            {
+                this.registerANewUser();
+            }
+
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+            this.decideWhichToDraw(true, false, false, true, false, false);
+            // for capturing screen            
+            this.reloadView();
+
+            string validityMatrixFolder = Interface.MODLES_PATH + "ValidityMatrix\\";
+            string validityMatrixFileName = validityMatrixFolder + "User_" + _userIndex.ToString() +
+                "_gen_" + _currGenId.ToString() + ".vdm";
+
+            // set user selection
+            string selectedModelPath = userFolder + "\\selected\\";
+            if (!Directory.Exists(selectedModelPath))
+            {
+                Directory.CreateDirectory(selectedModelPath);
+            }
+
+            // build the validity matrix, check which two part groups are replaceable
+            for (int i = 0; i < _currGenModelViewers.Count; ++i)
+            {
+                ModelViewer mv = _currGenModelViewers[i];
+                int p1 = mv._MODEL._partGroupPair._p1;
+                int p2 = mv._MODEL._partGroupPair._p2;
+                // fixed bug
+                Triplet trip = _validityMatrixPG.GetTriplet(p1, p2);
+                if (trip == null)
+                {
+                    continue; // already removed in the loop
+                }
+                double prob = _validityMatrixPG.GetTriplet(p1, p2).value;
+                double update_prob = 0; // user did not select
+                bool increase = _userSelectedModels.Contains(mv._MODEL);
+                if (increase)
+                {
+                    update_prob = Math.Min(1.0, prob * 1.5);
+                    //mv._MODEL._GRAPH.initializePartGroups();
+                    foreach (PartGroup pg in mv._MODEL._GRAPH._partGroups)
+                    {
+                        pg._ParentModelIndex = mv._MODEL._index;
+                        _partGroups[p1].Add(pg);
+                    }
+                    _modelIndexMap.Add(mv._MODEL._index, mv._MODEL);
+                    _userSelectedModelsBeforeRecompute.Add(mv._MODEL);
+                }
+                if (update_prob == 0)
+                {
+                    _validityMatrixPG.RemoveATriplet(p1, p2);
+                }
+                else
+                {
+                    _validityMatrixPG.AddTriplet(p1, p2, update_prob);
+                    // put in a selected folder                
+                    this.saveAPartBasedModel(mv._MODEL, selectedModelPath + mv._MODEL._model_name + ".pam", false);
+                }
+            }
+
+            // after user selction
+            this.saveValidityMatrix(validityMatrixFileName);
+            // add user selected models
+            if (_currGenId > 0)
+            {
+                this.saveUserSelections(_currGenId);
+            }
+            // parent shapes at the current generation
+            //List<Model> parents = new List<Model>(_userSelectedModels);           
+            if (_currGenId % Functionality._NUM_INTER_BEFORE_RERUN == 0)
+            {
+                // expand the matrix
+                this.expandValidityMatrix();
+            }
+            // always include the ancient models
+            List<Model> parents = new List<Model>(_ancesterModels);
+
+            // run 
+            avgTimePerValidOffspring = 0;
+            validOffspringNumber = 0;
+            int maxIter = 1;
+            _userSelectedModels = new List<Model>();
+            _currGenModelViewers.Clear();
+            _curGenPGmemory = new Dictionary<int, List<int>>();
+            _maxUseEmptyGroup = parents.Count;
+            List<Model> curGeneration = new List<Model>();
+
+            // pre-process
+            this._isPreRun = true;
+            calculateRepleaceablePartGroupPair();
+            string today = DateTime.Today.ToString("MMdd");
+            validityMatrixFileName = validityMatrixFolder + "Set_Teaser_1_" + today + ".vdm";
+            this.saveValidityMatrix(validityMatrixFileName);
+            string timingFilename = validityMatrixFolder + "Set_Teaser_1_" + today + ".time";
+
+            for (int i = 0; i < maxIter; ++i)
+            {
+                Random rand = new Random();
+                string runstr = "Run ";
+                runstr += "Crossover @iteration " + i.ToString();
+                Program.GetFormMain().writeToConsole(runstr);
+                List<Model> cur_kids = runAGenerationOfCrossover(_currGenId, rand, imageFolder_c);
+                curGeneration.AddRange(cur_kids);
+                ++_currGenId;
+            }// for each iteration
+            int nModels = Math.Min(Functionality._MAX_USE_PRESENT_NUMBER, curGeneration.Count);
+            _currGenModelViewers = new List<ModelViewer>();
+            for (int j = 0; j < nModels; ++j)
+            {
+                //_currGenModelViewers.Add(sorted[j]);
+                Model imodel = curGeneration[j];
+                _currGenModelViewers.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
+            }
+            //_userSelectedModels = new List<Model>(prev_parents); // for user selection
+
+            long secs = stopWatch.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time: " + _currGenId.ToString() + " iteration, " + _ancesterModelViewers.Count.ToString()
+            + " orginal models, takes " + secs.ToString() + " senconds.");
+
+            avgTimePerValidOffspring /= validOffspringNumber;
+            Program.writeToConsole("Average time to produce a valid offspring is (including filtering invalid ones):" + avgTimePerValidOffspring.ToString());
+
+            return _currGenModelViewers;
+        }// runEvolution
+
+        private void calculateRepleaceablePartGroupPair()
+        {
+            
+        }// calculateRepleaceablePartGroupPair
+
         private void updateSimilarGroups(int p1, int p2, bool increase)
         {
             // after user choice, update similar pairs by func
-            PartGroup pg1 = _partGroupLibrary[p1][0]; // the parts are the same, just with different parent shapes
-            PartGroup pg2 = _partGroupLibrary[p2][0];
+            PartGroup pg1 = _partGroups[p1][0]; // the parts are the same, just with different parent shapes
+            PartGroup pg2 = _partGroups[p2][0];
             List<Functionality.Functions> funcs1 = this.getFunctionalityOfAPartGroup(pg1);
             List<Functionality.Functions> funcs2 = this.getFunctionalityOfAPartGroup(pg2);
-            int n = _partGroupLibrary.Count;
+            int n = _partGroups.Count;
             for (int i = 0; i < n - 1; ++i)
             {
-                PartGroup ipg = _partGroupLibrary[i][0];
+                PartGroup ipg = _partGroups[i][0];
                 List<Functionality.Functions> ifuncs = this.getFunctionalityOfAPartGroup(ipg);
                 for (int j = i + 1; j < n; ++j)
                 {
@@ -4723,7 +4929,7 @@ namespace FameBase
                     {
                         continue;
                     }
-                    PartGroup jpg = _partGroupLibrary[j][0];
+                    PartGroup jpg = _partGroups[j][0];
                     List<Functionality.Functions> jfuncs = this.getFunctionalityOfAPartGroup(jpg);
                     if ((this.containsSameFunctionalities(ifuncs, funcs1) && this.containsSameFunctionalities(jfuncs, funcs2))
                         || (this.containsSameFunctionalities(ifuncs, funcs2) && this.containsSameFunctionalities(jfuncs, funcs1)))
@@ -4862,7 +5068,7 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
             res = new List<Model>();
-            int nPGs = _partGroupLibrary.Count;
+            int nPGs = _partGroups.Count;
             if (nPGs == 0)
             {
                 return res;
@@ -4870,18 +5076,18 @@ namespace FameBase
             int pairId = 0; //412, i: 15, j: 24
             for (int i = 0; i < nPGs - 1; ++i)
             {
-                //if (!_partGroupLibrary[i][0].containsMainFuncPart())
+                //if (!_partGroups[i][0].containsMainFuncPart())
                 //{
                 //    continue;
                 //}
                 for (int j = i + 1; j < nPGs; ++j)
                 {
-                    if (_partGroupLibrary[i][0]._ParentModelIndex == _partGroupLibrary[j][0]._ParentModelIndex)
+                    if (_partGroups[i][0]._ParentModelIndex == _partGroups[j][0]._ParentModelIndex)
                     {
                         continue;
                     }
                     //this.reloadView();
-                    //if (!_partGroupLibrary[j][0].containsMainFuncPart())
+                    //if (!_partGroups[j][0].containsMainFuncPart())
                     //{
                     //    continue;
                     //}
@@ -4923,7 +5129,7 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
             res = new List<Model>();
-            int nPGs = _partGroupLibrary.Count;
+            int nPGs = _partGroups.Count;
             if (nPGs == 0)
             {
                 return false;
@@ -5088,7 +5294,7 @@ namespace FameBase
                     {
                         _validityMatrixPG.AddTriplet(p2, p1, maxValidity);
                     }
-                    if (_partGroupLibrary[p1][0]._isSymmBreak || _partGroupLibrary[p2][0]._isSymmBreak)
+                    if (_partGroups[p1][0]._isSymmBreak || _partGroups[p2][0]._isSymmBreak)
                     {
                         ++_nValidSymBreakUsed;
                     }
@@ -5242,7 +5448,7 @@ namespace FameBase
 
         private bool isMainFunctionalNode(Node node)
         {
-            return node._funcs.Contains(Functionality.Functions.HAND_PLACE) ||
+            return node._funcs.Contains(Functionality.Functions.PLACEMENT) ||
                 node._funcs.Contains(Functionality.Functions.HUMAN_HIP) ||
                 node._funcs.Contains(Functionality.Functions.HANG);
         }
@@ -5353,7 +5559,7 @@ namespace FameBase
             //{
             //    return false;
             //}
-            if (_partGroupLibrary[i][0]._NODES.Count == 0 || _partGroupLibrary[j][0]._NODES.Count == 0)
+            if (_partGroups[i][0]._NODES.Count == 0 || _partGroups[j][0]._NODES.Count == 0)
             {
                 if (_numOfEmptyGroupUsed >= _maxUseEmptyGroup)
                 {
@@ -6019,7 +6225,7 @@ namespace FameBase
             }
             sourcePos /= ne;
             Vector3d targetPos;
-            if (addf == Functionality.Functions.HAND_PLACE || addf == Functionality.Functions.HUMAN_HIP)
+            if (addf == Functionality.Functions.PLACEMENT || addf == Functionality.Functions.HUMAN_HIP)
             {
                 targetPos = new Vector3d(
                 attach._PART._BOUNDINGBOX.CENTER.x,
@@ -6056,7 +6262,7 @@ namespace FameBase
             Node place_g1 = null;
             foreach (Node node in g1._NODES)
             {
-                if (node._funcs.Contains(Functionality.Functions.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     place_g1 = node;
                     break;
@@ -6285,24 +6491,24 @@ namespace FameBase
 
         private Model selectAPartGroupAndParentModel(int p, Random rand)
         {
-            int np = _partGroupLibrary[p].Count;
+            int np = _partGroups[p].Count;
             int pgIdx = rand.Next(np);
             pgIdx = 0;
-            int parentIdx = _partGroupLibrary[p][pgIdx]._ParentModelIndex;
+            int parentIdx = _partGroups[p][pgIdx]._ParentModelIndex;
             // do not use the models created at this generation
-            while (_partGroupLibrary[p][pgIdx]._gen == _currGenId)
+            while (_partGroups[p][pgIdx]._gen == _currGenId)
             {
                 np = pgIdx;
                 pgIdx = rand.Next(np);
-                parentIdx = _partGroupLibrary[p][pgIdx]._ParentModelIndex;
+                parentIdx = _partGroups[p][pgIdx]._ParentModelIndex;
             }
             Model model = null;
             _modelIndexMap.TryGetValue(parentIdx, out model);
-            this.setSelectedNodes(model, _partGroupLibrary[p][pgIdx]);
+            this.setSelectedNodes(model, _partGroups[p][pgIdx]);
             // info
             StringBuilder sb = new StringBuilder();
             sb.Append(model._model_name + " - part groups:\n");
-            sb.Append(this.getPartGroupNames(_partGroupLibrary[p][pgIdx]));
+            sb.Append(this.getPartGroupNames(_partGroups[p][pgIdx]));
             Program.writeToConsole(sb.ToString());
 
             return model;

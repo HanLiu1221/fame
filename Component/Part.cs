@@ -672,6 +672,7 @@ namespace Component
         private Vector3d _centerOfConvexHull;
         private Polygon3D _symPlane;
 
+        public Functionality.Category _CAT = Functionality.Category.None;
         // test 
         public List<List<Vector3d>> pointsTest = new List<List<Vector3d>>();
 
@@ -2420,16 +2421,19 @@ namespace Component
 
     public class PartGroup
     {
+        int index = -1;
         int _parentShapeIdx = -1;
         List<Node> _nodes = new List<Node>();
-        public double[] _featureVector = new double[Functionality.__TOTAL_FUNCTONAL_PATCHES];
+        public double[] _featureVector = new double[Functionality._TOTAL_FUNCTONAL_PATCHES];
         public int _gen = 0;
         public bool _isSymmBreak = false;
+        public List<PartGroup> _compatiblePGs;
 
         public PartGroup(List<Node> nodes, int g)
         {
             _nodes = new List<Node>(nodes);
             _gen = g;
+            _compatiblePGs = new List<PartGroup>();
             //this.computeFeatureVector(null);
         }
 
@@ -2437,13 +2441,14 @@ namespace Component
         {
             _nodes = new List<Node>(nodes);
             _featureVector = featureVectors;
+            _compatiblePGs = new List<PartGroup>();
         }
 
         public bool containsMainFuncPart()
         {
             foreach(Node node in _nodes)
             {
-                if (node._funcs.Contains(Functionality.Functions.HAND_PLACE) || node._funcs.Contains(Functionality.Functions.HANG))
+                if (node._funcs.Contains(Functionality.Functions.PLACEMENT) || node._funcs.Contains(Functionality.Functions.HANG))
                 {
                     return true;
                 }
@@ -2457,7 +2462,7 @@ namespace Component
             {
                 return;
             }
-            int ndim = Functionality.__TOTAL_FUNCTONAL_PATCHES;
+            int ndim = Functionality._TOTAL_FUNCTONAL_PATCHES;
             double[] means = new double[ndim];
             double[] stds = new double[ndim];
             double[] sums = new double[ndim];
@@ -2538,6 +2543,17 @@ namespace Component
             //_featureVector = sums;
         }// computeFeatureVector
 
+        public int _INDEX
+        {
+            get
+            {
+                return index;
+            }
+            set
+            {
+                index = value;
+            }
+        }
         public List<Node> _NODES
         {
             get

@@ -13,7 +13,7 @@ namespace Component
         ***/
 
         /********** Variables **********/
-        public static int __TOTAL_FUNCTONAL_PATCHES = 35; // ncat * npatch
+        public static int _TOTAL_FUNCTONAL_PATCHES = 35; // ncat * npatch
         public static int _NUM_FUNCTIONALITY = 6;
         public static int _NUM_CATEGORIY = 15;
         public static int _NUM_UNARY_FEATURE = 420;
@@ -38,9 +38,9 @@ namespace Component
         public static int _CONVEXHULL_FEAT_DIM = 2;
         public static int _POINT_FEATURE_DIM = 18;
 
-        public enum Functions { GROUND_TOUCHING, HUMAN_BACK, HUMAN_HIP, HAND_HOLD, HAND_PLACE, SUPPORT, HANG };
+        public enum Functions { PLACEMENT, STORAGE, HUMAN_HIP, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG };
 
-        public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Shelf, 
+        public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Robot, Shelf, 
             Stand, Stroller, Table, TVBench, Vase, None };
 
 
@@ -74,8 +74,132 @@ namespace Component
 
         public static bool IsMainFunction(Functions f)
         {
-            return f == Functions.HAND_PLACE || f == Functions.HUMAN_HIP;
+            return f == Functions.PLACEMENT || f == Functions.STORAGE || f == Functions.HUMAN_HIP;
         }
+
+        public static bool IsSecondaryFunction(Functions f)
+        {
+            // usually connect to the main functional parts
+            return f == Functions.HUMAN_BACK || f == Functions.HAND_HOLD;
+        }
+
+        public static bool IsSupportFunction(Functions f)
+        {
+            // usually support the main functional parts
+            return f == Functions.GROUND_TOUCHING || f == Functions.SUPPORT;
+        }
+
+        public static double[] GetPartGroupCompatibility(Model m1, Model m2, PartGroup pg1, PartGroup pg2)
+        {
+            // 0: not replaceable
+            // res[0]: if pg1 can be replaced by pg2 with the compatibility val
+            // res[1]: if pg2 can be replaced by pg1 with the compatibility val
+            double[] res = new double[2];
+            // part groups should not come from the same source model
+            if (pg1._ParentModelIndex == pg2._ParentModelIndex)
+            {
+                return res;
+            }
+            // 1. if compatible functions exist
+            List<Functions> funcs1 = collectFunctionality(pg1._NODES);
+            List<Functions> funcs2 = collectFunctionality(pg2._NODES);
+            int comp = IsFunctionCompatible(funcs1, funcs2);
+            if (comp == -1)
+            {
+                return res;
+            }
+            // 2. if #1. stands, check if the functionality of the model is preserved
+            if (comp == 0 || comp == 2)
+            {
+                if (IsUpdatedModelFunctional(m1, pg1, pg2))
+                {
+                    res[0] = 1;
+                }
+            }
+            if (comp == 1 || comp == 2)
+            {
+                if (IsUpdatedModelFunctional(m2, pg2, pg1))
+                {
+                    res[1] = 1;
+                }
+            }
+            return res;
+        }// IsTwoPartGroupCompatible
+
+        public static bool IsUpdatedModelFunctional(Model m, PartGroup pg1, PartGroup pg2)
+        {
+            List<Node> nodes = m._GRAPH._NODES;
+            foreach (Node node in pg1._NODES)
+            {
+                nodes.Remove(node);
+            }
+            nodes.AddRange(pg2._NODES);
+            Category cat = m._CAT;
+            List<Functions> funcs = getFunctionalityFromCategory(cat);
+            List<Functions> updated = collectFunctionality(nodes);
+            var sub = funcs.Except(updated);
+            if (sub.ToList().Count > 0)
+            {
+                return false;
+            }
+            return true;
+        }// IsUpdatedModelFunctional
+
+        public static int IsFunctionCompatible(List<Functions> funcs1, List<Functions> funcs2)
+        {
+            // OUTPUT:
+            // -1: neither is replaceable
+            // 0: funcs1 can be replaced by funcs2
+            // 1: funcs2 can be replaced by funcs1
+            // 2: both are replaceable
+            bool containsMainFunc1 = false;
+            bool containsMainFunc2 = false;
+            bool containsSecondaryFunc1 = false;
+            bool containsSecondaryFunc2 = false;
+            bool containsSupportFunc1 = false;
+            bool containsSupportFunc2 = false;
+            int res = -1;
+            // assume all possible functions of nodes have already been measured
+            var sub1 = funcs1.Except(funcs2);
+            var sub2 = funcs2.Except(funcs1);
+            CheckFunctions(sub1.ToList(), out containsMainFunc1, out containsSecondaryFunc1, out containsSupportFunc1);
+            CheckFunctions(sub2.ToList(), out containsMainFunc2, out containsSecondaryFunc2, out containsSupportFunc2);
+            if (!containsSupportFunc1 && !containsSupportFunc1 && !containsSupportFunc1)
+            {
+                res = 0; // not losing any important function
+            }
+            if (!containsSupportFunc2 && !containsSupportFunc2 && !containsSupportFunc2)
+            {
+                res += 2;
+            }
+            return res;
+        }// IsFunctionCompatible
+
+        public static void CheckFunctions(List<Functions> funcs,
+            out bool containsMainFunc,
+            out bool containsSecondaryFunc,
+            out bool containsSupportFunc)
+        {
+            containsMainFunc = false;
+            containsSecondaryFunc = false;
+            containsSupportFunc = false;
+            foreach (Functions f in funcs)
+            {
+                if (IsMainFunction(f))
+                {
+                    containsMainFunc = true;
+                }
+                if (IsSecondaryFunction(f))
+                {
+                    containsSecondaryFunc = true;
+                }
+                if (IsSupportFunction(f))
+                {
+                    containsSupportFunc = true;
+                }
+            }
+        }// CheckFunctions
+
 
         public static string getCategoryName(int index)
         {
@@ -100,16 +224,18 @@ namespace Component
                 case 8:
                     return "Hook";
                 case 9:
-                    return "Shelf";
+                    return "Robot";
                 case 10:
-                    return "Stand";
+                    return "Shelf";
                 case 11:
-                    return "Stroller";
+                    return "Stand";
                 case 12:
-                    return "Table";
+                    return "Stroller";
                 case 13:
-                    return "TVBench";
+                    return "Table";
                 case 14:
+                    return "TVBench";
+                case 15:
                     return "Vase";
                 default:
                     return "None";
@@ -139,6 +265,8 @@ namespace Component
                     return Category.Hanger;
                 case "hook":
                     return Category.Hook;
+                case "robot":
+                    return Category.Robot;
                 case "shelf":
                     return Category.Shelf;
                 case "stand":
@@ -178,6 +306,8 @@ namespace Component
                     return 2;
                 case Category.Hook:
                     return 2;
+                case Category.Robot:
+                    return 3;
                 case Category.Shelf:
                     return 3;
                 case Category.Stand:
@@ -224,7 +354,7 @@ namespace Component
             {
                 funcs.Add(Functions.HAND_HOLD);
                 funcs.Add(Functions.GROUND_TOUCHING);
-                funcs.Add(Functions.HAND_PLACE);
+                funcs.Add(Functions.PLACEMENT);
             }
             if (cat == Category.Basket)
             {
@@ -233,12 +363,12 @@ namespace Component
             }
             if (cat == Category.Shelf)
             {
-                funcs.Add(Functions.HAND_PLACE);
+                funcs.Add(Functions.PLACEMENT);
                 funcs.Add(Functions.GROUND_TOUCHING);
             }
             if (cat == Category.DryingRack)
             {
-                funcs.Add(Functions.HAND_PLACE);
+                funcs.Add(Functions.PLACEMENT);
                 funcs.Add(Functions.GROUND_TOUCHING);
             }
             if (cat == Category.Stand)
@@ -257,6 +387,16 @@ namespace Component
             }
             return funcs;
         }// getFunctionalityFromCategories
+
+        public static List<Functions> collectFunctionality(List<Node> nodes)
+        {
+            List<Functions> funcs = new List<Functions>();
+            foreach (Node node in nodes)
+            {
+                funcs.AddRange(node._funcs);
+            }
+            return funcs;
+        }// getFunctionalityOfPartGroup
 
     }// Functionality
 }

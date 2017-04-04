@@ -124,6 +124,7 @@
             this.autoGenerateToolStripMenuItem = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
+            this.outputTextWindow = new System.Windows.Forms.TextBox();
             this.postAnalysisRes = new System.Windows.Forms.Label();
             this.simOfPGpairsLabel = new System.Windows.Forms.Label();
             this.prev_next_panel = new System.Windows.Forms.Panel();
@@ -138,6 +139,7 @@
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
             this.partRelatedTools = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.groupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.unGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.addEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.delEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.selectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -163,8 +165,11 @@
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.outputTextWindow = new System.Windows.Forms.TextBox();
-            this.unGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.categoryList = new System.Windows.Forms.ListBox();
+            this.category_panel = new System.Windows.Forms.Panel();
+            this.cat_select_label = new System.Windows.Forms.Label();
+            this.category_yes = new System.Windows.Forms.Button();
+            this.category_cancel = new System.Windows.Forms.Button();
             this.glViewer = new FameBase.GLViewer();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
@@ -173,6 +178,7 @@
             this.viewPanel.SuspendLayout();
             this.prev_next_panel.SuspendLayout();
             this.partRelatedTools.SuspendLayout();
+            this.category_panel.SuspendLayout();
             this.SuspendLayout();
             // 
             // menu
@@ -978,6 +984,7 @@
             // viewPanel.Panel2
             // 
             this.viewPanel.Panel2.BackColor = System.Drawing.Color.White;
+            this.viewPanel.Panel2.Controls.Add(this.category_panel);
             this.viewPanel.Panel2.Controls.Add(this.outputTextWindow);
             this.viewPanel.Panel2.Controls.Add(this.postAnalysisRes);
             this.viewPanel.Panel2.Controls.Add(this.simOfPGpairsLabel);
@@ -999,6 +1006,17 @@
             this.fileNameTabs.SelectedIndex = 0;
             this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
             this.fileNameTabs.TabIndex = 0;
+            // 
+            // outputTextWindow
+            // 
+            this.outputTextWindow.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.outputTextWindow.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.outputTextWindow.Location = new System.Drawing.Point(216, 623);
+            this.outputTextWindow.Multiline = true;
+            this.outputTextWindow.Name = "outputTextWindow";
+            this.outputTextWindow.Size = new System.Drawing.Size(676, 78);
+            this.outputTextWindow.TabIndex = 21;
             // 
             // postAnalysisRes
             // 
@@ -1143,33 +1161,40 @@
             this.partNameToolStripMenuItem,
             this.partGroupToolStripMenuItem});
             this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(153, 202);
+            this.partRelatedTools.Size = new System.Drawing.Size(132, 180);
             // 
             // groupToolStripMenuItem
             // 
             this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
+            // 
+            // unGroupToolStripMenuItem
+            // 
+            this.unGroupToolStripMenuItem.Name = "unGroupToolStripMenuItem";
+            this.unGroupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.unGroupToolStripMenuItem.Text = "UnGroup";
+            this.unGroupToolStripMenuItem.Click += new System.EventHandler(this.unGroupToolStripMenuItem_Click);
             // 
             // addEdgeToolStripMenuItem
             // 
             this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.addEdgeToolStripMenuItem.Text = "Add edge";
             this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // delEdgeToolStripMenuItem
             // 
             this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.delEdgeToolStripMenuItem.Text = "Del edge";
             this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // selectToolStripMenuItem
             // 
             this.selectToolStripMenuItem.Name = "selectToolStripMenuItem";
-            this.selectToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.selectToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
@@ -1185,7 +1210,7 @@
             this.hangToolStripMenuItem,
             this.removeallToolStripMenuItem});
             this.functionalityToolStripMenuItem.Name = "functionalityToolStripMenuItem";
-            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.functionalityToolStripMenuItem.Text = "Functions";
             // 
             // humanbackToolStripMenuItem
@@ -1258,7 +1283,7 @@
             this.groundSupportToolStripMenuItem,
             this.connectorToolStripMenuItem});
             this.partNameToolStripMenuItem.Name = "partNameToolStripMenuItem";
-            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.partNameToolStripMenuItem.Text = "Part Name";
             // 
             // chairLegToolStripMenuItem
@@ -1341,27 +1366,73 @@
             // partGroupToolStripMenuItem
             // 
             this.partGroupToolStripMenuItem.Name = "partGroupToolStripMenuItem";
-            this.partGroupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.partGroupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.partGroupToolStripMenuItem.Text = "Part Group";
             this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
             // 
-            // outputTextWindow
+            // categoryList
             // 
-            this.outputTextWindow.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.outputTextWindow.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.outputTextWindow.Location = new System.Drawing.Point(216, 623);
-            this.outputTextWindow.Multiline = true;
-            this.outputTextWindow.Name = "outputTextWindow";
-            this.outputTextWindow.Size = new System.Drawing.Size(676, 78);
-            this.outputTextWindow.TabIndex = 21;
+            this.categoryList.FormattingEnabled = true;
+            this.categoryList.Items.AddRange(new object[] {
+            "Backpack",
+            "Basket",
+            "Bicycle",
+            "Chair",
+            "Desk",
+            "DryingRack",
+            "Handcart",
+            "Hanger",
+            "Hook",
+            "Shelf",
+            "Stand",
+            "Stroller",
+            "Table",
+            "TVBench",
+            "Vase"});
+            this.categoryList.Location = new System.Drawing.Point(3, 18);
+            this.categoryList.Name = "categoryList";
+            this.categoryList.Size = new System.Drawing.Size(174, 121);
+            this.categoryList.TabIndex = 22;
             // 
-            // unGroupToolStripMenuItem
+            // category_panel
             // 
-            this.unGroupToolStripMenuItem.Name = "unGroupToolStripMenuItem";
-            this.unGroupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.unGroupToolStripMenuItem.Text = "UnGroup";
-            this.unGroupToolStripMenuItem.Click += new System.EventHandler(this.unGroupToolStripMenuItem_Click);
+            this.category_panel.Controls.Add(this.category_cancel);
+            this.category_panel.Controls.Add(this.category_yes);
+            this.category_panel.Controls.Add(this.cat_select_label);
+            this.category_panel.Controls.Add(this.categoryList);
+            this.category_panel.Location = new System.Drawing.Point(649, 327);
+            this.category_panel.Name = "category_panel";
+            this.category_panel.Size = new System.Drawing.Size(179, 170);
+            this.category_panel.TabIndex = 23;
+            // 
+            // cat_select_label
+            // 
+            this.cat_select_label.AutoSize = true;
+            this.cat_select_label.Location = new System.Drawing.Point(2, 3);
+            this.cat_select_label.Name = "cat_select_label";
+            this.cat_select_label.Size = new System.Drawing.Size(157, 13);
+            this.cat_select_label.TabIndex = 23;
+            this.cat_select_label.Text = "Select a category for the model:";
+            // 
+            // category_yes
+            // 
+            this.category_yes.Location = new System.Drawing.Point(3, 141);
+            this.category_yes.Name = "category_yes";
+            this.category_yes.Size = new System.Drawing.Size(54, 26);
+            this.category_yes.TabIndex = 24;
+            this.category_yes.Text = "OK";
+            this.category_yes.UseVisualStyleBackColor = true;
+            this.category_yes.Click += new System.EventHandler(this.category_yes_Click);
+            // 
+            // category_cancel
+            // 
+            this.category_cancel.Location = new System.Drawing.Point(63, 141);
+            this.category_cancel.Name = "category_cancel";
+            this.category_cancel.Size = new System.Drawing.Size(54, 26);
+            this.category_cancel.TabIndex = 25;
+            this.category_cancel.Text = "Cancel";
+            this.category_cancel.UseVisualStyleBackColor = true;
+            this.category_cancel.Click += new System.EventHandler(this.category_cancel_Click);
             // 
             // glViewer
             // 
@@ -1404,6 +1475,8 @@
             this.prev_next_panel.ResumeLayout(false);
             this.prev_next_panel.PerformLayout();
             this.partRelatedTools.ResumeLayout(false);
+            this.category_panel.ResumeLayout(false);
+            this.category_panel.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -1548,6 +1621,11 @@
         private System.Windows.Forms.ToolStripMenuItem lFDTestToolStripMenuItem;
         private System.Windows.Forms.TextBox outputTextWindow;
         private System.Windows.Forms.ToolStripMenuItem unGroupToolStripMenuItem;
+        private System.Windows.Forms.ListBox categoryList;
+        private System.Windows.Forms.Panel category_panel;
+        private System.Windows.Forms.Button category_cancel;
+        private System.Windows.Forms.Button category_yes;
+        private System.Windows.Forms.Label cat_select_label;
     }
 }
 

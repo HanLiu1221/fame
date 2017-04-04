@@ -778,7 +778,7 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 if (node._edges.Count > nMaxConn)
-                //&& (node._funcs.Contains(Functionality.Functions.HAND_PLACE) || node._funcs.Contains(Functionality.Functions.HUMAN_HIP)))
+                //&& (node._funcs.Contains(Functionality.Functions.PLACEMENT) || node._funcs.Contains(Functionality.Functions.HUMAN_HIP)))
                 {
                     nMaxConn = node._edges.Count;
                     key = node;
@@ -1081,7 +1081,7 @@ namespace Component
             Node attach = null;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Functionality.Functions.HUMAN_BACK) || node._funcs.Contains(Functionality.Functions.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.HUMAN_BACK) || node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     if (node._PART._MESH.MinCoord.z < minz)
                     {
@@ -1119,7 +1119,7 @@ namespace Component
         {
             foreach (Node node in _nodes)
             {
-                if (!node._funcs.Contains(Functionality.Functions.HAND_PLACE))
+                if (!node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     continue;
                 }
@@ -1311,7 +1311,7 @@ namespace Component
             int nFuncParts = 0;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Functionality.Functions.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     ++nFuncParts;
                 }
@@ -1320,7 +1320,7 @@ namespace Component
             int nTitled = 0;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Functionality.Functions.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     Vector3d nor = node._PART._BOUNDINGBOX._PLANES[0].normal;
                     double angle = Math.Acos(nor.Dot(Common.uprightVec));
@@ -2020,7 +2020,7 @@ namespace Component
         // or, maybe try to even separate the mesh
         public List<Functionality.Functions> _funcs = new List<Functionality.Functions>();
         public Vector3d _ratios = new Vector3d();
-        public bool[] _isFunctionalPatch = new bool[Functionality.__TOTAL_FUNCTONAL_PATCHES];
+        public bool[] _isFunctionalPatch = new bool[Functionality._TOTAL_FUNCTONAL_PATCHES];
         public Prism _functionalSpaceAgent;
 
         public Node(Part p, int idx)
