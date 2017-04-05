@@ -733,10 +733,7 @@ namespace Component
 
         public void initializeGraph()
         {
-            if (_GRAPH == null)
-            {
-                _GRAPH = new Graph(_parts);
-            }
+            _GRAPH = new Graph(_parts);
         }
 
         public void setGraph(Graph g)

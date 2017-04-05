@@ -368,6 +368,7 @@ namespace FameBase
             _selectedContact = null;
             _selectedParts.Clear();
             _selectedNodes.Clear();
+            _selected_cat = Functionality.Category.None; // reset the current category
         }// clearHighlights
 
         /******************** Load & Save ********************/
@@ -895,21 +896,30 @@ namespace FameBase
             this.Refresh();
         }// switchXYZ
 
-        public string _selected_cat = "";
+        private Functionality.Category _selected_cat = Functionality.Category.None;
+        private string model_filename = "";
+
+        public void setCurrentModelCategoryAndSave(string cat)
+        {
+            _selected_cat = Functionality.getCategory(cat);
+            _currModel._CAT = _selected_cat;
+            this.saveAPartBasedModel(_currModel, model_filename, true);
+        }// setCurrentModelCategoryAndSave
+
         public void saveTheCurrentModel(string filename, bool isOriginal)
         {
             // call from UI
-            if (_currModel._CAT == null || _currModel._CAT == Functionality.Category.None)
+            if (_currModel._CAT == Functionality.Category.None)
             {
-                Functionality.Category cat = Functionality.getCategory(_selected_cat);
-                if (cat == Functionality.Category.None)
+                if (_selected_cat == Functionality.Category.None)
                 {
+                    model_filename = filename;
                     Program.GetFormMain().showCategorySelection();
                     return;
                 }
                 else
                 {
-                    _currModel._CAT = cat;
+                    _currModel._CAT = _selected_cat;
                 }
             }
             this.saveAPartBasedModel(_currModel, filename, isOriginal);
@@ -2055,6 +2065,8 @@ namespace FameBase
 
         public void loadAPartBasedModel(string filename)
         {
+            this.clearContext();
+            this.clearHighlights();
             _currModel = this.loadAPartBasedModelAgent(filename, false);
             this.setUIMode(0);
             // model check
@@ -2358,45 +2370,6 @@ namespace FameBase
             }
 
         }// loadPartBasedModels
-
-        private void calculatePartGroupCompatibility(List<Model> models)
-        {
-            if (models == null || models.Count == 0)
-            {
-                return;
-            }
-            // evaluate pairs of part groups
-            _partGroupLibrary = new List<PartGroup>();
-            // list all part groups and index
-            int id = 0;
-            foreach (Model m in models)
-            {
-                foreach (PartGroup pg in m._GRAPH._partGroups)
-                {
-                    pg._INDEX = id++;
-                    _partGroupLibrary.Add(pg);
-                }
-            }
-            int n = _partGroupLibrary.Count;
-            _validityMatrixPG = new SparseMatrix(n, n);
-            for (int i = 0; i < n - 1; ++i)
-            {
-                Model m1 = _ancesterModels[_partGroupLibrary[i]._ParentModelIndex];
-                for (int j = i + 1; j < n; ++j)
-                {
-                    Model m2 = _ancesterModels[_partGroupLibrary[j]._ParentModelIndex];
-                    double[] comp = Functionality.GetPartGroupCompatibility(m1, m2, _partGroupLibrary[i], _partGroupLibrary[j]);
-                    if (comp[0] > 0)
-                    {
-                        _validityMatrixPG.AddTriplet(i, j, comp[0]);
-                    }
-                    if (comp[1] > 0)
-                    {
-                        _validityMatrixPG.AddTriplet(j, i, comp[1]);
-                    }
-                }
-            }
-        }// calculatePartGroupCompatibility
 
         private void preProcessInputSet(List<Model> models)
         {
@@ -4192,6 +4165,14 @@ namespace FameBase
 
         }// markFunctionPart
 
+        public void removeFunction()
+        {
+            foreach (Node node in _selectedNodes)
+            {
+                node._funcs.Clear();
+            }
+        }
+
         public void nameParts(string s)
         {
             foreach (Node node in _selectedNodes)
@@ -4792,6 +4773,10 @@ namespace FameBase
             this.reloadView();
 
             string validityMatrixFolder = Interface.MODLES_PATH + "ValidityMatrix\\";
+            if (!Directory.Exists(validityMatrixFolder))
+            {
+                Directory.CreateDirectory(validityMatrixFolder);
+            }
             string validityMatrixFileName = validityMatrixFolder + "User_" + _userIndex.ToString() +
                 "_gen_" + _currGenId.ToString() + ".vdm";
 
@@ -4882,7 +4867,7 @@ namespace FameBase
                 string runstr = "Run ";
                 runstr += "Crossover @iteration " + i.ToString();
                 Program.GetFormMain().writeToConsole(runstr);
-                List<Model> cur_kids = runAGenerationOfCrossover(_currGenId, rand, imageFolder_c);
+                List<Model> cur_kids = preRunTest(imageFolder_c);
                 curGeneration.AddRange(cur_kids);
                 ++_currGenId;
             }// for each iteration
@@ -4910,6 +4895,461 @@ namespace FameBase
         {
             
         }// calculateRepleaceablePartGroupPair
+
+        private List<Model> preRunTest(string imageFolder)
+        {
+            List<Model> res = new List<Model>();
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+            res = new List<Model>();
+            int nPGs = _partGroupLibrary.Count;
+            if (nPGs == 0)
+            {
+                return res;
+            }
+            int pairId = 0; 
+            for (int t = 0; t < _validityMatrixPG.NTriplets; ++t)
+            {
+                int i = _validityMatrixPG.GetTriplet(t).row;
+                int j = _validityMatrixPG.GetTriplet(t).col;
+                List<Model> ijs;
+                //i = 0;
+                //j = 6;
+                runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs);
+            }
+            double secs = avgTimePerValidOffspring / validOffspringNumber;
+            StringBuilder sb = new StringBuilder();
+            sb.Append("Total valid offspring: " + validOffspringNumber.ToString() + "\n");
+            sb.Append("Average Time to run a valid crossover: " + secs.ToString() + " senconds.");
+            Program.writeToConsole(sb.ToString());
+            return res;
+        }// preRunTest
+
+        private bool runACrossoverTest(int p1, int p2, int gen, Random rand, string imageFolder, int idx, out List<Model> res)
+        {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+            res = new List<Model>();
+            int nPGs = _partGroupLibrary.Count;
+            if (nPGs == 0)
+            {
+                return false;
+            }
+            // select two part groups randomly
+
+            Triplet triplet = _validityMatrixPG.GetTriplet(p1, p2);
+            int nTriplets = _validityMatrixPG.NTriplets;
+            // select parent shapes
+            Program.writeToConsole("Crossover: \n");
+            Model model1 = _ancesterModels[_partGroupLibrary[p1]._ParentModelIndex];
+            Model model2 = _ancesterModels[_partGroupLibrary[p2]._ParentModelIndex];
+            this.setSelectedNodes(model1, _partGroupLibrary[p1]);
+            this.setSelectedNodes(model2, _partGroupLibrary[p2]);
+            // _updated partgroups
+
+            Stopwatch stopWatch_cross = new Stopwatch();
+            stopWatch_cross.Start();
+
+            List<Model> results = this.performOneCrossover(model1, model2, gen, idx, p1, p2);
+
+            long secs = stopWatch_cross.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time to run crossover: " + secs.ToString() + " senconds.");
+
+            int id = -1;
+            foreach (Model m in results)
+            {
+                ++id;
+                if (id > 0)
+                {
+                    break;
+                }
+                Program.writeToConsole("");
+                Stopwatch stopWatch_eval = new Stopwatch();
+                stopWatch_eval.Start();
+
+                // screenshot
+                this.setCurrentModel(m, -1);
+                Program.GetFormMain().updateStats();
+
+                m._GRAPH.unify();
+                m.composeMesh();
+
+                if (!m._GRAPH.isValid())
+                {
+                    this.captureScreen(imageFolder + "invald\\" + m._model_name + "_invalid.png");
+                    saveAPartBasedModel(m, m._path + m._model_name + "_invalid.pam", false);
+                    continue;
+                }
+
+                
+                //// valid graph
+                //this.tryRestoreFunctionalNodes(m);
+
+                secs = stopWatch_cross.ElapsedMilliseconds / 1000;
+                Program.writeToConsole("Time to eval an offspring: " + secs.ToString() + " senconds.");
+                // screenshot
+                this.setCurrentModel(m, -1);
+                Program.GetFormMain().updateStats();
+                res.Add(m);
+                // save at diff folder
+                string splitFolder = imageFolder;
+                this.captureScreen(splitFolder + m._model_name + ".png");
+                //this.captureScreen(imageFolder + m._model_name + ".png");
+                saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                m._index = _modelIndex;
+                ++_modelIndex;
+
+            }
+            secs = stopWatch.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time to run a crossover: " + secs.ToString() + " senconds.");
+            avgTimePerValidOffspring += secs;
+            validOffspringNumber += res.Count;
+            longestTimePerValidOffspring = longestTimePerValidOffspring > secs ? longestTimePerValidOffspring : secs;
+
+            return true;
+        }// runACrossover - part groups
+
+        public List<Model> performOneCrossover(Model m1, Model m2, int gen, int idx, int p1, int p2)
+        {
+            // replace p1 by p2 in m1
+            if (m1 == null || m2 == null)
+            {
+                return null;
+            }
+            List<Model> res = new List<Model>();
+            Model newNodel = m1.Clone() as Model;
+            // m1 starts name
+            string name = m1._model_name;
+            int slashId = name.IndexOf('-');
+            if (slashId == -1) {
+                slashId = name.Length - 1;
+            }
+            string originalModelName = name.Substring(0, slashId);
+            newNodel._path = crossoverFolder + "gen_" + gen.ToString() + "\\";
+
+            if (!Directory.Exists(newNodel._path))
+            {
+                Directory.CreateDirectory(newNodel._path);
+            }
+
+            // using model names will be too long, exceed the maximum length of file name
+            //newM1._model_name = m1._model_name + "_c_" + m2._model_name;
+            //newM2._model_name = m2._model_name + "_c_" + m1._model_name;
+            if (p1 != -1 && p2 != -1)
+            {
+                newNodel._model_name = name + "-gen_" + gen.ToString() + "_num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString();
+            }
+            else
+            {
+                newNodel._model_name = "gen_" + gen.ToString() + "_" + idx.ToString();
+            }
+            List<Node> nodes1 = new List<Node>();
+            List<Node> nodes2 = m2._GRAPH.selectedNodes; // unchanged
+            foreach (Node node in m1._GRAPH.selectedNodes)
+            {
+                nodes1.Add(newNodel._GRAPH._NODES[node._INDEX]);
+            }
+
+            if (nodes1 == null || nodes2 == null)
+            {
+                return null;
+            }
+
+            List<Node> updatedNodes2;
+            List<Model> parents = new List<Model>(); // to set parent names
+            parents.Add(m1);
+            parents.Add(m2);
+            // switch
+            replaceNodes(newNodel._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes2);
+            newNodel.replaceNodes(nodes1, updatedNodes2);
+            newNodel.nNewNodes = updatedNodes2.Count;
+            newNodel.setParentNames(parents);
+
+            res.Add(newNodel);
+            return res;
+        }// crossover
+
+        private void handleInsertion(Graph g1, Graph g2, List<Node> nodes2)
+        {
+            // insert nodes2 to g1
+            List<Edge> edgesToConnect = g2.getOutgoingEdges(nodes2);
+            List<Node> nodesToConnect = g2.getOutConnectedNodes(nodes2);
+            List<Functionality.Functions> functions = Functionality.getNodesFunctionalities(nodesToConnect);
+            List<Node> candidteNodes = new List<Node>();
+            int nConns = 0; // use it as importance of nodes
+            Node toConnect = null;
+            Node mainNode = null;
+            // look for nodes with same functions in g1
+            foreach (Node node in g1._NODES)
+            {
+                foreach (Functionality.Functions f in node._funcs)
+                {
+                    if (Functionality.IsMainFunction(f))
+                    {
+                        if (mainNode == null || node._PART._BOUNDINGBOX.CENTER.y > mainNode._PART._BOUNDINGBOX.CENTER.y)
+                        {
+                            mainNode = node;
+                        }
+                    }
+                    if (functions.Contains(f))
+                    {
+                        if (!candidteNodes.Contains(node))
+                        {
+                            candidteNodes.Add(node);
+                        }
+                        if (node._edges.Count > nConns || (node._edges.Count == nConns && Functionality.IsMainFunction(f)))
+                        {
+                            nConns = node._edges.Count;
+                            //break;
+                        }
+                    }
+                }
+            }
+            if (toConnect == null)
+            {
+                // use the main functional node
+                // find similar struture from its source model
+                toConnect = mainNode;
+            }
+            List<Vector3d> targets = new List<Vector3d>();
+            Vector3d pos = new Vector3d(toConnect._PART._BOUNDINGBOX.CENTER.x,
+                toConnect._PART._BOUNDINGBOX.CENTER.y,
+                 toConnect._PART._BOUNDINGBOX.MinCoord.z);
+            targets.Add(pos);
+            List<Vector3d> sourcePnts = collectPoints(edgesToConnect);
+            List<Vector3d> sources = new List<Vector3d>();
+            Vector3d center1 = new Vector3d();
+            foreach (Vector3d v in sourcePnts)
+            {
+                center1 += v;
+            }
+            center1 /= sourcePnts.Count;
+            sources.Add(center1);
+            Node ground2 = hasGroundTouchingNode(nodes2);
+            if (ground2 != null)
+            {
+                targets.Add(new Vector3d(pos.x, 0, pos.z));
+                sources.Add(g2.getGroundTouchingNodesCenter());
+            }
+
+            Vector3d center2 = new Vector3d();
+            Vector3d maxv = Vector3d.MinCoord;
+            Vector3d minv = Vector3d.MaxCoord;
+            foreach (Node node in nodes2)
+            {
+                center2 += node._PART._BOUNDINGBOX.CENTER;
+                maxv = Vector3d.Max(maxv, node._PART._BOUNDINGBOX.MaxCoord);
+                minv = Vector3d.Min(minv, node._PART._BOUNDINGBOX.MinCoord);
+            }
+            center2 = (maxv + minv) / 2;
+
+            Vector3d scale2 = new Vector3d(1, 1, 1);
+
+            Matrix4d S, T, Q;
+            getTransformation(sources, targets, out S, out T, out Q, scale2, true, center1, center2, false);
+            this.deformNodesAndEdges(nodes2, Q);
+
+            if (ground2 != null)
+            {
+                g1.resetUpdateStatus();
+                adjustGroundTouching(nodes2);
+            }
+            g1.resetUpdateStatus();
+        }// handleInsertion
+
+        private void replaceNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2, out List<Node> updateNodes2)
+        {
+            // replace nodes1 by nodes2 in g1
+            updateNodes2 = cloneNodesAndRelations(nodes2);
+            List<Edge> edgesToConnect_1 = g1.getOutgoingEdges(nodes1);
+            if (edgesToConnect_1.Count == 0)
+            {
+                handleInsertion(g1, g2, updateNodes2);
+                return;
+            }
+
+            List<Edge> edgesToConnect_2 = g2.getOutgoingEdges(nodes2);
+            List<Vector3d> targets = collectPoints(edgesToConnect_1);
+            List<Vector3d> sources = collectPoints(edgesToConnect_2);
+
+            Vector3d center1 = new Vector3d();
+            Vector3d maxv_s = Vector3d.MinCoord;
+            Vector3d minv_s = Vector3d.MaxCoord;
+            Vector3d maxv_t = Vector3d.MinCoord;
+            Vector3d minv_t = Vector3d.MaxCoord;
+
+            foreach (Node node in nodes1)
+            {
+                center1 += node._PART._BOUNDINGBOX.CENTER;
+                maxv_s = Vector3d.Max(maxv_s, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_s = Vector3d.Min(minv_s, node._PART._BOUNDINGBOX.MinCoord);
+            }
+            //center1 /= nodes1.Count;
+            center1 = (maxv_s + minv_s) / 2;
+
+            Vector3d center2 = new Vector3d();
+            foreach (Node node in nodes2)
+            {
+                center2 += node._PART._BOUNDINGBOX.CENTER;
+                maxv_t = Vector3d.Max(maxv_t, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_t = Vector3d.Min(minv_t, node._PART._BOUNDINGBOX.MinCoord);
+            }
+            //center2 /= nodes2.Count;
+            center2 = (maxv_t + minv_t) / 2;
+
+            double[] scale1 = { 1.0, 1.0, 1.0 };
+            if (nodes1.Count > 0)
+            {
+                scale1[0] = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
+                scale1[1] = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
+                scale1[2] = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
+            }
+
+            int axis = this.hasCylinderNode(nodes1);
+            if (axis != -1)
+            {
+                scale1 = this.updateScalesForCylinder(scale1, axis);
+            }
+            Vector3d boxScale_1 = new Vector3d(scale1[0], scale1[1], scale1[2]);
+            double[] scale2 = { 1.0, 1.0, 1.0 };
+            if (nodes2.Count > 0)
+            {
+                scale2[0] = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
+                scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
+                scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
+            }
+            axis = this.hasCylinderNode(nodes2);
+            if (axis != -1)
+            {
+                scale2 = this.updateScalesForCylinder(scale2, axis);
+            }
+            Vector3d boxScale_2 = new Vector3d(scale2[0], scale2[1], scale2[2]);
+
+            Matrix4d S, T, Q;
+
+            // sort corresponding points
+            int nps = targets.Count;
+            bool startWithSrc = true;
+            List<Vector3d> left = targets;
+            List<Vector3d> right = sources;
+            if (sources.Count < nps)
+            {
+                nps = sources.Count;
+                startWithSrc = false;
+                left = sources;
+                right = targets;
+            }
+            List<Vector3d> src = new List<Vector3d>();
+            List<Vector3d> trt = new List<Vector3d>();
+            bool[] visited = new bool[right.Count];
+            foreach (Vector3d v in left)
+            {
+                src.Add(v);
+                int j = -1;
+                double mind = double.MaxValue;
+                for (int i = 0; i < right.Count; ++i)
+                {
+                    if (visited[i]) continue;
+                    double d = (v - right[i]).Length();
+                    if (d < mind)
+                    {
+                        mind = d;
+                        j = i;
+                    }
+                }
+                trt.Add(right[j]);
+                visited[j] = true;
+            }
+            if (startWithSrc)
+            {
+                targets = src;
+                sources = trt;
+            }
+            else
+            {
+                targets = trt;
+                sources = src;
+            }
+
+
+            if (targets.Count <= 1)
+            {
+                targets.Add(center1);
+                sources.Add(center2);
+            }
+
+            Node ground1 = hasGroundTouchingNode(nodes1);
+            Node ground2 = hasGroundTouchingNode(nodes2);
+            if (ground1 != null && ground2 != null)
+            {
+                targets.Add(g1.getGroundTouchingNodesCenter());
+                sources.Add(g2.getGroundTouchingNodesCenter());
+                //targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
+                //sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
+            }
+            bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
+            if (nodes1.Count > 0 && nodes2.Count > 0)
+            {
+                getTransformation(targets, sources, out S, out T, out Q, boxScale_1, true, center2, center1, userCenter);
+                this.deformNodesAndEdges(updateNodes2, Q);
+            }
+
+            if (ground2 != null)
+            {
+                g1.resetUpdateStatus();
+                adjustGroundTouching(updateNodes2);
+            }
+            g1.resetUpdateStatus();
+
+        }// switchNodes
+
+
+        private void calculatePartGroupCompatibility(List<Model> models)
+        {
+            if (models == null || models.Count == 0)
+            {
+                return;
+            }
+            // evaluate pairs of part groups
+            _partGroupLibrary = new List<PartGroup>();
+            // list all part groups and index
+            int id = 0;
+            int mid = 0;
+            foreach (Model m in models)
+            {
+                // add an empty
+                PartGroup empty = new PartGroup(new List<Node>(), 0);
+                empty._INDEX = id++;
+                empty._ParentModelIndex = mid;
+                _partGroupLibrary.Add(empty);
+                foreach (PartGroup pg in m._GRAPH._partGroups)
+                {
+                    pg._INDEX = id++;
+                    _partGroupLibrary.Add(pg);
+                }
+                ++mid;
+            }
+            int n = _partGroupLibrary.Count;
+            _validityMatrixPG = new SparseMatrix(n, n);
+            for (int i = 0; i < n - 1; ++i)
+            {
+                Model m1 = _ancesterModels[_partGroupLibrary[i]._ParentModelIndex];
+                for (int j = i + 1; j < n; ++j)
+                {
+                    Model m2 = _ancesterModels[_partGroupLibrary[j]._ParentModelIndex];
+                    double[] comp = Functionality.GetPartGroupCompatibility(m1, m2, _partGroupLibrary[i], _partGroupLibrary[j]);
+                    if (comp[0] > 0)
+                    {
+                        _validityMatrixPG.AddTriplet(i, j, comp[0]);
+                    }
+                    if (comp[1] > 0)
+                    {
+                        _validityMatrixPG.AddTriplet(j, i, comp[1]);
+                    }
+                }
+            }
+        }// calculatePartGroupCompatibility
+
 
         private void updateSimilarGroups(int p1, int p2, bool increase)
         {
@@ -7877,20 +8317,30 @@ namespace FameBase
         private void switchNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2,
             out List<Node> updateNodes1, out List<Node> updateNodes2)
         {
+            updateNodes1 = cloneNodesAndRelations(nodes1);
+            updateNodes2 = cloneNodesAndRelations(nodes2);
+            if (nodes1.Count == 0)
+            {
+                handleInsertion(g1, g2, updateNodes2);
+                return;
+            }
+            if (nodes2.Count == 0)
+            {
+                handleInsertion(g2, g1, updateNodes1);
+                return;
+            }
+
             List<Edge> edgesToConnect_1 = g1.getOutgoingEdges(nodes1);
             List<Edge> edgesToConnect_2 = g2.getOutgoingEdges(nodes2);
             List<Vector3d> sources = collectPoints(edgesToConnect_1);
             List<Vector3d> targets = collectPoints(edgesToConnect_2);
 
-            updateNodes1 = new List<Node>();
-            updateNodes2 = new List<Node>();
             Vector3d center1 = new Vector3d();
             Vector3d maxv_s = Vector3d.MinCoord;
             Vector3d minv_s = Vector3d.MaxCoord;
             Vector3d maxv_t = Vector3d.MinCoord;
             Vector3d minv_t = Vector3d.MaxCoord;
 
-            updateNodes1 = cloneNodesAndRelations(nodes1);
             foreach (Node node in nodes1)
             {
                 center1 += node._PART._BOUNDINGBOX.CENTER;
@@ -7901,7 +8351,6 @@ namespace FameBase
             center1 = (maxv_s + minv_s) / 2;
 
             Vector3d center2 = new Vector3d();
-            updateNodes2 = cloneNodesAndRelations(nodes2);
             foreach (Node node in nodes2)
             {
                 center2 += node._PART._BOUNDINGBOX.CENTER;
@@ -7911,10 +8360,13 @@ namespace FameBase
             //center2 /= nodes2.Count;
             center2 = (maxv_t + minv_t) / 2;
 
-            double[] scale1 = new double[3];
-            scale1[0] = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
-            scale1[1] = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
-            scale1[2] = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);           
+            double[] scale1 = { 1.0, 1.0, 1.0 };
+            if (nodes1.Count > 0)
+            {
+                scale1[0] = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
+                scale1[1] = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
+                scale1[2] = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
+            }
 
             int axis = this.hasCylinderNode(nodes1);
             if (axis != -1)
@@ -7922,10 +8374,13 @@ namespace FameBase
                 scale1 = this.updateScalesForCylinder(scale1, axis);
             }
             Vector3d boxScale_1 = new Vector3d(scale1[0], scale1[1], scale1[2]);
-            double[] scale2 = new double[3];
-            scale2[0] = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
-            scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
-            scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
+            double[] scale2 = { 1.0, 1.0, 1.0 };
+            if (nodes2.Count > 0)
+            {
+                scale2[0] = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
+                scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
+                scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
+            }
             axis = this.hasCylinderNode(nodes2);
             if (axis != -1)
             {
@@ -9694,7 +10149,7 @@ namespace FameBase
             Part newPart = _currModel.groupParts(_selectedParts);
             _selectedParts.Clear();
             _selectedParts.Add(newPart);
-            _currModel._GRAPH = null;
+            _currModel.initializeGraph();
             this.cal2D();
             this.Refresh();
         }// groupParts

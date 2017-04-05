@@ -124,6 +124,11 @@
             this.autoGenerateToolStripMenuItem = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
+            this.category_panel = new System.Windows.Forms.Panel();
+            this.category_cancel = new System.Windows.Forms.Button();
+            this.category_yes = new System.Windows.Forms.Button();
+            this.cat_select_label = new System.Windows.Forms.Label();
+            this.categoryList = new System.Windows.Forms.ListBox();
             this.outputTextWindow = new System.Windows.Forms.TextBox();
             this.postAnalysisRes = new System.Windows.Forms.Label();
             this.simOfPGpairsLabel = new System.Windows.Forms.Label();
@@ -165,20 +170,24 @@
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.categoryList = new System.Windows.Forms.ListBox();
-            this.category_panel = new System.Windows.Forms.Panel();
-            this.cat_select_label = new System.Windows.Forms.Label();
-            this.category_yes = new System.Windows.Forms.Button();
-            this.category_cancel = new System.Windows.Forms.Button();
             this.glViewer = new FameBase.GLViewer();
+            this.panel1 = new System.Windows.Forms.Panel();
+            this.vScrollBar1 = new System.Windows.Forms.VScrollBar();
+            this.label1 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
+            this.vScrollBar2 = new System.Windows.Forms.VScrollBar();
+            this.vScrollBar3 = new System.Windows.Forms.VScrollBar();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
             this.viewPanel.Panel2.SuspendLayout();
             this.viewPanel.SuspendLayout();
-            this.prev_next_panel.SuspendLayout();
-            this.partRelatedTools.SuspendLayout();
             this.category_panel.SuspendLayout();
+            this.prev_next_panel.SuspendLayout();
+            this.partBasket.SuspendLayout();
+            this.partRelatedTools.SuspendLayout();
+            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // menu
@@ -1007,6 +1016,70 @@
             this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
             this.fileNameTabs.TabIndex = 0;
             // 
+            // category_panel
+            // 
+            this.category_panel.Controls.Add(this.category_cancel);
+            this.category_panel.Controls.Add(this.category_yes);
+            this.category_panel.Controls.Add(this.cat_select_label);
+            this.category_panel.Controls.Add(this.categoryList);
+            this.category_panel.Location = new System.Drawing.Point(649, 327);
+            this.category_panel.Name = "category_panel";
+            this.category_panel.Size = new System.Drawing.Size(179, 170);
+            this.category_panel.TabIndex = 23;
+            // 
+            // category_cancel
+            // 
+            this.category_cancel.Location = new System.Drawing.Point(63, 141);
+            this.category_cancel.Name = "category_cancel";
+            this.category_cancel.Size = new System.Drawing.Size(54, 26);
+            this.category_cancel.TabIndex = 25;
+            this.category_cancel.Text = "Cancel";
+            this.category_cancel.UseVisualStyleBackColor = true;
+            this.category_cancel.Click += new System.EventHandler(this.category_cancel_Click);
+            // 
+            // category_yes
+            // 
+            this.category_yes.Location = new System.Drawing.Point(3, 141);
+            this.category_yes.Name = "category_yes";
+            this.category_yes.Size = new System.Drawing.Size(54, 26);
+            this.category_yes.TabIndex = 24;
+            this.category_yes.Text = "OK";
+            this.category_yes.UseVisualStyleBackColor = true;
+            this.category_yes.Click += new System.EventHandler(this.category_yes_Click);
+            // 
+            // cat_select_label
+            // 
+            this.cat_select_label.AutoSize = true;
+            this.cat_select_label.Location = new System.Drawing.Point(2, 3);
+            this.cat_select_label.Name = "cat_select_label";
+            this.cat_select_label.Size = new System.Drawing.Size(157, 13);
+            this.cat_select_label.TabIndex = 23;
+            this.cat_select_label.Text = "Select a category for the model:";
+            // 
+            // categoryList
+            // 
+            this.categoryList.FormattingEnabled = true;
+            this.categoryList.Items.AddRange(new object[] {
+            "Backpack",
+            "Basket",
+            "Bicycle",
+            "Chair",
+            "Desk",
+            "DryingRack",
+            "Handcart",
+            "Hanger",
+            "Hook",
+            "Shelf",
+            "Stand",
+            "Stroller",
+            "Table",
+            "TVBench",
+            "Vase"});
+            this.categoryList.Location = new System.Drawing.Point(3, 18);
+            this.categoryList.Name = "categoryList";
+            this.categoryList.Size = new System.Drawing.Size(174, 121);
+            this.categoryList.TabIndex = 22;
+            // 
             // outputTextWindow
             // 
             this.outputTextWindow.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
@@ -1133,6 +1206,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.partBasket.AutoScroll = true;
             this.partBasket.BackColor = System.Drawing.Color.White;
+            this.partBasket.Controls.Add(this.panel1);
             this.partBasket.Location = new System.Drawing.Point(896, 3);
             this.partBasket.Name = "partBasket";
             this.partBasket.Size = new System.Drawing.Size(203, 701);
@@ -1267,6 +1341,7 @@
             this.removeallToolStripMenuItem.Name = "removeallToolStripMenuItem";
             this.removeallToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
             this.removeallToolStripMenuItem.Text = "remove_all";
+            this.removeallToolStripMenuItem.Click += new System.EventHandler(this.removeallToolStripMenuItem_Click);
             // 
             // partNameToolStripMenuItem
             // 
@@ -1370,70 +1445,6 @@
             this.partGroupToolStripMenuItem.Text = "Part Group";
             this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
             // 
-            // categoryList
-            // 
-            this.categoryList.FormattingEnabled = true;
-            this.categoryList.Items.AddRange(new object[] {
-            "Backpack",
-            "Basket",
-            "Bicycle",
-            "Chair",
-            "Desk",
-            "DryingRack",
-            "Handcart",
-            "Hanger",
-            "Hook",
-            "Shelf",
-            "Stand",
-            "Stroller",
-            "Table",
-            "TVBench",
-            "Vase"});
-            this.categoryList.Location = new System.Drawing.Point(3, 18);
-            this.categoryList.Name = "categoryList";
-            this.categoryList.Size = new System.Drawing.Size(174, 121);
-            this.categoryList.TabIndex = 22;
-            // 
-            // category_panel
-            // 
-            this.category_panel.Controls.Add(this.category_cancel);
-            this.category_panel.Controls.Add(this.category_yes);
-            this.category_panel.Controls.Add(this.cat_select_label);
-            this.category_panel.Controls.Add(this.categoryList);
-            this.category_panel.Location = new System.Drawing.Point(649, 327);
-            this.category_panel.Name = "category_panel";
-            this.category_panel.Size = new System.Drawing.Size(179, 170);
-            this.category_panel.TabIndex = 23;
-            // 
-            // cat_select_label
-            // 
-            this.cat_select_label.AutoSize = true;
-            this.cat_select_label.Location = new System.Drawing.Point(2, 3);
-            this.cat_select_label.Name = "cat_select_label";
-            this.cat_select_label.Size = new System.Drawing.Size(157, 13);
-            this.cat_select_label.TabIndex = 23;
-            this.cat_select_label.Text = "Select a category for the model:";
-            // 
-            // category_yes
-            // 
-            this.category_yes.Location = new System.Drawing.Point(3, 141);
-            this.category_yes.Name = "category_yes";
-            this.category_yes.Size = new System.Drawing.Size(54, 26);
-            this.category_yes.TabIndex = 24;
-            this.category_yes.Text = "OK";
-            this.category_yes.UseVisualStyleBackColor = true;
-            this.category_yes.Click += new System.EventHandler(this.category_yes_Click);
-            // 
-            // category_cancel
-            // 
-            this.category_cancel.Location = new System.Drawing.Point(63, 141);
-            this.category_cancel.Name = "category_cancel";
-            this.category_cancel.Size = new System.Drawing.Size(54, 26);
-            this.category_cancel.TabIndex = 25;
-            this.category_cancel.Text = "Cancel";
-            this.category_cancel.UseVisualStyleBackColor = true;
-            this.category_cancel.Click += new System.EventHandler(this.category_cancel_Click);
-            // 
             // glViewer
             // 
             this.glViewer.AccumBits = ((byte)(0));
@@ -1454,6 +1465,76 @@
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
             // 
+            // panel1
+            // 
+            this.panel1.Controls.Add(this.vScrollBar3);
+            this.panel1.Controls.Add(this.vScrollBar2);
+            this.panel1.Controls.Add(this.label3);
+            this.panel1.Controls.Add(this.label2);
+            this.panel1.Controls.Add(this.label1);
+            this.panel1.Controls.Add(this.vScrollBar1);
+            this.panel1.Location = new System.Drawing.Point(3, 3);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(141, 128);
+            this.panel1.TabIndex = 0;
+            // 
+            // vScrollBar1
+            // 
+            this.vScrollBar1.LargeChange = 4;
+            this.vScrollBar1.Location = new System.Drawing.Point(18, 6);
+            this.vScrollBar1.Maximum = 10;
+            this.vScrollBar1.Name = "vScrollBar1";
+            this.vScrollBar1.Size = new System.Drawing.Size(14, 90);
+            this.vScrollBar1.TabIndex = 0;
+            this.vScrollBar1.Value = 9;
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(4, 106);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(49, 13);
+            this.label1.TabIndex = 3;
+            this.label1.Text = "Elephant";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(52, 106);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(38, 13);
+            this.label2.TabIndex = 4;
+            this.label2.Text = "Giraffe";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(96, 106);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(35, 13);
+            this.label3.TabIndex = 5;
+            this.label3.Text = "Rhino";
+            // 
+            // vScrollBar2
+            // 
+            this.vScrollBar2.LargeChange = 4;
+            this.vScrollBar2.Location = new System.Drawing.Point(62, 6);
+            this.vScrollBar2.Maximum = 10;
+            this.vScrollBar2.Name = "vScrollBar2";
+            this.vScrollBar2.Size = new System.Drawing.Size(14, 90);
+            this.vScrollBar2.TabIndex = 6;
+            this.vScrollBar2.Value = 8;
+            // 
+            // vScrollBar3
+            // 
+            this.vScrollBar3.LargeChange = 4;
+            this.vScrollBar3.Location = new System.Drawing.Point(107, 6);
+            this.vScrollBar3.Maximum = 10;
+            this.vScrollBar3.Name = "vScrollBar3";
+            this.vScrollBar3.Size = new System.Drawing.Size(14, 90);
+            this.vScrollBar3.TabIndex = 7;
+            this.vScrollBar3.Value = 1;
+            // 
             // Interface
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1472,11 +1553,14 @@
             this.viewPanel.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).EndInit();
             this.viewPanel.ResumeLayout(false);
-            this.prev_next_panel.ResumeLayout(false);
-            this.prev_next_panel.PerformLayout();
-            this.partRelatedTools.ResumeLayout(false);
             this.category_panel.ResumeLayout(false);
             this.category_panel.PerformLayout();
+            this.prev_next_panel.ResumeLayout(false);
+            this.prev_next_panel.PerformLayout();
+            this.partBasket.ResumeLayout(false);
+            this.partRelatedTools.ResumeLayout(false);
+            this.panel1.ResumeLayout(false);
+            this.panel1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -1626,6 +1710,13 @@
         private System.Windows.Forms.Button category_cancel;
         private System.Windows.Forms.Button category_yes;
         private System.Windows.Forms.Label cat_select_label;
+        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.VScrollBar vScrollBar3;
+        private System.Windows.Forms.VScrollBar vScrollBar2;
+        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.VScrollBar vScrollBar1;
     }
 }
 

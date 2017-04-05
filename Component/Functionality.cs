@@ -74,7 +74,8 @@ namespace Component
 
         public static bool IsMainFunction(Functions f)
         {
-            return f == Functions.PLACEMENT || f == Functions.STORAGE || f == Functions.HUMAN_HIP;
+            return f == Functions.PLACEMENT || f == Functions.STORAGE 
+                || f == Functions.HUMAN_HIP || f == Functions.HANG;
         }
 
         public static bool IsSecondaryFunction(Functions f)
@@ -96,13 +97,14 @@ namespace Component
             // res[1]: if pg2 can be replaced by pg1 with the compatibility val
             double[] res = new double[2];
             // part groups should not come from the same source model
-            if (pg1._ParentModelIndex == pg2._ParentModelIndex)
+            if (pg1._ParentModelIndex == pg2._ParentModelIndex || 
+                (pg1._NODES.Count == 0 && pg2._NODES.Count == 0))
             {
                 return res;
             }
             // 1. if compatible functions exist
-            List<Functions> funcs1 = collectFunctionality(pg1._NODES);
-            List<Functions> funcs2 = collectFunctionality(pg2._NODES);
+            List<Functions> funcs1 = getNodesFunctionalities(pg1._NODES);
+            List<Functions> funcs2 = getNodesFunctionalities(pg2._NODES);
             int comp = IsFunctionCompatible(funcs1, funcs2);
             if (comp == -1)
             {
@@ -128,7 +130,7 @@ namespace Component
 
         public static bool IsUpdatedModelFunctional(Model m, PartGroup pg1, PartGroup pg2)
         {
-            List<Node> nodes = m._GRAPH._NODES;
+            List<Node> nodes = new List<Node>(m._GRAPH._NODES);
             foreach (Node node in pg1._NODES)
             {
                 nodes.Remove(node);
@@ -136,11 +138,16 @@ namespace Component
             nodes.AddRange(pg2._NODES);
             Category cat = m._CAT;
             List<Functions> funcs = getFunctionalityFromCategory(cat);
-            List<Functions> updated = collectFunctionality(nodes);
+            List<Functions> updated = getNodesFunctionalities(nodes);
             var sub = funcs.Except(updated);
             if (sub.ToList().Count > 0)
             {
                 return false;
+            }
+            var add = updated.Except(funcs);
+            if (add.Count() == 0)
+            {
+                return false; // no supplementary
             }
             return true;
         }// IsUpdatedModelFunctional
@@ -374,6 +381,11 @@ namespace Component
             if (cat == Category.Stand)
             {
                 funcs.Add(Functions.GROUND_TOUCHING);
+                funcs.Add(Functions.HANG);
+            }
+            if (cat == Category.Robot)
+            {
+                funcs.Add(Functions.GROUND_TOUCHING);
             }
             return funcs;
         }// getFunctionalityFromCategory
@@ -388,12 +400,18 @@ namespace Component
             return funcs;
         }// getFunctionalityFromCategories
 
-        public static List<Functions> collectFunctionality(List<Node> nodes)
+        public static List<Functions> getNodesFunctionalities(List<Node> nodes)
         {
             List<Functions> funcs = new List<Functions>();
             foreach (Node node in nodes)
             {
-                funcs.AddRange(node._funcs);
+                foreach (Functions f in node._funcs)
+                {
+                    if (!funcs.Contains(f))
+                    {
+                        funcs.Add(f);
+                    }
+                }
             }
             return funcs;
         }// getFunctionalityOfPartGroup

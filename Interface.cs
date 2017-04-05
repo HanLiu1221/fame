@@ -32,7 +32,7 @@ namespace FameBase
         //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
         //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
 
-        public static string MODLES_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\models\";
+        public static string MODLES_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\";
         public static string PATCH_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\";
         public static string MATLAB_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\";
         public static string MATLAB_INPUT_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\test\input\";
@@ -224,6 +224,7 @@ namespace FameBase
                 string folderName = dialog.SelectedPath;
                 List<ModelViewer> modelViewers = this.glViewer.loadPartBasedModels(folderName);
                 layoutModelSet(modelViewers);
+                this.outputSystemStatus(modelViewers.Count().ToString() + " models loaded.");
             }
         }
 
@@ -645,7 +646,8 @@ namespace FameBase
 
         private void autoGenerateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            List<ModelViewer> modelViews = this.glViewer.autoGenerate();
+            //List<ModelViewer> modelViews = this.glViewer.autoGenerate();
+            List<ModelViewer> modelViews = this.glViewer.runEvolution();
             this.partBasket.Controls.Clear();
             if (modelViews != null)
             {
@@ -1087,12 +1089,17 @@ namespace FameBase
         private void category_yes_Click(object sender, EventArgs e)
         {
             this.category_panel.Hide();
-            this.glViewer._selected_cat = this.categoryList.SelectedItem.ToString();
+            this.glViewer.setCurrentModelCategoryAndSave(this.categoryList.SelectedItem.ToString());
         }
 
         private void category_cancel_Click(object sender, EventArgs e)
         {
             this.category_panel.Hide();
+        }
+
+        private void removeallToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.removeFunction();
         }
     }// Interface
 }// namespace

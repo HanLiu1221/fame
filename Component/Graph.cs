@@ -758,6 +758,24 @@ namespace Component
             return edges;
         }// getOutgoingEdges
 
+        public List<Node> getOutConnectedNodes(List<Node> nodes)
+        {
+            // for the substructure, find out the nodes that are to be connected
+            List<Node> conns = new List<Node>();
+            foreach (Node node in nodes)
+            {
+                foreach (Edge e in node._edges)
+                {
+                    Node other = e._start == node ? e._end : e._start;
+                    if (!nodes.Contains(other) && !conns.Contains(other))
+                    {
+                        conns.Add(other);
+                    }
+                }
+            }
+            return conns;
+        }// getOutConnectedNodes
+
         public List<Node> getGroundTouchingNodes()
         {
             List<Node> nodes = new List<Node>();
@@ -1108,10 +1126,10 @@ namespace Component
             {
                 return false;
             }
-            if (!isPhysicalValid())
-            {
-                return false;
-            }
+            //if (!isPhysicalValid())
+            //{
+            //    return false;
+            //}
             return true;
         }// isValid
 
@@ -1509,8 +1527,9 @@ namespace Component
                             continue;
                         }
                         Mesh m2 = node._PART._MESH;
-                        if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
-                            || isConnected(m1, m2))
+                        //if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
+                        //    || isConnected(m1, m2))
+                        if (isConnected(m1, m2))
                         {
                             queue.Add(node);
                         }
@@ -1555,16 +1574,20 @@ namespace Component
         private bool isConnected(Mesh m1, Mesh m2)
         {
             // work for uniform mesh -- vertex are equally distributed
-            double thr = 0.1;
+            double thr = 0.01;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;
+            Vector3d[] v2 = m2.VertexVectorArray;
             for (int i = 0; i < v1.Length; ++i)
             {
-                for (int j = 0; j < m2.FaceCount; ++j)
+                //for (int j = 0; j < m2.FaceCount; ++j)
+                //{
+                //    Vector3d center = m2.getFaceCenter(j);
+                //    Vector3d nor = m2.getFaceNormal(j);
+                //    double d = Common.PointDistToPlane(v1[i], center, nor);
+                for (int j = 0; j < v2.Length; ++j)
                 {
-                    Vector3d center = m2.getFaceCenter(j);
-                    Vector3d nor = m2.getFaceNormal(j);
-                    double d = Common.PointDistToPlane(v1[i], center, nor);
+                    double d = (v1[i] - v2[j]).Length();
                     if (d < thr)
                     {
                         return true;
