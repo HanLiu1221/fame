@@ -38,7 +38,7 @@ namespace Component
         public static int _CONVEXHULL_FEAT_DIM = 2;
         public static int _POINT_FEATURE_DIM = 18;
 
-        public enum Functions { PLACEMENT, STORAGE, HUMAN_HIP, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG };
+        public enum Functions { PLACEMENT, STORAGE, HUMAN_HIP, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, NONE };
 
         public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Robot, Shelf, 
             Stand, Stroller, Table, TVBench, Vase, None };
@@ -90,6 +90,18 @@ namespace Component
             return f == Functions.GROUND_TOUCHING || f == Functions.SUPPORT;
         }
 
+        public static bool ContainsMainFunction(List<Functions> funcs)
+        {
+            foreach (Functions f in funcs)
+            {
+                if (IsMainFunction(f))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// ContainsMainFunction
+
         public static double[] GetPartGroupCompatibility(Model m1, Model m2, PartGroup pg1, PartGroup pg2)
         {
             // 0: not replaceable
@@ -105,28 +117,54 @@ namespace Component
             // 1. if compatible functions exist
             List<Functions> funcs1 = getNodesFunctionalities(pg1._NODES);
             List<Functions> funcs2 = getNodesFunctionalities(pg2._NODES);
-            int comp = IsFunctionCompatible(funcs1, funcs2);
-            if (comp == -1)
+            //int comp = IsFunctionCompatible(funcs1, funcs2);
+            //if (comp == -1)
+            //{
+            //    return res;
+            //}
+            //// 2. if #1. stands, check if the functionality of the model is preserved
+            //if (comp == 0 || comp == 2)
+            //{
+            //    if (IsUpdatedModelFunctional(m1, pg1, pg2))
+            //    {
+            //        res[0] = 1;
+            //    }
+            //}
+            //if (comp == 1 || comp == 2)
+            //{
+            //    if (IsUpdatedModelFunctional(m2, pg2, pg1))
+            //    {
+            //        res[1] = 1;
+            //    }
+            //}
+
+            // same funcs
+            if (IsFunctionSame(funcs1, funcs2))
             {
-                return res;
-            }
-            // 2. if #1. stands, check if the functionality of the model is preserved
-            if (comp == 0 || comp == 2)
-            {
-                if (IsUpdatedModelFunctional(m1, pg1, pg2))
-                {
-                    res[0] = 1;
-                }
-            }
-            if (comp == 1 || comp == 2)
-            {
-                if (IsUpdatedModelFunctional(m2, pg2, pg1))
-                {
-                    res[1] = 1;
-                }
+                res[0] = 1;
+                res[1] = 1;
             }
             return res;
         }// IsTwoPartGroupCompatible
+
+        public static bool IsFunctionSame(List<Functions> funcs1, List<Functions> funcs2)
+        {
+            // OUTPUT:
+            // -1: neither is replaceable
+            // 0: funcs1 can be replaced by funcs2
+            // 1: funcs2 can be replaced by funcs1
+            // 2: both are replaceable
+            bool containsMainFunc1 = false;
+            bool containsMainFunc2 = false;
+            bool containsSecondaryFunc1 = false;
+            bool containsSecondaryFunc2 = false;
+            bool containsSupportFunc1 = false;
+            bool containsSupportFunc2 = false;
+            int res = -1;
+            // assume all possible functions of nodes have already been measured
+            var same = funcs1.Intersect(funcs2);
+            return same.Count() > 0;
+        }
 
         public static bool IsUpdatedModelFunctional(Model m, PartGroup pg1, PartGroup pg2)
         {
@@ -171,11 +209,11 @@ namespace Component
             var sub2 = funcs2.Except(funcs1);
             CheckFunctions(sub1.ToList(), out containsMainFunc1, out containsSecondaryFunc1, out containsSupportFunc1);
             CheckFunctions(sub2.ToList(), out containsMainFunc2, out containsSecondaryFunc2, out containsSupportFunc2);
-            if (!containsSupportFunc1 && !containsSupportFunc1 && !containsSupportFunc1)
+            if (!containsMainFunc1 && !containsSecondaryFunc1 && !containsSupportFunc1)
             {
                 res = 0; // not losing any important function
             }
-            if (!containsSupportFunc2 && !containsSupportFunc2 && !containsSupportFunc2)
+            if (!containsMainFunc2 && !containsSecondaryFunc2 && !containsSupportFunc2)
             {
                 res += 2;
             }
@@ -378,6 +416,11 @@ namespace Component
                 funcs.Add(Functions.PLACEMENT);
                 funcs.Add(Functions.GROUND_TOUCHING);
             }
+            if (cat == Category.Robot)
+            {
+                funcs.Add(Functions.PLACEMENT);
+                funcs.Add(Functions.GROUND_TOUCHING);
+            }
             if (cat == Category.Stand)
             {
                 funcs.Add(Functions.GROUND_TOUCHING);
@@ -414,7 +457,27 @@ namespace Component
                 }
             }
             return funcs;
-        }// getFunctionalityOfPartGroup
+        }// getNodesFunctionalities
+
+        public static List<Functions> getNodesFunctionalitiesIncludeNone(List<Node> nodes)
+        {
+            List<Functions> funcs = new List<Functions>();
+            foreach (Node node in nodes)
+            {
+                foreach (Functions f in node._funcs)
+                {
+                    if (!funcs.Contains(f))
+                    {
+                        funcs.Add(f);
+                    }
+                }
+                if (node._funcs.Count == 0 && !funcs.Contains(Functions.NONE))
+                {
+                    funcs.Add(Functions.NONE);
+                }
+            }
+            return funcs;
+        }// getNodesFunctionalities
 
     }// Functionality
 }

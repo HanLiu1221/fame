@@ -1294,9 +1294,7 @@ namespace Component
                     node.symmetry = null;
                     sym.symmetry = null;
                 }
-            }
-            // topology
-            _GRAPH.replaceNodes(oldNodes, newNodes);            
+            }        
         }// replaceNodes
 
         public Object Clone()
@@ -2424,6 +2422,8 @@ namespace Component
         public double[] _featureVector = new double[Functionality._TOTAL_FUNCTONAL_PATCHES];
         public int _gen = 0;
         public bool _isSymmBreak = false;
+        public List<List<Node>> _clusters = new List<List<Node>>();
+
         public List<PartGroup> _compatiblePGs;
 
         public PartGroup(List<Node> nodes, int g)
@@ -2431,7 +2431,7 @@ namespace Component
             _nodes = new List<Node>(nodes);
             _gen = g;
             _compatiblePGs = new List<PartGroup>();
-            //this.computeFeatureVector(null);
+            this.seekCluster();
         }
 
         public PartGroup(List<Node> nodes, double[] featureVectors)
@@ -2439,15 +2439,57 @@ namespace Component
             _nodes = new List<Node>(nodes);
             _featureVector = featureVectors;
             _compatiblePGs = new List<PartGroup>();
+            this.seekCluster();
         }
+
+        private void seekCluster()
+        {
+            // determine the node cluster (connected nodes), viewed as a node tree
+            if (_nodes.Count == 0)
+            {
+                return;
+            }
+            bool[] added = new bool[_nodes.Count];
+            _clusters = new List<List<Node>>();
+            for (int i = 0; i < _nodes.Count; ++i)
+            {
+                if (added[i])
+                {
+                    continue;
+                }
+                // search from node i
+                List<Node> igroup = new List<Node>();
+                Queue<Node> q = new Queue<Node>();
+                q.Enqueue(_nodes[i]);
+                added[i] = true;
+                while (q.Count > 0)
+                {
+                    Node qn = q.Dequeue();
+                    igroup.Add(qn);
+                    foreach (Node adj in qn._adjNodes)
+                    {
+                        int id = _nodes.IndexOf(adj);
+                        if (id != -1 && !added[id])
+                        {                            
+                            q.Enqueue(adj);
+                            added[id] = true;
+                        }
+                    }
+                }
+                _clusters.Add(igroup);
+            }
+        }// seekCluster
 
         public bool containsMainFuncPart()
         {
             foreach(Node node in _nodes)
             {
-                if (node._funcs.Contains(Functionality.Functions.PLACEMENT) || node._funcs.Contains(Functionality.Functions.HANG))
+                foreach (Functionality.Functions f in node._funcs)
                 {
-                    return true;
+                    if (Functionality.IsMainFunction(f))
+                    {
+                        return true;
+                    }
                 }
             }
             return false;

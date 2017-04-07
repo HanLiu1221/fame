@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 using System.Windows.Forms;
 using System.IO;
@@ -385,10 +386,10 @@ namespace FameBase
             Program.GetFormMain().outputSystemStatus("Mesh is unified and a segmented model is created.");
         }// loadMesh
 
-        public void importMesh(string filename, bool multiple)
+        public void importOneMesh(string filename)
         {
             // if import multiple meshes, do not unify each mesh
-            Mesh m = new Mesh(filename, multiple ? false : _unitifyMesh);
+            Mesh m = new Mesh(filename, false);
             MeshClass mc = new MeshClass(m);
             this._meshClasses.Add(mc);
             this.currMeshClass = mc;
@@ -400,6 +401,27 @@ namespace FameBase
             {
                 _currModel = new Model(m);
             }
+        }// importOneMesh
+
+        public void importMesh(string[] filenames, bool multiple)
+        {
+            // if import multiple meshes, do not unify each mesh
+            if (filenames == null)
+            {
+                return;
+            }
+            if (filenames.Length == 1)
+            {
+                this.loadMesh(filenames[0]);
+            }
+            List<Part> parts = new List<Part>();
+            foreach (string filename in filenames)
+            {
+                Mesh m = new Mesh(filename, false);
+                Part part = new Part(m);
+                parts.Add(part);
+            }
+            _currModel = new Model(parts);
         }// importMesh
 
         public string getStats()
@@ -2001,7 +2023,7 @@ namespace FameBase
                     parts.Add(part);
                 }
                 Model model = new Model(modelMesh, parts);
-                model.checkInSamplePoints(sp);
+                //model.checkInSamplePoints(sp);
                 model._funcSpaces = fss.ToArray();
                 model._path = filename.Substring(0, filename.LastIndexOf('\\') + 1);
                 model._model_name = model_name;
@@ -2067,7 +2089,7 @@ namespace FameBase
         {
             this.clearContext();
             this.clearHighlights();
-            _currModel = this.loadAPartBasedModelAgent(filename, false);
+            _currModel = this.loadAPartBasedModelAgent(filename, true);
             this.setUIMode(0);
             // model check
             if (_currModel != null)
@@ -2147,7 +2169,7 @@ namespace FameBase
                     m._index = idx;
                     foreach (PartGroup pg in m._GRAPH._partGroups)
                     {
-                        pg._ParentModelIndex = _modelIndex;
+                        pg._ParentModelIndex = idx;
                     }
 
                     ModelViewer modelViewer = new ModelViewer(m, idx++, this, 0); // ancester
@@ -4170,6 +4192,7 @@ namespace FameBase
             foreach (Node node in _selectedNodes)
             {
                 node._funcs.Clear();
+                node._isGroundTouching = false;
             }
         }
 
@@ -4855,7 +4878,6 @@ namespace FameBase
 
             // pre-process
             this._isPreRun = true;
-            calculateRepleaceablePartGroupPair();
             string today = DateTime.Today.ToString("MMdd");
             validityMatrixFileName = validityMatrixFolder + "Set_Teaser_1_" + today + ".vdm";
             this.saveValidityMatrix(validityMatrixFileName);
@@ -4891,11 +4913,6 @@ namespace FameBase
             return _currGenModelViewers;
         }// runEvolution
 
-        private void calculateRepleaceablePartGroupPair()
-        {
-            
-        }// calculateRepleaceablePartGroupPair
-
         private List<Model> preRunTest(string imageFolder)
         {
             List<Model> res = new List<Model>();
@@ -4907,16 +4924,22 @@ namespace FameBase
             {
                 return res;
             }
-            int pairId = 0; 
+            int pairId = 0;
+            List<Triplet> invalid = new List<Triplet>();
             for (int t = 0; t < _validityMatrixPG.NTriplets; ++t)
             {
+                // the matrix is not symmetric and (i, j) (j, i) could both exist
                 int i = _validityMatrixPG.GetTriplet(t).row;
                 int j = _validityMatrixPG.GetTriplet(t).col;
                 List<Model> ijs;
-                //i = 0;
-                //j = 6;
-                runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs);
+                i = 3;
+                j = 27;
+                if (!runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs))
+                {
+                    invalid.Add(_validityMatrixPG.GetTriplet(t));
+                }
             }
+
             double secs = avgTimePerValidOffspring / validOffspringNumber;
             StringBuilder sb = new StringBuilder();
             sb.Append("Total valid offspring: " + validOffspringNumber.ToString() + "\n");
@@ -4943,8 +4966,6 @@ namespace FameBase
             Program.writeToConsole("Crossover: \n");
             Model model1 = _ancesterModels[_partGroupLibrary[p1]._ParentModelIndex];
             Model model2 = _ancesterModels[_partGroupLibrary[p2]._ParentModelIndex];
-            this.setSelectedNodes(model1, _partGroupLibrary[p1]);
-            this.setSelectedNodes(model2, _partGroupLibrary[p2]);
             // _updated partgroups
 
             Stopwatch stopWatch_cross = new Stopwatch();
@@ -4953,7 +4974,7 @@ namespace FameBase
             List<Model> results = this.performOneCrossover(model1, model2, gen, idx, p1, p2);
 
             long secs = stopWatch_cross.ElapsedMilliseconds / 1000;
-            Program.writeToConsole("Time to run crossover: " + secs.ToString() + " senconds.");
+            Program.writeToConsole("Time to run crossover: " + secs.ToString() + " seconds.");
 
             int id = -1;
             foreach (Model m in results)
@@ -4969,8 +4990,6 @@ namespace FameBase
 
                 // screenshot
                 this.setCurrentModel(m, -1);
-                Program.GetFormMain().updateStats();
-
                 m._GRAPH.unify();
                 m.composeMesh();
 
@@ -4978,10 +4997,10 @@ namespace FameBase
                 {
                     this.captureScreen(imageFolder + "invald\\" + m._model_name + "_invalid.png");
                     saveAPartBasedModel(m, m._path + m._model_name + "_invalid.pam", false);
+                    Program.GetFormMain().updateStats();
                     continue;
                 }
-
-                
+               
                 //// valid graph
                 //this.tryRestoreFunctionalNodes(m);
 
@@ -5016,64 +5035,133 @@ namespace FameBase
             {
                 return null;
             }
+            this.setSelectedNodes(m1, _partGroupLibrary[p1]);
+            this.setSelectedNodes(m2, _partGroupLibrary[p2]);
             List<Model> res = new List<Model>();
-            Model newNodel = m1.Clone() as Model;
+            Model newModel = m1.Clone() as Model;
             // m1 starts name
             string name = m1._model_name;
             int slashId = name.IndexOf('-');
-            if (slashId == -1) {
-                slashId = name.Length - 1;
+            if (slashId == -1)
+            {
+                slashId = name.Length;
             }
             string originalModelName = name.Substring(0, slashId);
-            newNodel._path = crossoverFolder + "gen_" + gen.ToString() + "\\";
-
-            if (!Directory.Exists(newNodel._path))
+            newModel._path = crossoverFolder + "gen_" + gen.ToString() + "\\";
+            if (!Directory.Exists(newModel._path))
             {
-                Directory.CreateDirectory(newNodel._path);
-            }
-
-            // using model names will be too long, exceed the maximum length of file name
-            //newM1._model_name = m1._model_name + "_c_" + m2._model_name;
-            //newM2._model_name = m2._model_name + "_c_" + m1._model_name;
-            if (p1 != -1 && p2 != -1)
-            {
-                newNodel._model_name = name + "-gen_" + gen.ToString() + "_num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString();
-            }
-            else
-            {
-                newNodel._model_name = "gen_" + gen.ToString() + "_" + idx.ToString();
+                Directory.CreateDirectory(newModel._path);
             }
             List<Node> nodes1 = new List<Node>();
             List<Node> nodes2 = m2._GRAPH.selectedNodes; // unchanged
-            foreach (Node node in m1._GRAPH.selectedNodes)
-            {
-                nodes1.Add(newNodel._GRAPH._NODES[node._INDEX]);
-            }
-
-            if (nodes1 == null || nodes2 == null)
-            {
-                return null;
-            }
-
-            List<Node> updatedNodes2;
+            List<Node> updatedNodes2 = new List<Node>();
             List<Model> parents = new List<Model>(); // to set parent names
             parents.Add(m1);
             parents.Add(m2);
-            // switch
-            replaceNodes(newNodel._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes2);
-            newNodel.replaceNodes(nodes1, updatedNodes2);
-            newNodel.nNewNodes = updatedNodes2.Count;
-            newNodel.setParentNames(parents);
+            foreach (Node node in m1._GRAPH.selectedNodes)
+            {
+                nodes1.Add(newModel._GRAPH._NODES[node._INDEX]);
+            }
+            PartGroup pg2 = _partGroupLibrary[p2];
+            // 1. deletion
+            if (m1._GRAPH.selectedNodes.Count > 0 && m2._GRAPH.selectedNodes.Count == 0)
+            {
+                newModel = this.deletionOperation(m1, m1._CAT);
+                newModel._model_name = originalModelName + "-gen_" + gen.ToString() + "_num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString() + "_del";
+            }
+            else if (m1._GRAPH.selectedNodes.Count == 0 && m2._GRAPH.selectedNodes.Count > 0)
+            {
+                // 2. insertion
+                newModel._model_name = originalModelName + "-gen_" + gen.ToString() + "_num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString() + "_growth";
+                // add by cluster
+                foreach (List<Node> cluster in pg2._clusters)
+                {
+                    List<Node> newNodes = this.insertionOperation(newModel, m2, cluster);
+                    updatedNodes2.AddRange(newNodes);
+                }
+                newModel.replaceNodes(nodes1, updatedNodes2);
+            }
+            else
+            {
+                // 3. replace
+                // using model names will be too long, exceed the maximum length of file name
+                newModel._model_name = originalModelName + "-gen_" + gen.ToString() + "_num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString();
+                
+                List<Node> reduced = reduceRepeatedNodes(nodes1, nodes2);
+                this.setSelectedNodes(m2, reduced);
+                // switch
+                updatedNodes2 = this.replaceNodes(newModel._GRAPH, m2._GRAPH, nodes1, reduced);
+                newModel.replaceNodes(nodes1, updatedNodes2);
+                // topology
+                newModel._GRAPH.replaceNodes(nodes1, updatedNodes2);    
+            }
+            newModel.nNewNodes = updatedNodes2.Count;
+            newModel.setParentNames(parents);
 
-            res.Add(newNodel);
+            res.Add(newModel);
             return res;
         }// crossover
 
-        private void handleInsertion(Graph g1, Graph g2, List<Node> nodes2)
+        private List<Node> reduceRepeatedNodes(List<Node> nodes1, List<Node> nodes2)
         {
-            // insert nodes2 to g1
-            List<Edge> edgesToConnect = g2.getOutgoingEdges(nodes2);
-            List<Node> nodesToConnect = g2.getOutConnectedNodes(nodes2);
+            // if #nodes2 contain only main functional parts, and its m --> 1
+            List<Functionality.Functions> func2 = Functionality.getNodesFunctionalitiesIncludeNone(nodes2);
+            if (func2.Count == 1 && Functionality.IsMainFunction(func2[0]) && nodes2.Count > nodes1.Count)
+            {
+                List<Node> nodes = new List<Node>();
+                // randomly select one
+                Random rand = new Random();
+                int id = rand.Next(nodes2.Count);
+                nodes.Add(nodes2[id]);
+                return nodes;
+            }
+            return nodes2;
+        }// reduceRepeatedNodes
+
+        private Model deletionOperation(Model m, Functionality.Category cat)
+        {
+            // can delete if the selected nodes do not remove necessary functions
+            Graph g = m._GRAPH;
+            List<Functionality.Functions> funcs = new List<Functionality.Functions>();
+            foreach (Node node in g._NODES)
+            {
+                if (!g.selectedNodes.Contains(node))
+                {
+                    foreach (Functionality.Functions f in node._funcs)
+                    {
+                        if (!funcs.Contains(f))
+                        {
+                            funcs.Add(f);
+                        }
+                    }
+                }
+            }
+            // 
+            List<Functionality.Functions> necessaryFuncs = Functionality.getFunctionalityFromCategory(cat);
+            var miss = necessaryFuncs.Except(funcs); // Linq
+            if (miss.Count() > 0)
+            {
+                return null;
+            }
+            Model newModel = m.Clone() as Model;
+            List<Node> toRemove = new List<Node>();
+            foreach (Node node in m._GRAPH.selectedNodes)
+            {
+                toRemove.Add(newModel._GRAPH._NODES[node._INDEX]);
+            }
+            newModel.replaceNodes(toRemove, new List<Node>());
+            return newModel;
+        }// deletionOperation
+
+        private List<Node> insertionOperation(Model growModel, Model m2, List<Node> insertNodes2)
+        {
+            // insert #insertNodes to the growth model #m1
+            List<Node> insertNodes = cloneNodesAndRelations(insertNodes2);
+            Graph g1 = growModel._GRAPH;
+            Graph g2 = m2._GRAPH;
+            List<Edge> edgesToConnect = g2.getOutgoingEdges(insertNodes);
+            // check what kinds of nodes the part group connect to
+            List<Node> nodesToConnect = g2.getOutConnectedNodes(insertNodes);
             List<Functionality.Functions> functions = Functionality.getNodesFunctionalities(nodesToConnect);
             List<Node> candidteNodes = new List<Node>();
             int nConns = 0; // use it as importance of nodes
@@ -5098,8 +5186,9 @@ namespace FameBase
                             candidteNodes.Add(node);
                         }
                         if (node._edges.Count > nConns || (node._edges.Count == nConns && Functionality.IsMainFunction(f)))
-                        {
+                        { 
                             nConns = node._edges.Count;
+                            toConnect = node;
                             //break;
                         }
                     }
@@ -5111,31 +5200,82 @@ namespace FameBase
                 // find similar struture from its source model
                 toConnect = mainNode;
             }
+
+            Vector3d maxCoordInConn = Vector3d.MinCoord;
+            Vector3d minCoordInConn = Vector3d.MaxCoord;
+            foreach (Node node in nodesToConnect)
+            {
+                maxCoordInConn = Vector3d.Max(maxCoordInConn, node._PART._BOUNDINGBOX.MaxCoord);
+                minCoordInConn = Vector3d.Min(maxCoordInConn, node._PART._BOUNDINGBOX.MinCoord);
+            }
+            Vector3d center = new Vector3d();
+            foreach (Node node in insertNodes)
+            {
+                center += node._PART._BOUNDINGBOX.CENTER;
+            }
+            center /= insertNodes.Count;
+            bool isUpper = center.y > maxCoordInConn.y;
+            bool isLower = center.y < minCoordInConn.y;
+            bool isGround = this.hasGroundTouching(insertNodes);
+            if (isGround)
+            {
+                isUpper = false;
+                isLower = true;
+            }
+            bool isEmbed = !isUpper && !isLower;
+
             List<Vector3d> targets = new List<Vector3d>();
-            Vector3d pos = new Vector3d(toConnect._PART._BOUNDINGBOX.CENTER.x,
-                toConnect._PART._BOUNDINGBOX.CENTER.y,
-                 toConnect._PART._BOUNDINGBOX.MinCoord.z);
-            targets.Add(pos);
             List<Vector3d> sourcePnts = collectPoints(edgesToConnect);
             List<Vector3d> sources = new List<Vector3d>();
             Vector3d center1 = new Vector3d();
-            foreach (Vector3d v in sourcePnts)
+            Vector3d vmin = toConnect._PART._BOUNDINGBOX.MinCoord;
+            Vector3d vmax = toConnect._PART._BOUNDINGBOX.MaxCoord;
+            // add nodes and inner edges
+            foreach (Node node in insertNodes)
             {
-                center1 += v;
+                g1.addANode(node);
+            }
+            List<Edge> innerEdges = Graph.GetInnerEdges(insertNodes);
+            foreach (Edge e in innerEdges)
+            {
+                g1.addAnEdge(e._start, e._end, e._contacts);
+            }
+            foreach (Edge e in edgesToConnect)
+            {
+                Node toInsert = insertNodes.Contains(e._start) ? e._start : e._end;
+                Node nodeInContact = e._start == toInsert ? e._end : e._start;
+                // local xyz
+                Vector3d v1 = nodeInContact._PART._BOUNDINGBOX.MinCoord;
+                Vector3d v2 = nodeInContact._PART._BOUNDINGBOX.MaxCoord;
+                List<Contact> newContacts = new List<Contact>();
+                foreach (Contact c in e._contacts)
+                {
+                    Vector3d v = c._pos3d;
+                    center1 += v;
+                    // try to find correspondence in target
+                    Vector3d s1 = (v - v1) / (v2 - v1);
+                    Vector3d s2 = vmin + s1 * (vmax - vmin);
+                    sources.Add(v);
+                    targets.Add(s2);
+                    newContacts.Add(new Contact(s2));
+                }
+                g1.addAnEdge(toInsert, toConnect, newContacts);
+                // remove old out edges
+                toInsert.deleteAnEdge(e);
             }
             center1 /= sourcePnts.Count;
-            sources.Add(center1);
-            Node ground2 = hasGroundTouchingNode(nodes2);
-            if (ground2 != null)
+
+
+            if (isGround)
             {
-                targets.Add(new Vector3d(pos.x, 0, pos.z));
+                targets.Add(g1.getGroundTouchingNodesCenter());
                 sources.Add(g2.getGroundTouchingNodesCenter());
             }
 
             Vector3d center2 = new Vector3d();
             Vector3d maxv = Vector3d.MinCoord;
             Vector3d minv = Vector3d.MaxCoord;
-            foreach (Node node in nodes2)
+            foreach (Node node in insertNodes)
             {
                 center2 += node._PART._BOUNDINGBOX.CENTER;
                 maxv = Vector3d.Max(maxv, node._PART._BOUNDINGBOX.MaxCoord);
@@ -5146,28 +5286,24 @@ namespace FameBase
             Vector3d scale2 = new Vector3d(1, 1, 1);
 
             Matrix4d S, T, Q;
-            getTransformation(sources, targets, out S, out T, out Q, scale2, true, center1, center2, false);
-            this.deformNodesAndEdges(nodes2, Q);
+            getTransformation(sources, targets, out S, out T, out Q, scale2, false, center1, center2, false);
+            this.deformNodesAndEdges(insertNodes, Q);
 
-            if (ground2 != null)
+            if (isGround)
             {
                 g1.resetUpdateStatus();
-                adjustGroundTouching(nodes2);
+                adjustGroundTouching(insertNodes);
             }
             g1.resetUpdateStatus();
-        }// handleInsertion
+            return insertNodes;
+        }// insertionOperation
 
-        private void replaceNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2, out List<Node> updateNodes2)
+        private List<Node> replaceNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2)
         {
             // replace nodes1 by nodes2 in g1
-            updateNodes2 = cloneNodesAndRelations(nodes2);
-            List<Edge> edgesToConnect_1 = g1.getOutgoingEdges(nodes1);
-            if (edgesToConnect_1.Count == 0)
-            {
-                handleInsertion(g1, g2, updateNodes2);
-                return;
-            }
+            List<Node> updateNodes2 = cloneNodesAndRelations(nodes2);
 
+            List<Edge> edgesToConnect_1 = g1.getOutgoingEdges(nodes1);
             List<Edge> edgesToConnect_2 = g2.getOutgoingEdges(nodes2);
             List<Vector3d> targets = collectPoints(edgesToConnect_1);
             List<Vector3d> sources = collectPoints(edgesToConnect_2);
@@ -5242,6 +5378,32 @@ namespace FameBase
             List<Vector3d> src = new List<Vector3d>();
             List<Vector3d> trt = new List<Vector3d>();
             bool[] visited = new bool[right.Count];
+            // since two part groups in two models can be positioned very differently (far),
+            // if use brute force to find closest points, error matchings can occur
+            // a simple solution is, remove the additional unmatched points (nearest) first, to remove noise
+            while (right.Count > left.Count)
+            {
+                double mind = double.MaxValue;
+                int id = -1;
+                int jd = -1;
+                for (int i = 0; i < right.Count - 1; ++i)
+                {
+                    for (int j = i + 1; j < right.Count; ++j)
+                    {
+                        double d = (right[i] - right[j]).Length();
+                        if (d < mind)
+                        {
+                            mind = d;
+                            id = i;
+                            jd = j;
+                        }
+                    }
+                }
+                Vector3d vij = (right[id] + right[jd]) / 2;
+                right.RemoveAt(jd);
+                right.RemoveAt(id);
+                right.Add(vij);
+            }
             foreach (Vector3d v in left)
             {
                 src.Add(v);
@@ -5290,7 +5452,7 @@ namespace FameBase
             bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(targets, sources, out S, out T, out Q, boxScale_1, true, center2, center1, userCenter);
+                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, false, center1, center2, userCenter);
                 this.deformNodesAndEdges(updateNodes2, Q);
             }
 
@@ -5301,8 +5463,8 @@ namespace FameBase
             }
             g1.resetUpdateStatus();
 
-        }// switchNodes
-
+            return updateNodes2;
+        }// replaceNodes
 
         private void calculatePartGroupCompatibility(List<Model> models)
         {
@@ -5338,18 +5500,20 @@ namespace FameBase
                 {
                     Model m2 = _ancesterModels[_partGroupLibrary[j]._ParentModelIndex];
                     double[] comp = Functionality.GetPartGroupCompatibility(m1, m2, _partGroupLibrary[i], _partGroupLibrary[j]);
-                    if (comp[0] > 0)
+                    if (comp[0] > 0 && comp[1] > 0)
                     {
                         _validityMatrixPG.AddTriplet(i, j, comp[0]);
-                    }
-                    if (comp[1] > 0)
+                        _validityMatrixPG.AddTriplet(j, i, comp[1]);
+                    } else if (comp[0] > 0)
+                    {
+                        _validityMatrixPG.AddTriplet(i, j, comp[0]);
+                    } else if (comp[1] > 0)
                     {
                         _validityMatrixPG.AddTriplet(j, i, comp[1]);
                     }
                 }
             }
         }// calculatePartGroupCompatibility
-
 
         private void updateSimilarGroups(int p1, int p2, bool increase)
         {
@@ -6014,6 +6178,20 @@ namespace FameBase
         {
             m._GRAPH.selectedNodes = new List<Node>();
             foreach (Node node in pg._NODES)
+            {
+                if (!m._GRAPH._NODES.Contains(node))
+                {
+                    MessageBox.Show("Something goes wrong with the part group: " + m._model_name);
+                    return;
+                }
+                m._GRAPH.selectedNodes.Add(node);
+            }
+        }// setSelectedNodes
+
+        private void setSelectedNodes(Model m, List<Node> nodes)
+        {
+            m._GRAPH.selectedNodes = new List<Node>();
+            foreach (Node node in nodes)
             {
                 if (!m._GRAPH._NODES.Contains(node))
                 {
@@ -8319,16 +8497,6 @@ namespace FameBase
         {
             updateNodes1 = cloneNodesAndRelations(nodes1);
             updateNodes2 = cloneNodesAndRelations(nodes2);
-            if (nodes1.Count == 0)
-            {
-                handleInsertion(g1, g2, updateNodes2);
-                return;
-            }
-            if (nodes2.Count == 0)
-            {
-                handleInsertion(g2, g1, updateNodes1);
-                return;
-            }
 
             List<Edge> edgesToConnect_1 = g1.getOutgoingEdges(nodes1);
             List<Edge> edgesToConnect_2 = g2.getOutgoingEdges(nodes2);
@@ -8490,7 +8658,7 @@ namespace FameBase
                 node.Transform(T);
                 node._updated = true;
             }
-            List<Edge> inner_edges = Graph.GetAllEdges(nodes);
+            List<Edge> inner_edges = Graph.GetInnerEdges(nodes);
             foreach (Edge e in inner_edges)
             {
                 if (e._contactUpdated)
@@ -8752,85 +8920,6 @@ namespace FameBase
             Program.writeToConsole(_currModel._GRAPH.selectedNodes.Count.ToString() + " nodes in Graph #" + _selectedModelIndex.ToString() + " are selcted.");
         }// setSelectedNodes
 
-        public List<ModelViewer> getMutateViewers()
-        {
-            List<Model> models = mutate();
-            List<ModelViewer> _resViewers = new List<ModelViewer>();
-            int i = 0;
-            foreach (Model m in models)
-            {
-                _resViewers.Add(new ModelViewer(m, i++, this, 1));
-            }
-            return _resViewers;
-        }// getMutateViewers
-
-        private List<Model> mutate()
-        {
-            if (_currModel == null)
-            {
-                return null;
-            }
-            List<Model> mutatedModels = new List<Model>();
-            int n = _currModel._NPARTS;
-            bool[] mutated = new bool[_currModel._NPARTS];
-            Random rand = new Random();
-            double s1 = 0.5;
-            double s2 = 2.0;
-            int idx = 0;
-            string path = _currModel._path + "mutate_models\\";
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
-            for (int i = 0; i < n; ++i)
-            {
-                //int j = rand.Next(n);
-                //while (mutated[j])
-                //{
-                //    j = rand.Next(n);
-                //}
-                //int axis = rand.Next(3);
-                // permute
-                int j = i;
-                if (_currModel._GRAPH._NODES[j].symmetry != null && _currModel._GRAPH._NODES[j]._INDEX > _currModel._GRAPH._NODES[j].symmetry._INDEX)
-                {
-                    continue;
-                }
-                for (int axis = 0; axis < 3; ++axis)
-                {
-                    ++idx;
-                    Model model = _currModel.Clone() as Model;
-                    hasInValidContact(model._GRAPH);
-                    model._path = path.Clone() as string;
-                    model._model_name = _currModel._model_name + "_mutate_" + idx.ToString();
-                    Node updateNode = model._GRAPH._NODES[j];
-                    double scale = s1 + rand.NextDouble() * (s2 - s1);
-                    Vector3d sv = new Vector3d(1, 1, 1);
-                    sv[axis] = scale;
-                    Matrix4d S = Matrix4d.ScalingMatrix(sv);
-                    Vector3d center = model._GRAPH._NODES[j]._pos;
-                    Matrix4d Q = Matrix4d.TranslationMatrix(center) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
-                    if (updateNode._isGroundTouching)
-                    {
-                        Node cNode = updateNode.Clone() as Node;
-                        deformANodeAndEdges(cNode, Q);
-                        Vector3d trans = new Vector3d();
-                        trans.y = -cNode._PART._BOUNDINGBOX.MinCoord.y;
-                        Matrix4d T = Matrix4d.TranslationMatrix(trans);
-                        Q = T * Q;
-                    }
-                    deformANodeAndEdges(updateNode, Q);
-                    deformSymmetryNode(updateNode);
-                    hasInValidContact(model._GRAPH);
-                    deformPropagation(model._GRAPH, updateNode);
-                    model._GRAPH.resetUpdateStatus();
-                    mutatedModels.Add(model);
-                    ++idx;
-                }// each axis
-            }
-            return mutatedModels;
-        }// mutate
-
         private void deformANodeAndEdges(Node node, Matrix4d T)
         {
             node.Transform(T);
@@ -8970,96 +9059,6 @@ namespace FameBase
                 e.TransformContact(Q);
             }
         }// deformNode
-
-        public List<ModelViewer> crossOver()
-        {
-            if (_crossOverBasket.Count < 2)
-            {
-                return null;
-            }
-            List<ModelViewer> _resViewers = new List<ModelViewer>();
-            int k = 0;
-            for (int i = 0; i < _crossOverBasket.Count - 1; ++i)
-            {
-                Model m1 = _crossOverBasket[i];
-                for (int j = i + 1; j < _crossOverBasket.Count; ++j)
-                {
-                    Model m2 = _crossOverBasket[j];
-                    List<Node> nodes1 = new List<Node>();
-                    List<Node> nodes2 = new List<Node>();
-                    //findOneToOneMatchingNodes(g1, g2, out nodes1, out nodes2);
-
-                    Model newM1 = m1.Clone() as Model;
-                    Model newM2 = m2.Clone() as Model;
-
-                    foreach (Node node in m1._GRAPH.selectedNodes)
-                    {
-                        nodes1.Add(newM1._GRAPH._NODES[node._INDEX]);
-                    }
-                    foreach (Node node in m2._GRAPH.selectedNodes)
-                    {
-                        nodes2.Add(newM2._GRAPH._NODES[node._INDEX]);
-                    }
-
-                    if (nodes1 == null || nodes2 == null || nodes1.Count == 0 || nodes2.Count == 0)
-                    {
-                        return null;
-                    }
-
-                    List<Node> updatedNodes1;
-                    List<Node> updatedNodes2;
-                    switchNodes(m1._GRAPH, m2._GRAPH, nodes1, nodes2, out updatedNodes1, out updatedNodes2);
-
-                    newM1.replaceNodes(nodes1, updatedNodes2);
-                    _resViewers.Add(new ModelViewer(newM1, k++, this, 1));
-                    newM2.replaceNodes(nodes2, updatedNodes1);
-                    _resViewers.Add(new ModelViewer(newM2, k++, this, 1));
-                }
-            }
-            _crossOverBasket.Clear();
-            return _resViewers;
-        }// crossover
-
-        public List<Model> crossOver(List<Model> models)
-        {
-            if (models.Count < 2)
-            {
-                return null;
-            }
-            List<Model> crossedModels = new List<Model>();
-            int k = 0;
-            for (int i = 0; i < models.Count - 1; ++i)
-            {
-                Model m1 = models[i];
-                for (int j = i + 1; j < models.Count; ++j)
-                {
-                    Model m2 = models[j];
-                    // set selected nodes
-                    List<List<Node>> nodeChoices1;
-                    List<List<Node>> nodeChoices2;
-
-                    if (_replaceablePairs != null && _replaceablePairs[i, j] != null && _replaceablePairs[i, j]._pair1.Count != 0)
-                    {
-                        nodeChoices1 = _replaceablePairs[i, j]._pair1;
-                        nodeChoices2 = _replaceablePairs[i, j]._pair2;
-                    }
-                    else
-                    {
-                        this.selectReplaceableNodesPair(m1._GRAPH, m2._GRAPH, out nodeChoices1, out nodeChoices2);
-                    }
-                    for (int t = 0; t < nodeChoices1.Count; ++t)
-                    {
-                        m1._GRAPH.selectedNodes = nodeChoices1[t];
-                        m2._GRAPH.selectedNodes = nodeChoices2[t];
-                        PartGroup pg1, pg2;
-                        List<Model> crossed = this.crossOverOp(m1, m2, t, k, -1, -1, out pg1, out pg2);
-                        k += 2;
-                        crossedModels.AddRange(crossed);
-                    }
-                }
-            }
-            return crossedModels;
-        }// crossover
 
         private Node hasGroundTouchingNode(List<Node> nodes)
         {
@@ -9355,7 +9354,7 @@ namespace FameBase
         {
             foreach (Vector3d v in vecs)
             {
-                if (v.isValidVector())
+                if (!v.isValidVector())
                 {
                     return true;
                 }

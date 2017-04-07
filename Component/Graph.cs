@@ -1695,17 +1695,6 @@ namespace Component
                     indices.Add(nodes[0]._INDEX);
                     comIndices.Add(indices);
                     _partGroups.Add(ng);
-                    // 
-                    if (model_name.Contains("handcart") && nodes.Count == 2)
-                    {
-                        single = new List<Node>();
-                        single.Add(nodes[1]);
-                        ng = new PartGroup(single, 0);
-                        indices = new List<int>();
-                        indices.Add(nodes[1]._INDEX);
-                        comIndices.Add(indices);
-                        _partGroups.Add(ng);
-                    }
                 }
             }
             // 2. symmetry parts
@@ -1734,7 +1723,8 @@ namespace Component
                 // symmetry breaking
                 List<Node> nodes1 = new List<Node>();
                 nodes1.Add(_nodes[i]);
-                if (shouldCreateNewPartGroup(_partGroups, nodes1))
+                if (Functionality.ContainsMainFunction(Functionality.getNodesFunctionalities(symNodes))
+                    && shouldCreateNewPartGroup(_partGroups, nodes1))
                 {
                     _partGroups.Add(new PartGroup(nodes1, 0));
                     indices = new List<int>();
@@ -1775,90 +1765,6 @@ namespace Component
                 PartGroup ppg = new PartGroup(propogationNodes, 0);
                 //_partGroups.Add(ppg);
                 _partGroups[i] = ppg; //! in this way, only use connected nodes
-            }
-            // special case
-            if (model_name.ToLower().Equals("handcart_22") || model_name.ToLower().Equals("handcart_1"))
-            {
-                int[] setIdxs = { 3, 4};
-                List<int> indices = new List<int>(setIdxs);
-                if (model_name.ToLower().Equals("handcart_1"))
-                {
-                    indices = new List<int>();
-                    indices.Add(1); indices.Add(3);
-                }
-                if (getIndex(comIndices, indices) == -1)
-                {
-                    List<Node> setNodes = new List<Node>();
-                    foreach (int idx in indices)
-                    {
-                        setNodes.Add(_nodes[idx]);
-                    }
-                    PartGroup pg = new PartGroup(setNodes, 0);
-                    _partGroups.Add(pg);
-                    comIndices.Add(indices);
-                    pg._isSymmBreak = true;
-                }
-
-                indices = new List<int>();
-                indices.Add(5); indices.Add(6);
-                if (model_name.ToLower().Equals("handcart_1"))
-                {
-                    indices = new List<int>();
-                    indices.Add(2); indices.Add(5);
-                }
-                if (getIndex(comIndices, indices) == -1)
-                {
-                    List<Node> setNodes = new List<Node>();
-                    foreach (int idx in indices)
-                    {
-                        setNodes.Add(_nodes[idx]);
-                    }
-                    PartGroup pg = new PartGroup(setNodes, 0);
-                    _partGroups.Add(pg);
-                    comIndices.Add(indices);
-                    pg._isSymmBreak = true;
-                }
-            }
-            if (model_name.ToLower().Equals("handcart_4") || model_name.ToLower().Equals("handcart_1"))
-            {
-                List<int> indices = indices = new List<int>();
-                indices.Add(0); indices.Add(1); indices.Add(2); indices.Add(7);
-                if (model_name.ToLower().Equals("handcart_1"))
-                {
-                    indices = new List<int>();
-                    indices.Add(2); indices.Add(5); indices.Add(4); indices.Add(6);
-                }
-                if (getIndex(comIndices, indices) == -1)
-                {
-                    List<Node> setNodes = new List<Node>();
-                    foreach (int idx in indices)
-                    {
-                        setNodes.Add(_nodes[idx]);
-                    }
-                    PartGroup pg = new PartGroup(setNodes, 0);
-                    _partGroups.Add(pg);
-                    comIndices.Add(indices);
-                    pg._isSymmBreak = true;
-                }
-            }
-            // all
-            bool hasAll = false;
-            foreach(PartGroup pg in _partGroups)
-            {
-                if (pg._NODES.Count == _nodes.Count)
-                {
-                    hasAll = true;
-                }
-            }
-            if (!hasAll)
-            {
-                _partGroups.Add(new PartGroup(_nodes, 0));
-                List<int> indices = new List<int>();
-                for (int i = 0; i < _nodes.Count; ++i)
-                {
-                    indices.Add(i);
-                }
-                comIndices.Add(indices);
             }
         }// initializePartGroups
 

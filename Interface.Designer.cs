@@ -114,8 +114,6 @@
             this.XZbutton = new System.Windows.Forms.ToolStripButton();
             this.toolStripDropDownButton1 = new System.Windows.Forms.ToolStripDropDownButton();
             this.symmetryToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.crossoverToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.mutateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sortResToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rankByCatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rankByMultiToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -139,6 +137,7 @@
             this.prev_mesh = new System.Windows.Forms.Button();
             this.next_mesh = new System.Windows.Forms.Button();
             this.statsLabel = new System.Windows.Forms.Label();
+            this.glViewer = new FameBase.GLViewer();
             this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
@@ -170,14 +169,6 @@
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer = new FameBase.GLViewer();
-            this.panel1 = new System.Windows.Forms.Panel();
-            this.vScrollBar1 = new System.Windows.Forms.VScrollBar();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.vScrollBar2 = new System.Windows.Forms.VScrollBar();
-            this.vScrollBar3 = new System.Windows.Forms.VScrollBar();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -185,9 +176,7 @@
             this.viewPanel.SuspendLayout();
             this.category_panel.SuspendLayout();
             this.prev_next_panel.SuspendLayout();
-            this.partBasket.SuspendLayout();
             this.partRelatedTools.SuspendLayout();
-            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // menu
@@ -895,8 +884,6 @@
             // 
             this.toolStripDropDownButton1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.symmetryToolStripMenuItem,
-            this.crossoverToolStripMenuItem,
-            this.mutateToolStripMenuItem,
             this.sortResToolStripMenuItem,
             this.rankByCatToolStripMenuItem,
             this.rankByMultiToolStripMenuItem,
@@ -915,20 +902,6 @@
             this.symmetryToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
             this.symmetryToolStripMenuItem.Text = "Symmetry";
             this.symmetryToolStripMenuItem.Click += new System.EventHandler(this.symmetryToolStripMenuItem_Click);
-            // 
-            // crossoverToolStripMenuItem
-            // 
-            this.crossoverToolStripMenuItem.Name = "crossoverToolStripMenuItem";
-            this.crossoverToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
-            this.crossoverToolStripMenuItem.Text = "Crossover";
-            this.crossoverToolStripMenuItem.Click += new System.EventHandler(this.crossoverToolStripMenuItem_Click);
-            // 
-            // mutateToolStripMenuItem
-            // 
-            this.mutateToolStripMenuItem.Name = "mutateToolStripMenuItem";
-            this.mutateToolStripMenuItem.Size = new System.Drawing.Size(161, 22);
-            this.mutateToolStripMenuItem.Text = "Mutate";
-            this.mutateToolStripMenuItem.Click += new System.EventHandler(this.mutateToolStripMenuItem_Click);
             // 
             // sortResToolStripMenuItem
             // 
@@ -1069,6 +1042,7 @@
             "Handcart",
             "Hanger",
             "Hook",
+            "Robot",
             "Shelf",
             "Stand",
             "Stroller",
@@ -1200,13 +1174,32 @@
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
             // 
+            // glViewer
+            // 
+            this.glViewer.AccumBits = ((byte)(0));
+            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.glViewer.AutoCheckErrors = false;
+            this.glViewer.AutoFinish = false;
+            this.glViewer.AutoMakeCurrent = true;
+            this.glViewer.AutoSwapBuffers = true;
+            this.glViewer.BackColor = System.Drawing.Color.Black;
+            this.glViewer.ColorBits = ((byte)(32));
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
+            this.glViewer.DepthBits = ((byte)(16));
+            this.glViewer.Location = new System.Drawing.Point(216, 3);
+            this.glViewer.Name = "glViewer";
+            this.glViewer.Size = new System.Drawing.Size(676, 614);
+            this.glViewer.StencilBits = ((byte)(0));
+            this.glViewer.TabIndex = 16;
+            // 
             // partBasket
             // 
             this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.partBasket.AutoScroll = true;
             this.partBasket.BackColor = System.Drawing.Color.White;
-            this.partBasket.Controls.Add(this.panel1);
             this.partBasket.Location = new System.Drawing.Point(896, 3);
             this.partBasket.Name = "partBasket";
             this.partBasket.Size = new System.Drawing.Size(203, 701);
@@ -1445,96 +1438,6 @@
             this.partGroupToolStripMenuItem.Text = "Part Group";
             this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
             // 
-            // glViewer
-            // 
-            this.glViewer.AccumBits = ((byte)(0));
-            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.glViewer.AutoCheckErrors = false;
-            this.glViewer.AutoFinish = false;
-            this.glViewer.AutoMakeCurrent = true;
-            this.glViewer.AutoSwapBuffers = true;
-            this.glViewer.BackColor = System.Drawing.Color.Black;
-            this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(216, 3);
-            this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(676, 614);
-            this.glViewer.StencilBits = ((byte)(0));
-            this.glViewer.TabIndex = 16;
-            // 
-            // panel1
-            // 
-            this.panel1.Controls.Add(this.vScrollBar3);
-            this.panel1.Controls.Add(this.vScrollBar2);
-            this.panel1.Controls.Add(this.label3);
-            this.panel1.Controls.Add(this.label2);
-            this.panel1.Controls.Add(this.label1);
-            this.panel1.Controls.Add(this.vScrollBar1);
-            this.panel1.Location = new System.Drawing.Point(3, 3);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(141, 128);
-            this.panel1.TabIndex = 0;
-            // 
-            // vScrollBar1
-            // 
-            this.vScrollBar1.LargeChange = 4;
-            this.vScrollBar1.Location = new System.Drawing.Point(18, 6);
-            this.vScrollBar1.Maximum = 10;
-            this.vScrollBar1.Name = "vScrollBar1";
-            this.vScrollBar1.Size = new System.Drawing.Size(14, 90);
-            this.vScrollBar1.TabIndex = 0;
-            this.vScrollBar1.Value = 9;
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(4, 106);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(49, 13);
-            this.label1.TabIndex = 3;
-            this.label1.Text = "Elephant";
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(52, 106);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(38, 13);
-            this.label2.TabIndex = 4;
-            this.label2.Text = "Giraffe";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(96, 106);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(35, 13);
-            this.label3.TabIndex = 5;
-            this.label3.Text = "Rhino";
-            // 
-            // vScrollBar2
-            // 
-            this.vScrollBar2.LargeChange = 4;
-            this.vScrollBar2.Location = new System.Drawing.Point(62, 6);
-            this.vScrollBar2.Maximum = 10;
-            this.vScrollBar2.Name = "vScrollBar2";
-            this.vScrollBar2.Size = new System.Drawing.Size(14, 90);
-            this.vScrollBar2.TabIndex = 6;
-            this.vScrollBar2.Value = 8;
-            // 
-            // vScrollBar3
-            // 
-            this.vScrollBar3.LargeChange = 4;
-            this.vScrollBar3.Location = new System.Drawing.Point(107, 6);
-            this.vScrollBar3.Maximum = 10;
-            this.vScrollBar3.Name = "vScrollBar3";
-            this.vScrollBar3.Size = new System.Drawing.Size(14, 90);
-            this.vScrollBar3.TabIndex = 7;
-            this.vScrollBar3.Value = 1;
-            // 
             // Interface
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1557,10 +1460,7 @@
             this.category_panel.PerformLayout();
             this.prev_next_panel.ResumeLayout(false);
             this.prev_next_panel.PerformLayout();
-            this.partBasket.ResumeLayout(false);
             this.partRelatedTools.ResumeLayout(false);
-            this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -1633,9 +1533,7 @@
         private System.Windows.Forms.ToolStripMenuItem importHumanPoseToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem graphToolStripMenuItem;
         private System.Windows.Forms.ToolStripDropDownButton toolStripDropDownButton1;
-        private System.Windows.Forms.ToolStripMenuItem crossoverToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem selectToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem mutateToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem symmetryToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem randomColorToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem open3DGroupedToolStripMenuItem;
@@ -1710,13 +1608,6 @@
         private System.Windows.Forms.Button category_cancel;
         private System.Windows.Forms.Button category_yes;
         private System.Windows.Forms.Label cat_select_label;
-        private System.Windows.Forms.Panel panel1;
-        private System.Windows.Forms.VScrollBar vScrollBar3;
-        private System.Windows.Forms.VScrollBar vScrollBar2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.VScrollBar vScrollBar1;
     }
 }
 
