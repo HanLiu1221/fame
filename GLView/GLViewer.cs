@@ -4932,8 +4932,8 @@ namespace FameBase
                 int i = _validityMatrixPG.GetTriplet(t).row;
                 int j = _validityMatrixPG.GetTriplet(t).col;
                 List<Model> ijs;
-                i = 3;
-                j = 27;
+                //i = 6;
+                //j = 23;
                 if (!runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs))
                 {
                     invalid.Add(_validityMatrixPG.GetTriplet(t));
@@ -5002,7 +5002,7 @@ namespace FameBase
                 }
                
                 //// valid graph
-                //this.tryRestoreFunctionalNodes(m);
+                this.tryRestoreFunctionalNodes(m);
 
                 secs = stopWatch_cross.ElapsedMilliseconds / 1000;
                 Program.writeToConsole("Time to eval an offspring: " + secs.ToString() + " senconds.");
@@ -5106,7 +5106,9 @@ namespace FameBase
         {
             // if #nodes2 contain only main functional parts, and its m --> 1
             List<Functionality.Functions> func2 = Functionality.getNodesFunctionalitiesIncludeNone(nodes2);
-            if (func2.Count == 1 && Functionality.IsMainFunction(func2[0]) && nodes2.Count > nodes1.Count)
+            int nMainNodes1 = containsNMainNodes(nodes1);
+            int nMainNodes2 = containsNMainNodes(nodes2);
+            if (func2.Count == 1 && Functionality.IsMainFunction(func2[0]) && nMainNodes2 > nMainNodes1)
             {
                 List<Node> nodes = new List<Node>();
                 // randomly select one
@@ -5117,6 +5119,19 @@ namespace FameBase
             }
             return nodes2;
         }// reduceRepeatedNodes
+
+        private int containsNMainNodes(List<Node> nodes)
+        {
+            int n = 0;
+            foreach (Node node in nodes)
+            {
+                if (Functionality.ContainsMainFunction(node._funcs))
+                {
+                    ++n;
+                }
+            }
+            return n;
+        }
 
         private Model deletionOperation(Model m, Functionality.Category cat)
         {
@@ -5308,30 +5323,28 @@ namespace FameBase
             List<Vector3d> targets = collectPoints(edgesToConnect_1);
             List<Vector3d> sources = collectPoints(edgesToConnect_2);
 
-            Vector3d center1 = new Vector3d();
             Vector3d maxv_s = Vector3d.MinCoord;
             Vector3d minv_s = Vector3d.MaxCoord;
             Vector3d maxv_t = Vector3d.MinCoord;
             Vector3d minv_t = Vector3d.MaxCoord;
 
+            Vector3d center1 = new Vector3d();
             foreach (Node node in nodes1)
             {
                 center1 += node._PART._BOUNDINGBOX.CENTER;
-                maxv_s = Vector3d.Max(maxv_s, node._PART._BOUNDINGBOX.MaxCoord);
-                minv_s = Vector3d.Min(minv_s, node._PART._BOUNDINGBOX.MinCoord);
+                maxv_t = Vector3d.Max(maxv_t, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_t = Vector3d.Min(minv_t, node._PART._BOUNDINGBOX.MinCoord);
             }
-            //center1 /= nodes1.Count;
-            center1 = (maxv_s + minv_s) / 2;
+            center1 /= nodes1.Count;
 
             Vector3d center2 = new Vector3d();
             foreach (Node node in nodes2)
             {
                 center2 += node._PART._BOUNDINGBOX.CENTER;
-                maxv_t = Vector3d.Max(maxv_t, node._PART._BOUNDINGBOX.MaxCoord);
-                minv_t = Vector3d.Min(minv_t, node._PART._BOUNDINGBOX.MinCoord);
+                maxv_s = Vector3d.Max(maxv_s, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_s = Vector3d.Min(minv_s, node._PART._BOUNDINGBOX.MinCoord);
             }
-            //center2 /= nodes2.Count;
-            center2 = (maxv_t + minv_t) / 2;
+            center2 /= nodes2.Count;
 
             double[] scale1 = { 1.0, 1.0, 1.0 };
             if (nodes1.Count > 0)
@@ -5340,13 +5353,7 @@ namespace FameBase
                 scale1[1] = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
                 scale1[2] = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
             }
-
-            int axis = this.hasCylinderNode(nodes1);
-            if (axis != -1)
-            {
-                scale1 = this.updateScalesForCylinder(scale1, axis);
-            }
-            Vector3d boxScale_1 = new Vector3d(scale1[0], scale1[1], scale1[2]);
+            
             double[] scale2 = { 1.0, 1.0, 1.0 };
             if (nodes2.Count > 0)
             {
@@ -5354,11 +5361,25 @@ namespace FameBase
                 scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
                 scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
             }
-            axis = this.hasCylinderNode(nodes2);
+            bool userScale = false;
+            int axis = this.hasCylinderNode(nodes1);
             if (axis != -1)
             {
                 scale2 = this.updateScalesForCylinder(scale2, axis);
             }
+            axis = this.hasCylinderNode(nodes2);
+            if (axis != -1)
+            {
+                scale1 = this.updateScalesForCylinder(scale1, axis);
+                userScale = true;
+            }
+            if (Functionality.ContainsMainFunction(Functionality.getNodesFunctionalities(nodes2)))
+            {
+                userScale = true;
+            }
+
+
+            Vector3d boxScale_1 = new Vector3d(scale1[0], scale1[1], scale1[2]);
             Vector3d boxScale_2 = new Vector3d(scale2[0], scale2[1], scale2[2]);
 
             Matrix4d S, T, Q;
@@ -5381,29 +5402,33 @@ namespace FameBase
             // since two part groups in two models can be positioned very differently (far),
             // if use brute force to find closest points, error matchings can occur
             // a simple solution is, remove the additional unmatched points (nearest) first, to remove noise
-            while (right.Count > left.Count)
-            {
-                double mind = double.MaxValue;
-                int id = -1;
-                int jd = -1;
-                for (int i = 0; i < right.Count - 1; ++i)
-                {
-                    for (int j = i + 1; j < right.Count; ++j)
-                    {
-                        double d = (right[i] - right[j]).Length();
-                        if (d < mind)
-                        {
-                            mind = d;
-                            id = i;
-                            jd = j;
-                        }
-                    }
-                }
-                Vector3d vij = (right[id] + right[jd]) / 2;
-                right.RemoveAt(jd);
-                right.RemoveAt(id);
-                right.Add(vij);
-            }
+            //while (right.Count > left.Count)
+            //{
+            //    double mind = double.MaxValue;
+            //    int id = -1;
+            //    int jd = -1;
+            //    for (int i = 0; i < right.Count - 1; ++i)
+            //    {
+            //        for (int j = i + 1; j < right.Count; ++j)
+            //        {
+            //            double d = (right[i] - right[j]).Length();
+            //            if (d < mind)
+            //            {
+            //                mind = d;
+            //                id = i;
+            //                jd = j;
+            //            }
+            //        }
+            //    }
+            //    Vector3d vij = (right[id] + right[jd]) / 2;
+            //    right.RemoveAt(jd);
+            //    right.RemoveAt(id);
+            //    right.Add(vij);
+            //}
+            //// order the two sets of points
+            ////src = this.sortInOrder(left);
+            ////trt = this.sortInOrder(right);
+
             foreach (Vector3d v in left)
             {
                 src.Add(v);
@@ -5422,6 +5447,7 @@ namespace FameBase
                 trt.Add(right[j]);
                 visited[j] = true;
             }
+
             if (startWithSrc)
             {
                 targets = src;
@@ -5449,10 +5475,15 @@ namespace FameBase
                 //targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
                 //sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
             }
-            bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
+            bool userCenter = nodes1.Count == 1 || nodes2.Count == 1 || userScale;
+
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, false, center1, center2, userCenter);
+                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, userScale, center1, center2, userCenter);
+                if (Common.isOverScaled(Q[0, 0]) || Common.isOverScaled(Q[1, 1]) || Common.isOverScaled(Q[2, 2]))
+                {
+                    getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center1, center2, true);
+                }
                 this.deformNodesAndEdges(updateNodes2, Q);
             }
 
@@ -5514,6 +5545,52 @@ namespace FameBase
                 }
             }
         }// calculatePartGroupCompatibility
+
+        private List<Vector3d> sortInOrder(List<Vector3d> points)
+        {
+            // *roughly* from lower left to upper right
+            List<Vector3d> sorted = new List<Vector3d>();
+            Vector3d vmin = Vector3d.MaxCoord;
+            Vector3d vmax = Vector3d.MinCoord;
+            foreach (Vector3d pnt in points)
+            {
+                vmin = Vector3d.Min(vmin, pnt);
+                vmax = Vector3d.Max(vmax, pnt);
+            }
+            bool[] added = new bool[points.Count];
+            double mind = double.MaxValue;
+            int id = -1;
+            for (int i = 0; i < points.Count; ++i)
+            {
+                double dis = (vmin - points[i]).Length();
+                if (dis < mind)
+                {
+                    mind = dis;
+                    id = i;
+                }
+            }
+            added[id] = true;
+            sorted.Add(points[id]);
+            while (sorted.Count < points.Count)
+            {
+                mind = double.MaxValue;
+                id = -1;
+                Vector3d cur = sorted[sorted.Count - 1];
+                for (int i = 0; i < points.Count; ++i)
+                {
+                    if (added[i]) continue;
+                    double dis = (cur - points[i]).Length();
+                    if (dis < mind)
+                    {
+                        mind = dis;
+                        id = i;
+                    }
+                }
+                added[id] = true;
+                sorted.Add(points[id]);
+            }
+            return sorted;
+        }// sortInOrder
 
         private void updateSimilarGroups(int p1, int p2, bool increase)
         {
@@ -6017,16 +6094,11 @@ namespace FameBase
             Vector3d maxCoord = Vector3d.MinCoord;
             Vector3d minCoord = Vector3d.MaxCoord;
             
-            bool isCart = false;
             foreach(Node node in m._GRAPH._NODES)
             {
                 if (this.isMainFunctionalNode(node))
                 {
                     mainFuncNodes.Add(node);
-                    if (node._PART._partName.ToLower().Contains("handart"))
-                    {
-                        isCart = true;
-                    }
                 }
                 maxCoord = Vector3d.Max(maxCoord, node._PART._BOUNDINGBOX.MaxCoord);
                 minCoord = Vector3d.Min(minCoord, node._PART._BOUNDINGBOX.MinCoord);
@@ -6039,15 +6111,6 @@ namespace FameBase
                     this.tryRestoreAFunctionalNode(m, node);
                 }
             }
-            //if (mainFuncNodes.Count == 2 && isCart)
-            //{
-            //    double miny = 0.3;
-            //    double yscale = miny / (maxCoord.y - minCoord.y);
-            //    Matrix4d scale = Matrix4d.ScalingMatrix(0, yscale, 0);
-            //    Matrix4d Q = Matrix4d.TranslationMatrix(center) * Matrix4d.ScalingMatrix(scale)
-            //       * Matrix4d.TranslationMatrix(new Vector3d() - center);
-            //    this.deformNodesAndEdges(nodes, T);
-            //}
         }// tryRestoreFunctionalNodes
 
         private bool isMainFunctionalNode(Node node)
@@ -6106,7 +6169,7 @@ namespace FameBase
                     * Matrix4d.TranslationMatrix(new Vector3d() - center);
                 this.deformNodesAndEdges(nodes, T);
                 
-                Program.GetFormMain().writeToConsole("Re-scale a functional part of model: " + m._model_name);
+                Program.GetFormMain().outputSystemStatus("Re-scale a functional part of model: " + m._model_name);
             }
             return needReScale;
         }// tryRestoreAFunctionalNode
@@ -8447,7 +8510,7 @@ namespace FameBase
         private int getAxisAlignedAxis(Vector3d v)
         {
             int axis = -1;
-            double maxv = -1;
+            double maxv = double.MinValue;
             for (int i = 0; i < 3; ++i)
             {
                 if (Math.Abs(v[i]) > maxv)
@@ -9149,7 +9212,8 @@ namespace FameBase
                 }
                 S = Matrix4d.ScalingMatrix(ss, ss, ss);
 
-                if (useScale && boxScale.isValidVector())
+
+                if (boxScale.isValidVector()) //  && useScale)
                 {
                     S = Matrix4d.ScalingMatrix(boxScale);
                 }

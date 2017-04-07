@@ -1501,6 +1501,15 @@ namespace Component
             {
                 return true;
             }
+            foreach (Edge e in _edges)
+            {
+                Mesh m1 = e._start._PART._MESH;
+                Mesh m2 = e._end._PART._MESH;
+                if (!isConnected(m1, m2, 0.05))
+                {
+                    return true;
+                }
+            }
                 // if any node that is detached
                 // check if we can walk through one node to all the other nodes
                 resetNodeIndex();
@@ -1529,7 +1538,7 @@ namespace Component
                         Mesh m2 = node._PART._MESH;
                         //if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
                         //    || isConnected(m1, m2))
-                        if (isConnected(m1, m2))
+                        if (isConnected(m1, m2, 0.01))
                         {
                             queue.Add(node);
                         }
@@ -1571,10 +1580,9 @@ namespace Component
             return mind < thr;
         }// is connected
 
-        private bool isConnected(Mesh m1, Mesh m2)
+        private bool isConnected(Mesh m1, Mesh m2, double thr)
         {
             // work for uniform mesh -- vertex are equally distributed
-            double thr = 0.01;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;
             Vector3d[] v2 = m2.VertexVectorArray;

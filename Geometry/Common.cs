@@ -241,6 +241,13 @@ namespace Geometry
             }
             return val;
         }// cutoff
+
+        public static bool isOverScaled(double s)
+        {
+            double maxs = 10.0;
+            double mins = 1.0 / maxs;
+            return Math.Abs(s) > maxs || Math.Abs(s) < mins;
+        }
     }// Common
 
     public class Contact
