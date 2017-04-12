@@ -245,7 +245,6 @@ namespace Component
             }
         }// CheckFunctions
 
-
         public static string getCategoryName(int index)
         {
             switch (index)

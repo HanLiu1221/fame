@@ -4932,8 +4932,8 @@ namespace FameBase
                 int i = _validityMatrixPG.GetTriplet(t).row;
                 int j = _validityMatrixPG.GetTriplet(t).col;
                 List<Model> ijs;
-                //i = 6;
-                //j = 23;
+                //i = 27;
+                //j = 5;
                 if (!runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs))
                 {
                     invalid.Add(_validityMatrixPG.GetTriplet(t));
@@ -5361,23 +5361,12 @@ namespace FameBase
                 scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
                 scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
             }
-            bool userScale = false;
-            int axis = this.hasCylinderNode(nodes1);
-            if (axis != -1)
+            bool useScale = false;
+            int axis = this.hasCylinderNode(nodes2);
+            if (axis != -1 || Functionality.ContainsMainFunction(Functionality.getNodesFunctionalities(nodes2)))
             {
-                scale2 = this.updateScalesForCylinder(scale2, axis);
-            }
-            axis = this.hasCylinderNode(nodes2);
-            if (axis != -1)
-            {
-                scale1 = this.updateScalesForCylinder(scale1, axis);
-                userScale = true;
-            }
-            if (Functionality.ContainsMainFunction(Functionality.getNodesFunctionalities(nodes2)))
-            {
-                userScale = true;
-            }
-
+                useScale = true;
+            }           
 
             Vector3d boxScale_1 = new Vector3d(scale1[0], scale1[1], scale1[2]);
             Vector3d boxScale_2 = new Vector3d(scale2[0], scale2[1], scale2[2]);
@@ -5468,23 +5457,22 @@ namespace FameBase
 
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
-            if (ground1 != null && ground2 != null)
-            {
-                targets.Add(g1.getGroundTouchingNodesCenter());
-                sources.Add(g2.getGroundTouchingNodesCenter());
-                //targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
-                //sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
-            }
-            bool userCenter = nodes1.Count == 1 || nodes2.Count == 1 || userScale;
+            //if (ground1 != null && ground2 != null)
+            //{
+            //    targets.Add(this.getGroundTouchingNodesCenter(nodes1));
+            //    sources.Add(this.getGroundTouchingNodesCenter(nodes2));
+            //}
+            bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
 
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, userScale, center1, center2, userCenter);
+                getTransformationTest(sources, targets, out S, out T, out Q, boxScale_1, axis, center1, center2, userCenter);
                 if (Common.isOverScaled(Q[0, 0]) || Common.isOverScaled(Q[1, 1]) || Common.isOverScaled(Q[2, 2]))
                 {
-                    getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center1, center2, true);
+                    getTransformation(sources, targets, out S, out T, out Q, boxScale_1, useScale, center1, center2, true);
                 }
                 this.deformNodesAndEdges(updateNodes2, Q);
+                this.restoreCyclinderNodes(updateNodes2, S);
             }
 
             if (ground2 != null)
@@ -5496,6 +5484,88 @@ namespace FameBase
 
             return updateNodes2;
         }// replaceNodes
+
+        public Vector3d getGroundTouchingNodesCenter(List<Node> nodes)
+        {
+            Vector3d center = new Vector3d();
+            int n = 0;
+            foreach (Node node in nodes)
+            {
+                if (node._isGroundTouching)
+                {
+                    center += node._PART._BOUNDINGBOX.CENTER;
+                    ++n;
+                }
+            }
+            center /= n;
+            center.y = 0;
+            return center;
+        }// getGroundTouchingNode
+
+        private void restoreCyclinderNodes(List<Node> nodes, Matrix4d S)
+        {
+            // restore nodes if cyclinder
+            Vector3d qscale = new Vector3d(S[0, 0], S[1, 1], S[2, 2]);
+            Vector3d[] scales = new Vector3d[3];
+            int[] nums = new int[3];
+            List<Node> toUpdate = new List<Node>();
+            List<int> axes = new List<int>();
+            for (int i = 0; i < 3; ++i)
+            {
+                scales[i] = new Vector3d();
+            }
+            foreach (Node node in nodes)
+            {
+                if (node._PART._BOUNDINGBOX.type == Common.PrimType.Cylinder)
+                {
+                    int rot_axis = this.getAxisAlignedAxis(node._PART._BOUNDINGBOX.rot_axis);
+                    Vector3d rescale = rescaleForCylinder(rot_axis, qscale);
+                    scales[rot_axis] += rescale;
+                    nums[rot_axis]++;
+                    toUpdate.Add(node);
+                    axes.Add(rot_axis);
+                    
+                }
+            }
+            for (int i = 0; i < 3; ++i)
+            {
+                scales[i] /= nums[i];
+                scales[i] = scales[i] / qscale;
+                scales[i][i] = 1.0;
+            }
+            for (int i = 0; i < toUpdate.Count; ++i)
+            {
+                Vector3d center = toUpdate[i]._PART._BOUNDINGBOX.CENTER;
+                Matrix4d rT = Matrix4d.TranslationMatrix(center) * Matrix4d.ScalingMatrix(scales[axes[i]]) * Matrix4d.TranslationMatrix(new Vector3d() - center);
+                toUpdate[i].Transform(rT);
+            }
+        }// restoreCyclinderNodes
+
+        private Vector3d rescaleForCylinder( int axis, Vector3d scale)
+        {
+            // reverse the scale back
+            Vector3d rescale = new Vector3d(scale);
+            double newScale = 1.0;
+            if (axis == 0)
+            {
+                newScale = (scale.y + scale.z) / 2;
+                rescale.y = newScale;
+                rescale.z = newScale;
+            }
+            else if (axis == 1)
+            {
+                newScale = (scale.x + scale.z) / 2;
+                rescale.x = newScale;
+                rescale.z = newScale;
+            }
+            else if (axis == 2)
+            {
+                newScale = (scale.x + scale.y) / 2;
+                rescale.x = newScale;
+                rescale.y = newScale;
+            }
+            return rescale;
+        }// rescaleForCylinder
 
         private void calculatePartGroupCompatibility(List<Model> models)
         {
@@ -8709,7 +8779,6 @@ namespace FameBase
             g2.resetUpdateStatus();
         }// switchNodes
 
-
         private void deformNodesAndEdges(List<Node> nodes, Matrix4d T)
         {
             foreach (Node node in nodes)
@@ -9170,6 +9239,145 @@ namespace FameBase
             return false;
         }
 
+        public void getTransformationTest(List<Vector3d> srcpts, List<Vector3d> tarpts,
+            out Matrix4d S, out Matrix4d T, out Matrix4d Q,
+            Vector3d boxScale, int useScale, 
+            Vector3d tc, Vector3d sc, bool useCenter)
+        {
+            int n = srcpts.Count;
+            if (n == 1)
+            {
+                double ss = 1;
+                Vector3d trans = tarpts[0] - srcpts[0];
+                S = Matrix4d.ScalingMatrix(ss, ss, ss);
+                if (useScale != -1 && boxScale.isValidVector())
+                {
+                    S = Matrix4d.ScalingMatrix(boxScale);
+                }
+                T = Matrix4d.TranslationMatrix(trans);
+                Q = Matrix4d.TranslationMatrix(tarpts[0]) * S * Matrix4d.TranslationMatrix(new Vector3d() - srcpts[0]);
+                if (useCenter)
+                {
+                    T = Matrix4d.TranslationMatrix(tc - sc);
+                    Q = Matrix4d.TranslationMatrix(tc) * S * Matrix4d.TranslationMatrix(new Vector3d() - sc);
+                }
+
+                if (isNaNMat(Q))
+                {
+                    Q = Matrix4d.IdentityMatrix();
+                }
+            }
+            else if (n == 2)
+            {
+                Vector3d c1 = (srcpts[0] + srcpts[1]) / 2;
+                Vector3d c2 = (tarpts[0] + tarpts[1]) / 2;
+                Vector3d v1 = srcpts[1] - srcpts[0];
+                Vector3d v2 = tarpts[1] - tarpts[0];
+                if (v1.Dot(v2) < 0) v1 = new Vector3d() - v1;
+                double ss = v2.Length() / v1.Length();
+                if (double.IsNaN(ss))
+                {
+                    ss = 1.0;
+                }
+                S = Matrix4d.ScalingMatrix(ss, ss, ss);
+
+
+                if (boxScale.isValidVector() && useScale != -1 )
+                {
+                    S = Matrix4d.ScalingMatrix(boxScale);
+                }
+
+                Matrix4d R = Matrix4d.IdentityMatrix();
+                double cos = v1.normalize().Dot(v2.normalize());
+                if (cos < Math.Cos(1.0 / 18 * Math.PI))
+                {
+                    Vector3d axis = v1.Cross(v2).normalize();
+                    double theta = Math.Acos(cos);
+                    R = Matrix4d.RotationMatrix(axis, theta);
+                    if (isNaNMat(R))
+                    {
+                        R = Matrix4d.IdentityMatrix();
+                    }
+                }
+                T = Matrix4d.TranslationMatrix(c2 - c1);
+                Q = Matrix4d.TranslationMatrix(c2) * R * S * Matrix4d.TranslationMatrix(new Vector3d() - c1);
+                if (useCenter)
+                {
+                    T = Matrix4d.TranslationMatrix(tc - sc);
+                    Q = Matrix4d.TranslationMatrix(tc) * S * Matrix4d.TranslationMatrix(new Vector3d() - sc);
+                }
+                if (isNaNMat(Q))
+                {
+                    Q = Matrix4d.IdentityMatrix();
+                }
+            }
+            else
+            {
+                Vector3d t1 = new Vector3d();
+                Vector3d t2 = new Vector3d();
+                foreach (Vector3d tt in srcpts)
+                    t1 += tt;
+                foreach (Vector3d tt in tarpts)
+                    t2 += tt;
+                t1 /= srcpts.Count;
+                t2 /= tarpts.Count;
+
+                Vector3d trans = t2 - t1;
+                T = Matrix4d.TranslationMatrix(trans);
+
+                // find the scales
+                int k = srcpts.Count;
+                double sx = 0, sy = 0, sz = 0;
+                for (int i = 0; i < k; ++i)
+                {
+                    Vector3d p1 = srcpts[i] - t1;
+                    Vector3d p2 = tarpts[i] - t2;
+                    sx += p2.x / p1.x;
+                    sy += p2.y / p1.y;
+                    sz += p2.z / p1.z;
+                }
+                sx /= k;
+                sy /= k;
+                sz /= k;
+
+                if (double.IsNaN(sx) || double.IsInfinity(sx) || Math.Abs(sx) < Common._thresh)
+                {
+                    sx = 1.0;
+                }
+                if (double.IsNaN(sy) || double.IsInfinity(sy) || Math.Abs(sy) < Common._thresh)
+                {
+                    sy = 1.0;
+                }
+                if (double.IsNaN(sz) || double.IsInfinity(sz) || Math.Abs(sz) < Common._thresh)
+                {
+                    sz = 1.0;
+                }
+
+                Vector3d scale = new Vector3d(sx, sy, sz);
+                //scale = adjustScale(scale);
+
+                if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
+
+                S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
+
+                if (useScale  != -1 && boxScale.isValidVector())
+                {
+                    //S = Matrix4d.ScalingMatrix(this.rescaleForCylinder(useScale, boxScale));
+                }
+                Q = Matrix4d.TranslationMatrix(t2) * S * Matrix4d.TranslationMatrix(new Vector3d() - t1);
+                if (useCenter)
+                {
+                    T = Matrix4d.TranslationMatrix(tc - sc);
+                    Q = Matrix4d.TranslationMatrix(tc) * S * Matrix4d.TranslationMatrix(new Vector3d() - sc);
+                }
+                if (isNaNMat(Q))
+                {
+                    Q = Matrix4d.IdentityMatrix();
+                }
+            }
+        }// getTransformation
+
+
         public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, 
             out Matrix4d S, out Matrix4d T, out Matrix4d Q, 
             Vector3d boxScale, bool useScale, 
@@ -9271,105 +9479,17 @@ namespace FameBase
                 sy /= k;
                 sz /= k;
 
-                if (double.IsNaN(sx) || double.IsInfinity(sx))
+                if (double.IsNaN(sx) || double.IsInfinity(sx) || Math.Abs(sx) < Common._thresh)
                 {
                     sx = 1.0;
                 }
-                if (double.IsNaN(sy) || double.IsInfinity(sy))
+                if (double.IsNaN(sy) || double.IsInfinity(sy) || Math.Abs(sy) < Common._thresh)
                 {
                     sy = 1.0;
                 }
-                if (double.IsNaN(sz) || double.IsInfinity(sz))
+                if (double.IsNaN(sz) || double.IsInfinity(sz) || Math.Abs(sz) < Common._thresh)
                 {
                     sz = 1.0;
-                }
-
-                // adjust scale 
-                if (n > 3)
-                {
-                    //// find the points plane
-                    //double[] points = new double[srcpts.Count * 3];
-                    //for (int i = 0, jj = 0; i < srcpts.Count; ++i, jj += 3)
-                    //{
-                    //    points[jj] = srcpts[i].x;
-                    //    points[jj + 1] = srcpts[i].y;
-                    //    points[jj + 2] = srcpts[i].z;
-                    //}
-                    //double[] plane = new double[4];
-                    //PlaneFitter.ZyyPlaneFitter _plfitter = new PlaneFitter.ZyyPlaneFitter();
-                    //fixed (double* _pts = points, _pl = plane)
-                    //    _plfitter.GetFittingPlane(_pts, srcpts.Count, _pl);
-                    //Vector3d normal = new Vector3d(plane, 0);
-                    //normal = normal.normalize();
-
-                    // permutations
-                    Vector3d[] vecs = new Vector3d[4];
-                    vecs[0] = tarpts[0];
-                    vecs[1] = tarpts[1];
-                    vecs[2] = tarpts[2];
-                    vecs[3] = tarpts[3];
-                    Vector3d[] nn = new Vector3d[4] {
-                        ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[2])).normalize(),
-                        ((vecs[1] - vecs[2]).Cross(vecs[2] - vecs[3])).normalize(),
-                        ((vecs[0] - vecs[2]).Cross(vecs[2] - vecs[3])).normalize(),
-                        ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[3])).normalize()
-                    };
-                    Random rand = new Random();
-                    int npnts = tarpts.Count;
-                    while (this.hasInvalidVec(nn))
-                    {
-                        for (int i = 0; i < 4; ++i)
-                        {
-                            vecs[i] = tarpts[rand.Next(npnts)];
-                        }
-                        nn = new Vector3d[4] {
-                        ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[2])).normalize(),
-                        ((vecs[1] - vecs[2]).Cross(vecs[2] - vecs[3])).normalize(),
-                        ((vecs[0] - vecs[2]).Cross(vecs[2] - vecs[3])).normalize(),
-                        ((vecs[0] - vecs[1]).Cross(vecs[1] - vecs[3])).normalize()
-                        };
-                    }
-
-                    Vector3d nor = new Vector3d();
-                    for (int i = 0; i < 4; ++i)
-                    {
-                        if (!double.IsNaN(nn[i].x))
-                        {
-                            nor = nn[i];
-                            break;
-                        }
-                    }
-                    Vector3d normal = new Vector3d();
-                    int count = 0;
-                    for (int i = 0; i < 4; ++i)
-                    {
-                        if (!double.IsNaN(nn[i].x))
-                        {
-                            if (nn[i].Dot(nor) < 0)
-                            {
-                                nn[i] = new Vector3d() - nn[i];
-                            }
-                            normal += nn[i];
-                            count++;
-                        }
-                    }
-                    normal = normal.normalize();
-
-                    if (Common.isValidNumber(normal.x) && Common.isValidNumber(normal.y) && Common.isValidNumber(normal.z))
-                    {
-                        if (Math.Abs(normal.x) > 0.5)
-                        {
-                            sx = 1.0;
-                        }
-                        else if (Math.Abs(normal.y) > 0.5)
-                        {
-                            sy = 1.0;
-                        }
-                        else if (Math.Abs(normal.z) > 0.5)
-                        {
-                            sz = 1.0;
-                        }
-                    }
                 }
 
                 Vector3d scale = new Vector3d(sx, sy, sz);
@@ -9383,7 +9503,6 @@ namespace FameBase
                 {
                     S = Matrix4d.ScalingMatrix(boxScale);
                 }
-
                 Q = Matrix4d.TranslationMatrix(t2) * S * Matrix4d.TranslationMatrix(new Vector3d() - t1);
                 if (useCenter)
                 {

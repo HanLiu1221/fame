@@ -1126,10 +1126,10 @@ namespace Component
             {
                 return false;
             }
-            //if (!isPhysicalValid())
-            //{
-            //    return false;
-            //}
+            if (!isPhysicalValid())
+            {
+                return false;
+            }
             return true;
         }// isValid
 
@@ -1501,15 +1501,15 @@ namespace Component
             {
                 return true;
             }
-            foreach (Edge e in _edges)
-            {
-                Mesh m1 = e._start._PART._MESH;
-                Mesh m2 = e._end._PART._MESH;
-                if (!isConnected(m1, m2, 0.05))
-                {
-                    return true;
-                }
-            }
+            //foreach (Edge e in _edges)
+            //{
+            //    Mesh m1 = e._start._PART._MESH;
+            //    Mesh m2 = e._end._PART._MESH;
+            //    if (!isConnected(m1, m2, 0.01))
+            //    {
+            //        return true;
+            //    }
+            //}
                 // if any node that is detached
                 // check if we can walk through one node to all the other nodes
                 resetNodeIndex();
