@@ -534,7 +534,7 @@ namespace Component
         public void Transform(Matrix4d T)
         {
             _mesh.Transform(T);
-            _boundingbox.setMaxMinScaleFromMesh(_mesh.MaxCoord, _mesh.MinCoord);
+            //_boundingbox.setMaxMinScaleFromMesh(_mesh.MaxCoord, _mesh.MinCoord);
             _boundingbox.Transform(T);
             if (_partSP != null)
             {

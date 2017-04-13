@@ -4792,6 +4792,7 @@ namespace FameBase
             stopWatch.Start();
 
             this.decideWhichToDraw(true, false, false, true, false, false);
+            this._showContactPoint = true;
             // for capturing screen            
             this.reloadView();
 
@@ -4932,8 +4933,8 @@ namespace FameBase
                 int i = _validityMatrixPG.GetTriplet(t).row;
                 int j = _validityMatrixPG.GetTriplet(t).col;
                 List<Model> ijs;
-                //i = 27;
-                //j = 5;
+                //i = 9;
+                //j = 21;
                 if (!runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs))
                 {
                     invalid.Add(_validityMatrixPG.GetTriplet(t));
@@ -4984,31 +4985,29 @@ namespace FameBase
                 {
                     break;
                 }
-                Program.writeToConsole("");
-                Stopwatch stopWatch_eval = new Stopwatch();
-                stopWatch_eval.Start();
 
                 // screenshot
-                this.setCurrentModel(m, -1);
                 m._GRAPH.unify();
                 m.composeMesh();
+                this.setCurrentModel(m, -1);
 
                 if (!m._GRAPH.isValid())
                 {
-                    this.captureScreen(imageFolder + "invald\\" + m._model_name + "_invalid.png");
-                    saveAPartBasedModel(m, m._path + m._model_name + "_invalid.pam", false);
+                    m._model_name += "_invalid";
                     Program.GetFormMain().updateStats();
+                    this.captureScreen(imageFolder + "invald\\" + m._model_name + ".png");
+                    saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                     continue;
                 }
-               
-                //// valid graph
-                this.tryRestoreFunctionalNodes(m);
 
-                secs = stopWatch_cross.ElapsedMilliseconds / 1000;
-                Program.writeToConsole("Time to eval an offspring: " + secs.ToString() + " senconds.");
-                // screenshot
-                this.setCurrentModel(m, -1);
                 Program.GetFormMain().updateStats();
+                // valid graph
+                int doRestore = rand.Next(1);
+                //if (doRestore == 1)
+                //{
+                    // restore the node randomely
+                    this.tryRestoreFunctionalNodes(m);
+                //}
                 res.Add(m);
                 // save at diff folder
                 string splitFolder = imageFolder;
@@ -5086,7 +5085,6 @@ namespace FameBase
                 // 3. replace
                 // using model names will be too long, exceed the maximum length of file name
                 newModel._model_name = originalModelName + "-gen_" + gen.ToString() + "_num_" + idx.ToString() + "_pg_" + p1.ToString() + "_" + p2.ToString();
-                
                 List<Node> reduced = reduceRepeatedNodes(nodes1, nodes2);
                 this.setSelectedNodes(m2, reduced);
                 // switch
@@ -5097,7 +5095,6 @@ namespace FameBase
             }
             newModel.nNewNodes = updatedNodes2.Count;
             newModel.setParentNames(parents);
-
             res.Add(newModel);
             return res;
         }// crossover
@@ -5367,89 +5364,68 @@ namespace FameBase
             {
                 useScale = true;
             }           
+            Vector3d boxScale = new Vector3d(scale1[0], scale1[1], scale1[2]);
 
-            Vector3d boxScale_1 = new Vector3d(scale1[0], scale1[1], scale1[2]);
-            Vector3d boxScale_2 = new Vector3d(scale2[0], scale2[1], scale2[2]);
+            // try to scale and translate the new part group to the target place
+            // and estimate the contact mapping from there
+            Matrix4d simS = Matrix4d.ScalingMatrix(boxScale);
+            Matrix4d simQ = Matrix4d.TranslationMatrix(center1) * simS * Matrix4d.TranslationMatrix(new Vector3d() - center2);
+            List<Vector3d> simPoints = new List<Vector3d>();
+            for (int i = 0; i < sources.Count; ++i)
+            {
+                Vector3d simV = ( simQ * new Vector4d(sources[i], 1)).ToVector3D();
+                simPoints.Add(simV);
+            }
 
             Matrix4d S, T, Q;
-
             // sort corresponding points
             int nps = targets.Count;
-            bool startWithSrc = true;
+            bool swapped = false;
             List<Vector3d> left = targets;
-            List<Vector3d> right = sources;
+            List<Vector3d> right = simPoints;
             if (sources.Count < nps)
             {
                 nps = sources.Count;
-                startWithSrc = false;
-                left = sources;
+                swapped = true;
+                left = simPoints;
                 right = targets;
             }
             List<Vector3d> src = new List<Vector3d>();
             List<Vector3d> trt = new List<Vector3d>();
             bool[] visited = new bool[right.Count];
-            // since two part groups in two models can be positioned very differently (far),
-            // if use brute force to find closest points, error matchings can occur
-            // a simple solution is, remove the additional unmatched points (nearest) first, to remove noise
-            //while (right.Count > left.Count)
-            //{
-            //    double mind = double.MaxValue;
-            //    int id = -1;
-            //    int jd = -1;
-            //    for (int i = 0; i < right.Count - 1; ++i)
-            //    {
-            //        for (int j = i + 1; j < right.Count; ++j)
-            //        {
-            //            double d = (right[i] - right[j]).Length();
-            //            if (d < mind)
-            //            {
-            //                mind = d;
-            //                id = i;
-            //                jd = j;
-            //            }
-            //        }
-            //    }
-            //    Vector3d vij = (right[id] + right[jd]) / 2;
-            //    right.RemoveAt(jd);
-            //    right.RemoveAt(id);
-            //    right.Add(vij);
-            //}
-            //// order the two sets of points
-            ////src = this.sortInOrder(left);
-            ////trt = this.sortInOrder(right);
 
-            foreach (Vector3d v in left)
+            for (int i = 0; i < left.Count; ++i)
             {
-                src.Add(v);
-                int j = -1;
+                Vector3d leftv = left[i];
+                src.Add(swapped ? sources[i] : leftv); // left use sim points
+                int t = -1;
                 double mind = double.MaxValue;
-                for (int i = 0; i < right.Count; ++i)
+                for (int j = 0; j < right.Count; ++j)
                 {
-                    if (visited[i]) continue;
-                    double d = (v - right[i]).Length();
+                    if (visited[j]) continue;
+                    double d = (leftv - right[j]).Length();
                     if (d < mind)
                     {
                         mind = d;
-                        j = i;
+                        t = j;
                     }
                 }
-                trt.Add(right[j]);
-                visited[j] = true;
+                trt.Add(swapped ? right[t] : sources[t]); // right use sim points
+                visited[t] = true;
             }
 
-            if (startWithSrc)
-            {
-                targets = src;
-                sources = trt;
-            }
-            else
+            if (swapped)
             {
                 targets = trt;
                 sources = src;
             }
+            else
+            {
+                targets = src;
+                sources = trt;
+            }
 
-
-            if (targets.Count <= 1)
+            if (targets.Count < 1)
             {
                 targets.Add(center1);
                 sources.Add(center2);
@@ -5457,28 +5433,29 @@ namespace FameBase
 
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
-            //if (ground1 != null && ground2 != null)
-            //{
-            //    targets.Add(this.getGroundTouchingNodesCenter(nodes1));
-            //    sources.Add(this.getGroundTouchingNodesCenter(nodes2));
-            //}
+            if (ground1 != null && ground2 != null)
+            {
+                targets.Add(this.getGroundTouchingNodesCenter(nodes1));
+                sources.Add(this.getGroundTouchingNodesCenter(nodes2));
+            }
             bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
+            useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count / right.Count >= 2 || right.Count / left.Count >= 2;
 
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformationTest(sources, targets, out S, out T, out Q, boxScale_1, axis, center1, center2, userCenter);
-                if (Common.isOverScaled(Q[0, 0]) || Common.isOverScaled(Q[1, 1]) || Common.isOverScaled(Q[2, 2]))
-                {
-                    getTransformation(sources, targets, out S, out T, out Q, boxScale_1, useScale, center1, center2, true);
-                }
+                getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userCenter);
+                //if (Common.isOverScaled(Q[0, 0]) || Common.isOverScaled(Q[1, 1]) || Common.isOverScaled(Q[2, 2]))
+                //{
+                //    getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, true);
+                //}
                 this.deformNodesAndEdges(updateNodes2, Q);
                 this.restoreCyclinderNodes(updateNodes2, S);
             }
 
-            if (ground2 != null)
+            if (ground1 != null)
             {
                 g1.resetUpdateStatus();
-                adjustGroundTouching(updateNodes2);
+                //adjustGroundTouching(updateNodes2);
             }
             g1.resetUpdateStatus();
 
@@ -5538,6 +5515,14 @@ namespace FameBase
                 Vector3d center = toUpdate[i]._PART._BOUNDINGBOX.CENTER;
                 Matrix4d rT = Matrix4d.TranslationMatrix(center) * Matrix4d.ScalingMatrix(scales[axes[i]]) * Matrix4d.TranslationMatrix(new Vector3d() - center);
                 toUpdate[i].Transform(rT);
+                // all contacts
+                foreach (Edge e in toUpdate[i]._edges)
+                {
+                    foreach (Contact c in e._contacts)
+                    {
+                        c.Transform(rT);
+                    }
+                }
             }
         }// restoreCyclinderNodes
 
@@ -5548,19 +5533,19 @@ namespace FameBase
             double newScale = 1.0;
             if (axis == 0)
             {
-                newScale = (scale.y + scale.z) / 2;
+                newScale = Math.Min(scale.y, scale.z); // (scale.y + scale.z) / 2;
                 rescale.y = newScale;
                 rescale.z = newScale;
             }
             else if (axis == 1)
             {
-                newScale = (scale.x + scale.z) / 2;
+                newScale = Math.Min(scale.x, scale.z); // (scale.x + scale.z) / 2;
                 rescale.x = newScale;
                 rescale.z = newScale;
             }
             else if (axis == 2)
             {
-                newScale = (scale.x + scale.y) / 2;
+                newScale = Math.Min(scale.x, scale.y); // (scale.x + scale.y) / 2;
                 rescale.x = newScale;
                 rescale.y = newScale;
             }
@@ -5575,6 +5560,7 @@ namespace FameBase
             }
             // evaluate pairs of part groups
             _partGroupLibrary = new List<PartGroup>();
+            _functionalPartScales = new Dictionary<string, Vector3d>();
             // list all part groups and index
             int id = 0;
             int mid = 0;
@@ -5589,6 +5575,12 @@ namespace FameBase
                 {
                     pg._INDEX = id++;
                     _partGroupLibrary.Add(pg);
+                }
+                foreach (Node node in m._GRAPH._NODES)
+                {
+                    string part_name = node._PART._partName;
+                    node.calRatios();
+                    _functionalPartScales.Add(part_name, node._ratios);
                 }
                 ++mid;
             }
@@ -6160,36 +6152,24 @@ namespace FameBase
         }
         private void tryRestoreFunctionalNodes(Model m)
         {
-            List<Node> mainFuncNodes = new List<Node>();
-            Vector3d maxCoord = Vector3d.MinCoord;
-            Vector3d minCoord = Vector3d.MaxCoord;
-            
             foreach(Node node in m._GRAPH._NODES)
             {
-                if (this.isMainFunctionalNode(node))
+                if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
-                    mainFuncNodes.Add(node);
+                    this.tryRestoreFunctionalNodeArea(m, node);
                 }
-                maxCoord = Vector3d.Max(maxCoord, node._PART._BOUNDINGBOX.MaxCoord);
-                minCoord = Vector3d.Min(minCoord, node._PART._BOUNDINGBOX.MinCoord);
-            }
-            Vector3d center = (maxCoord + minCoord) / 2;
-            if (mainFuncNodes.Count > 0 && mainFuncNodes.Count < 3)
-            {
-                foreach(Node node in mainFuncNodes)
+                else if (node._funcs.Contains(Functionality.Functions.STORAGE))
                 {
-                    this.tryRestoreAFunctionalNode(m, node);
+                    this.tryRestoreFunctionalNodeVolume(m, node);
                 }
             }
         }// tryRestoreFunctionalNodes
 
-        private bool isMainFunctionalNode(Node node)
+        private void tryRestoreFunctionalNodeArea(Model m, Node node)
         {
-            return node._funcs.Contains(Functionality.Functions.PLACEMENT) ||
-                node._funcs.Contains(Functionality.Functions.HUMAN_HIP) ||
-                node._funcs.Contains(Functionality.Functions.HANG);
         }
-        private bool tryRestoreAFunctionalNode(Model m, Node node)
+
+        private bool tryRestoreFunctionalNodeVolume(Model m, Node node)
         {
             //Random rand = new Random();
             //int randnum = rand.Next(1);
@@ -8790,7 +8770,7 @@ namespace FameBase
                 node.Transform(T);
                 node._updated = true;
             }
-            List<Edge> inner_edges = Graph.GetInnerEdges(nodes);
+            List<Edge> inner_edges = Graph.GetAllEdges(nodes);
             foreach (Edge e in inner_edges)
             {
                 if (e._contactUpdated)
@@ -9238,145 +9218,6 @@ namespace FameBase
             }
             return false;
         }
-
-        public void getTransformationTest(List<Vector3d> srcpts, List<Vector3d> tarpts,
-            out Matrix4d S, out Matrix4d T, out Matrix4d Q,
-            Vector3d boxScale, int useScale, 
-            Vector3d tc, Vector3d sc, bool useCenter)
-        {
-            int n = srcpts.Count;
-            if (n == 1)
-            {
-                double ss = 1;
-                Vector3d trans = tarpts[0] - srcpts[0];
-                S = Matrix4d.ScalingMatrix(ss, ss, ss);
-                if (useScale != -1 && boxScale.isValidVector())
-                {
-                    S = Matrix4d.ScalingMatrix(boxScale);
-                }
-                T = Matrix4d.TranslationMatrix(trans);
-                Q = Matrix4d.TranslationMatrix(tarpts[0]) * S * Matrix4d.TranslationMatrix(new Vector3d() - srcpts[0]);
-                if (useCenter)
-                {
-                    T = Matrix4d.TranslationMatrix(tc - sc);
-                    Q = Matrix4d.TranslationMatrix(tc) * S * Matrix4d.TranslationMatrix(new Vector3d() - sc);
-                }
-
-                if (isNaNMat(Q))
-                {
-                    Q = Matrix4d.IdentityMatrix();
-                }
-            }
-            else if (n == 2)
-            {
-                Vector3d c1 = (srcpts[0] + srcpts[1]) / 2;
-                Vector3d c2 = (tarpts[0] + tarpts[1]) / 2;
-                Vector3d v1 = srcpts[1] - srcpts[0];
-                Vector3d v2 = tarpts[1] - tarpts[0];
-                if (v1.Dot(v2) < 0) v1 = new Vector3d() - v1;
-                double ss = v2.Length() / v1.Length();
-                if (double.IsNaN(ss))
-                {
-                    ss = 1.0;
-                }
-                S = Matrix4d.ScalingMatrix(ss, ss, ss);
-
-
-                if (boxScale.isValidVector() && useScale != -1 )
-                {
-                    S = Matrix4d.ScalingMatrix(boxScale);
-                }
-
-                Matrix4d R = Matrix4d.IdentityMatrix();
-                double cos = v1.normalize().Dot(v2.normalize());
-                if (cos < Math.Cos(1.0 / 18 * Math.PI))
-                {
-                    Vector3d axis = v1.Cross(v2).normalize();
-                    double theta = Math.Acos(cos);
-                    R = Matrix4d.RotationMatrix(axis, theta);
-                    if (isNaNMat(R))
-                    {
-                        R = Matrix4d.IdentityMatrix();
-                    }
-                }
-                T = Matrix4d.TranslationMatrix(c2 - c1);
-                Q = Matrix4d.TranslationMatrix(c2) * R * S * Matrix4d.TranslationMatrix(new Vector3d() - c1);
-                if (useCenter)
-                {
-                    T = Matrix4d.TranslationMatrix(tc - sc);
-                    Q = Matrix4d.TranslationMatrix(tc) * S * Matrix4d.TranslationMatrix(new Vector3d() - sc);
-                }
-                if (isNaNMat(Q))
-                {
-                    Q = Matrix4d.IdentityMatrix();
-                }
-            }
-            else
-            {
-                Vector3d t1 = new Vector3d();
-                Vector3d t2 = new Vector3d();
-                foreach (Vector3d tt in srcpts)
-                    t1 += tt;
-                foreach (Vector3d tt in tarpts)
-                    t2 += tt;
-                t1 /= srcpts.Count;
-                t2 /= tarpts.Count;
-
-                Vector3d trans = t2 - t1;
-                T = Matrix4d.TranslationMatrix(trans);
-
-                // find the scales
-                int k = srcpts.Count;
-                double sx = 0, sy = 0, sz = 0;
-                for (int i = 0; i < k; ++i)
-                {
-                    Vector3d p1 = srcpts[i] - t1;
-                    Vector3d p2 = tarpts[i] - t2;
-                    sx += p2.x / p1.x;
-                    sy += p2.y / p1.y;
-                    sz += p2.z / p1.z;
-                }
-                sx /= k;
-                sy /= k;
-                sz /= k;
-
-                if (double.IsNaN(sx) || double.IsInfinity(sx) || Math.Abs(sx) < Common._thresh)
-                {
-                    sx = 1.0;
-                }
-                if (double.IsNaN(sy) || double.IsInfinity(sy) || Math.Abs(sy) < Common._thresh)
-                {
-                    sy = 1.0;
-                }
-                if (double.IsNaN(sz) || double.IsInfinity(sz) || Math.Abs(sz) < Common._thresh)
-                {
-                    sz = 1.0;
-                }
-
-                Vector3d scale = new Vector3d(sx, sy, sz);
-                //scale = adjustScale(scale);
-
-                if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
-
-                S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
-
-                if (useScale  != -1 && boxScale.isValidVector())
-                {
-                    //S = Matrix4d.ScalingMatrix(this.rescaleForCylinder(useScale, boxScale));
-                }
-                Q = Matrix4d.TranslationMatrix(t2) * S * Matrix4d.TranslationMatrix(new Vector3d() - t1);
-                if (useCenter)
-                {
-                    T = Matrix4d.TranslationMatrix(tc - sc);
-                    Q = Matrix4d.TranslationMatrix(tc) * S * Matrix4d.TranslationMatrix(new Vector3d() - sc);
-                }
-                if (isNaNMat(Q))
-                {
-                    Q = Matrix4d.IdentityMatrix();
-                }
-            }
-        }// getTransformation
-
 
         public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, 
             out Matrix4d S, out Matrix4d T, out Matrix4d Q, 
@@ -10573,6 +10414,10 @@ namespace FameBase
 
         public void deleteParts()
         {
+            if (_currModel == null || _currModel._GRAPH == null)
+            {
+                return;
+            }
             _currModel._GRAPH.deleteNodes(_selectedNodes);
             foreach (Part p in _selectedParts)
             {
@@ -10581,7 +10426,6 @@ namespace FameBase
             _selectedParts.Clear();
             this.Refresh();
         }// deleteParts
-
 
         public void duplicateParts()
         {
@@ -11918,7 +11762,7 @@ namespace FameBase
 
             this.drawCurrentMesh();
 
-            this.drawImportMeshes();            
+            this.drawImportMeshes();
 
             this.drawHumanPose();
 

@@ -86,8 +86,14 @@ namespace Component
 
         public static bool IsSupportFunction(Functions f)
         {
-            // usually support the main functional parts
-            return f == Functions.GROUND_TOUCHING || f == Functions.SUPPORT;
+            // ground touching points
+            return f == Functions.GROUND_TOUCHING;
+        }
+
+        public static bool IsSecondarySupportFunction(Functions f)
+        {
+            // connect the main functional parts and ground touching parts
+            return f == Functions.SUPPORT;
         }
 
         public static bool ContainsMainFunction(List<Functions> funcs)

@@ -238,7 +238,7 @@ namespace Component
             {
                 _nodes.Remove(old);
             }
-            List<Node> nodes_in_oppo_list = new List<Node>(_nodes);
+            List<Node> nodes_in_oppo_list = getOutConnectedNodes(oldNodes);
             foreach (Node node in newNodes)
             {
                 _nodes.Add(node);
@@ -1018,7 +1018,7 @@ namespace Component
                 minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
             }
 
-            Vector3d t = new Vector3d() - center;
+            Vector3d t = new Vector3d();
             t.y = -minCoord.y;
             T = Matrix4d.TranslationMatrix(t);
 
@@ -1538,7 +1538,7 @@ namespace Component
                         Mesh m2 = node._PART._MESH;
                         //if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
                         //    || isConnected(m1, m2))
-                        if (isConnected(m1, m2, 0.01))
+                        if (isConnected(m1, m2, 0.1))
                         {
                             queue.Add(node);
                         }
@@ -1606,7 +1606,7 @@ namespace Component
                     }
                 }
             }
-            return mind < 0.1;
+            return mind < thr;
         }// is connected
 
         private bool isTwoPolygonInclusive(Vector3d v1_min, Vector3d v1_max, Vector3d v2_min, Vector3d v2_max)

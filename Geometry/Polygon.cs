@@ -814,15 +814,20 @@ namespace Geometry
         }// setMaxMinScaleFromMesh
 
         public void Transform(Matrix4d T)
-        {            
+        {
+            _maxCoord = Vector3d.MinCoord;
+            _minCoord = Vector3d.MaxCoord;
             for (int i = 0; i < _points3d.Length; ++i)
             {
                 _points3d[i] = (T * new Vector4d(_points3d[i], 1)).ToVector3D();
+                _maxCoord = Vector3d.Max(_maxCoord, _points3d[i]);
+                _minCoord = Vector3d.Min(_minCoord, _points3d[i]);
             }
             foreach (Polygon3D p in _planes)
             {
                 p.Transform(T);
             }
+            _center = (_maxCoord + _minCoord) / 2;
             updateScale();
         }
 
