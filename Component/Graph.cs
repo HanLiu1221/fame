@@ -1659,6 +1659,41 @@ namespace Component
             _partGroups.Add(ng);
         }
 
+        private List<Node> getAllSupprotingNodes()
+        {
+            // only if the supporting nodes connect to ground touching nodes
+            // hinting ground touching nodes do not connect to main functional nodes directly
+            List<Node> supportNodes = this.getNodesByFunctionality(Functionality.Functions.SUPPORT);
+            supportNodes = this.bfs_regionGrowingNonFunctionanlNodes(supportNodes);
+            List<Node> groundNodes = this.getNodesByFunctionality(Functionality.Functions.GROUND_TOUCHING);
+            groundNodes = this.bfs_regionGrowingNonFunctionanlNodes(groundNodes);
+            if (supportNodes.Count == 0 || groundNodes.Count == 0)
+            {
+                return null;
+            }
+            List<Node> supportingNodes = new List<Node>(groundNodes);
+            foreach (Node node in supportNodes)
+            {
+                if (!supportingNodes.Contains(node) && hasConnections(node, groundNodes))
+                {
+                    supportingNodes.Add(node);
+                }
+            }
+            return supportingNodes;
+        }// getAllSupprotingNodes
+
+        private bool hasConnections(Node node, List<Node> nodes)
+        {
+            foreach (Node adj in node._adjNodes)
+            {
+                if (nodes.Contains(adj))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// hasConnections
+
         public void initializePartGroups(string modelName)
         {
             string model_name = modelName.ToLower();
@@ -1701,7 +1736,26 @@ namespace Component
                     ng = new PartGroup(single, 0);
                     indices = new List<int>();
                     indices.Add(nodes[0]._INDEX);
-                    comIndices.Add(indices);
+                    if (getIndex(comIndices, indices) == -1 && shouldCreateNewPartGroup(_partGroups, nodes))
+                    {
+                        comIndices.Add(indices);
+                        _partGroups.Add(ng);
+                    }
+                }
+            }
+            // special case for all support structure
+            List<int> indices_support = new List<int>();
+            List<Node> supportingNodes = this.getAllSupprotingNodes();
+            if (supportingNodes != null)
+            {
+                foreach (Node node in supportingNodes)
+                {
+                    indices_support.Add(node._INDEX);
+                }
+                if (getIndex(comIndices, indices_support) == -1 && shouldCreateNewPartGroup(_partGroups, supportingNodes))
+                {
+                    comIndices.Add(indices_support);
+                    PartGroup ng = new PartGroup(supportingNodes, 0);
                     _partGroups.Add(ng);
                 }
             }
@@ -1759,33 +1813,37 @@ namespace Component
                 {
                     continue;
                 }
-                List<int> indices = breadthFirstSearch(pg._NODES);
+                if (pg._NODES.Count == 1 && Functionality.ContainsMainFunction(pg._NODES[0]._funcs))
+                {
+                    continue;
+                }
+                List<Node> propogationNodes = bfs_regionGrowingNonFunctionanlNodes(pg._NODES);
+                List<int> indices = new List<int>();
+                foreach (Node node in propogationNodes)
+                {
+                    indices.Add(node._INDEX);
+                }
                 if (getIndex(comIndices, indices) != -1)
                 {
                     continue;
                 }
                 comIndices.Add(indices);
-                List<Node> propogationNodes = new List<Node>();
-                foreach (int idx in indices)
-                {
-                    propogationNodes.Add(_nodes[idx]);
-                }
                 PartGroup ppg = new PartGroup(propogationNodes, 0);
                 //_partGroups.Add(ppg);
                 _partGroups[i] = ppg; //! in this way, only use connected nodes
             }
         }// initializePartGroups
 
-        private List<int> breadthFirstSearch(List<Node> nodes)
+        private List<Node> bfs_regionGrowingNonFunctionanlNodes(List<Node> nodes)
         {
-            List<int> res = new List<int>();
+            List<Node> res = new List<Node>();
             Queue<Node> queue = new Queue<Node>();
             bool[] visited = new bool[_nodes.Count];
             foreach (Node node in nodes)
             {
                 queue.Enqueue(node);
                 visited[node._INDEX] = true;
-                res.Add(node._INDEX);
+                res.Add(node);
             }
             
             while (queue.Count > 0)
@@ -1807,12 +1865,12 @@ namespace Component
                         }
                         queue.Enqueue(adj);
                         visited[adj._INDEX] = true;
-                        res.Add(adj._INDEX);
+                        res.Add(adj);
                     }
                 }
             }// while
             return res;
-        }// breadthFirstSearch
+        }// bfs_regionGrowingNonFunctionanlNodes
 
         private bool shouldCreateNewPartGroup(List<PartGroup> partGroups, List<Node> nodes)
         {

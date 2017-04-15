@@ -25,7 +25,7 @@ namespace Component
         public static int _MAX_TRY_TIMES = 60;
 
         public static int _MAX_GEN_HYBRID_NUMBER = 10;
-        public static int _MAX_USE_PRESENT_NUMBER = 10;
+        public static int _MAX_USE_PRESENT_NUMBER = 20;
         public static int _NUM_INTER_BEFORE_RERUN = 5;
 
         public static double _NOVELTY_MINIMUM = 0.5;
@@ -70,6 +70,12 @@ namespace Component
         public static bool isKnownCategory(int index)
         {
             return index >= 0 && index < 15;
+        }
+
+        public static bool IsPlacementFunction(Functions f)
+        {
+            return f == Functions.PLACEMENT || f == Functions.STORAGE
+                || f == Functions.HUMAN_HIP;
         }
 
         public static bool IsMainFunction(Functions f)
@@ -145,7 +151,7 @@ namespace Component
             //}
 
             // same funcs
-            if (IsFunctionSame(funcs1, funcs2))
+            if (hasCompatibleFunctions(funcs1, funcs2))
             {
                 res[0] = 1;
                 res[1] = 1;
@@ -153,7 +159,7 @@ namespace Component
             return res;
         }// IsTwoPartGroupCompatible
 
-        public static bool IsFunctionSame(List<Functions> funcs1, List<Functions> funcs2)
+        public static bool hasCompatibleFunctions(List<Functions> funcs1, List<Functions> funcs2)
         {
             // OUTPUT:
             // -1: neither is replaceable
@@ -167,9 +173,38 @@ namespace Component
             bool containsSupportFunc1 = false;
             bool containsSupportFunc2 = false;
             int res = -1;
-            // assume all possible functions of nodes have already been measured
-            var same = funcs1.Intersect(funcs2);
-            return same.Count() > 0;
+            //// assume all possible functions of nodes have already been measured
+            //var same = funcs1.Intersect(funcs2);
+            //return same.Count() > 0;
+            for (int i = 0; i < funcs1.Count; ++i)
+            {
+                for (int j = 0; j < funcs2.Count; ++j)
+                {
+                    if (isFunctionCompatible(funcs1[i], funcs2[j]))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }// hasCompatibleFunctions
+
+        private static bool isFunctionCompatible(Functions f1, Functions f2)
+        {
+            if (f1 == f2)
+            {
+                return true;
+            }
+            if ((f1 == Functions.GROUND_TOUCHING && f2 == Functions.SUPPORT) ||
+                (f1 == Functions.SUPPORT && f2 == Functions.GROUND_TOUCHING))
+            {
+                return true;
+            }
+            if (IsPlacementFunction(f1) && IsPlacementFunction(f2))
+            {
+                return true;
+            }
+            return false;
         }
 
         public static bool IsUpdatedModelFunctional(Model m, PartGroup pg1, PartGroup pg2)

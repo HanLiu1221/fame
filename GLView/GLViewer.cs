@@ -4238,6 +4238,8 @@ namespace FameBase
                     return Functionality.Functions.SUPPORT;
                 case 6:
                     return Functionality.Functions.HANG;
+                case 7:
+                    return Functionality.Functions.STORAGE;
                 case 0:
                 default:
                     return Functionality.Functions.GROUND_TOUCHING;
@@ -4258,6 +4260,8 @@ namespace FameBase
                     return Functionality.Functions.PLACEMENT;
                 case "SUPPORT":
                     return Functionality.Functions.SUPPORT;
+                case "STORAGE":
+                    return Functionality.Functions.STORAGE;
                 case "GROUND_TOUCHING":
                 default:
                     return Functionality.Functions.GROUND_TOUCHING;
@@ -4933,12 +4937,13 @@ namespace FameBase
                 int i = _validityMatrixPG.GetTriplet(t).row;
                 int j = _validityMatrixPG.GetTriplet(t).col;
                 List<Model> ijs;
-                //i = 9;
-                //j = 21;
+                //i = 4;
+                //j = 14;
                 if (!runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs))
                 {
                     invalid.Add(_validityMatrixPG.GetTriplet(t));
                 }
+                res.AddRange(ijs);
             }
 
             double secs = avgTimePerValidOffspring / validOffspringNumber;
@@ -5435,8 +5440,10 @@ namespace FameBase
             Node ground2 = hasGroundTouchingNode(nodes2);
             if (ground1 != null && ground2 != null)
             {
-                targets.Add(this.getGroundTouchingNodesCenter(nodes1));
-                sources.Add(this.getGroundTouchingNodesCenter(nodes2));
+                //targets.Add(this.getGroundTouchingNodesCenter(nodes1));
+                //sources.Add(this.getGroundTouchingNodesCenter(nodes2));
+                targets.Add(new Vector3d(center1.x, 0, center1.z));
+                sources.Add(new Vector3d(center2.x, 0, center2.z));
             }
             bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
             useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count / right.Count >= 2 || right.Count / left.Count >= 2;

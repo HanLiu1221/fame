@@ -669,6 +669,10 @@ namespace FameBase
             this.glViewer.markFunctionPart(6);
         }
 
+        private void storageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(7);
+        }
         private void groundtouchingToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.markFunctionPart(0);
