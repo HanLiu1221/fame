@@ -453,7 +453,7 @@ namespace Component
             }
             if (cat == Category.DryingRack)
             {
-                funcs.Add(Functions.PLACEMENT);
+                funcs.Add(Functions.HANG);
                 funcs.Add(Functions.GROUND_TOUCHING);
             }
             if (cat == Category.Robot)
@@ -465,6 +465,12 @@ namespace Component
             {
                 funcs.Add(Functions.GROUND_TOUCHING);
                 funcs.Add(Functions.HANG);
+            }
+            if (cat == Category.Stroller)
+            {
+                funcs.Add(Functions.GROUND_TOUCHING);
+                funcs.Add(Functions.PLACEMENT);
+                funcs.Add(Functions.HUMAN_BACK);
             }
             if (cat == Category.Robot)
             {

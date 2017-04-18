@@ -32,7 +32,7 @@ namespace FameBase
         //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
         //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
 
-        public static string MODLES_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_1\";
+        public static string MODLES_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_2\";
         public static string PATCH_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\";
         public static string MATLAB_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\";
         public static string MATLAB_INPUT_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\test\input\";

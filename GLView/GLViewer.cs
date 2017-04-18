@@ -3607,6 +3607,10 @@ namespace FameBase
                         }
                         s = sr.ReadLine().Trim();
                         strs = s.Split(separator);
+                        if (strs.Length < 2) // old version, less categories
+                        {
+                            break;
+                        }
                         int cid = (int)Functionality.getCategory(strs[0]);
                         g._functionalityValues._funScores[cid] = double.Parse(strs[1]);
                         cats.Add(Functionality.getCategory(strs[0]));
@@ -4262,6 +4266,8 @@ namespace FameBase
                     return Functionality.Functions.SUPPORT;
                 case "STORAGE":
                     return Functionality.Functions.STORAGE;
+                case "HANG":
+                    return Functionality.Functions.HANG;
                 case "GROUND_TOUCHING":
                 default:
                     return Functionality.Functions.GROUND_TOUCHING;
@@ -4795,7 +4801,8 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-            this.decideWhichToDraw(true, false, false, true, false, false);
+            //this.decideWhichToDraw(true, false, false, true, false, false);
+            this.decideWhichToDraw(false, true, false, true, false, false);
             this._showContactPoint = true;
             // for capturing screen            
             this.reloadView();
@@ -5011,7 +5018,7 @@ namespace FameBase
                 //if (doRestore == 1)
                 //{
                     // restore the node randomely
-                    this.tryRestoreFunctionalNodes(m);
+                    //this.tryRestoreFunctionalNodes(m);
                 //}
                 res.Add(m);
                 // save at diff folder
@@ -5430,11 +5437,14 @@ namespace FameBase
                 sources = trt;
             }
 
+            useScale = targets.Count == 0 || sources.Count == 0 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+
             if (targets.Count < 1)
             {
                 targets.Add(center1);
                 sources.Add(center2);
             }
+
 
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
@@ -5446,7 +5456,8 @@ namespace FameBase
                 sources.Add(new Vector3d(center2.x, 0, center2.z));
             }
             bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
-            useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count / right.Count >= 2 || right.Count / left.Count >= 2;
+            //useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+            
 
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {

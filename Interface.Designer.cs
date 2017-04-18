@@ -168,8 +168,8 @@
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer = new FameBase.GLViewer();
             this.storageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.glViewer = new FameBase.GLViewer();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -1255,9 +1255,9 @@
             this.handplaceToolStripMenuItem,
             this.supportToolStripMenuItem,
             this.groundtouchingToolStripMenuItem,
+            this.storageToolStripMenuItem,
             this.hangToolStripMenuItem,
-            this.removeallToolStripMenuItem,
-            this.storageToolStripMenuItem});
+            this.removeallToolStripMenuItem});
             this.functionalityToolStripMenuItem.Name = "functionalityToolStripMenuItem";
             this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.functionalityToolStripMenuItem.Text = "Functions";
@@ -1265,56 +1265,56 @@
             // humanbackToolStripMenuItem
             // 
             this.humanbackToolStripMenuItem.Name = "humanbackToolStripMenuItem";
-            this.humanbackToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+            this.humanbackToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
             this.humanbackToolStripMenuItem.Text = "human_back";
             this.humanbackToolStripMenuItem.Click += new System.EventHandler(this.humanbackToolStripMenuItem_Click);
             // 
             // humanhipToolStripMenuItem
             // 
             this.humanhipToolStripMenuItem.Name = "humanhipToolStripMenuItem";
-            this.humanhipToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+            this.humanhipToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
             this.humanhipToolStripMenuItem.Text = "human_hip";
             this.humanhipToolStripMenuItem.Click += new System.EventHandler(this.humanhipToolStripMenuItem_Click);
             // 
             // handholdToolStripMenuItem
             // 
             this.handholdToolStripMenuItem.Name = "handholdToolStripMenuItem";
-            this.handholdToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+            this.handholdToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
             this.handholdToolStripMenuItem.Text = "hand_hold";
             this.handholdToolStripMenuItem.Click += new System.EventHandler(this.handholdToolStripMenuItem_Click);
             // 
             // handplaceToolStripMenuItem
             // 
             this.handplaceToolStripMenuItem.Name = "handplaceToolStripMenuItem";
-            this.handplaceToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
-            this.handplaceToolStripMenuItem.Text = "hand_place";
+            this.handplaceToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.handplaceToolStripMenuItem.Text = "Placement";
             this.handplaceToolStripMenuItem.Click += new System.EventHandler(this.handplaceToolStripMenuItem_Click);
             // 
             // supportToolStripMenuItem
             // 
             this.supportToolStripMenuItem.Name = "supportToolStripMenuItem";
-            this.supportToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+            this.supportToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
             this.supportToolStripMenuItem.Text = "support";
             this.supportToolStripMenuItem.Click += new System.EventHandler(this.supportToolStripMenuItem_Click);
             // 
             // groundtouchingToolStripMenuItem
             // 
             this.groundtouchingToolStripMenuItem.Name = "groundtouchingToolStripMenuItem";
-            this.groundtouchingToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
-            this.groundtouchingToolStripMenuItem.Text = "ground_touching";
+            this.groundtouchingToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.groundtouchingToolStripMenuItem.Text = "GroundSupport";
             this.groundtouchingToolStripMenuItem.Click += new System.EventHandler(this.groundtouchingToolStripMenuItem_Click);
             // 
             // hangToolStripMenuItem
             // 
             this.hangToolStripMenuItem.Name = "hangToolStripMenuItem";
-            this.hangToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+            this.hangToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
             this.hangToolStripMenuItem.Text = "hang";
             this.hangToolStripMenuItem.Click += new System.EventHandler(this.hangToolStripMenuItem_Click);
             // 
             // removeallToolStripMenuItem
             // 
             this.removeallToolStripMenuItem.Name = "removeallToolStripMenuItem";
-            this.removeallToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
+            this.removeallToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
             this.removeallToolStripMenuItem.Text = "remove_all";
             this.removeallToolStripMenuItem.Click += new System.EventHandler(this.removeallToolStripMenuItem_Click);
             // 
@@ -1420,6 +1420,13 @@
             this.partGroupToolStripMenuItem.Text = "Part Group";
             this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
             // 
+            // storageToolStripMenuItem
+            // 
+            this.storageToolStripMenuItem.Name = "storageToolStripMenuItem";
+            this.storageToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.storageToolStripMenuItem.Text = "Storage";
+            this.storageToolStripMenuItem.Click += new System.EventHandler(this.storageToolStripMenuItem_Click);
+            // 
             // glViewer
             // 
             this.glViewer.AccumBits = ((byte)(0));
@@ -1439,13 +1446,6 @@
             this.glViewer.Size = new System.Drawing.Size(676, 614);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
-            // 
-            // storageToolStripMenuItem
-            // 
-            this.storageToolStripMenuItem.Name = "storageToolStripMenuItem";
-            this.storageToolStripMenuItem.Size = new System.Drawing.Size(166, 22);
-            this.storageToolStripMenuItem.Text = "storage";
-            this.storageToolStripMenuItem.Click += new System.EventHandler(this.storageToolStripMenuItem_Click);
             // 
             // Interface
             // 
