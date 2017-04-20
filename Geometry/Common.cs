@@ -21,7 +21,7 @@ namespace Geometry
         public static double _hightlightContactPointsize = 0.04;
         public static double _min_scale = 0.01;
         public static double _max_scale = 3.0;
-        public static int _max_edge_contacts = 2; // max number of contacts between two nodes
+        public static int _max_edge_contacts = 4; // max number of contacts between two nodes
         public static int _MAX_FACE_COUNT = 300000;
 
         public static Random rand = new Random();

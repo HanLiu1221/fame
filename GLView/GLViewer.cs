@@ -4801,8 +4801,8 @@ namespace FameBase
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-            //this.decideWhichToDraw(true, false, false, true, false, false);
-            this.decideWhichToDraw(false, true, false, true, false, false);
+            this.decideWhichToDraw(true, false, false, true, false, false);
+            //this.decideWhichToDraw(false, true, false, true, false, false);
             this._showContactPoint = true;
             // for capturing screen            
             this.reloadView();
@@ -4944,8 +4944,8 @@ namespace FameBase
                 int i = _validityMatrixPG.GetTriplet(t).row;
                 int j = _validityMatrixPG.GetTriplet(t).col;
                 List<Model> ijs;
-                //i = 4;
-                //j = 14;
+                //i = 16;
+                //j = 8;
                 if (!runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs))
                 {
                     invalid.Add(_validityMatrixPG.GetTriplet(t));
@@ -5289,7 +5289,6 @@ namespace FameBase
             }
             center1 /= sourcePnts.Count;
 
-
             if (isGround)
             {
                 targets.Add(g1.getGroundTouchingNodesCenter());
@@ -5310,7 +5309,7 @@ namespace FameBase
             Vector3d scale2 = new Vector3d(1, 1, 1);
 
             Matrix4d S, T, Q;
-            getTransformation(sources, targets, out S, out T, out Q, scale2, false, center1, center2, false);
+            getTransformation(sources, targets, out S, out T, out Q, scale2, false, center1, center2, false, isGround);
             this.deformNodesAndEdges(insertNodes, Q);
 
             if (isGround)
@@ -5370,12 +5369,8 @@ namespace FameBase
                 scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
                 scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
             }
-            bool useScale = false;
-            int axis = this.hasCylinderNode(nodes2);
-            if (axis != -1 || Functionality.ContainsMainFunction(Functionality.getNodesFunctionalities(nodes2)))
-            {
-                useScale = true;
-            }           
+            
+            int axis = this.hasCylinderNode(nodes2);         
             Vector3d boxScale = new Vector3d(scale1[0], scale1[1], scale1[2]);
 
             // try to scale and translate the new part group to the target place
@@ -5437,7 +5432,8 @@ namespace FameBase
                 sources = trt;
             }
 
-            useScale = targets.Count == 0 || sources.Count == 0 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+            bool useScale = targets.Count == 0 || sources.Count == 0 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+            useScale = updateNodes2.Count == 1 && !Functionality.ContainsMainFunction(updateNodes2[0]._funcs);
 
             if (targets.Count < 1)
             {
@@ -5445,23 +5441,24 @@ namespace FameBase
                 sources.Add(center2);
             }
 
-
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
-            if (ground1 != null && ground2 != null)
+            bool useGround = ground1 != null && ground2 != null;
+            if (useGround)
             {
                 //targets.Add(this.getGroundTouchingNodesCenter(nodes1));
                 //sources.Add(this.getGroundTouchingNodesCenter(nodes2));
                 targets.Add(new Vector3d(center1.x, 0, center1.z));
                 sources.Add(new Vector3d(center2.x, 0, center2.z));
             }
-            bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
+            bool userCenter = false;
+            //userCenter = nodes1.Count == 1 || nodes2.Count == 1;
             //useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
             
 
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userCenter);
+                getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userCenter, useGround);
                 //if (Common.isOverScaled(Q[0, 0]) || Common.isOverScaled(Q[1, 1]) || Common.isOverScaled(Q[2, 2]))
                 //{
                 //    getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, true);
@@ -8742,7 +8739,8 @@ namespace FameBase
 
             Node ground1 = hasGroundTouchingNode(nodes1);
             Node ground2 = hasGroundTouchingNode(nodes2);
-            if (ground1 != null && ground2 != null)
+            bool useGround = ground1 != null && ground2 != null;
+            if (useGround)
             {
                 sources.Add(g1.getGroundTouchingNodesCenter());
                 targets.Add(g2.getGroundTouchingNodesCenter());
@@ -8752,7 +8750,7 @@ namespace FameBase
             bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center2, center1, userCenter);
+                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center2, center1, userCenter, useGround);
                 this.deformNodesAndEdges(updateNodes1, Q);
             }
             
@@ -8765,7 +8763,7 @@ namespace FameBase
 
             if (nodes2.Count > 0 && nodes1.Count > 0)
             {
-                getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true, center1, center2, userCenter);
+                getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true, center1, center2, userCenter, useGround);
                 this.deformNodesAndEdges(updateNodes2, Q);
             }
             
@@ -9171,13 +9169,15 @@ namespace FameBase
                     targets.AddRange(e.getContactPoints());
                 }
             }
+            bool useGround = false;
             if (sources.Count > 0 && node._isGroundTouching)
             {
                 sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
                 targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
+                useGround = true;
             }
             Matrix4d T, S, Q;
-            getTransformation(sources, targets, out S, out T, out Q, null, false, null, null, false);
+            getTransformation(sources, targets, out S, out T, out Q, null, false, null, null, false, useGround);
             node.Transform(Q);
             node._updated = true;
             foreach (Edge e in node._edges)
@@ -9222,6 +9222,21 @@ namespace FameBase
             {
                 points.AddRange(e.getContactPoints());
             }
+            // if two points are too close, merge them
+            for (int i = 0; i < points.Count - 1; ++i)
+            {
+                Vector3d vi = points[i];
+                for (int j = i + 1; j < points.Count; ++j)
+                {
+                    Vector3d vj = points[j];
+                    double d = (vi - vj).Length();
+                    if (d < 0.02)
+                    {
+                        points.RemoveAt(j);
+                        --j;
+                    }
+                }
+            }
             return points;
         }// collectPoints
 
@@ -9240,8 +9255,9 @@ namespace FameBase
         public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, 
             out Matrix4d S, out Matrix4d T, out Matrix4d Q, 
             Vector3d boxScale, bool useScale, 
-            Vector3d tc, Vector3d sc, bool useCenter)
+            Vector3d tc, Vector3d sc, bool useCenter, bool isLastGroundPoint)
         {
+            // when estimating the scaling, if the last point is the ground point, the calculation can go wrong, see below
             int n = srcpts.Count;
             if (n == 1)
             {
@@ -9278,7 +9294,6 @@ namespace FameBase
                     ss = 1.0;
                 }
                 S = Matrix4d.ScalingMatrix(ss, ss, ss);
-
 
                 if (boxScale.isValidVector()) //  && useScale)
                 {
@@ -9326,6 +9341,12 @@ namespace FameBase
                 // find the scales
                 int k = srcpts.Count;
                 double sx = 0, sy = 0, sz = 0;
+                if (isLastGroundPoint)
+                {
+                    k--;
+                }
+                // if the last point is added ground point, remove it from scaling calculation to avoid error
+                // e.g., the distance from this point to the center is 0 in two axes, meaning the two scaling axes will contribute 0
                 for (int i = 0; i < k; ++i)
                 {
                     Vector3d p1 = srcpts[i] - t1;
@@ -9338,15 +9359,19 @@ namespace FameBase
                 sy /= k;
                 sz /= k;
 
-                if (double.IsNaN(sx) || double.IsInfinity(sx) || Math.Abs(sx) < Common._thresh)
+                sx = sx < 0 ? boxScale.x : sx;
+                sy = sy < 0 ? boxScale.y : sy;
+                sz = sz < 0 ? boxScale.z : sz;
+
+                if (isInValidScale(sx))
                 {
                     sx = 1.0;
                 }
-                if (double.IsNaN(sy) || double.IsInfinity(sy) || Math.Abs(sy) < Common._thresh)
+                if (isInValidScale(sy))
                 {
                     sy = 1.0;
                 }
-                if (double.IsNaN(sz) || double.IsInfinity(sz) || Math.Abs(sz) < Common._thresh)
+                if (isInValidScale(sz))
                 {
                     sz = 1.0;
                 }
@@ -9374,6 +9399,11 @@ namespace FameBase
                 }
             }
         }// getTransformation
+
+        private bool isInValidScale(double s)
+        {
+            return double.IsNaN(s) || double.IsInfinity(s) || Math.Abs(s) < Common._thresh;
+        }// isInValidScale
 
         private Vector3d adjustScale(Vector3d scale)
         {
