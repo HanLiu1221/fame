@@ -4938,14 +4938,15 @@ namespace FameBase
             }
             int pairId = 0;
             List<Triplet> invalid = new List<Triplet>();
-            for (int t = 0; t < _validityMatrixPG.NTriplets; ++t)
+            for (int t = 0; t < _validityMatrixPG.ntr
+; ++t)
             {
                 // the matrix is not symmetric and (i, j) (j, i) could both exist
                 int i = _validityMatrixPG.GetTriplet(t).row;
                 int j = _validityMatrixPG.GetTriplet(t).col;
                 List<Model> ijs;
-                //i = 16;
-                //j = 8;
+                //i = 11;
+                //j = 4;
                 if (!runACrossoverTest(i, j, 1, new Random(), imageFolder, pairId++, out ijs))
                 {
                     invalid.Add(_validityMatrixPG.GetTriplet(t));
@@ -5200,7 +5201,7 @@ namespace FameBase
                     {
                         if (mainNode == null || node._PART._BOUNDINGBOX.CENTER.y > mainNode._PART._BOUNDINGBOX.CENTER.y)
                         {
-                            mainNode = node;
+                             mainNode = node;
                         }
                     }
                     if (functions.Contains(f))
@@ -5309,7 +5310,7 @@ namespace FameBase
             Vector3d scale2 = new Vector3d(1, 1, 1);
 
             Matrix4d S, T, Q;
-            getTransformation(sources, targets, out S, out T, out Q, scale2, false, center1, center2, false, isGround);
+            getTransformation(sources, targets, out S, out T, out Q, scale2, false, center1, center2, false, -1, isGround);
             this.deformNodesAndEdges(insertNodes, Q);
 
             if (isGround)
@@ -5452,17 +5453,25 @@ namespace FameBase
                 sources.Add(new Vector3d(center2.x, 0, center2.z));
             }
             bool userCenter = false;
-            //userCenter = nodes1.Count == 1 || nodes2.Count == 1;
+            double storageScale = -1;
+
             //useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
-            
+
+            if (this.containsFunc(updateNodes2, Functionality.Functions.STORAGE))
+            {
+                useScale = true;
+                boxScale[1] = 1.0;
+            }
+            // when replacing a storage part by a placement part, the volume is not necessary
+            if (this.containsFunc(nodes1, Functionality.Functions.STORAGE)
+                && updateNodes2.Count == 1 && updateNodes2[0]._funcs.Contains(Functionality.Functions.PLACEMENT))
+            {
+                storageScale = 1.0;
+            }
 
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userCenter, useGround);
-                //if (Common.isOverScaled(Q[0, 0]) || Common.isOverScaled(Q[1, 1]) || Common.isOverScaled(Q[2, 2]))
-                //{
-                //    getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, true);
-                //}
+                getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userCenter, storageScale, useGround);
                 this.deformNodesAndEdges(updateNodes2, Q);
                 this.restoreCyclinderNodes(updateNodes2, S);
             }
@@ -5476,6 +5485,18 @@ namespace FameBase
 
             return updateNodes2;
         }// replaceNodes
+
+        private bool containsFunc(List<Node> nodes, Functionality.Functions f)
+        {
+            foreach (Node node in nodes)
+            {
+                if (node._funcs.Contains(f))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// containsStorageFuncs
 
         public Vector3d getGroundTouchingNodesCenter(List<Node> nodes)
         {
@@ -8750,7 +8771,7 @@ namespace FameBase
             bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center2, center1, userCenter, useGround);
+                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center2, center1, userCenter, -1, useGround);
                 this.deformNodesAndEdges(updateNodes1, Q);
             }
             
@@ -8763,7 +8784,7 @@ namespace FameBase
 
             if (nodes2.Count > 0 && nodes1.Count > 0)
             {
-                getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true, center1, center2, userCenter, useGround);
+                getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true, center1, center2, userCenter, -1, useGround);
                 this.deformNodesAndEdges(updateNodes2, Q);
             }
             
@@ -9177,7 +9198,7 @@ namespace FameBase
                 useGround = true;
             }
             Matrix4d T, S, Q;
-            getTransformation(sources, targets, out S, out T, out Q, null, false, null, null, false, useGround);
+            getTransformation(sources, targets, out S, out T, out Q, null, false, null, null, false, -1, useGround);
             node.Transform(Q);
             node._updated = true;
             foreach (Edge e in node._edges)
@@ -9255,7 +9276,9 @@ namespace FameBase
         public void getTransformation(List<Vector3d> srcpts, List<Vector3d> tarpts, 
             out Matrix4d S, out Matrix4d T, out Matrix4d Q, 
             Vector3d boxScale, bool useScale, 
-            Vector3d tc, Vector3d sc, bool useCenter, bool isLastGroundPoint)
+            Vector3d tc, Vector3d sc, bool useCenter, 
+            double storageScale, //y-axis to preserve the volume
+            bool isLastGroundPoint)
         {
             // when estimating the scaling, if the last point is the ground point, the calculation can go wrong, see below
             int n = srcpts.Count;
@@ -9376,10 +9399,14 @@ namespace FameBase
                     sz = 1.0;
                 }
 
-                Vector3d scale = new Vector3d(sx, sy, sz);
-                //scale = adjustScale(scale);
+                if (storageScale != -1)
+                {
+                    sy = storageScale;
+                }
 
-                if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
+                Vector3d scale = new Vector3d(sx, sy, sz);
+                scale = adjustScale(scale);
+                //if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
 
                 S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
 
@@ -9411,12 +9438,12 @@ namespace FameBase
             {
                 if (scale[i] > Common._max_scale)
                 {
-                    scale[i] = Common._max_scale;
+                    scale[i] = Common._max_scale / 2;
                 }
 
                 if (scale[i] < Common._min_scale)
                 {
-                    scale[i] = Common._min_scale;
+                    scale[i] = Common._min_scale * 2;
                 }
             }
             return scale;
