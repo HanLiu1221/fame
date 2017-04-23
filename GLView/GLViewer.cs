@@ -107,7 +107,7 @@ namespace FameBase
         {
             // !Do not change the order of the modes --- used in the current program to retrieve the index (Integer)
             Viewing, VertexSelection, EdgeSelection, FaceSelection, BoxSelection, BodyNodeEdit,
-            Translate, Scale, Rotate, Contact, NONE
+            Translate, Scale, Rotate, Contact, PartPick, NONE
         }
 
         private bool drawVertex = false;
@@ -212,6 +212,8 @@ namespace FameBase
         ArcBall _editArcBall;
         bool _isRightClick = false;
         bool _isDrawTranslucentHumanPose = true;
+        List<Node> _userSelectedNodes = new List<Node>();
+        List<Part> _userSelectedParts = new List<Part>();
 
         private Vector3d[] _groundGrids;
         Edge _selectedEdge = null;
@@ -369,6 +371,8 @@ namespace FameBase
             _selectedContact = null;
             _selectedParts.Clear();
             _selectedNodes.Clear();
+            _userSelectedNodes.Clear();
+            _userSelectedParts.Clear();
             _selected_cat = Functionality.Category.None; // reset the current category
         }// clearHighlights
 
@@ -4938,8 +4942,7 @@ namespace FameBase
             }
             int pairId = 0;
             List<Triplet> invalid = new List<Triplet>();
-            for (int t = 0; t < _validityMatrixPG.ntr
-; ++t)
+            for (int t = 0; t < _validityMatrixPG.NTriplets; ++t)
             {
                 // the matrix is not symmetric and (i, j) (j, i) could both exist
                 int i = _validityMatrixPG.GetTriplet(t).row;
@@ -9788,8 +9791,7 @@ namespace FameBase
                             }
                             else
                             {
-                                this.selectMouseDown((int)this.currUIMode,
-                                    Control.ModifierKeys == Keys.Shift,
+                                this.selectMouseDown(Control.ModifierKeys == Keys.Shift,
                                     Control.ModifierKeys == Keys.Control);
                             }
                             Gl.glMatrixMode(Gl.GL_MODELVIEW);
@@ -9804,6 +9806,24 @@ namespace FameBase
                         this.cal2D();
                     }
                     break;
+                case UIMode.PartPick:
+                    {
+                        if (this._currModel != null)
+                        {
+                            Matrix4d m = this.arcBall.getTransformMatrix(this.nPointPerspective) * this._currModelTransformMatrix;
+                            Gl.glMatrixMode(Gl.GL_MODELVIEW);
+                            Gl.glPushMatrix();
+                            Gl.glMultMatrixd(m.Transpose().ToArray());
+
+                            this.selectMouseMove((int)this.currUIMode, null, false);
+
+                            Gl.glMatrixMode(Gl.GL_MODELVIEW);
+                            Gl.glPopMatrix();
+
+                            this.isDrawQuad = true;
+                        }
+                        break;
+                    }
                 case UIMode.Translate:
                 case UIMode.Contact:
                     {
@@ -9857,9 +9877,18 @@ namespace FameBase
                         if (this._currModel != null && this.isMouseDown)
                         {
                             this.highlightQuad = new Quad2d(this.mouseDownPos, this.currMousePos);
-                            this.selectMouseMove((int)this.currUIMode, this.highlightQuad,
-                                Control.ModifierKeys == Keys.Control);
+                            //this.selectMouseMove((int)this.currUIMode, this.highlightQuad,
+                            //    Control.ModifierKeys == Keys.Control);
                             this.isDrawQuad = true;
+                            this.Refresh();
+                        }
+                        break;
+                    }
+                case UIMode.PartPick:
+                    {
+                        if (this._currModel != null)
+                        {
+                            this.selectPartByUser(currMousePos);
                             this.Refresh();
                         }
                         break;
@@ -9995,10 +10024,14 @@ namespace FameBase
             this.Refresh();
         }
 
-        public void selectMouseDown(int mode, bool isShift, bool isCtrl)
+        public void selectMouseDown(bool isShift, bool isCtrl)
         {
-            switch (mode)
+            switch (this.currUIMode)
             {
+                case UIMode.PartPick:
+                    {
+                        break;
+                    }
                 default:
                     break;
             }
@@ -10101,6 +10134,11 @@ namespace FameBase
                         }
                         break;
                     }
+                case Keys.P:
+                    {
+                        this.currUIMode = UIMode.PartPick;
+                        break;
+                    }
                 case Keys.Space:
                     {
                         this.lockView = !this.lockView;
@@ -10191,6 +10229,54 @@ namespace FameBase
                         _selectedNodes.Add(node);
                     }
                 }
+            }
+        }//selectBbox
+
+        public void selectPartByUser(Vector2d mousePos)
+        {
+            // cannot use GRAPH, as it maybe used for data preprocessing, i.e., grouping, i dont need graph here
+            if (this._currModel == null || _currModel._GRAPH == null)
+            {
+                return;
+            }
+            this.cal2D();
+            Node pointedNode = null;
+            foreach (Node node in _currModel._GRAPH._NODES)
+            {
+                if (node._PART._BOUNDINGBOX == null) continue;
+                Vector2d minCoord = Vector2d.MaxCoord();
+                Vector2d maxCoord = Vector2d.MinCoord();
+                foreach (Vector2d v in node._PART._BOUNDINGBOX._POINTS2D)
+                {
+                    minCoord = Vector2d.Min(minCoord, v);
+                    maxCoord = Vector2d.Max(maxCoord, v);
+                }
+                if (Quad2d.isPointInQuad(mousePos, new Quad2d(minCoord,maxCoord))) {
+                    pointedNode = node;
+                    break;
+                }
+            }
+            _userSelectedParts.Clear();
+            _userSelectedNodes.Clear();
+            if (pointedNode == null)
+            {
+                return;
+            }
+            // find all nodes with the same funcs
+            List<Functionality.Functions> funcs = pointedNode._funcs;
+            foreach (Node node in _currModel._GRAPH._NODES)
+            {
+                List<Functionality.Functions> funcs_2 = node._funcs;
+                if(funcs_2.Count != funcs.Count) {
+                    continue;
+                }
+                var comp = funcs_2.Except(funcs);
+                if (comp.Count() > 0)
+                {
+                    continue;
+                }
+                _userSelectedParts.Add(node._PART);
+                _userSelectedNodes.Add(node);
             }
         }//selectBbox
 
@@ -11996,7 +12082,7 @@ namespace FameBase
         {
             foreach (Part part in parts)
             {
-                if (_selectedParts.Contains(part))
+                if (_selectedParts.Contains(part) || _userSelectedParts.Contains(part))
                 {
                     continue;
                 }
@@ -12219,6 +12305,11 @@ namespace FameBase
             if (_categoryId != -1)
             {
 
+            }
+
+            foreach(Part part in _userSelectedParts)
+            {                
+                GLDrawer.drawMeshFace(part._MESH, GLDrawer.HighlightMeshColor, false);
             }
         }// DrawHighlight3D
 

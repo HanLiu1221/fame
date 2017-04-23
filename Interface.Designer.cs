@@ -137,6 +137,7 @@
             this.prev_mesh = new System.Windows.Forms.Button();
             this.next_mesh = new System.Windows.Forms.Button();
             this.statsLabel = new System.Windows.Forms.Label();
+            this.glViewer = new FameBase.GLViewer();
             this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
@@ -153,6 +154,7 @@
             this.handplaceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.supportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundtouchingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.storageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.hangToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.removeallToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partNameToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -168,8 +170,6 @@
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.storageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer = new FameBase.GLViewer();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -198,7 +198,7 @@
             this.autoGenerateToolStripMenuItem});
             this.menu.Location = new System.Drawing.Point(0, 0);
             this.menu.Name = "menu";
-            this.menu.Size = new System.Drawing.Size(1099, 39);
+            this.menu.Size = new System.Drawing.Size(1049, 39);
             this.menu.TabIndex = 0;
             this.menu.Text = "toolStrip1";
             // 
@@ -976,8 +976,8 @@
             this.viewPanel.Panel2.Controls.Add(this.glViewer);
             this.viewPanel.Panel2.Controls.Add(this.partBasket);
             this.viewPanel.Panel2.Controls.Add(this.modelViewLayoutPanel);
-            this.viewPanel.Size = new System.Drawing.Size(1099, 735);
-            this.viewPanel.SplitterDistance = 27;
+            this.viewPanel.Size = new System.Drawing.Size(1049, 630);
+            this.viewPanel.SplitterDistance = 25;
             this.viewPanel.TabIndex = 1;
             // 
             // fileNameTabs
@@ -987,7 +987,7 @@
             this.fileNameTabs.Location = new System.Drawing.Point(3, 0);
             this.fileNameTabs.Name = "fileNameTabs";
             this.fileNameTabs.SelectedIndex = 0;
-            this.fileNameTabs.Size = new System.Drawing.Size(1093, 30);
+            this.fileNameTabs.Size = new System.Drawing.Size(1043, 30);
             this.fileNameTabs.TabIndex = 0;
             // 
             // category_panel
@@ -996,7 +996,7 @@
             this.category_panel.Controls.Add(this.category_yes);
             this.category_panel.Controls.Add(this.cat_select_label);
             this.category_panel.Controls.Add(this.categoryList);
-            this.category_panel.Location = new System.Drawing.Point(649, 327);
+            this.category_panel.Location = new System.Drawing.Point(660, 344);
             this.category_panel.Name = "category_panel";
             this.category_panel.Size = new System.Drawing.Size(179, 170);
             this.category_panel.TabIndex = 23;
@@ -1060,10 +1060,10 @@
             this.outputTextWindow.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.outputTextWindow.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.outputTextWindow.Location = new System.Drawing.Point(216, 623);
+            this.outputTextWindow.Location = new System.Drawing.Point(216, 520);
             this.outputTextWindow.Multiline = true;
             this.outputTextWindow.Name = "outputTextWindow";
-            this.outputTextWindow.Size = new System.Drawing.Size(676, 78);
+            this.outputTextWindow.Size = new System.Drawing.Size(626, 78);
             this.outputTextWindow.TabIndex = 21;
             // 
             // postAnalysisRes
@@ -1072,7 +1072,7 @@
             this.postAnalysisRes.AutoSize = true;
             this.postAnalysisRes.BackColor = System.Drawing.Color.White;
             this.postAnalysisRes.Font = new System.Drawing.Font("SimSun", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.postAnalysisRes.Location = new System.Drawing.Point(360, 12);
+            this.postAnalysisRes.Location = new System.Drawing.Point(335, 12);
             this.postAnalysisRes.Name = "postAnalysisRes";
             this.postAnalysisRes.Size = new System.Drawing.Size(0, 16);
             this.postAnalysisRes.TabIndex = 20;
@@ -1083,7 +1083,7 @@
             this.simOfPGpairsLabel.AutoSize = true;
             this.simOfPGpairsLabel.BackColor = System.Drawing.Color.White;
             this.simOfPGpairsLabel.Font = new System.Drawing.Font("SimSun", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.simOfPGpairsLabel.Location = new System.Drawing.Point(585, 7);
+            this.simOfPGpairsLabel.Location = new System.Drawing.Point(560, 7);
             this.simOfPGpairsLabel.Name = "simOfPGpairsLabel";
             this.simOfPGpairsLabel.Size = new System.Drawing.Size(0, 21);
             this.simOfPGpairsLabel.TabIndex = 19;
@@ -1097,7 +1097,7 @@
             this.prev_next_panel.Controls.Add(this.mesh_name);
             this.prev_next_panel.Controls.Add(this.prev_mesh);
             this.prev_next_panel.Controls.Add(this.next_mesh);
-            this.prev_next_panel.Location = new System.Drawing.Point(794, 3);
+            this.prev_next_panel.Location = new System.Drawing.Point(744, 3);
             this.prev_next_panel.Name = "prev_next_panel";
             this.prev_next_panel.Size = new System.Drawing.Size(98, 76);
             this.prev_next_panel.TabIndex = 18;
@@ -1175,15 +1175,35 @@
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
             // 
+            // glViewer
+            // 
+            this.glViewer.AccumBits = ((byte)(0));
+            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.glViewer.AutoCheckErrors = false;
+            this.glViewer.AutoFinish = false;
+            this.glViewer.AutoMakeCurrent = true;
+            this.glViewer.AutoSwapBuffers = true;
+            this.glViewer.BackColor = System.Drawing.Color.Black;
+            this.glViewer.ColorBits = ((byte)(32));
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
+            this.glViewer.DepthBits = ((byte)(16));
+            this.glViewer.Location = new System.Drawing.Point(216, 3);
+            this.glViewer.Name = "glViewer";
+            this.glViewer.Size = new System.Drawing.Size(626, 511);
+            this.glViewer.StencilBits = ((byte)(0));
+            this.glViewer.TabIndex = 16;
+            // 
             // partBasket
             // 
             this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.partBasket.AutoScroll = true;
             this.partBasket.BackColor = System.Drawing.Color.White;
-            this.partBasket.Location = new System.Drawing.Point(896, 3);
+            this.partBasket.Location = new System.Drawing.Point(846, 3);
             this.partBasket.Name = "partBasket";
-            this.partBasket.Size = new System.Drawing.Size(203, 701);
+            this.partBasket.Size = new System.Drawing.Size(203, 598);
             this.partBasket.TabIndex = 15;
             // 
             // modelViewLayoutPanel
@@ -1194,7 +1214,7 @@
             this.modelViewLayoutPanel.BackColor = System.Drawing.Color.White;
             this.modelViewLayoutPanel.Location = new System.Drawing.Point(3, 3);
             this.modelViewLayoutPanel.Name = "modelViewLayoutPanel";
-            this.modelViewLayoutPanel.Size = new System.Drawing.Size(210, 701);
+            this.modelViewLayoutPanel.Size = new System.Drawing.Size(207, 598);
             this.modelViewLayoutPanel.TabIndex = 13;
             // 
             // partRelatedTools
@@ -1209,40 +1229,40 @@
             this.partNameToolStripMenuItem,
             this.partGroupToolStripMenuItem});
             this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(153, 202);
+            this.partRelatedTools.Size = new System.Drawing.Size(132, 180);
             // 
             // groupToolStripMenuItem
             // 
             this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
             // unGroupToolStripMenuItem
             // 
             this.unGroupToolStripMenuItem.Name = "unGroupToolStripMenuItem";
-            this.unGroupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.unGroupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.unGroupToolStripMenuItem.Text = "UnGroup";
             this.unGroupToolStripMenuItem.Click += new System.EventHandler(this.unGroupToolStripMenuItem_Click);
             // 
             // addEdgeToolStripMenuItem
             // 
             this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.addEdgeToolStripMenuItem.Text = "Add edge";
             this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // delEdgeToolStripMenuItem
             // 
             this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.delEdgeToolStripMenuItem.Text = "Del edge";
             this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // selectToolStripMenuItem
             // 
             this.selectToolStripMenuItem.Name = "selectToolStripMenuItem";
-            this.selectToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.selectToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
@@ -1259,7 +1279,7 @@
             this.hangToolStripMenuItem,
             this.removeallToolStripMenuItem});
             this.functionalityToolStripMenuItem.Name = "functionalityToolStripMenuItem";
-            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.functionalityToolStripMenuItem.Text = "Functions";
             // 
             // humanbackToolStripMenuItem
@@ -1304,6 +1324,13 @@
             this.groundtouchingToolStripMenuItem.Text = "GroundSupport";
             this.groundtouchingToolStripMenuItem.Click += new System.EventHandler(this.groundtouchingToolStripMenuItem_Click);
             // 
+            // storageToolStripMenuItem
+            // 
+            this.storageToolStripMenuItem.Name = "storageToolStripMenuItem";
+            this.storageToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.storageToolStripMenuItem.Text = "Storage";
+            this.storageToolStripMenuItem.Click += new System.EventHandler(this.storageToolStripMenuItem_Click);
+            // 
             // hangToolStripMenuItem
             // 
             this.hangToolStripMenuItem.Name = "hangToolStripMenuItem";
@@ -1333,7 +1360,7 @@
             this.groundSupportToolStripMenuItem,
             this.connectorToolStripMenuItem});
             this.partNameToolStripMenuItem.Name = "partNameToolStripMenuItem";
-            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.partNameToolStripMenuItem.Text = "Part Name";
             // 
             // chairLegToolStripMenuItem
@@ -1416,43 +1443,16 @@
             // partGroupToolStripMenuItem
             // 
             this.partGroupToolStripMenuItem.Name = "partGroupToolStripMenuItem";
-            this.partGroupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.partGroupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.partGroupToolStripMenuItem.Text = "Part Group";
             this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
-            // 
-            // storageToolStripMenuItem
-            // 
-            this.storageToolStripMenuItem.Name = "storageToolStripMenuItem";
-            this.storageToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
-            this.storageToolStripMenuItem.Text = "Storage";
-            this.storageToolStripMenuItem.Click += new System.EventHandler(this.storageToolStripMenuItem_Click);
-            // 
-            // glViewer
-            // 
-            this.glViewer.AccumBits = ((byte)(0));
-            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.glViewer.AutoCheckErrors = false;
-            this.glViewer.AutoFinish = false;
-            this.glViewer.AutoMakeCurrent = true;
-            this.glViewer.AutoSwapBuffers = true;
-            this.glViewer.BackColor = System.Drawing.Color.Black;
-            this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(216, 3);
-            this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(676, 614);
-            this.glViewer.StencilBits = ((byte)(0));
-            this.glViewer.TabIndex = 16;
             // 
             // Interface
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ClientSize = new System.Drawing.Size(1099, 774);
+            this.ClientSize = new System.Drawing.Size(1049, 669);
             this.Controls.Add(this.viewPanel);
             this.Controls.Add(this.menu);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));

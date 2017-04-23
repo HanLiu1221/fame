@@ -36,6 +36,7 @@ namespace FameBase
         public static Color HighlightBboxColor = Color.FromArgb(50, 255, 255, 255);
         public static Color SelectedBackgroundColor = Color.FromArgb(253, 174, 107);
         public static Color ParentViewBackgroundColor = Color.FromArgb(224, 236, 244);
+        public static Color HighlightMeshColor = Color.FromArgb(255, 189, 189, 189);
 
         public static Color GradientColor_0 = Color.FromArgb(254, 204, 92);
         public static Color GradientColor_1 = Color.FromArgb(189, 0, 38);
