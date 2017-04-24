@@ -1329,6 +1329,7 @@ namespace FameBase
                 Directory.CreateDirectory(shape2poseDataFolder);
             }
             string meshName = shape2poseDataFolder + model._model_name + ".mesh";
+            this.saveModelMesh_StyleSimilarityUse(model, meshName);
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
             string samplingCmd = exePath + "StyleSimilarity.exe ";
@@ -1344,12 +1345,19 @@ namespace FameBase
 
             // reset sample points
             string ptsname = shape2poseDataFolder + model._model_name + ".pts";
-            model._SP = loadSamplePoints(ptsname, model._MESH.FaceCount);
-            string modelSPname = model._path + model._model_name + "\\" + model._model_name + ".sp";
+            model._SP = this.loadReSampledPoints(ptsname, model._MESH.FaceCount);
+            string folder = model._path + model._model_name + "\\";
+            string modelSPname = folder + model._model_name + ".sp";
             this.saveSamplePointsInfo(model._SP, modelSPname);
-            string spColorname = model._path + model._model_name + "\\" + model._model_name + ".color";
+            string spColorname = folder + model._model_name + ".color";
             model._SP._blendColors = new Color[model._SP._points.Length];
             this.saveSamplePointsColor(model._SP._blendColors, spColorname);
+            foreach (Part p in model._PARTS)
+            {
+                p.buildSamplePoints(p._FACEVERTEXINDEX, model._SP);
+                string partSPname = folder + p._partName + ".sp";
+                this.saveSamplePointsInfo(p._partSP, partSPname);
+            }
         }// reSamplingForANewShape
 
         public bool computeShape2PoseAndIconFeatures(Model model)
@@ -2034,6 +2042,14 @@ namespace FameBase
                 model._parent_names = parent_names;
                 model._original_names = original_names;
                 model._CAT = Functionality.getCategory(cat_name);
+                model._SP = sp;
+                model.composeMesh();
+                 if (model._SP == null)
+                {
+                    // used for calculating contact point
+                    
+                    this.reSamplingForANewShape(model);
+                }
                 return model;
             }
         }// loadOnePartBasedModel
@@ -10220,9 +10236,13 @@ namespace FameBase
 
         }// runByUserSelection
 
-        public void deformFunctionPart(double s, int axis)
+        public void deformFunctionPart(double s, int axis, bool duplicate)
         {
             if (_currModel == null || _currModel._GRAPH == null)
+            {
+                return;
+            }
+            if (duplicate && _currModel.isDuplicated)
             {
                 return;
             }
@@ -10243,6 +10263,11 @@ namespace FameBase
             {
                 newCenter.y += s;
             }
+            if (duplicate)
+            {
+                // first scale it back
+                scaleVec[0] = 0.5;
+            }
             Matrix4d S = Matrix4d.ScalingMatrix(scaleVec);      
             Matrix4d Q = Matrix4d.TranslationMatrix(newCenter) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
             if (mainNode._isGroundTouching)
@@ -10258,8 +10283,62 @@ namespace FameBase
             deformSymmetryNode(mainNode);
             deformPropagation(_currModel._GRAPH, mainNode);
             _currModel._GRAPH.resetUpdateStatus();
+            if (duplicate)
+            {
+                foreach (Node node in _currModel._GRAPH._NODES)
+                {
+                    node.updateOriginPos();
+                }
+                duplicateFunctionalNode(_currModel, mainNode);
+            }
             this.Refresh();
         }// deformFunctionPart
+
+        private void duplicateFunctionalNode(Model m, Node mainNode)
+        {
+            // 2X scaling
+            // start with the case that a main node is supported by left and right support
+            Graph g = m._GRAPH;
+            List<Node> toDuplicate = new List<Node>();
+            toDuplicate.Add(mainNode);
+            List<Functionality.Functions> funcs = mainNode._funcs;
+            foreach (Node node in g._NODES)
+            {
+                if (node._funcs.Count != funcs.Count || node == mainNode)
+                {
+                    continue;
+                }
+                var sub = node._funcs.Except(funcs);
+                if (sub.Count() > 0){
+                    continue;      
+                }
+                toDuplicate.Add(node);
+            }
+            // support nodes
+            foreach (Node node in mainNode._adjNodes)
+            {
+                if (node._funcs.Contains(Functionality.Functions.GROUND_TOUCHING)
+                    && node._PART._BOUNDINGBOX.CENTER.x > 0)
+                {
+                    toDuplicate.Add(node);
+                }
+            }
+            // region growing dependent nodes
+            List<Node> dependentNodes = g.bfs_regionGrowingDependentNodes(toDuplicate);
+            toDuplicate.AddRange(dependentNodes);
+            // duplicate
+            double move = mainNode._PART._BOUNDINGBOX.MaxCoord.x - mainNode._PART._BOUNDINGBOX.MinCoord.x;
+            Matrix4d shift = Matrix4d.TranslationMatrix(new Vector3d(move, 0, 0));
+            foreach (Node node in toDuplicate)
+            {
+                Node cloned = node.Clone() as Node;
+                cloned.TransformFromOrigin(shift);
+                cloned.updateOriginPos();
+                g.addANode(cloned);
+                m.addAPart(cloned._PART);
+            }
+            m.isDuplicated = true;
+        }// duplicateFunctionalNode
 
         private Node findMainNodeToScale(Graph g)
         {
@@ -11718,6 +11797,56 @@ namespace FameBase
             }
         }// loadSamplePoints
 
+        private SamplePoints loadReSampledPoints(string filename, int totalNFaces)
+        {
+            if (!File.Exists(filename))
+            {
+                return null;
+            }
+            List<int> faceIndex = new List<int>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separators = { ' ', '\\', '\t' };
+                List<Vector3d> points = new List<Vector3d>();
+                List<Vector3d> normals = new List<Vector3d>();
+                int nline = 0;
+                while (sr.Peek() > -1)
+                {
+                    ++nline;
+                    string s = sr.ReadLine();
+                    string[] strs = s.Split(separators);
+                    if (strs.Length < 7)
+                    {
+                        MessageBox.Show("Wrong format at line " + nline.ToString());
+                        return null;
+                    }
+                    // pos
+                    points.Add(new Vector3d(double.Parse(strs[0]),
+                        double.Parse(strs[1]),
+                        double.Parse(strs[2])));
+                    // normal
+                    normals.Add(new Vector3d(double.Parse(strs[3]),
+                        double.Parse(strs[4]),
+                        double.Parse(strs[5])));
+                    int fidx = int.Parse(strs[6]) - 1;
+                    faceIndex.Add(fidx);
+                }
+                // colors
+                string colorName = filename.Substring(0, filename.LastIndexOf("."));
+                colorName += ".color";
+                Color[] colors = loadSamplePointsColors(colorName);
+                SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(),
+                    faceIndex.ToArray(), colors, totalNFaces);
+                // try to load point weights
+                string name = filename.Substring(filename.LastIndexOf('\\'));
+                name = name.Substring(0, name.LastIndexOf('.'));
+                string folder = filename.Substring(0, filename.LastIndexOf('\\') + 1) + "points_weights_per_cat" + name + "\\";
+                List<PatchWeightPerCategory> pws = this.loadSamplePointWeightsPerCategory(folder);
+                sp._weightsPerCat = pws;
+                return sp;
+            }
+        }// loadReSampledPoints
+
         private double[] loadPatchWeight(string filename, out double minw, out double maxw)
         {
             minw = double.MaxValue;
@@ -12250,13 +12379,13 @@ namespace FameBase
                 {
                     if (part._partSP != null && part._partSP._points != null)
                     {
-                        if (_categoryId == -1)
+                        if (_selectedParts != null && _selectedParts.Contains(part))
                         {
-                            GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
+                            GLDrawer.drawPoints(part._partSP._points, Color.Red, 12.0f);
                         }
                         else
                         {
-                            GLDrawer.drawPoints(part._partSP._points, part._partSP._highlightedColors[_categoryId], 12.0f);
+                            GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
                         }
                     }
                 }

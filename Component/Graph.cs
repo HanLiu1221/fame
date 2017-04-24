@@ -1872,6 +1872,43 @@ namespace Component
             return res;
         }// bfs_regionGrowingNonFunctionanlNodes
 
+        public List<Node> bfs_regionGrowingDependentNodes(List<Node> nodes)
+        {
+            List<Node> res = new List<Node>();
+            Queue<Node> queue = new Queue<Node>();
+            bool[] visited = new bool[_nodes.Count];
+            foreach (Node node in nodes)
+            {
+                queue.Enqueue(node);
+                visited[node._INDEX] = true;
+            }
+
+            while (queue.Count > 0)
+            {
+                List<Node> cur = new List<Node>();
+                while (queue.Count > 0)
+                {
+                    Node qn = queue.Dequeue();
+                    cur.Add(qn);
+                }
+                foreach (Node nd in cur)
+                {
+                    foreach (Node adj in nd._adjNodes)
+                    {
+                        // only consider region growing on trivial parts
+                        if (visited[adj._INDEX] || adj._funcs.Contains(Functionality.Functions.GROUND_TOUCHING))
+                        {
+                            continue;
+                        }
+                        queue.Enqueue(adj);
+                        visited[adj._INDEX] = true;
+                        res.Add(adj);
+                    }
+                }
+            }// while
+            return res;
+        }// bfs_regionGrowingNonFunctionanlNodes
+
         private bool shouldCreateNewPartGroup(List<PartGroup> partGroups, List<Node> nodes)
         {
             // case 1: one node only, but there already exists a node as part group that
@@ -2127,6 +2164,25 @@ namespace Component
             if (_functionalSpaceAgent != null)
             {
                 _functionalSpaceAgent.Transform(T);
+            }
+        }
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            _part.TransformFromOrigin(T);
+            _pos = _part._BOUNDINGBOX.CENTER;
+            if (_functionalSpaceAgent != null)
+            {
+                _functionalSpaceAgent.TransformFromOrigin(T);
+            }
+        }
+
+        public void updateOriginPos()
+        {
+            _part.updateOriginPos();
+            if (_functionalSpaceAgent != null)
+            {
+                _functionalSpaceAgent.updateOrigin();
             }
         }
 

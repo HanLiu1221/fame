@@ -195,6 +195,9 @@ namespace FameBase
                 this.fileNameTabs.TabPages.Clear();
                 this.fileNameTabs.TabPages.Add(tp);
                 this.fileNameTabs.SelectedTab = tp;
+
+                this.xScaleBar.Value = 5;
+                this.yScaleBar.Value = 5;
             }
         }
 
@@ -1129,14 +1132,14 @@ namespace FameBase
         {
             double val = e.NewValue - e.OldValue;
             double scale = 1 + val / e.OldValue;
-            this.glViewer.deformFunctionPart(scale, 0);
+            this.glViewer.deformFunctionPart(scale, 0, e.NewValue == this.xScaleBar.Maximum);
         }
 
         private void yScaleBar_Scroll(object sender, ScrollEventArgs e)
         {
             double val = e.OldValue - e.NewValue; // up to down
             double scale = val / e.OldValue * 0.2;
-            this.glViewer.deformFunctionPart(scale, 1);
+            this.glViewer.deformFunctionPart(scale, 1, false);
         }
     }// Interface
 }// namespace

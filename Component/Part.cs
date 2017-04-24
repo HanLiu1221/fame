@@ -99,9 +99,8 @@ namespace Component
             }
         }
 
-        private void buildSamplePoints(int[] fIndex, SamplePoints sp)
+        public void buildSamplePoints(int[] fIndex, SamplePoints sp)
         {
-            int nsamples = fIndex.Length;
             List<Vector3d> samplePoints = new List<Vector3d>();
             List<Vector3d> normals = new List<Vector3d>();
             List<int> inPartFaceIndex = new List<int>();
@@ -673,6 +672,7 @@ namespace Component
         private Polygon3D _symPlane;
 
         public Functionality.Category _CAT = Functionality.Category.None;
+        public bool isDuplicated = false;
         // test 
         public List<List<Vector3d>> pointsTest = new List<List<Vector3d>>();
 
