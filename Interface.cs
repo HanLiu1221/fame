@@ -17,7 +17,9 @@ namespace FameBase
 		{
 			InitializeComponent();
             this.glViewer.Init();
+
             this.category_panel.Hide();
+            this.prev_next_panel.Hide();
 		}
 
         /*********Var**********/
@@ -1075,6 +1077,66 @@ namespace FameBase
         private void removeallToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.removeFunction();
+        }
+
+        private void sitting_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("sitting", this.sitting.Checked);
+        }
+
+        private void placement_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("placement", this.placement.Checked);
+        }
+
+        private void storage_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("storage", this.storage.Checked);
+        }
+
+        private void rolling_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("rolling", this.rolling.Checked);
+        }
+
+        private void runByUser_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        public void setCheckBox(string str)
+        {
+            switch (str)
+            {
+                case "sitting":
+                    this.sitting.Checked = true;
+                    break;
+                case "placement":
+                    this.placement.Checked = true;
+                    break;
+                case "storage":
+                    this.storage.Checked = true;
+                    break;
+                case "rolling":
+                    this.rolling.Checked = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void xScaleBar_Scroll(object sender, ScrollEventArgs e)
+        {
+            double val = e.NewValue - e.OldValue;
+            double scale = 1 + val / e.OldValue;
+            this.glViewer.deformFunctionPart(scale, 0);
+        }
+
+        private void yScaleBar_Scroll(object sender, ScrollEventArgs e)
+        {
+            double val = e.OldValue - e.NewValue; // up to down
+            double scale = val / e.OldValue * 0.2;
+            this.glViewer.deformFunctionPart(scale, 1);
         }
     }// Interface
 }// namespace

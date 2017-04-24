@@ -122,12 +122,21 @@
             this.autoGenerateToolStripMenuItem = new System.Windows.Forms.ToolStripButton();
             this.viewPanel = new System.Windows.Forms.SplitContainer();
             this.fileNameTabs = new System.Windows.Forms.TabControl();
+            this.functionsPanel = new System.Windows.Forms.Panel();
+            this.functionGroup = new System.Windows.Forms.Panel();
+            this.yScaleBar = new System.Windows.Forms.VScrollBar();
+            this.xScaleBar = new System.Windows.Forms.HScrollBar();
+            this.runByUser = new System.Windows.Forms.Button();
+            this.rolling = new System.Windows.Forms.CheckBox();
+            this.storage = new System.Windows.Forms.CheckBox();
+            this.placement = new System.Windows.Forms.CheckBox();
+            this.sitting = new System.Windows.Forms.CheckBox();
+            this.outputTextWindow = new System.Windows.Forms.TextBox();
             this.category_panel = new System.Windows.Forms.Panel();
             this.category_cancel = new System.Windows.Forms.Button();
             this.category_yes = new System.Windows.Forms.Button();
             this.cat_select_label = new System.Windows.Forms.Label();
             this.categoryList = new System.Windows.Forms.ListBox();
-            this.outputTextWindow = new System.Windows.Forms.TextBox();
             this.postAnalysisRes = new System.Windows.Forms.Label();
             this.simOfPGpairsLabel = new System.Windows.Forms.Label();
             this.prev_next_panel = new System.Windows.Forms.Panel();
@@ -175,6 +184,8 @@
             this.viewPanel.Panel1.SuspendLayout();
             this.viewPanel.Panel2.SuspendLayout();
             this.viewPanel.SuspendLayout();
+            this.functionsPanel.SuspendLayout();
+            this.functionGroup.SuspendLayout();
             this.category_panel.SuspendLayout();
             this.prev_next_panel.SuspendLayout();
             this.partRelatedTools.SuspendLayout();
@@ -967,8 +978,8 @@
             // viewPanel.Panel2
             // 
             this.viewPanel.Panel2.BackColor = System.Drawing.Color.White;
+            this.viewPanel.Panel2.Controls.Add(this.functionsPanel);
             this.viewPanel.Panel2.Controls.Add(this.category_panel);
-            this.viewPanel.Panel2.Controls.Add(this.outputTextWindow);
             this.viewPanel.Panel2.Controls.Add(this.postAnalysisRes);
             this.viewPanel.Panel2.Controls.Add(this.simOfPGpairsLabel);
             this.viewPanel.Panel2.Controls.Add(this.prev_next_panel);
@@ -989,6 +1000,120 @@
             this.fileNameTabs.SelectedIndex = 0;
             this.fileNameTabs.Size = new System.Drawing.Size(1043, 30);
             this.fileNameTabs.TabIndex = 0;
+            // 
+            // functionsPanel
+            // 
+            this.functionsPanel.Controls.Add(this.functionGroup);
+            this.functionsPanel.Controls.Add(this.outputTextWindow);
+            this.functionsPanel.Location = new System.Drawing.Point(216, 517);
+            this.functionsPanel.Name = "functionsPanel";
+            this.functionsPanel.Size = new System.Drawing.Size(629, 80);
+            this.functionsPanel.TabIndex = 0;
+            // 
+            // functionGroup
+            // 
+            this.functionGroup.Controls.Add(this.yScaleBar);
+            this.functionGroup.Controls.Add(this.xScaleBar);
+            this.functionGroup.Controls.Add(this.runByUser);
+            this.functionGroup.Controls.Add(this.rolling);
+            this.functionGroup.Controls.Add(this.storage);
+            this.functionGroup.Controls.Add(this.placement);
+            this.functionGroup.Controls.Add(this.sitting);
+            this.functionGroup.Location = new System.Drawing.Point(4, 3);
+            this.functionGroup.Name = "functionGroup";
+            this.functionGroup.Size = new System.Drawing.Size(332, 74);
+            this.functionGroup.TabIndex = 22;
+            // 
+            // yScaleBar
+            // 
+            this.yScaleBar.LargeChange = 1;
+            this.yScaleBar.Location = new System.Drawing.Point(297, 2);
+            this.yScaleBar.Maximum = 10;
+            this.yScaleBar.Minimum = 1;
+            this.yScaleBar.Name = "yScaleBar";
+            this.yScaleBar.Size = new System.Drawing.Size(14, 70);
+            this.yScaleBar.TabIndex = 6;
+            this.yScaleBar.Value = 5;
+            this.yScaleBar.Scroll += new System.Windows.Forms.ScrollEventHandler(this.yScaleBar_Scroll);
+            // 
+            // xScaleBar
+            // 
+            this.xScaleBar.LargeChange = 1;
+            this.xScaleBar.Location = new System.Drawing.Point(197, 4);
+            this.xScaleBar.Maximum = 10;
+            this.xScaleBar.Minimum = 1;
+            this.xScaleBar.Name = "xScaleBar";
+            this.xScaleBar.Size = new System.Drawing.Size(81, 16);
+            this.xScaleBar.TabIndex = 5;
+            this.xScaleBar.Value = 5;
+            this.xScaleBar.Scroll += new System.Windows.Forms.ScrollEventHandler(this.xScaleBar_Scroll);
+            // 
+            // runByUser
+            // 
+            this.runByUser.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.runByUser.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.runByUser.Location = new System.Drawing.Point(197, 49);
+            this.runByUser.Name = "runByUser";
+            this.runByUser.Size = new System.Drawing.Size(49, 22);
+            this.runByUser.TabIndex = 4;
+            this.runByUser.Text = "Run";
+            this.runByUser.UseVisualStyleBackColor = false;
+            this.runByUser.Click += new System.EventHandler(this.runByUser_Click);
+            // 
+            // rolling
+            // 
+            this.rolling.AutoSize = true;
+            this.rolling.Location = new System.Drawing.Point(79, 3);
+            this.rolling.Name = "rolling";
+            this.rolling.Size = new System.Drawing.Size(53, 17);
+            this.rolling.TabIndex = 3;
+            this.rolling.Text = "rolling";
+            this.rolling.UseVisualStyleBackColor = true;
+            this.rolling.CheckedChanged += new System.EventHandler(this.rolling_CheckedChanged);
+            // 
+            // storage
+            // 
+            this.storage.AutoSize = true;
+            this.storage.Location = new System.Drawing.Point(3, 49);
+            this.storage.Name = "storage";
+            this.storage.Size = new System.Drawing.Size(61, 17);
+            this.storage.TabIndex = 2;
+            this.storage.Text = "storage";
+            this.storage.UseVisualStyleBackColor = true;
+            this.storage.CheckedChanged += new System.EventHandler(this.storage_CheckedChanged);
+            // 
+            // placement
+            // 
+            this.placement.AutoSize = true;
+            this.placement.Location = new System.Drawing.Point(3, 26);
+            this.placement.Name = "placement";
+            this.placement.Size = new System.Drawing.Size(75, 17);
+            this.placement.TabIndex = 1;
+            this.placement.Text = "placement";
+            this.placement.UseVisualStyleBackColor = true;
+            this.placement.CheckedChanged += new System.EventHandler(this.placement_CheckedChanged);
+            // 
+            // sitting
+            // 
+            this.sitting.AutoSize = true;
+            this.sitting.Location = new System.Drawing.Point(3, 3);
+            this.sitting.Name = "sitting";
+            this.sitting.Size = new System.Drawing.Size(53, 17);
+            this.sitting.TabIndex = 0;
+            this.sitting.Text = "sitting";
+            this.sitting.UseVisualStyleBackColor = true;
+            this.sitting.CheckedChanged += new System.EventHandler(this.sitting_CheckedChanged);
+            // 
+            // outputTextWindow
+            // 
+            this.outputTextWindow.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.outputTextWindow.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.outputTextWindow.Location = new System.Drawing.Point(342, 3);
+            this.outputTextWindow.Multiline = true;
+            this.outputTextWindow.Name = "outputTextWindow";
+            this.outputTextWindow.Size = new System.Drawing.Size(284, 74);
+            this.outputTextWindow.TabIndex = 21;
             // 
             // category_panel
             // 
@@ -1055,17 +1180,6 @@
             this.categoryList.Size = new System.Drawing.Size(174, 121);
             this.categoryList.TabIndex = 22;
             // 
-            // outputTextWindow
-            // 
-            this.outputTextWindow.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.outputTextWindow.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.outputTextWindow.Location = new System.Drawing.Point(216, 520);
-            this.outputTextWindow.Multiline = true;
-            this.outputTextWindow.Name = "outputTextWindow";
-            this.outputTextWindow.Size = new System.Drawing.Size(626, 78);
-            this.outputTextWindow.TabIndex = 21;
-            // 
             // postAnalysisRes
             // 
             this.postAnalysisRes.Anchor = System.Windows.Forms.AnchorStyles.Top;
@@ -1099,7 +1213,7 @@
             this.prev_next_panel.Controls.Add(this.next_mesh);
             this.prev_next_panel.Location = new System.Drawing.Point(744, 3);
             this.prev_next_panel.Name = "prev_next_panel";
-            this.prev_next_panel.Size = new System.Drawing.Size(98, 76);
+            this.prev_next_panel.Size = new System.Drawing.Size(98, 72);
             this.prev_next_panel.TabIndex = 18;
             // 
             // next_fs
@@ -1201,9 +1315,9 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.partBasket.AutoScroll = true;
             this.partBasket.BackColor = System.Drawing.Color.White;
-            this.partBasket.Location = new System.Drawing.Point(846, 3);
+            this.partBasket.Location = new System.Drawing.Point(848, 3);
             this.partBasket.Name = "partBasket";
-            this.partBasket.Size = new System.Drawing.Size(203, 598);
+            this.partBasket.Size = new System.Drawing.Size(201, 598);
             this.partBasket.TabIndex = 15;
             // 
             // modelViewLayoutPanel
@@ -1465,6 +1579,10 @@
             this.viewPanel.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).EndInit();
             this.viewPanel.ResumeLayout(false);
+            this.functionsPanel.ResumeLayout(false);
+            this.functionsPanel.PerformLayout();
+            this.functionGroup.ResumeLayout(false);
+            this.functionGroup.PerformLayout();
             this.category_panel.ResumeLayout(false);
             this.category_panel.PerformLayout();
             this.prev_next_panel.ResumeLayout(false);
@@ -1618,6 +1736,15 @@
         private System.Windows.Forms.Button category_yes;
         private System.Windows.Forms.Label cat_select_label;
         private System.Windows.Forms.ToolStripMenuItem storageToolStripMenuItem;
+        private System.Windows.Forms.Panel functionsPanel;
+        private System.Windows.Forms.Panel functionGroup;
+        private System.Windows.Forms.CheckBox rolling;
+        private System.Windows.Forms.CheckBox storage;
+        private System.Windows.Forms.CheckBox placement;
+        private System.Windows.Forms.CheckBox sitting;
+        private System.Windows.Forms.Button runByUser;
+        private System.Windows.Forms.VScrollBar yScaleBar;
+        private System.Windows.Forms.HScrollBar xScaleBar;
     }
 }
 

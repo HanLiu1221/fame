@@ -9113,6 +9113,7 @@ namespace FameBase
         private void deformPropagation(Graph graph, Node edited)
         {
             Node activeNode = edited;
+            activeNode._updated = true;
             int time = 0;
             while (activeNode != null)
             {
@@ -9201,7 +9202,7 @@ namespace FameBase
                 useGround = true;
             }
             Matrix4d T, S, Q;
-            getTransformation(sources, targets, out S, out T, out Q, null, false, null, null, false, -1, useGround);
+            getTransformation(sources, targets, out S, out T, out Q, new Vector3d(1,1,1), false, null, null, false, -1, useGround);
             node.Transform(Q);
             node._updated = true;
             foreach (Edge e in node._edges)
@@ -9321,7 +9322,7 @@ namespace FameBase
                 }
                 S = Matrix4d.ScalingMatrix(ss, ss, ss);
 
-                if (boxScale.isValidVector()) //  && useScale)
+                if (boxScale.isValidVector() && useScale)
                 {
                     S = Matrix4d.ScalingMatrix(boxScale);
                 }
@@ -9385,9 +9386,10 @@ namespace FameBase
                 sy /= k;
                 sz /= k;
 
-                sx = sx < 0 ? boxScale.x : sx;
-                sy = sy < 0 ? boxScale.y : sy;
-                sz = sz < 0 ? boxScale.z : sz;
+
+                    sx = sx < 0 ? boxScale.x : sx;
+                    sy = sy < 0 ? boxScale.y : sy;
+                    sz = sz < 0 ? boxScale.z : sz;
 
                 if (isInValidScale(sx))
                 {
@@ -9432,7 +9434,7 @@ namespace FameBase
 
         private bool isInValidScale(double s)
         {
-            return double.IsNaN(s) || double.IsInfinity(s) || Math.Abs(s) < Common._thresh;
+            return double.IsNaN(s) || double.IsInfinity(s) || s < Common._thresh;
         }// isInValidScale
 
         private Vector3d adjustScale(Vector3d scale)
@@ -10186,6 +10188,103 @@ namespace FameBase
             this.SwapBuffers();
 
         }// onPaint
+
+        //########## Functions ##########//
+        private List<Functionality.Functions> _userPresentedFunctions = new List<Functionality.Functions>();
+        public void editFunctions(string fs, bool selected)
+        {
+            Functionality.Functions fs_func = Functionality.getFunction(fs);
+            if (!selected && _userPresentedFunctions.Contains(fs_func))
+            {
+                this.removeAFunction(fs_func);
+                _userPresentedFunctions.Remove(fs_func);
+            }
+            if (selected && !_userPresentedFunctions.Contains(fs_func))
+            {
+                this.addAFunction(fs_func);
+                _userPresentedFunctions.Add(fs_func);
+            }
+        }// editFunctions
+
+        private void addAFunction(Functionality.Functions func)
+        {
+        }// addAFunction
+
+        private void removeAFunction(Functionality.Functions func)
+        {
+        }// removeAFunction
+
+        public void runByUserSelection()
+        {
+            // evolve the current model
+
+        }// runByUserSelection
+
+        public void deformFunctionPart(double s, int axis)
+        {
+            if (_currModel == null || _currModel._GRAPH == null)
+            {
+                return;
+            }
+            // find the main node
+            Node mainNode = this.findMainNodeToScale(_currModel._GRAPH);
+            if (mainNode == null)
+            {
+                return;
+            }
+            Vector3d center = mainNode._PART._BOUNDINGBOX.CENTER;
+            Vector3d scaleVec = new Vector3d(1, 1, 1);
+            Vector3d newCenter = new Vector3d(center);
+            if (axis == 0)
+            {
+                scaleVec[axis] = s;
+            }
+            else if (axis == 1)
+            {
+                newCenter.y += s;
+            }
+            Matrix4d S = Matrix4d.ScalingMatrix(scaleVec);      
+            Matrix4d Q = Matrix4d.TranslationMatrix(newCenter) * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            if (mainNode._isGroundTouching)
+            {
+                Node cNode = mainNode.Clone() as Node;
+                deformANodeAndEdges(cNode, Q);
+                Vector3d trans = new Vector3d();
+                trans.y = -cNode._PART._BOUNDINGBOX.MinCoord.y;
+                Matrix4d T = Matrix4d.TranslationMatrix(trans);
+                Q = T * Q;
+            }
+            deformANodeAndEdges(mainNode, Q);
+            deformSymmetryNode(mainNode);
+            deformPropagation(_currModel._GRAPH, mainNode);
+            _currModel._GRAPH.resetUpdateStatus();
+            this.Refresh();
+        }// deformFunctionPart
+
+        private Node findMainNodeToScale(Graph g)
+        {
+            if (g == null || g._NODES.Count == 0)
+            {
+                return null;
+            }
+            Node mainNode = null;
+            foreach (Node node in g._NODES)
+            {
+                if (!Functionality.ContainsMainFunction(node._funcs))
+                {
+                    continue;
+                }
+                if (node._funcs.Count == 1)
+                {
+                    return node;
+                }
+                mainNode = node;
+            }
+            return mainNode;
+        }// findMainNodeToScale
+
+        //########## end - Functions ##########//
+
 
         //######### Part-based #########//
         public void selectBbox(Quad2d q, bool isCtrl)

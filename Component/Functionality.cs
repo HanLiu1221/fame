@@ -38,7 +38,7 @@ namespace Component
         public static int _CONVEXHULL_FEAT_DIM = 2;
         public static int _POINT_FEATURE_DIM = 18;
 
-        public enum Functions { PLACEMENT, STORAGE, HUMAN_HIP, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, NONE };
+        public enum Functions { PLACEMENT, STORAGE, HUMAN_HIP, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, ROLLING, NONE };
 
         public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Robot, Shelf, 
             Stand, Stroller, Table, TVBench, Vase, None };
@@ -368,6 +368,30 @@ namespace Component
                     return Category.None;
             }
         }// getCategory
+
+        public static Functions getFunction(string str)
+        {
+            string sstr = str.ToLower();
+            switch (sstr)
+            {
+                case "placement":
+                    return Functions.PLACEMENT;
+                case "storage":
+                    return Functions.STORAGE;
+                case "support":
+                    return Functions.SUPPORT;
+                case "rolling":
+                    return Functions.ROLLING;
+                case "groundtouching":
+                    return Functions.GROUND_TOUCHING;
+                case "sitting":
+                    return Functions.HUMAN_HIP;
+                case "backsupport":
+                    return Functions.HUMAN_BACK;
+                default:
+                    return Functions.NONE;
+            }
+        }// getFunction
 
         public static int getNumberOfFunctionalPatchesPerCategory(Category cat)
         {
