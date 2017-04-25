@@ -209,6 +209,8 @@ namespace Component
                     nodes.Add(node);
                 }
             }
+            List<Node> dependentNodes = this.bfs_regionGrowingNonFunctionanlNodes(nodes);
+            nodes.AddRange(dependentNodes);
             return nodes;
         }// getNodesByFunctionality
 
@@ -229,6 +231,20 @@ namespace Component
             }
             return nodes;
         }// getNodesByFunctionality
+
+        public List<Node> getMainNodes()
+        {
+            // sample functional parts (connected!)
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (Functionality.ContainsMainFunction(node._funcs))
+                {
+                    nodes.Add(node);
+                }
+            }
+            return nodes;
+        }// getMainNodes
 
         public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
         {
@@ -311,6 +327,70 @@ namespace Component
                         if (closest != null)
                         {
                             this.addAnEdge(cur, closest, c._pos3d);
+                        }
+                    }
+                }
+            }
+            // 4. adjust contacts for new nodes
+            this.resetUpdateStatus();
+            foreach (Node node in newNodes)
+            {
+                adjustContacts(node);
+            }
+            this.resetUpdateStatus();
+            _NEdges = _edges.Count;
+        }// replaceNodes
+
+        public void addSubGraph(List<Node> toConnect, List<Node> newNodes)
+        {
+
+            foreach (Node node in newNodes)
+            {
+                _nodes.Add(node);
+            }
+            resetNodeIndex();
+
+            // UPDATE edges
+            List<Node> out_nodes = newNodes;
+            List<Edge> out_edges = getOutgoingEdges(newNodes);
+            // 2. handle edges from newNodes
+            List<Edge> inner_edges_new = GetInnerEdges(newNodes);
+            // 2.1 remove all edges from newNodes
+            foreach (Node node in newNodes)
+            {
+                node._edges.Clear();
+                node._adjNodes.Clear();
+            }
+            // 2.2 add inner edges from newNodes
+            foreach (Edge e in inner_edges_new)
+            {
+                this.addAnEdge(e._start, e._end, e._contacts);
+            }
+            // 3. connect  
+            if (toConnect.Count > 0)
+            {
+                foreach (Edge e in out_edges)
+                {
+                    // find the nearest node depending on contacts
+                    Node cur = null;
+                    if (_nodes.Contains(e._start) && !_nodes.Contains(e._end))
+                    {
+                        cur = e._start;
+                    }
+                    else if (!_nodes.Contains(e._start) && _nodes.Contains(e._end))
+                    {
+                        cur = e._end;
+                    }
+                    else
+                    {
+                        throw new Exception();
+                    }
+                    foreach (Contact c in e._contacts)
+                    {
+                        Node closest = getNodeNearestToContact(toConnect, c);
+                        if (closest != null)
+                        {
+                            this.addAnEdge(cur, closest);
                         }
                     }
                 }
@@ -1563,8 +1643,8 @@ namespace Component
                         }
                         Mesh m2 = node._PART._MESH;
                         //if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
-                        //    || isConnected(m1, m2))
-                        if (isConnected(m1, m2, 0.05))
+                        //    || isConnected(m1, m2, 0.08))
+                        if (isConnected(m1, m2, 0.08))
                         {
                             queue.Add(node);
                         }
@@ -1844,19 +1924,23 @@ namespace Component
                     continue;
                 }
                 List<Node> propogationNodes = bfs_regionGrowingNonFunctionanlNodes(pg._NODES);
-                List<int> indices = new List<int>();
-                foreach (Node node in propogationNodes)
+                if (propogationNodes.Count > 0)
                 {
-                    indices.Add(node._INDEX);
+                    propogationNodes.AddRange(pg._NODES);
+                    List<int> indices = new List<int>();
+                    foreach (Node node in propogationNodes)
+                    {
+                        indices.Add(node._INDEX);
+                    }
+                    if (getIndex(comIndices, indices) != -1)
+                    {
+                        continue;
+                    }
+                    comIndices.Add(indices);
+                    PartGroup ppg = new PartGroup(propogationNodes, 0);
+                    //_partGroups.Add(ppg);
+                    _partGroups[i] = ppg; //! in this way, only use connected nodes
                 }
-                if (getIndex(comIndices, indices) != -1)
-                {
-                    continue;
-                }
-                comIndices.Add(indices);
-                PartGroup ppg = new PartGroup(propogationNodes, 0);
-                //_partGroups.Add(ppg);
-                _partGroups[i] = ppg; //! in this way, only use connected nodes
             }
         }// initializePartGroups
 
@@ -1869,7 +1953,6 @@ namespace Component
             {
                 queue.Enqueue(node);
                 visited[node._INDEX] = true;
-                res.Add(node);
             }
             
             while (queue.Count > 0)

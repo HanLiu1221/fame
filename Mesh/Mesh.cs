@@ -200,6 +200,7 @@ namespace Geometry
                 m.vertexFaceIndex[fIndex[j++]].Add(i);
                 m.vertexFaceIndex[fIndex[j++]].Add(i);
             }
+            m.singleHalfEdges = this.singleHalfEdges.Clone() as HalfEdge[];
             m.originVertextPos = this.vertexPos.Clone() as double[];
             m._maxCoord = new Vector3d(_maxCoord);
             m._minCoord = new Vector3d(_minCoord);

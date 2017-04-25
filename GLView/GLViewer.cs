@@ -663,6 +663,7 @@ namespace FameBase
                 }
             }
         }// saveOffFile
+
         private void saveModelFromPartsOff(string filename)
         {
             using (StreamWriter sw = new StreamWriter(filename))
@@ -1328,12 +1329,13 @@ namespace FameBase
             {
                 Directory.CreateDirectory(shape2poseDataFolder);
             }
+            model.composeMesh();
             string meshName = shape2poseDataFolder + model._model_name + ".mesh";
             this.saveModelMesh_StyleSimilarityUse(model, meshName);
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
             string samplingCmd = exePath + "StyleSimilarity.exe ";
-            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 0";
+            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 1";
 
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -1345,13 +1347,17 @@ namespace FameBase
 
             // reset sample points
             string ptsname = shape2poseDataFolder + model._model_name + ".pts";
-            model._SP = this.loadReSampledPoints(ptsname, model._MESH.FaceCount);
+            model._SP = this.loadSamplePoints(ptsname, model._MESH.FaceCount);
+
+            //this.recomputeSamplePointsFaceIndex(model._SP, model._MESH);
+
             string folder = model._path + model._model_name + "\\";
             string modelSPname = folder + model._model_name + ".sp";
             this.saveSamplePointsInfo(model._SP, modelSPname);
             string spColorname = folder + model._model_name + ".color";
             model._SP._blendColors = new Color[model._SP._points.Length];
             this.saveSamplePointsColor(model._SP._blendColors, spColorname);
+            this.currMeshClass = new MeshClass(model._MESH);
             foreach (Part p in model._PARTS)
             {
                 p.buildSamplePoints(p._FACEVERTEXINDEX, model._SP);
@@ -2046,7 +2052,6 @@ namespace FameBase
                 if (model._SP == null)
                 {
                     // used for calculating contact point
-                    model.composeMesh();
                     this.reSamplingForANewShape(model);
                 }
                 return model;
@@ -5496,7 +5501,7 @@ namespace FameBase
             bool userCenter = false;
             double storageScale = -1;
 
-            //useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+            useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
 
             if (this.containsFunc(updateNodes2, Functionality.Functions.STORAGE))
             {
@@ -5526,6 +5531,135 @@ namespace FameBase
 
             return updateNodes2;
         }// replaceNodes
+
+        private List<Node> replaceNodes(Graph g1, Graph g2, List<Vector3d> targets, List<Node> nodes2)
+        {
+            // replace nodes1 by nodes2 in g1
+            List<Node> updateNodes2 = cloneNodesAndRelations(nodes2);
+
+            List<Edge> edgesToConnect_2 = g2.getOutgoingEdges(nodes2);
+            List<Vector3d> sources = collectPoints(edgesToConnect_2);
+
+            Vector3d maxv_s = Vector3d.MinCoord;
+            Vector3d minv_s = Vector3d.MaxCoord;
+            Vector3d maxv_t = Vector3d.MinCoord;
+            Vector3d minv_t = Vector3d.MaxCoord;
+
+            Vector3d center1 = new Vector3d();
+
+            Vector3d center2 = new Vector3d();
+            foreach (Node node in nodes2)
+            {
+                center2 += node._PART._BOUNDINGBOX.CENTER;
+                maxv_s = Vector3d.Max(maxv_s, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_s = Vector3d.Min(minv_s, node._PART._BOUNDINGBOX.MinCoord);
+            }
+            center2 /= nodes2.Count;
+            center1.y = center2.y;
+
+            double[] scale1 = { 1.0, 1.0, 1.0 };
+
+            double[] scale2 = { 1.0, 1.0, 1.0 };
+            if (nodes2.Count > 0)
+            {
+                scale2[0] = (maxv_s.x - minv_s.x) / (maxv_t.x - minv_t.x);
+                scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
+                scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
+            }
+
+            int axis = this.hasCylinderNode(nodes2);
+            Vector3d boxScale = new Vector3d(scale1[0], scale1[1], scale1[2]);
+
+            // try to scale and translate the new part group to the target place
+            // and estimate the contact mapping from there
+            Matrix4d simS = Matrix4d.ScalingMatrix(boxScale);
+            Matrix4d simQ = Matrix4d.TranslationMatrix(center1) * simS * Matrix4d.TranslationMatrix(new Vector3d() - center2);
+            List<Vector3d> simPoints = new List<Vector3d>();
+            for (int i = 0; i < sources.Count; ++i)
+            {
+                Vector3d simV = (simQ * new Vector4d(sources[i], 1)).ToVector3D();
+                simPoints.Add(simV);
+            }
+
+            Matrix4d S, T, Q;
+            // sort corresponding points
+            int nps = targets.Count;
+            bool swapped = false;
+            List<Vector3d> left = targets;
+            List<Vector3d> right = simPoints;
+            if (sources.Count < nps)
+            {
+                nps = sources.Count;
+                swapped = true;
+                left = simPoints;
+                right = targets;
+            }
+            List<Vector3d> src = new List<Vector3d>();
+            List<Vector3d> trt = new List<Vector3d>();
+            bool[] visited = new bool[right.Count];
+
+            for (int i = 0; i < left.Count; ++i)
+            {
+                Vector3d leftv = left[i];
+                src.Add(swapped ? sources[i] : leftv); // left use sim points
+                int t = -1;
+                double mind = double.MaxValue;
+                for (int j = 0; j < right.Count; ++j)
+                {
+                    if (visited[j]) continue;
+                    double d = (leftv - right[j]).Length();
+                    if (d < mind)
+                    {
+                        mind = d;
+                        t = j;
+                    }
+                }
+                trt.Add(swapped ? right[t] : sources[t]); // right use sim points
+                visited[t] = true;
+            }
+
+            if (swapped)
+            {
+                targets = trt;
+                sources = src;
+            }
+            else
+            {
+                targets = src;
+                sources = trt;
+            }
+
+            bool useScale = targets.Count == 0 || sources.Count == 0 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+            useScale = updateNodes2.Count == 1 && !Functionality.ContainsMainFunction(updateNodes2[0]._funcs);
+
+            if (targets.Count < 1)
+            {
+                targets.Add(center1);
+                sources.Add(center2);
+            }
+
+            bool userCenter = false;
+            double storageScale = -1;
+
+            if (this.containsFunc(updateNodes2, Functionality.Functions.STORAGE))
+            {
+                useScale = true;
+                boxScale[1] = 1.0;
+            }
+
+            if (nodes2.Count > 0)
+            {
+                getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, 
+                    userCenter, storageScale, false);
+                this.deformNodesAndEdges(updateNodes2, Q);
+                this.restoreCyclinderNodes(updateNodes2, S);
+            }
+
+            g1.resetUpdateStatus();
+
+            return updateNodes2;
+        }// replaceNodes
+
 
         private bool containsFunc(List<Node> nodes, Functionality.Functions f)
         {
@@ -10013,6 +10147,26 @@ namespace FameBase
                         if (this.currMeshClass != null)
                         {
                             this.currMeshClass.selectMouseUp();
+                            // test
+                            List<int> ids = this.currMeshClass.getSelectedFaces();
+                            if (_currModel != null && _currModel._SP != null)
+                            {
+                                _currModel.pointsTest = new List<Vector3d>();
+
+                                foreach (int fid in ids)
+                                {
+                                    if (!_currModel._SP._fidxMapSPid.ContainsKey(fid))
+                                    {
+                                        // no sample point on this face
+                                        continue;
+                                    }
+                                    List<int> spidxs = _currModel._SP._fidxMapSPid[fid];
+                                    foreach (int spid in spidxs)
+                                    {
+                                        _currModel.pointsTest.Add(_currModel._SP._points[spid]);
+                                    }
+                                }
+                            }
                         }
                         //this.Refresh();
                         break;
@@ -10290,7 +10444,7 @@ namespace FameBase
                     {
                         continue;
                     }
-                    List<Model> res = this.crossTwoModels(m1, m2, idx);
+                    List<Model> res = this.tryCrossOverTwoModelsWithFunctionalConstraints(m1, m2, idx);
                     candidates.AddRange(res);
                 }
             }
@@ -10302,7 +10456,7 @@ namespace FameBase
             }
         }// runByUserSelection
 
-        private List<Model> crossTwoModels(Model m1, Model m2, int[] idx)
+        private List<Model> tryCrossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, int[] idx)
         {
             List<Model> res = new List<Model>();
             // 
@@ -10324,72 +10478,163 @@ namespace FameBase
                         {
                             continue;
                         }
-                        this.setSelectedNodes(m1, pgs_1[i]._NODES);
-                        this.setSelectedNodes(m2, pgs_2[j]._NODES);
-                        Model newModel = m1.Clone() as Model;
-                        // m1 starts name
-                        string name = m1._model_name;
-                        int slashId = name.IndexOf('-');
-                        if (slashId == -1)
-                        {
-                            slashId = name.Length;
-                        }
-                        string originalModelName = name.Substring(0, slashId);
-                        newModel._path = crossoverFolder + "gen_1\\";
-                        if (!Directory.Exists(newModel._path))
-                        {
-                            Directory.CreateDirectory(newModel._path);
-                        }
-                        List<Node> nodes1 = new List<Node>();
-                        List<Node> nodes2 = m2._GRAPH.selectedNodes;
-                        List<Node> updatedNodes2 = new List<Node>();
-                        List<Model> parents = new List<Model>(); // to set parent names
-                        parents.Add(m1);
-                        parents.Add(m2);
-                        newModel.setParentNames(parents);
-                        foreach (Node node in m1._GRAPH.selectedNodes)
-                        {
-                            nodes1.Add(newModel._GRAPH._NODES[node._INDEX]);
-                        }
-                        newModel._model_name = originalModelName + "-gen_1" + "_num_" + idx[0].ToString();
+                        Model m1_cloned = this.crossOverTwoModelsWithFunctionalConstraints(m1, m2, pgs_1[i]._NODES, pgs_2[j]._NODES, idx[0]);
                         ++idx[0];
-                        List<Node> reduced = reduceRepeatedNodes(new List<Node>(nodes1),new List<Node>( nodes2));
-                        this.setSelectedNodes(m2, reduced);
-                        // switch
-                        updatedNodes2 = this.replaceNodes(newModel._GRAPH, m2._GRAPH, nodes1, reduced);
-                        newModel.replaceNodes(nodes1, updatedNodes2);
-                        // topology
-                        newModel._GRAPH.replaceNodes(nodes1, updatedNodes2);
-                        newModel.nNewNodes = updatedNodes2.Count;
-                        // screenshot
-                        newModel._GRAPH.unify();
-                        newModel.composeMesh();
-                        //this.setCurrentModel(newModel, -1);
-
-                        if (!newModel._GRAPH.isValid())
+                        if (m1_cloned != null)
                         {
-                            newModel._model_name += "_invalid";
-                            Program.GetFormMain().updateStats();
-                            //this.captureScreen(imageFolder_c + "invald\\" + newModel._model_name + ".png");
-                            saveAPartBasedModel(newModel, newModel._path + newModel._model_name + ".pam", false);
-                            continue;
+                            res.Add(m1_cloned);
                         }
-                        this.setCurrentModel(newModel, -1);
-                        Program.GetFormMain().updateStats();
-                        // valid graph
-                        res.Add(newModel);
-                        this.captureScreen(imageFolder_c + newModel._model_name + ".png");
-                        saveAPartBasedModel(newModel, newModel._path + newModel._model_name + ".pam", false);
-                        newModel._index = _modelIndex;
-                        ++_modelIndex;
                     }
                 }
                 return res;
             }
-            // need to add functions
+            // 1. add funs
+            Model mCloned = m1.Clone() as Model;
+            mCloned._path = crossoverFolder + "gen_1\\";
+            if (!Directory.Exists(mCloned._path))
+            {
+                Directory.CreateDirectory(mCloned._path);
+            }
+            mCloned._model_name = m1._model_name + "-gen_1" + "_num_" + idx[0].ToString();
+            List<Node> mainNodes = m1._GRAPH.getMainNodes();
+            foreach (Functionality.Functions f in lackedFuncs)
+            {
+                PartGroup[] pgs = this.findAPairPartGroupsWithFunctionalConstraints(m1._GRAPH, m2._GRAPH, f);
+                if (pgs == null)
+                {
+                    break;
+                }
+                if (f == Functionality.Functions.ROLLING)
+                {
+                    List<Node> groundNodes = mCloned._GRAPH.getNodesByFunctionality(Functionality.Functions.GROUND_TOUCHING);
+                    List<Vector3d> targets = new List<Vector3d>();
+                    foreach (Node gn in groundNodes)
+                    {
+                        Vector3d c = gn._PART._BOUNDINGBOX.CENTER;
+                        targets.Add(new Vector3d(c.x, 0, c.z));
+                    }
+                    List<Node> toReplace = pgs[1]._NODES;
+                    List<Node> updateNodes2 = this.replaceNodes(m1._GRAPH, m2._GRAPH, targets, toReplace); 
+                    mCloned.replaceNodes(new List<Node>(), updateNodes2);
+                    // topology
+                    mCloned._GRAPH.addSubGraph(groundNodes, updateNodes2);
+                    mCloned.nNewNodes = updateNodes2.Count;
+                    // build new edges
+                    List<Edge> edgesToConnect_2 = m2._GRAPH.getOutgoingEdges(toReplace);
+                    foreach (Edge e in edgesToConnect_2)
+                    {
+                        Node outNode = toReplace.Contains(e._start) ? e._start : e._end;
+
+                    }
+                    if (this.processAnOffspringModel(mCloned))
+                    {
+                        res.Add(mCloned);
+                    }
+                }
+            }
 
             return res;
-        }// crossTwoModels
+        }// tryCrossOverTwoModelsWithFunctionalConstraints
+
+        private Model crossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, List<Node> nodes1, List<Node> nodes2, int idx)
+        {
+            this.setSelectedNodes(m1, nodes1);
+            this.setSelectedNodes(m2, nodes2);
+            Model newModel = m1.Clone() as Model;
+            // m1 starts name
+            string name = m1._model_name;
+            int slashId = name.IndexOf('-');
+            if (slashId == -1)
+            {
+                slashId = name.Length;
+            }
+            string originalModelName = name.Substring(0, slashId);
+            newModel._path = crossoverFolder + "gen_1\\";
+            if (!Directory.Exists(newModel._path))
+            {
+                Directory.CreateDirectory(newModel._path);
+            }
+            List<Node> updateNodes1 = new List<Node>();
+            List<Node> updatedNodes2 = new List<Node>();
+            List<Model> parents = new List<Model>(); // to set parent names
+            parents.Add(m1);
+            parents.Add(m2);
+            newModel.setParentNames(parents);
+            foreach (Node node in nodes1)
+            {
+                updateNodes1.Add(newModel._GRAPH._NODES[node._INDEX]);
+            }
+            newModel._model_name = originalModelName + "-gen_1" + "_num_" + idx.ToString();
+            List<Node> reduced = reduceRepeatedNodes(new List<Node>(updateNodes1), new List<Node>(nodes2));
+            this.setSelectedNodes(m2, reduced);
+            // switch
+            updatedNodes2 = this.replaceNodes(newModel._GRAPH, m2._GRAPH, updateNodes1, reduced);
+            newModel.replaceNodes(updateNodes1, updatedNodes2);
+            // topology
+            newModel._GRAPH.replaceNodes(updateNodes1, updatedNodes2);
+            newModel.nNewNodes = updatedNodes2.Count;
+
+            if (this.processAnOffspringModel(newModel))
+            {
+                return newModel;
+            }
+            else
+            {
+                return null;
+            }
+        }// crossOverTwoModelsWithFunctionalConstraints
+
+        private bool processAnOffspringModel(Model m)
+        {
+            // screenshot
+            m._GRAPH.unify();
+            m.composeMesh();
+            this.setCurrentModel(m, -1);
+
+            if (!m._GRAPH.isValid())
+            {
+                m._model_name += "_invalid";
+                Program.GetFormMain().updateStats();
+                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                return false;
+            }
+            this.setCurrentModel(m, -1);
+            Program.GetFormMain().updateStats();
+            // valid graph
+            this.captureScreen(imageFolder_c + m._model_name + ".png");
+            saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+            m._index = _modelIndex;
+            ++_modelIndex;
+            return true;
+        }// processAnOffspringModel
+
+        private PartGroup[] findAPairPartGroupsWithFunctionalConstraints(Graph g1, Graph g2, Functionality.Functions f)
+        {
+            PartGroup[] res = null;
+            foreach (PartGroup pg1 in g1._partGroups)
+            {
+                List<Functionality.Functions> funcs1 = Functionality.getNodesFunctionalities(pg1._NODES);
+                foreach (PartGroup pg2 in g2._partGroups)
+                {
+                    List<Functionality.Functions> funcs2 = Functionality.getNodesFunctionalities(pg2._NODES);
+                    if (!Functionality.hasCompatibleFunctions(funcs1, funcs2))
+                    {
+                        continue;
+                    }
+                    var sub = funcs2.Except(funcs1);
+                    List<Functionality.Functions> subfucs = sub.ToList();
+                    if (subfucs.Contains(f))
+                    {
+                        res = new PartGroup[2];
+                        res[0] = pg1;
+                        res[1] = pg2;
+                        return res;
+                    }
+                }
+            }
+            return null;
+        }// findAPairPartGroupsWithFunctionalConstraints
 
         public void deformFunctionPart(double s, int axis, bool duplicate)
         {
@@ -11952,55 +12197,47 @@ namespace FameBase
             }
         }// loadSamplePoints
 
-        private SamplePoints loadReSampledPoints(string filename, int totalNFaces)
+        private void recomputeSamplePointsFaceIndex(SamplePoints sp, Mesh mesh)
         {
-            if (!File.Exists(filename))
+            if (sp == null || sp._points == null)
             {
-                return null;
+                return;
             }
-            List<int> faceIndex = new List<int>();
-            using (StreamReader sr = new StreamReader(filename))
+            for (int i = 0; i < sp._points.Length; ++i)
             {
-                char[] separators = { ' ', '\\', '\t' };
-                List<Vector3d> points = new List<Vector3d>();
-                List<Vector3d> normals = new List<Vector3d>();
-                int nline = 0;
-                while (sr.Peek() > -1)
+                int newf = -1;
+                int newf_bk = -1;
+                double mind = double.MaxValue;
+                double mind_bk = double.MaxValue;
+                for (int f = 0; f < mesh.FaceCount; ++f)
                 {
-                    ++nline;
-                    string s = sr.ReadLine();
-                    string[] strs = s.Split(separators);
-                    if (strs.Length < 7)
+                    double d1 = Common.PointDistToPlane(sp._points[i], mesh.getFaceCenter(f), mesh.getFaceNormal(f));
+                    Vector3d minCoord = Vector3d.MaxCoord;
+                    Vector3d maxCoord = Vector3d.MinCoord;
+                    for (int j = 0; j < 3; ++j)
                     {
-                        MessageBox.Show("Wrong format at line " + nline.ToString());
-                        return null;
+                        int vid = mesh.FaceVertexIndex[f * 3 + j];
+                        Vector3d vj = mesh.getVertexPos(vid);
+                        minCoord = Vector3d.Min(minCoord, vj);
+                        maxCoord = Vector3d.Max(maxCoord, vj);
                     }
-                    // pos
-                    points.Add(new Vector3d(double.Parse(strs[0]),
-                        double.Parse(strs[1]),
-                        double.Parse(strs[2])));
-                    // normal
-                    normals.Add(new Vector3d(double.Parse(strs[3]),
-                        double.Parse(strs[4]),
-                        double.Parse(strs[5])));
-                    int fidx = int.Parse(strs[6]) - 1;
-                    faceIndex.Add(fidx);
+                    double d = Common.PointInPolygon(sp._points[i], minCoord, maxCoord) ? d1 : double.MaxValue;
+                    if (d < mind)
+                    {
+                        mind = d;
+                        newf = f;
+                    }
+                    if (d1 < mind_bk)
+                    {
+                        mind_bk = d1;
+                        newf_bk = f;
+                    }
                 }
-                // colors
-                string colorName = filename.Substring(0, filename.LastIndexOf("."));
-                colorName += ".color";
-                Color[] colors = loadSamplePointsColors(colorName);
-                SamplePoints sp = new SamplePoints(points.ToArray(), normals.ToArray(),
-                    faceIndex.ToArray(), colors, totalNFaces);
-                // try to load point weights
-                string name = filename.Substring(filename.LastIndexOf('\\'));
-                name = name.Substring(0, name.LastIndexOf('.'));
-                string folder = filename.Substring(0, filename.LastIndexOf('\\') + 1) + "points_weights_per_cat" + name + "\\";
-                List<PatchWeightPerCategory> pws = this.loadSamplePointWeightsPerCategory(folder);
-                sp._weightsPerCat = pws;
-                return sp;
+                sp._faceIdx[i] = newf == -1 ? newf_bk : newf;
+                sp.buildFaceSamplePointsMap(mesh.FaceCount);
             }
-        }// loadReSampledPoints
+        }
+
 
         private double[] loadPatchWeight(string filename, out double minw, out double maxw)
         {
@@ -12380,7 +12617,10 @@ namespace FameBase
                 currMeshClass.drawSamplePoints();
                 currMeshClass.drawSelectedVertex();
                 currMeshClass.drawSelectedEdges();
-                currMeshClass.drawSelectedFaces();
+                if (_currModel != null && _currModel.pointsTest.Count == 0)
+                {
+                    currMeshClass.drawSelectedFaces();
+                }
             }
         }// drawCurrentMesh
 
@@ -12408,6 +12648,7 @@ namespace FameBase
                 ++i;
             }
         }
+
         private void drawModel()
         {
             if (_currModel == null)
@@ -12419,17 +12660,15 @@ namespace FameBase
             {
                 GLDrawer.drawMeshFace(_currModel._MESH, GLDrawer.MeshColor, false);
             }
+            //if (_currModel.pointsTest.Count > 0)
+            //{
+            //    GLDrawer.drawPoints(_currModel.pointsTest.ToArray(), Color.Purple, 6.0f);
+            //}
+            //return;
             // draw parts
             if (_currModel._PARTS != null)
             {
                 drawParts(_currModel._PARTS);
-            }
-            if (_currModel.pointsTest != null)
-            {
-                foreach (List<Vector3d> pnts in _currModel.pointsTest)
-                {
-                    GLDrawer.drawPoints(pnts.ToArray(), Color.Purple, 6.0f);
-                }
             }
             if (this.isDrawModelSamplePoints && _currModel._SP != null && _currModel._SP._points != null)
             {

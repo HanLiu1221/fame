@@ -112,6 +112,13 @@ namespace Geometry
                 pos.z < poly.MaxCoord.z && pos.z > poly.MinCoord.z;
         }// PointInPolygon
 
+        public static bool PointInPolygon(Vector3d pos, Vector3d minCoord, Vector3d maxCoord)
+        {
+            return pos.x < maxCoord.x && pos.x > minCoord.x &&
+                pos.y < maxCoord.y && pos.y > minCoord.y &&
+                pos.z < maxCoord.z && pos.z > minCoord.z;
+        }// PointInPolygon
+
         public static void switchXYZ_mesh(Mesh mesh, int mode)
         {
             if (mesh == null)

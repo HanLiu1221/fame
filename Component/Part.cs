@@ -105,6 +105,7 @@ namespace Component
             List<Vector3d> normals = new List<Vector3d>();
             List<int> inPartFaceIndex = new List<int>();
             List<Color> colors = new List<Color>();
+
             for (int i = 0; i < fIndex.Length; ++i)
             {
                 int fid = fIndex[i]; // the face index in the model mesh
@@ -118,7 +119,8 @@ namespace Component
                     samplePoints.Add(sp._points[spid]);
                     normals.Add(sp._normals[spid]);
                     inPartFaceIndex.Add(i); // map to the new face index of the part mesh
-                    colors.Add(sp._blendColors[spid]);
+                    //colors.Add(sp._blendColors[spid]);
+                    colors.Add(_COLOR);
                 }
             }
             _partSP = new SamplePoints(samplePoints.ToArray(), normals.ToArray(), inPartFaceIndex.ToArray(), 
@@ -674,7 +676,7 @@ namespace Component
         public Functionality.Category _CAT = Functionality.Category.None;
         public bool isDuplicated = false;
         // test 
-        public List<List<Vector3d>> pointsTest = new List<List<Vector3d>>();
+        public List<Vector3d> pointsTest = new List<Vector3d>();
 
         public Model()
         {
@@ -2270,7 +2272,7 @@ namespace Component
             buildFaceSamplePointsMap(totalNFaces);
         }
 
-        private void buildFaceSamplePointsMap(int totalFaces)
+        public void buildFaceSamplePointsMap(int totalFaces)
         {
             // a face can have multiple sample points, or no sample point
             _fidxMapSPid = new Dictionary<int,List<int>>();

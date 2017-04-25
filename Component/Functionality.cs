@@ -134,7 +134,7 @@ namespace Component
             //{
             //    return res;
             //}
-            //// 2. if #1. stands, check if the functionality of the model is preserved
+            //// 2. if #1. stands, check if the functionality of the model  is preserved
             //if (comp == 0 || comp == 2)
             //{
             //    if (IsUpdatedModelFunctional(m1, pg1, pg2))
