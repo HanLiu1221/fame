@@ -38,7 +38,7 @@ namespace Component
         public static int _CONVEXHULL_FEAT_DIM = 2;
         public static int _POINT_FEATURE_DIM = 18;
 
-        public enum Functions { PLACEMENT, STORAGE, HUMAN_HIP, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, ROLLING, NONE };
+        public enum Functions { PLACEMENT, STORAGE, SITTING, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, ROLLING, NONE };
 
         public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Robot, Shelf, 
             Stand, Stroller, Table, TVBench, Vase, None };
@@ -75,13 +75,13 @@ namespace Component
         public static bool IsPlacementFunction(Functions f)
         {
             return f == Functions.PLACEMENT || f == Functions.STORAGE
-                || f == Functions.HUMAN_HIP;
+                || f == Functions.SITTING;
         }
 
         public static bool IsMainFunction(Functions f)
         {
             return f == Functions.PLACEMENT || f == Functions.STORAGE 
-                || f == Functions.HUMAN_HIP || f == Functions.HANG;
+                || f == Functions.SITTING || f == Functions.HANG;
         }
 
         public static bool IsSecondaryFunction(Functions f)
@@ -385,11 +385,35 @@ namespace Component
                 case "groundtouching":
                     return Functions.GROUND_TOUCHING;
                 case "sitting":
-                    return Functions.HUMAN_HIP;
+                case "human_hip":
+                    return Functions.SITTING;
                 case "backsupport":
                     return Functions.HUMAN_BACK;
                 default:
                     return Functions.NONE;
+            }
+        }// getFunction
+
+        public static string getFunctionString(Functions f)
+        {
+            switch (f)
+            {
+                case Functions.PLACEMENT:
+                    return "placement";
+                case Functions.STORAGE:
+                    return "storage";
+                case Functions.SUPPORT:
+                    return "support";
+                case Functions.ROLLING:
+                    return "rolling";
+                case Functions.GROUND_TOUCHING:
+                    return "groundtouching";
+                case Functions.SITTING:
+                    return "sitting";
+                case Functions.HUMAN_BACK:
+                    return "backsupport";
+                default:
+                    return "none";
             }
         }// getFunction
 
@@ -455,7 +479,7 @@ namespace Component
             List<Functions> funcs = new List<Functions>();
             if (cat == Category.Chair)
             {
-                funcs.Add(Functions.HUMAN_HIP);
+                funcs.Add(Functions.SITTING);
                 funcs.Add(Functions.GROUND_TOUCHING);
                 funcs.Add(Functions.HUMAN_BACK);
             }

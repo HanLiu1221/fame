@@ -939,7 +939,7 @@ namespace FameBase
             Gl.glBegin(Gl.GL_POINTS);
             for (int i = 0; i < points.Length; ++i)
             {
-                if (colors != null)
+                if (colors != null && colors.Length > 0)
                 {
                     Color c = colors[i];
                     Gl.glColor3ub(c.R, c.G, c.B);

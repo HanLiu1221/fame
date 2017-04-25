@@ -343,7 +343,7 @@ namespace Component
                 }
                 // remove overlapping contacts
                 Vector3d cnt;
-                double min_d = this.getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out cnt);
+                double min_d = this.getDistBetweenParts(n1._PART, n2._PART, out cnt);
                 for (int i = 0; i < e._contacts.Count - 1; ++i)
                 {
                     for (int j = i + 1; j < e._contacts.Count; ++j)
@@ -541,7 +541,7 @@ namespace Component
                     Part jp = _nodes[j]._PART;
                     // measure the relation between ip and jp
                     Vector3d contact;
-                    double mind = getDistBetweenMeshes(ip._MESH, jp._MESH, out contact);
+                    double mind = getDistBetweenParts(ip, jp, out contact);
                     if (mind < Common._thresh)
                     {
                         Edge e = new Edge(_nodes[i], _nodes[j], contact);
@@ -555,6 +555,32 @@ namespace Component
         {
             _nodes.Add(node);
         }
+
+        private double getDistBetweenParts(Part p1, Part p2, out Vector3d contact)
+        {
+            if (p1._partSP == null || p2._partSP == null ||
+                p1._partSP._points == null || p2._partSP._points == null)
+            {
+                return getDistBetweenMeshes(p1._MESH, p2._MESH, out contact);
+            }
+            contact = new Vector3d();
+            double mind = double.MaxValue;
+            Vector3d[] v1 = p1._partSP._points;
+            Vector3d[] v2 = p2._partSP._points;
+            for (int i = 0; i < v1.Length; ++i)
+            {
+                for (int j = 0; j < v2.Length; ++j)
+                {
+                    double d = (v1[i] - v2[j]).Length();
+                    if (d < mind)
+                    {
+                        mind = d;
+                        contact = (v1[i] + v2[j]) / 2;
+                    }
+                }
+            }
+            return mind;
+        }// getDistBetweenParts
 
         private double getDistBetweenMeshes(Mesh m1, Mesh m2, out Vector3d contact)
         {
@@ -624,7 +650,7 @@ namespace Component
             if (e == null)
             {
                 Vector3d contact;
-                double mind = getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out contact);
+                double mind = getDistBetweenParts(n1._PART, n2._PART, out contact);
                 e = new Edge(n1, n2, contact);
                 addEdge(e);
             }
@@ -796,7 +822,7 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 if (node._edges.Count > nMaxConn)
-                //&& (node._funcs.Contains(Functionality.Functions.PLACEMENT) || node._funcs.Contains(Functionality.Functions.HUMAN_HIP)))
+                //&& (node._funcs.Contains(Functionality.Functions.PLACEMENT) || node._funcs.Contains(Functionality.Functions.SITTING)))
                 {
                     nMaxConn = node._edges.Count;
                     key = node;
@@ -1538,7 +1564,7 @@ namespace Component
                         Mesh m2 = node._PART._MESH;
                         //if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
                         //    || isConnected(m1, m2))
-                        if (isConnected(m1, m2, 0.1))
+                        if (isConnected(m1, m2, 0.05))
                         {
                             queue.Add(node);
                         }
@@ -2010,6 +2036,38 @@ namespace Component
             }
             return -1;
         }// getIndex
+
+        public List<Functionality.Functions> collectMainFunctions()
+        {
+            List<Functionality.Functions> res = new List<Functionality.Functions>();
+            foreach (Node node in _nodes)
+            {
+                foreach (Functionality.Functions f in node._funcs)
+                {
+                    if ((Functionality.IsMainFunction(f) || f == Functionality.Functions.ROLLING) && !res.Contains(f))
+                    {
+                        res.Add(f);
+                    }
+                }
+            }
+            return res;
+        }// collectMainFunctions
+
+        public List<Functionality.Functions> collectFunctions()
+        {
+            List<Functionality.Functions> res = new List<Functionality.Functions>();
+            foreach (Node node in _nodes)
+            {
+                foreach (Functionality.Functions f in node._funcs)
+                {
+                    if (!res.Contains(f))
+                    {
+                        res.Add(f);
+                    }
+                }
+            }
+            return res;
+        }// collectFunctions
        
         public List<Node> _NODES
         {

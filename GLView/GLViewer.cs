@@ -1333,7 +1333,7 @@ namespace FameBase
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
             string samplingCmd = exePath + "StyleSimilarity.exe ";
-            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 1";
+            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 0";
 
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -2043,11 +2043,10 @@ namespace FameBase
                 model._original_names = original_names;
                 model._CAT = Functionality.getCategory(cat_name);
                 model._SP = sp;
-                model.composeMesh();
-                 if (model._SP == null)
+                if (model._SP == null)
                 {
                     // used for calculating contact point
-                    
+                    model.composeMesh();
                     this.reSamplingForANewShape(model);
                 }
                 return model;
@@ -2117,6 +2116,7 @@ namespace FameBase
                 Program.GetFormMain().outputSystemStatus(_currModel._model_name + " loaded.");
                 String s = _currModel.graphValidityCheck();
                 Program.GetFormMain().outputSystemStatus(s);
+                this.getModelMainFuncs(_currModel);
             }
             this.Refresh();
         }// loadAPartBasedModel
@@ -3853,8 +3853,24 @@ namespace FameBase
             {
                 Program.GetFormMain().writePostAnalysisInfo(getFunctionalityValuesString(m, false));
             }
+            this.getModelMainFuncs(_currModel);
             this.cal2D();
             this.Refresh();
+        }
+
+        private void getModelMainFuncs(Model m)
+        {
+            if (m == null || m._GRAPH == null)
+            {
+                return;
+            }
+            Program.GetFormMain().clearCheckBoxes();
+            _currUserFunctions = m._GRAPH.collectMainFunctions();
+            foreach (Functionality.Functions f in _currUserFunctions)
+            {
+                Program.GetFormMain().setCheckBox(Functionality.getFunctionString(f));
+            }
+            _prevUserFunctions = new List<Functionality.Functions>(_currUserFunctions);
         }
 
         public bool userSelectModel(Model m)
@@ -4250,10 +4266,12 @@ namespace FameBase
         {
             switch (i)
             {
+                case 0:
+                    return Functionality.Functions.GROUND_TOUCHING;
                 case 1:
                     return Functionality.Functions.HUMAN_BACK;
                 case 2:
-                    return Functionality.Functions.HUMAN_HIP;
+                    return Functionality.Functions.SITTING;
                 case 3:
                     return Functionality.Functions.HAND_HOLD;
                 case 4:
@@ -4264,20 +4282,21 @@ namespace FameBase
                     return Functionality.Functions.HANG;
                 case 7:
                     return Functionality.Functions.STORAGE;
-                case 0:
+                case 8:
+                    return Functionality.Functions.ROLLING;
                 default:
-                    return Functionality.Functions.GROUND_TOUCHING;
+                    return Functionality.Functions.NONE;
             }
         }// getFunctionalityFromIndex
 
         private Functionality.Functions getFunctionalityFromString(string s)
         {
-            switch (s)
+            switch (s.ToUpper())
             {
                 case "HUMAN_BACK":
                     return Functionality.Functions.HUMAN_BACK;
-                case "HUMAN_HIP":
-                    return Functionality.Functions.HUMAN_HIP;
+                case "SITTING":
+                    return Functionality.Functions.SITTING;
                 case "HAND_HOLD":
                     return Functionality.Functions.HAND_HOLD;
                 case "PLACEMENT":
@@ -4288,9 +4307,12 @@ namespace FameBase
                     return Functionality.Functions.STORAGE;
                 case "HANG":
                     return Functionality.Functions.HANG;
+                case "ROLLING":
+                    return Functionality.Functions.ROLLING;
                 case "GROUND_TOUCHING":
-                default:
                     return Functionality.Functions.GROUND_TOUCHING;
+                default:
+                    return Functionality.Functions.NONE;
             }
         }// getFunctionalityFromIndex
 
@@ -6358,7 +6380,7 @@ namespace FameBase
 
         private void setSelectedNodes(Model m, List<Node> nodes)
         {
-            m._GRAPH.selectedNodes = new List<Node>();
+            m._GRAPH.selectedNodes.Clear();
             foreach (Node node in nodes)
             {
                 if (!m._GRAPH._NODES.Contains(node))
@@ -7011,7 +7033,7 @@ namespace FameBase
             }
             sourcePos /= ne;
             Vector3d targetPos;
-            if (addf == Functionality.Functions.PLACEMENT || addf == Functionality.Functions.HUMAN_HIP)
+            if (addf == Functionality.Functions.PLACEMENT || addf == Functionality.Functions.SITTING)
             {
                 targetPos = new Vector3d(
                 attach._PART._BOUNDINGBOX.CENTER.x,
@@ -10206,19 +10228,20 @@ namespace FameBase
         }// onPaint
 
         //########## Functions ##########//
-        private List<Functionality.Functions> _userPresentedFunctions = new List<Functionality.Functions>();
+        private List<Functionality.Functions> _prevUserFunctions = new List<Functionality.Functions>();
+        private List<Functionality.Functions> _currUserFunctions = new List<Functionality.Functions>();
         public void editFunctions(string fs, bool selected)
         {
             Functionality.Functions fs_func = Functionality.getFunction(fs);
-            if (!selected && _userPresentedFunctions.Contains(fs_func))
+            if (!selected && _currUserFunctions.Contains(fs_func))
             {
                 this.removeAFunction(fs_func);
-                _userPresentedFunctions.Remove(fs_func);
+                _currUserFunctions.Remove(fs_func);
             }
-            if (selected && !_userPresentedFunctions.Contains(fs_func))
+            if (selected && !_currUserFunctions.Contains(fs_func))
             {
                 this.addAFunction(fs_func);
-                _userPresentedFunctions.Add(fs_func);
+                _currUserFunctions.Add(fs_func);
             }
         }// editFunctions
 
@@ -10233,8 +10256,140 @@ namespace FameBase
         public void runByUserSelection()
         {
             // evolve the current model
-
+            if (_currModel == null)
+            {
+                return;
+            }
+            if (!Directory.Exists(userFolder))
+            {
+                this.registerANewUser();
+            }
+            this.decideWhichToDraw(true, false, false, true, false, false);
+            List<Model> targetMoels = new List<Model>(_userSelectedModels);
+            List<Model> otherModels = new List<Model>();
+            foreach (Model m in _ancesterModels)
+            {
+                if (!targetMoels.Contains(m))
+                {
+                    otherModels.Add(m);
+                }
+            }
+            _prevUserFunctions = new List<Functionality.Functions>(_currUserFunctions);
+            // target functions
+            if (targetMoels.Count == 0)
+            {
+                targetMoels = otherModels;
+            }
+            List<Model> candidates = new List<Model>();
+            foreach (Model m1 in targetMoels)
+            {
+                int[] idx = new int[1];
+                foreach (Model m2 in otherModels)
+                {
+                    if (m1 == m2)
+                    {
+                        continue;
+                    }
+                    List<Model> res = this.crossTwoModels(m1, m2, idx);
+                    candidates.AddRange(res);
+                }
+            }
+            _currGenModelViewers = new List<ModelViewer>();
+            for (int i = 0; i < candidates.Count; ++i)
+            {
+                Model imodel = candidates[i];
+                _currGenModelViewers.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
+            }
         }// runByUserSelection
+
+        private List<Model> crossTwoModels(Model m1, Model m2, int[] idx)
+        {
+            List<Model> res = new List<Model>();
+            // 
+            var sub = _currUserFunctions.Except(m1._GRAPH.collectFunctions());
+            List<Functionality.Functions> lackedFuncs = sub.ToList();
+            List<Functionality.Functions> oriFuncs = m1._GRAPH.collectMainFunctions();
+            if (lackedFuncs.Count == 0)
+            {
+                // as long as the original functions are preserved
+                List<PartGroup> pgs_1 = m1._GRAPH._partGroups;
+                List<PartGroup> pgs_2= m2._GRAPH._partGroups;
+                for (int i = 0; i < pgs_1.Count; ++i)
+                {
+                    List<Functionality.Functions> funcs1 = Functionality.getNodesFunctionalities(pgs_1[i]._NODES);
+                    for (int j = 0; j < pgs_2.Count; ++j)
+                    {
+                        List<Functionality.Functions> funcs2 = Functionality.getNodesFunctionalities(pgs_2[j]._NODES);
+                        if (!Functionality.hasCompatibleFunctions(funcs1, funcs2))
+                        {
+                            continue;
+                        }
+                        this.setSelectedNodes(m1, pgs_1[i]._NODES);
+                        this.setSelectedNodes(m2, pgs_2[j]._NODES);
+                        Model newModel = m1.Clone() as Model;
+                        // m1 starts name
+                        string name = m1._model_name;
+                        int slashId = name.IndexOf('-');
+                        if (slashId == -1)
+                        {
+                            slashId = name.Length;
+                        }
+                        string originalModelName = name.Substring(0, slashId);
+                        newModel._path = crossoverFolder + "gen_1\\";
+                        if (!Directory.Exists(newModel._path))
+                        {
+                            Directory.CreateDirectory(newModel._path);
+                        }
+                        List<Node> nodes1 = new List<Node>();
+                        List<Node> nodes2 = m2._GRAPH.selectedNodes;
+                        List<Node> updatedNodes2 = new List<Node>();
+                        List<Model> parents = new List<Model>(); // to set parent names
+                        parents.Add(m1);
+                        parents.Add(m2);
+                        newModel.setParentNames(parents);
+                        foreach (Node node in m1._GRAPH.selectedNodes)
+                        {
+                            nodes1.Add(newModel._GRAPH._NODES[node._INDEX]);
+                        }
+                        newModel._model_name = originalModelName + "-gen_1" + "_num_" + idx[0].ToString();
+                        ++idx[0];
+                        List<Node> reduced = reduceRepeatedNodes(new List<Node>(nodes1),new List<Node>( nodes2));
+                        this.setSelectedNodes(m2, reduced);
+                        // switch
+                        updatedNodes2 = this.replaceNodes(newModel._GRAPH, m2._GRAPH, nodes1, reduced);
+                        newModel.replaceNodes(nodes1, updatedNodes2);
+                        // topology
+                        newModel._GRAPH.replaceNodes(nodes1, updatedNodes2);
+                        newModel.nNewNodes = updatedNodes2.Count;
+                        // screenshot
+                        newModel._GRAPH.unify();
+                        newModel.composeMesh();
+                        //this.setCurrentModel(newModel, -1);
+
+                        if (!newModel._GRAPH.isValid())
+                        {
+                            newModel._model_name += "_invalid";
+                            Program.GetFormMain().updateStats();
+                            //this.captureScreen(imageFolder_c + "invald\\" + newModel._model_name + ".png");
+                            saveAPartBasedModel(newModel, newModel._path + newModel._model_name + ".pam", false);
+                            continue;
+                        }
+                        this.setCurrentModel(newModel, -1);
+                        Program.GetFormMain().updateStats();
+                        // valid graph
+                        res.Add(newModel);
+                        this.captureScreen(imageFolder_c + newModel._model_name + ".png");
+                        saveAPartBasedModel(newModel, newModel._path + newModel._model_name + ".pam", false);
+                        newModel._index = _modelIndex;
+                        ++_modelIndex;
+                    }
+                }
+                return res;
+            }
+            // need to add functions
+
+            return res;
+        }// crossTwoModels
 
         public void deformFunctionPart(double s, int axis, bool duplicate)
         {

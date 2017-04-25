@@ -34,7 +34,7 @@ namespace FameBase
         //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
         //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
 
-        public static string MODLES_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_2\";
+        public static string MODLES_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_1\";
         public static string PATCH_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\";
         public static string MATLAB_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\";
         public static string MATLAB_INPUT_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\test\input\";
@@ -1104,7 +1104,15 @@ namespace FameBase
 
         private void runByUser_Click(object sender, EventArgs e)
         {
+            this.glViewer.runByUserSelection();
+        }
 
+        public void clearCheckBoxes()
+        {
+            this.sitting.Checked = false;
+            this.placement.Checked = false;
+            this.storage.Checked = false;
+            this.rolling.Checked = false;
         }
 
         public void setCheckBox(string str)
@@ -1140,6 +1148,11 @@ namespace FameBase
             double val = e.OldValue - e.NewValue; // up to down
             double scale = val / e.OldValue * 0.2;
             this.glViewer.deformFunctionPart(scale, 1, false);
+        }
+
+        private void rollingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(8);
         }
     }// Interface
 }// namespace
