@@ -105,6 +105,7 @@ namespace FameBase
         {
             base.OnMouseDoubleClick(e);
             _mainView.setCurrentModel(_model, _idx);
+            _mainView.getModelMainFuncs(_model);
             Program.GetFormMain().updateStats();
         }
 

@@ -2049,11 +2049,11 @@ namespace FameBase
                 model._original_names = original_names;
                 model._CAT = Functionality.getCategory(cat_name);
                 model._SP = sp;
-                if (model._SP == null)
-                {
-                    // used for calculating contact point
-                    this.reSamplingForANewShape(model);
-                }
+                //if (model._SP == null)
+                //{
+                //    // used for calculating contact point
+                //    this.reSamplingForANewShape(model);
+                //}
                 return model;
             }
         }// loadOnePartBasedModel
@@ -3858,12 +3858,11 @@ namespace FameBase
             {
                 Program.GetFormMain().writePostAnalysisInfo(getFunctionalityValuesString(m, false));
             }
-            this.getModelMainFuncs(_currModel);
             this.cal2D();
             this.Refresh();
         }
 
-        private void getModelMainFuncs(Model m)
+        public void getModelMainFuncs(Model m)
         {
             if (m == null || m._GRAPH == null)
             {
@@ -5519,6 +5518,7 @@ namespace FameBase
             {
                 getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userCenter, storageScale, useGround);
                 this.deformNodesAndEdges(updateNodes2, Q);
+                g1.resetUpdateStatus();
                 this.restoreCyclinderNodes(updateNodes2, S);
             }
 
@@ -5652,6 +5652,7 @@ namespace FameBase
                 getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, 
                     userCenter, storageScale, false);
                 this.deformNodesAndEdges(updateNodes2, Q);
+                g1.resetUpdateStatus();
                 this.restoreCyclinderNodes(updateNodes2, S);
             }
 
@@ -5729,10 +5730,11 @@ namespace FameBase
                 // all contacts
                 foreach (Edge e in toUpdate[i]._edges)
                 {
-                    foreach (Contact c in e._contacts)
+                    if (e._contactUpdated)
                     {
-                        c.Transform(rT);
+                        continue;
                     }
+                    e.TransformContact(rT);
                 }
             }
         }// restoreCyclinderNodes
@@ -8568,8 +8570,8 @@ namespace FameBase
                     funcs.Add(Functionality.Functions.SUPPORT);
                     if (option == 0)
                     {
-                        g1.selectedNodes = g1.getNodesByFunctionality(funcs);
-                        g2.selectedNodes = g2.getNodesByFunctionality(funcs);
+                        g1.selectedNodes = g1.getNodesAndDependentsByFunctionality(funcs);
+                        g2.selectedNodes = g2.getNodesAndDependentsByFunctionality(funcs);
                     }
                     else
                     {
@@ -10407,12 +10409,12 @@ namespace FameBase
         {
         }// removeAFunction
 
-        public void runByUserSelection()
+        public List<ModelViewer> runByUserSelection()
         {
             // evolve the current model
             if (_currModel == null)
             {
-                return;
+                return null;
             }
             if (!Directory.Exists(userFolder))
             {
@@ -10428,7 +10430,7 @@ namespace FameBase
                     otherModels.Add(m);
                 }
             }
-            _prevUserFunctions = new List<Functionality.Functions>(_currUserFunctions);
+            //_prevUserFunctions = new List<Functionality.Functions>(_currUserFunctions);
             // target functions
             if (targetMoels.Count == 0)
             {
@@ -10454,13 +10456,14 @@ namespace FameBase
                 Model imodel = candidates[i];
                 _currGenModelViewers.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
             }
+            return _currGenModelViewers;
         }// runByUserSelection
 
         private List<Model> tryCrossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, int[] idx)
         {
             List<Model> res = new List<Model>();
             // 
-            var sub = _currUserFunctions.Except(m1._GRAPH.collectFunctions());
+            var sub = _currUserFunctions.Except(m1._GRAPH.collectAllDistinceFunctions());
             List<Functionality.Functions> lackedFuncs = sub.ToList();
             List<Functionality.Functions> oriFuncs = m1._GRAPH.collectMainFunctions();
             if (lackedFuncs.Count == 0)
@@ -10489,52 +10492,190 @@ namespace FameBase
                 return res;
             }
             // 1. add funs
-            Model mCloned = m1.Clone() as Model;
-            mCloned._path = crossoverFolder + "gen_1\\";
-            if (!Directory.Exists(mCloned._path))
-            {
-                Directory.CreateDirectory(mCloned._path);
-            }
-            mCloned._model_name = m1._model_name + "-gen_1" + "_num_" + idx[0].ToString();
-            List<Node> mainNodes = m1._GRAPH.getMainNodes();
+            List<Model> prevLevels = new List<Model>();
+            prevLevels.Add(m1);
+            //List<Node> mainNodes = m1._GRAPH.getMainNodes();
+            int nlevel = 0;
             foreach (Functionality.Functions f in lackedFuncs)
             {
                 PartGroup[] pgs = this.findAPairPartGroupsWithFunctionalConstraints(m1._GRAPH, m2._GRAPH, f);
                 if (pgs == null)
                 {
-                    break;
+                    ++nlevel;
+                    continue;
                 }
-                if (f == Functionality.Functions.ROLLING)
+                List<Model> currLevels = new List<Model>();
+                foreach (Model m in prevLevels)
                 {
-                    List<Node> groundNodes = mCloned._GRAPH.getNodesByFunctionality(Functionality.Functions.GROUND_TOUCHING);
-                    List<Vector3d> targets = new List<Vector3d>();
-                    foreach (Node gn in groundNodes)
+                    Model mCloned = m.Clone() as Model;
+                    mCloned._path = crossoverFolder + "gen_1\\";
+                    if (!Directory.Exists(mCloned._path))
                     {
-                        Vector3d c = gn._PART._BOUNDINGBOX.CENTER;
-                        targets.Add(new Vector3d(c.x, 0, c.z));
+                        Directory.CreateDirectory(mCloned._path);
                     }
-                    List<Node> toReplace = pgs[1]._NODES;
-                    List<Node> updateNodes2 = this.replaceNodes(m1._GRAPH, m2._GRAPH, targets, toReplace); 
-                    mCloned.replaceNodes(new List<Node>(), updateNodes2);
-                    // topology
-                    mCloned._GRAPH.addSubGraph(groundNodes, updateNodes2);
-                    mCloned.nNewNodes = updateNodes2.Count;
-                    // build new edges
-                    List<Edge> edgesToConnect_2 = m2._GRAPH.getOutgoingEdges(toReplace);
-                    foreach (Edge e in edgesToConnect_2)
+                    mCloned._model_name = m1._model_name + "-gen_1" + "_num_" + idx[0].ToString();
+                    bool useReplace = pgs[0]._NODES.Count > 0 && nlevel == 0;
+                    List<Node> supportNodes = mCloned._GRAPH.getNodesByFunctionality(Functionality.Functions.SUPPORT);
+                    if ((f == Functionality.Functions.ROLLING || f == Functionality.Functions.PLACEMENT) && supportNodes.Count == 0)
                     {
-                        Node outNode = toReplace.Contains(e._start) ? e._start : e._end;
-
+                        useReplace = false;
+                    }
+                    if (useReplace)
+                    {
+                        List<Node> updateNodes1 = new List<Node>();
+                        foreach (Node node in pgs[0]._NODES)
+                        {
+                            updateNodes1.Add(mCloned._GRAPH._NODES[node._INDEX]);
+                        }
+                        List<Node> updateNodes2 = this.replaceNodes(mCloned._GRAPH, m2._GRAPH, updateNodes1, pgs[1]._NODES);
+                        mCloned.replaceNodes(updateNodes1, updateNodes2);
+                        mCloned._GRAPH.replaceNodes(updateNodes1, updateNodes2);
+                        mCloned.nNewNodes = updateNodes2.Count;
+                    }
+                    else
+                    {
+                        List<Node> groundNodes = mCloned._GRAPH.getNodesAndDependentsByFunctionality(Functionality.Functions.GROUND_TOUCHING);
+                        List<Node> toReplace = pgs[1]._NODES;
+                        if (f == Functionality.Functions.ROLLING)
+                        {
+                            List<Vector3d> targets = new List<Vector3d>();
+                            foreach (Node gn in groundNodes)
+                            {
+                                Vector3d c = gn._PART._BOUNDINGBOX.CENTER;
+                                if (groundNodes.Count == 2)
+                                {
+                                    targets.Add(new Vector3d(c.x, gn._PART._BOUNDINGBOX.MinCoord.y, gn._PART._BOUNDINGBOX.MinCoord.z));
+                                    targets.Add(new Vector3d(c.x, gn._PART._BOUNDINGBOX.MinCoord.y, gn._PART._BOUNDINGBOX.MaxCoord.z));
+                                }
+                                else
+                                {
+                                    targets.Add(new Vector3d(c.x, gn._PART._BOUNDINGBOX.MinCoord.y, c.z));
+                                }
+                            }
+                            List<Node> updateNodes2 = this.replaceNodes(mCloned._GRAPH, m2._GRAPH, targets, toReplace);
+                            mCloned.replaceNodes(new List<Node>(), updateNodes2);
+                            // topology
+                            mCloned._GRAPH.addSubGraph(groundNodes, updateNodes2);
+                            mCloned.nNewNodes = updateNodes2.Count;
+                            foreach (Node node in groundNodes)
+                            {
+                                node._funcs.Remove(Functionality.Functions.GROUND_TOUCHING);
+                                node.addFunctionality(Functionality.Functions.SUPPORT);
+                            }
+                        }// rolling
+                        else if (f == Functionality.Functions.PLACEMENT)
+                        {
+                            if (supportNodes.Count == 0)
+                            {
+                                supportNodes = groundNodes;
+                            }
+                            this.insertPlacement(mCloned, supportNodes, toReplace);
+                        }
                     }
                     if (this.processAnOffspringModel(mCloned))
                     {
                         res.Add(mCloned);
+                        currLevels.Add(mCloned);
+                    }
+                    ++idx[0];
+                }
+                prevLevels.Clear();
+                prevLevels.Add(m1);
+                prevLevels.AddRange(currLevels);
+                currLevels.Clear();
+                ++nlevel;
+            }
+            return res;
+        }// tryCrossOverTwoModelsWithFunctionalConstraints
+
+        private void insertPlacement(Model m, List<Node> supportNodes, List<Node> toReplace)
+        {
+            // check how many planks can be inserted
+            double height = 0;
+            double start = 0;
+            Vector3d center = new Vector3d();
+            foreach (Node gn in supportNodes)
+            {
+                double h = gn._PART._BOUNDINGBOX.MaxCoord.y - gn._PART._BOUNDINGBOX.MinCoord.y;
+                height = h > height ? h : height;
+                center += gn._PART._BOUNDINGBOX.CENTER;
+                start = gn._PART._BOUNDINGBOX.MinCoord.y > start ? gn._PART._BOUNDINGBOX.MinCoord.y : start;
+            }
+            center /= supportNodes.Count;
+            int nplacement = (int)(height / Common._min_shelf_interval);
+            nplacement = nplacement > toReplace.Count ? toReplace.Count : nplacement;
+            double hinterv = height / (nplacement + 1);
+            List<Node> left = new List<Node>();
+            List<Node> right = new List<Node>();
+            double x1 = double.MaxValue;
+            double x2 = double.MinValue;
+            double z1 = double.MaxValue;
+            double z2 = double.MinValue;
+            foreach (Node node in supportNodes)
+            {
+                Vector3d c = node._PART._BOUNDINGBOX.CENTER;
+                if (c.x < center.x)
+                {
+                    left.Add(node);
+                    x1 = x1 < c.x ? x1 : c.x;
+                }
+                else
+                {
+                    right.Add(node);
+                    x2 = x2 > c.x ? x2 : c.x;
+                }
+                z1 = node._PART._BOUNDINGBOX.MinCoord.z < z1 ? node._PART._BOUNDINGBOX.MinCoord.z : z1;
+                z2 = node._PART._BOUNDINGBOX.MaxCoord.z > z2 ? node._PART._BOUNDINGBOX.MaxCoord.z : z2;
+            }
+            for (int i = 0; i < nplacement; ++i)
+            {
+                double hpos = start + (i + 1) * hinterv;
+                Node toInsert = toReplace[i].Clone() as Node;
+                Vector3d newScale = new Vector3d(x2 - x1,
+                    Math.Min(toInsert._PART._BOUNDINGBOX.MaxCoord.y - toInsert._PART._BOUNDINGBOX.MinCoord.y, Common._min_shelf_interval/2),
+                    z2 - z1);
+                Vector3d scale = newScale / (toInsert._PART._BOUNDINGBOX.MaxCoord - toInsert._PART._BOUNDINGBOX.MinCoord);
+                Vector3d newCenter = new Vector3d((x1 + x2) / 2, hpos, (z1 + z2) / 2);
+                Matrix4d S = Matrix4d.ScalingMatrix(scale);
+                Matrix4d Q = Matrix4d.TranslationMatrix(newCenter) * S * Matrix4d.TranslationMatrix(new Vector3d() - toInsert._PART._BOUNDINGBOX.CENTER);
+                toInsert.Transform(Q);
+                List<Node> insertion = new List<Node>();
+                insertion.Add(toInsert);
+                m.replaceNodes(new List<Node>(), insertion);
+                if (left.Count == 1)
+                {
+                    // one edge, two contacts
+                    List<Contact> contacts = new List<Contact>();
+                    contacts.Add(new Contact(new Vector3d(x1, hpos, z1)));
+                    contacts.Add(new Contact(new Vector3d(x1, hpos, z2)));
+                    m._GRAPH.addAnEdge(left[0], toInsert, contacts);
+                }
+                else
+                {
+                    foreach (Node ln in left)
+                    {
+                        Vector3d contact = new Vector3d(x1, hpos, ln._PART._BOUNDINGBOX.CENTER.z);
+                        m._GRAPH.addAnEdge(ln, toInsert, contact);
+                    }
+                }
+                if (right.Count == 1)
+                {
+                    // one edge, two contacts
+                    List<Contact> contacts = new List<Contact>();
+                    contacts.Add(new Contact(new Vector3d(x2, hpos, z1)));
+                    contacts.Add(new Contact(new Vector3d(x2, hpos, z2)));
+                    m._GRAPH.addAnEdge(right[0], toInsert, contacts);
+                }
+                else
+                {
+                    foreach (Node rn in right)
+                    {
+                        Vector3d contact = new Vector3d(x2, hpos, rn._PART._BOUNDINGBOX.CENTER.z);
+                        m._GRAPH.addAnEdge(rn, toInsert, contact);
                     }
                 }
             }
-
-            return res;
-        }// tryCrossOverTwoModelsWithFunctionalConstraints
+        }// insertPlacement
 
         private Model crossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, List<Node> nodes1, List<Node> nodes2, int idx)
         {
@@ -10612,28 +10753,44 @@ namespace FameBase
         private PartGroup[] findAPairPartGroupsWithFunctionalConstraints(Graph g1, Graph g2, Functionality.Functions f)
         {
             PartGroup[] res = null;
+            List<Functionality.Functions> allFuncs = g1.collectAllDistinceFunctions();
             foreach (PartGroup pg1 in g1._partGroups)
             {
+                List<Node> nodes = new List<Node>(g1._NODES);
+                foreach (Node node in pg1._NODES)
+                {
+                    nodes.Remove(node);
+                }
+                List<Functionality.Functions> afterRemovePg1 = Functionality.getNodesFunctionalities(nodes);
                 List<Functionality.Functions> funcs1 = Functionality.getNodesFunctionalities(pg1._NODES);
                 foreach (PartGroup pg2 in g2._partGroups)
                 {
                     List<Functionality.Functions> funcs2 = Functionality.getNodesFunctionalities(pg2._NODES);
-                    if (!Functionality.hasCompatibleFunctions(funcs1, funcs2))
+                    List<Functionality.Functions> afterUpdateG1 = new List<Functionality.Functions>(afterRemovePg1);
+                    foreach (Functionality.Functions func in funcs2)
+                    {
+                        if (!afterUpdateG1.Contains(func))
+                        {
+                            afterUpdateG1.Add(func);
+                        }
+                    }
+                    var sub = allFuncs.Except(afterUpdateG1);
+                    if (sub.Count() > 0)
                     {
                         continue;
                     }
-                    var sub = funcs2.Except(funcs1);
-                    List<Functionality.Functions> subfucs = sub.ToList();
-                    if (subfucs.Contains(f))
+                    if (funcs2.Contains(f))
                     {
-                        res = new PartGroup[2];
-                        res[0] = pg1;
-                        res[1] = pg2;
-                        return res;
+                        if (res == null || res[0]._NODES.Count == 0 || pg1._NODES.Count < res[0]._NODES.Count)
+                        {
+                            res = new PartGroup[2];
+                            res[0] = pg1;
+                            res[1] = pg2;
+                        }
                     }
                 }
             }
-            return null;
+            return res;
         }// findAPairPartGroupsWithFunctionalConstraints
 
         public void deformFunctionPart(double s, int axis, bool duplicate)

@@ -209,18 +209,31 @@ namespace Component
                     nodes.Add(node);
                 }
             }
-            List<Node> dependentNodes = this.bfs_regionGrowingNonFunctionanlNodes(nodes);
-            nodes.AddRange(dependentNodes);
             return nodes;
         }// getNodesByFunctionality
 
-        public List<Node> getNodesByFunctionality(List<Functionality.Functions> funcs)
+        public List<Node> getNodesAndDependentsByFunctionality(Functionality.Functions func)
+        {
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (!nodes.Contains(node) && node._funcs.Contains(func))
+                {
+                    nodes.Add(node);
+                }
+            }
+            List<Node> dependentNodes = this.bfs_regionGrowingNonFunctionanlNodes(nodes);
+            nodes.AddRange(dependentNodes);
+            return nodes;
+        }// getNodesAndDependentsByFunctionality
+
+        public List<Node> getNodesAndDependentsByFunctionality(List<Functionality.Functions> funcs)
         {
             // sample functional parts (connected!)
             List<Node> nodes = new List<Node>();
             foreach (Functionality.Functions f in funcs)
             {
-                List<Node> cur = getNodesByFunctionality(f);
+                List<Node> cur = getNodesAndDependentsByFunctionality(f);
                 foreach (Node node in cur)
                 {
                     if (!nodes.Contains(node))
@@ -230,7 +243,7 @@ namespace Component
                 }
             }
             return nodes;
-        }// getNodesByFunctionality
+        }// getNodesAndDependentsByFunctionality
 
         public List<Node> getMainNodes()
         {
@@ -390,7 +403,7 @@ namespace Component
                         Node closest = getNodeNearestToContact(toConnect, c);
                         if (closest != null)
                         {
-                            this.addAnEdge(cur, closest);
+                            this.addAnEdge(cur, closest, c._pos3d);
                         }
                     }
                 }
@@ -638,6 +651,8 @@ namespace Component
 
         private double getDistBetweenParts(Part p1, Part p2, out Vector3d contact)
         {
+            return getDistBetweenMeshes(p1._MESH, p2._MESH, out contact);
+            // after correct the face index of sampling points
             if (p1._partSP == null || p2._partSP == null ||
                 p1._partSP._points == null || p2._partSP._points == null)
             {
@@ -1769,9 +1784,9 @@ namespace Component
         {
             // only if the supporting nodes connect to ground touching nodes
             // hinting ground touching nodes do not connect to main functional nodes directly
-            List<Node> supportNodes = this.getNodesByFunctionality(Functionality.Functions.SUPPORT);
+            List<Node> supportNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.SUPPORT);
             supportNodes = this.bfs_regionGrowingNonFunctionanlNodes(supportNodes);
-            List<Node> groundNodes = this.getNodesByFunctionality(Functionality.Functions.GROUND_TOUCHING);
+            List<Node> groundNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.GROUND_TOUCHING);
             groundNodes = this.bfs_regionGrowingNonFunctionanlNodes(groundNodes);
             if (supportNodes.Count == 0 || groundNodes.Count == 0)
             {
@@ -1818,7 +1833,7 @@ namespace Component
             var allFuncs = Enum.GetValues(typeof(Functionality.Functions));
             foreach (Functionality.Functions func in allFuncs)
             {
-                List<Node> nodes = this.getNodesByFunctionality(func);
+                List<Node> nodes = this.getNodesAndDependentsByFunctionality(func);
                 if (nodes.Count == 0)
                 {
                     continue;
@@ -2136,7 +2151,7 @@ namespace Component
             return res;
         }// collectMainFunctions
 
-        public List<Functionality.Functions> collectFunctions()
+        public List<Functionality.Functions> collectAllDistinceFunctions()
         {
             List<Functionality.Functions> res = new List<Functionality.Functions>();
             foreach (Node node in _nodes)
@@ -2150,7 +2165,8 @@ namespace Component
                 }
             }
             return res;
-        }// collectFunctions
+        }// collectAllDistinceFunctions
+
        
         public List<Node> _NODES
         {

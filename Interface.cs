@@ -1104,7 +1104,15 @@ namespace FameBase
 
         private void runByUser_Click(object sender, EventArgs e)
         {
-            this.glViewer.runByUserSelection();
+            List<ModelViewer> modelViews = this.glViewer.runByUserSelection();
+            this.partBasket.Controls.Clear();
+            if (modelViews != null)
+            {
+                foreach (ModelViewer mv in modelViews)
+                {
+                    addModelViewerToRightPanel(mv);
+                }
+            }
         }
 
         public void clearCheckBoxes()
