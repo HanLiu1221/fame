@@ -1112,6 +1112,7 @@ namespace FameBase
                 {
                     addModelViewerToRightPanel(mv);
                 }
+                this.outputSystemStatus(modelViews.Count.ToString() + " valid offspring shapes are generated.");
             }
         }
 

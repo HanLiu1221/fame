@@ -5479,6 +5479,7 @@ namespace FameBase
             }
 
             bool useScale = targets.Count == 0 || sources.Count == 0 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+
             useScale = updateNodes2.Count == 1 && !Functionality.ContainsMainFunction(updateNodes2[0]._funcs);
 
             if (targets.Count < 1)
@@ -5500,8 +5501,10 @@ namespace FameBase
             bool userCenter = false;
             double storageScale = -1;
 
-            useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
-
+            if (crossoverFolder.Contains("set_1"))
+            {
+                useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+            }
             if (this.containsFunc(updateNodes2, Functionality.Functions.STORAGE))
             {
                 useScale = true;
@@ -10465,12 +10468,12 @@ namespace FameBase
             // 
             var sub = _currUserFunctions.Except(m1._GRAPH.collectAllDistinceFunctions());
             List<Functionality.Functions> lackedFuncs = sub.ToList();
-            List<Functionality.Functions> oriFuncs = m1._GRAPH.collectMainFunctions();
-            if (lackedFuncs.Count == 0)
+            if (lackedFuncs.Count() == 0)
             {
+                // 2. replace
                 // as long as the original functions are preserved
                 List<PartGroup> pgs_1 = m1._GRAPH._partGroups;
-                List<PartGroup> pgs_2= m2._GRAPH._partGroups;
+                List<PartGroup> pgs_2 = m2._GRAPH._partGroups;
                 for (int i = 0; i < pgs_1.Count; ++i)
                 {
                     List<Functionality.Functions> funcs1 = Functionality.getNodesFunctionalities(pgs_1[i]._NODES);
@@ -10491,6 +10494,8 @@ namespace FameBase
                 }
                 return res;
             }
+
+            List<Functionality.Functions> oriFuncs = m1._GRAPH.collectMainFunctions();
             // 1. add funs
             List<Model> prevLevels = new List<Model>();
             prevLevels.Add(m1);
@@ -10585,6 +10590,8 @@ namespace FameBase
                 currLevels.Clear();
                 ++nlevel;
             }
+            
+
             return res;
         }// tryCrossOverTwoModelsWithFunctionalConstraints
 
@@ -10730,13 +10737,14 @@ namespace FameBase
             // screenshot
             m._GRAPH.unify();
             m.composeMesh();
-            this.setCurrentModel(m, -1);
+            
 
-            if (!m._GRAPH.isValid())
+            if (!m._GRAPH.isValid() && !m._path.Contains("set_2"))
             {
-                m._model_name += "_invalid";
-                Program.GetFormMain().updateStats();
-                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                //m._model_name += "_invalid";
+                //Program.GetFormMain().updateStats();
+                //this.setCurrentModel(m, -1);
+                //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
                 saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
             }
@@ -10859,6 +10867,8 @@ namespace FameBase
             List<Node> toDuplicate = new List<Node>();
             toDuplicate.Add(mainNode);
             List<Functionality.Functions> funcs = mainNode._funcs;
+            double x1 = double.MaxValue;
+            double x2 = double.MinValue;
             foreach (Node node in g._NODES)
             {
                 if (node._funcs.Count != funcs.Count || node == mainNode)
@@ -10871,6 +10881,7 @@ namespace FameBase
                 }
                 toDuplicate.Add(node);
             }
+            
             // support nodes
             foreach (Node node in mainNode._adjNodes)
             {
@@ -10880,11 +10891,17 @@ namespace FameBase
                     toDuplicate.Add(node);
                 }
             }
+            foreach (Node node in toDuplicate)
+            {
+                x1 = x1 < node._PART._BOUNDINGBOX.MinCoord.x ? x1 : node._PART._BOUNDINGBOX.MinCoord.x;
+                x2 = x2 > node._PART._BOUNDINGBOX.MaxCoord.x ? x2 : node._PART._BOUNDINGBOX.MaxCoord.x;
+            }
             // region growing dependent nodes
             List<Node> dependentNodes = g.bfs_regionGrowingDependentNodes(toDuplicate);
             toDuplicate.AddRange(dependentNodes);
             // duplicate
             double move = mainNode._PART._BOUNDINGBOX.MaxCoord.x - mainNode._PART._BOUNDINGBOX.MinCoord.x;
+            move = x2 - x1;
             Matrix4d shift = Matrix4d.TranslationMatrix(new Vector3d(move, 0, 0));
             foreach (Node node in toDuplicate)
             {

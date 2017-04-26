@@ -154,6 +154,9 @@ namespace Component
             if (hasCompatibleFunctions(funcs1, funcs2))
             {
                 res[0] = 1;
+            }
+            if (hasCompatibleFunctions(funcs2, funcs1))
+            {
                 res[1] = 1;
             }
             return res;
@@ -176,6 +179,10 @@ namespace Component
             //// assume all possible functions of nodes have already been measured
             //var same = funcs1.Intersect(funcs2);
             //return same.Count() > 0;
+            if (funcs1.Count > funcs2.Count)
+            {
+                return false;
+            }
             for (int i = 0; i < funcs1.Count; ++i)
             {
                 for (int j = 0; j < funcs2.Count; ++j)
