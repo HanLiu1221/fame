@@ -2272,7 +2272,7 @@ namespace Component
             buildFaceSamplePointsMap(totalNFaces);
         }
 
-        public void buildFaceSamplePointsMap(int totalFaces)
+        private void buildFaceSamplePointsMap(int totalFaces)
         {
             // a face can have multiple sample points, or no sample point
             _fidxMapSPid = new Dictionary<int,List<int>>();
@@ -2285,6 +2285,24 @@ namespace Component
                 _fidxMapSPid[_faceIdx[i]].Add(i); // the map between face idx and sample points
             }
         }
+
+        public void reBuildFaceSamplePointsMap(List<Vector3d> points, List<Vector3d> normals, List<int> faceIdxs)
+        {
+            _points = points.ToArray();
+            _points_orgin = _points.Clone() as Vector3d[];
+            _normals = normals.ToArray();
+            _faceIdx = faceIdxs.ToArray();
+            _blendColors = null;
+            _fidxMapSPid = new Dictionary<int, List<int>>();
+            for (int i = 0; i < _faceIdx.Length; ++i)
+            {
+                if (!_fidxMapSPid.ContainsKey(_faceIdx[i]))
+                {
+                    _fidxMapSPid.Add(_faceIdx[i], new List<int>());
+                }
+                _fidxMapSPid[_faceIdx[i]].Add(i); // the map between face idx and sample points
+            }
+        }// reBuildFaceSamplePointsMap
 
         public void Transform(Matrix4d T)
         {

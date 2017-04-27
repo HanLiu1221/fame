@@ -1349,7 +1349,7 @@ namespace FameBase
             string ptsname = shape2poseDataFolder + model._model_name + ".pts";
             model._SP = this.loadSamplePoints(ptsname, model._MESH.FaceCount);
 
-            //this.recomputeSamplePointsFaceIndex(model._SP, model._MESH);
+            this.recomputeSamplePointsFaceIndex(model._SP, model._MESH);
 
             string folder = model._path + model._model_name + "\\";
             string modelSPname = folder + model._model_name + ".sp";
@@ -2049,11 +2049,11 @@ namespace FameBase
                 model._original_names = original_names;
                 model._CAT = Functionality.getCategory(cat_name);
                 model._SP = sp;
-                //if (model._SP == null)
-                //{
-                //    // used for calculating contact point
-                //    this.reSamplingForANewShape(model);
-                //}
+                if (model._SP == null)
+                {
+                    // used for calculating contact point
+                    this.reSamplingForANewShape(model);
+                }
                 return model;
             }
         }// loadOnePartBasedModel
@@ -5110,7 +5110,7 @@ namespace FameBase
                 Directory.CreateDirectory(newModel._path);
             }
             List<Node> nodes1 = new List<Node>();
-            List<Node> nodes2 = m2._GRAPH.selectedNodes; // unchanged
+            List<Node> nodes2 = new List<Node>(m2._GRAPH.selectedNodes); // unchanged
             List<Node> updatedNodes2 = new List<Node>();
             List<Model> parents = new List<Model>(); // to set parent names
             parents.Add(m1);
@@ -5172,7 +5172,7 @@ namespace FameBase
                 nodes.Add(nodes2[id]);
                 return nodes;
             }
-            return nodes2;
+            return new List<Node>(nodes2);
         }// reduceRepeatedNodes
 
         private int containsNMainNodes(List<Node> nodes)
@@ -10737,9 +10737,8 @@ namespace FameBase
             // screenshot
             m._GRAPH.unify();
             m.composeMesh();
-            
 
-            if (!m._GRAPH.isValid() && !m._path.Contains("set_2"))
+            if (!m._GRAPH.isValid())
             {
                 //m._model_name += "_invalid";
                 //Program.GetFormMain().updateStats();
@@ -12377,41 +12376,58 @@ namespace FameBase
             {
                 return;
             }
+            List<Vector3d> points = new List<Vector3d>();
+            List<Vector3d> normals = new List<Vector3d>();
+            List<int> faceIdxs = new List<int>();
+            double pi2 = 2 * Math.PI;
             for (int i = 0; i < sp._points.Length; ++i)
             {
-                int newf = -1;
-                int newf_bk = -1;
-                double mind = double.MaxValue;
-                double mind_bk = double.MaxValue;
+                Vector3d p = sp._points[i];
+                double mindToPoint = double.MaxValue;
+                int tmp = sp._faceIdx[i];
+                sp._faceIdx[i] = -1;
                 for (int f = 0; f < mesh.FaceCount; ++f)
                 {
-                    double d1 = Common.PointDistToPlane(sp._points[i], mesh.getFaceCenter(f), mesh.getFaceNormal(f));
-                    Vector3d minCoord = Vector3d.MaxCoord;
-                    Vector3d maxCoord = Vector3d.MinCoord;
+                    Vector3d[] vs = new Vector3d[3];
                     for (int j = 0; j < 3; ++j)
                     {
                         int vid = mesh.FaceVertexIndex[f * 3 + j];
-                        Vector3d vj = mesh.getVertexPos(vid);
-                        minCoord = Vector3d.Min(minCoord, vj);
-                        maxCoord = Vector3d.Max(maxCoord, vj);
+                        vs[j] = mesh.getVertexPos(vid);
+                        double d = (p - vs[j]).Length();
+                        if (d < mindToPoint)
+                        {
+                            mindToPoint = d;
+                        }
                     }
-                    double d = Common.PointInPolygon(sp._points[i], minCoord, maxCoord) ? d1 : double.MaxValue;
-                    if (d < mind)
+                    // sum of angles
+                    double angle = 0;
+                    for (int j = 0; j < 3; ++j)
                     {
-                        mind = d;
-                        newf = f;
+                        Vector3d v1 = (vs[j] - p).normalize();
+                        Vector3d v2 = (vs[(j + 1) % 3] - p).normalize();
+                        double ag = Math.Abs(Math.Acos(v1.Dot(v2)));
+                        angle += ag;
                     }
-                    if (d1 < mind_bk)
+                    if (Math.Abs(angle - pi2) < Common._thresh)
                     {
-                        mind_bk = d1;
-                        newf_bk = f;
+                        sp._faceIdx[i] = f;
+                        double dToPlane = Common.PointDistToPlane(p, mesh.getFaceCenter(f), mesh.getFaceNormal(f));
+                        if (dToPlane < Common._thresh)
+                        {
+                            sp._faceIdx[i] = f;
+                        }
                     }
+                }// each face
+                if (sp._faceIdx[i] != -1)
+                {
+                    // could not find the tri face, remove it
+                    points.Add(sp._points[i]);
+                    normals.Add(sp._normals[i]);
+                    faceIdxs.Add(sp._faceIdx[i]);
                 }
-                sp._faceIdx[i] = newf == -1 ? newf_bk : newf;
-                sp.buildFaceSamplePointsMap(mesh.FaceCount);
-            }
-        }
-
+            }// each point
+            sp.reBuildFaceSamplePointsMap(points, normals, faceIdxs);
+        }// recomputeSamplePointsFaceIndex
 
         private double[] loadPatchWeight(string filename, out double minw, out double maxw)
         {
@@ -12953,7 +12969,7 @@ namespace FameBase
                         }
                         else
                         {
-                            GLDrawer.drawPoints(part._partSP._points, part._partSP._blendColors, 12.0f);
+                            GLDrawer.drawPoints(part._partSP._points, part._COLOR, 12.0f);
                         }
                     }
                 }

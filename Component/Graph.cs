@@ -1588,52 +1588,18 @@ namespace Component
 
         private bool hasDetachedParts()
         {
-            //foreach (Edge e in _edges)
-            //{
-            //    Mesh m1 = e._start._PART._MESH;
-            //    Mesh m2 = e._end._PART._MESH;
-            //    if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
-            //    {
-            //        return true;
-            //    }
-            //}
-            for (int i = 0; i < _nodes.Count; ++i)
+            // 1. tow parts need to be conneceted if there is a connection
+            foreach (Edge e in _edges)
             {
-                Mesh m1 = _nodes[i]._PART._MESH;
-                int ndetach = 0;
-                for (int j =0; j < _nodes.Count; ++j)
-                {
-                    if (i == j)
-                    {
-                        continue;
-                    }
-                    Mesh m2 = _nodes[j]._PART._MESH;
-                    if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
-                    {
-                        ndetach++;
-                    }
-                }
-                if (ndetach == _nodes.Count - 1)
+                if (!isPartConnected(e._start._PART, e._end._PART))
                 {
                     return true;
                 }
             }
-            if (_nodes.Count == 0)
-            {
-                return true;
-            }
-            //foreach (Edge e in _edges)
-            //{
-            //    Mesh m1 = e._start._PART._MESH;
-            //    Mesh m2 = e._end._PART._MESH;
-            //    if (!isConnected(m1, m2, 0.01))
-            //    {
-            //        return true;
-            //    }
-            //}
-                // if any node that is detached
-                // check if we can walk through one node to all the other nodes
-                resetNodeIndex();
+
+            // if any node that is detached
+            // check if we can walk through one node to all the other nodes
+            resetNodeIndex();
             bool[] visited = new bool[_nodes.Count];
             Node start = _nodes[0];
             List<Node> queue = new List<Node>();
@@ -1657,9 +1623,7 @@ namespace Component
                             continue;
                         }
                         Mesh m2 = node._PART._MESH;
-                        //if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
-                        //    || isConnected(m1, m2, 0.08))
-                        if (isConnected(m1, m2, 0.08))
+                        if (isPartConnected( c._PART, node._PART))
                         {
                             queue.Add(node);
                         }
@@ -1676,13 +1640,23 @@ namespace Component
             return false;
         }// hasDetachedParts
 
-        private bool isConnected_vertex(Mesh m1, Mesh m2)
+        private bool isPartConnected(Part p1, Part p2)
         {
-            // work fro uniform mesh -- vertex are equally distributed
-            double thr = 0.01;
+            // uniformly sampled points on mesh
+            double thr = 0.04;
             double mind = double.MaxValue;
-            Vector3d[] v1 = m1.VertexVectorArray;
-            Vector3d[] v2 = m2.VertexVectorArray;
+            Vector3d[] v1 = p1._partSP == null ? p1._MESH.VertexVectorArray : p1._partSP._points;
+            Vector3d[] v2 = p2._partSP == null ? p2._MESH.VertexVectorArray : p2._partSP._points;
+            if (v1 == null || v1.Length < 10)
+            {
+                v1 = p1._MESH.VertexVectorArray;
+                thr = 0.08;
+            }
+            if (v2 == null || v2.Length < 10)
+            {
+                v2 = p2._MESH.VertexVectorArray;
+                thr = 0.08;
+            }
             for (int i = 0; i < v1.Length; ++i)
             {
                 for (int j = 0; j < v2.Length; ++j)
