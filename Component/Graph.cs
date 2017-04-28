@@ -475,6 +475,11 @@ namespace Component
             {
                 Mesh mesh = node._PART._MESH;
                 Vector3d[] vecs = mesh.VertexVectorArray;
+                if (node._PART._partSP != null && node._PART._partSP._points != null 
+                    && node._PART._partSP._points.Length > Common._min_point_num)
+                {
+                    vecs = node._PART._partSP._points;
+                }
                 for (int i = 0; i < vecs.Length; ++i)
                 {
                     double d = (vecs[i] - c._pos3d).Length();
@@ -1462,7 +1467,7 @@ namespace Component
                 if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     Vector3d nor = node._PART._BOUNDINGBOX._PLANES[0].normal;
-                    double angle = Math.Acos(nor.Dot(Common.uprightVec));
+                    double angle = Math.Acos(Math.Abs(nor.Dot(Common.uprightVec)));
                     if (angle > 0.2)
                     {
                         ++nTitled;
@@ -1647,14 +1652,20 @@ namespace Component
             double mind = double.MaxValue;
             Vector3d[] v1 = p1._partSP == null ? p1._MESH.VertexVectorArray : p1._partSP._points;
             Vector3d[] v2 = p2._partSP == null ? p2._MESH.VertexVectorArray : p2._partSP._points;
+            bool useMesh1 = false;
+            bool useMesh2 = false;
             if (v1 == null || v1.Length < 10)
             {
                 v1 = p1._MESH.VertexVectorArray;
-                thr = 0.08;
+                useMesh1 = true;
             }
             if (v2 == null || v2.Length < 10)
             {
                 v2 = p2._MESH.VertexVectorArray;
+                useMesh2 = true;
+            }
+            if (useMesh1 && useMesh2)
+            {
                 thr = 0.08;
             }
             for (int i = 0; i < v1.Length; ++i)
@@ -1673,7 +1684,7 @@ namespace Component
                 }
             }
             return mind < thr;
-        }// is connected
+        }// isPartConnected
 
         private bool isConnected(Mesh m1, Mesh m2, double thr)
         {

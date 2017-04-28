@@ -247,6 +247,10 @@ namespace FameBase
 
         List<TrainedFeaturePerCategory> _trainingFeaturesPerCategory;
 
+        // record the part combinations to avoid repetition
+        Dictionary<string, int> partNameToInteger;
+        List<List<int>>[] partCombinationMemory;
+
         /******************** Functions ********************/
 
         public UIMode CurrentUIMode
@@ -2165,6 +2169,8 @@ namespace FameBase
             int idx = 0;
             Program.writeToConsole("Loading all " + files.Length.ToString() + " models...");
             _ancesterModels = new List<Model>();
+            // when load a new set, reset the dictionary 
+            _modelIndex = 0;
             foreach (string file in files)
             {
                 string modelName = file.Substring(file.LastIndexOf('\\') + 1);
@@ -2201,6 +2207,23 @@ namespace FameBase
                     _ancesterModelViewers.Add(modelViewer);
                     ++_modelIndex;
                 }
+            }
+            // map part names to int
+            int id = 0;
+            this.partNameToInteger = new Dictionary<string, int>();
+            foreach (Model m in _ancesterModels)
+            {
+                foreach (Part p in m._PARTS)
+                {
+                    this.partNameToInteger.Add(p._partName, id++);
+                }
+            }
+            // the number of a subset could be from 1 - n
+            // a subset is a set of parts from the original input set
+            this.partCombinationMemory = new List<List<int>>[partNameToInteger.Count];
+            foreach (Model m in _ancesterModels)
+            {
+                this.storePartCombination(m);
             }
             // set the default model as the last one
             if (_ancesterModelViewers.Count > 0)
@@ -3146,6 +3169,489 @@ namespace FameBase
             }
             return m;
         }// loadPointCloud
+
+        public void saveReplaceablePairs()
+        {
+            if (_crossOverBasket.Count < 2)
+            {
+                return;
+            }
+            Model model_i = _crossOverBasket[_crossOverBasket.Count - 2];
+            Model model_j = _crossOverBasket[_crossOverBasket.Count - 1];
+            Graph graph_i = model_i._GRAPH;
+            Graph graph_j = model_j._GRAPH;
+            if (graph_i == null || graph_j == null || graph_i.selectedNodePairs.Count != graph_j.selectedNodePairs.Count)
+            {
+                return;
+            }
+            string filename = model_i._path + model_i._model_name + "_" + model_j._model_name + ".corr";
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int n = graph_i.selectedNodePairs.Count;
+                sw.WriteLine(n.ToString());
+                for (int i = 0; i < n; ++i)
+                {
+                    for (int j = 0; j < graph_i.selectedNodePairs[i].Count; ++j)
+                    {
+                        sw.Write(graph_i.selectedNodePairs[i][j]._INDEX.ToString() + " ");
+                    }
+                    sw.WriteLine();
+                    for (int j = 0; j < graph_j.selectedNodePairs[i].Count; ++j)
+                    {
+                        sw.Write(graph_j.selectedNodePairs[i][j]._INDEX.ToString() + " ");
+                    }
+                    sw.WriteLine();
+                }
+            }
+        }// saveLoadReplaceablePairs
+
+        private void tryLoadReplaceablePairs()
+        {
+            if (_ancesterModelViewers.Count == 0)
+            {
+                return;
+            }
+            int n = _ancesterModelViewers.Count;
+            _replaceablePairs = new ReplaceablePair[n, n];
+            for (int i = 0; i < n - 1; ++i)
+            {
+                Model model_i = _ancesterModelViewers[i]._MODEL;
+                Graph graph_i = _ancesterModelViewers[i]._GRAPH;
+                for (int j = i + 1; j < n; ++j)
+                {
+                    Model model_j = _ancesterModelViewers[j]._MODEL;
+                    Graph graph_j = _ancesterModelViewers[j]._GRAPH;
+                    string filename = model_i._path + model_i._model_name + "_" + model_j._model_name + ".corr";
+                    List<List<int>> pairs_i = new List<List<int>>();
+                    List<List<int>> pairs_j = new List<List<int>>();
+                    loadReplaceablePair(filename, out pairs_i, out pairs_j);
+                    _replaceablePairs[i, j] = new ReplaceablePair(graph_i, graph_j, pairs_i, pairs_j);
+                }
+            }
+        }// tryLoadReplacePairs
+
+        private void loadReplaceablePair(string filename, out List<List<int>> pairs_1, out List<List<int>> pairs_2)
+        {
+            pairs_1 = new List<List<int>>();
+            pairs_2 = new List<List<int>>();
+            if (!File.Exists(filename))
+            {
+                return;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                string s = sr.ReadLine().Trim();
+                string[] strs = s.Split(separator);
+                int npairs = int.Parse(strs[0]);
+                for (int i = 0; i < npairs; ++i)
+                {
+                    List<int> p1 = new List<int>();
+                    List<int> p2 = new List<int>();
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    for (int j = 0; j < strs.Length; ++j)
+                    {
+                        p1.Add(int.Parse(strs[j]));
+                    }
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    for (int j = 0; j < strs.Length; ++j)
+                    {
+                        p2.Add(int.Parse(strs[j]));
+                    }
+                    pairs_1.Add(p1);
+                    pairs_2.Add(p2);
+                }
+            }
+        }// loadReplaceablePair
+
+        public void LoadPartGroupsOfAModelGraph(Graph graph, string filename, string model_name)
+        {
+            if (graph == null || !File.Exists(filename))
+            {
+                return;
+            }
+            graph._partGroups = new List<PartGroup>();
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                string s = sr.ReadLine().Trim();
+                string[] strs = s.Split(separator);
+                int nPGs = int.Parse(strs[0]);
+                for (int i = 0; i < nPGs; ++i)
+                {
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    List<Node> nodes = new List<Node>();
+                    if (strs[0] != "") // empty
+                    {
+                        for (int j = 0; j < strs.Length; ++j)
+                        {
+                            int idx = int.Parse(strs[j]);
+                            nodes.Add(graph._NODES[idx]);
+                        }
+                    }
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    int n = int.Parse(strs[0]);
+                    double[] features = new double[n];
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    if (strs.Length < n)
+                    {
+                        MessageBox.Show("Feature vector data error.");
+                        break;
+                    }
+                    for (int j = 0; j < n; ++j)
+                    {
+                        features[j] = double.Parse(strs[j]);
+                    }
+                    PartGroup pg = new PartGroup(nodes, features);
+                    graph._partGroups.Add(pg);
+                }
+            }
+            //if (graph._partGroups.Count < 2)
+            //{
+            //    graph.initializePartGroups(model_name);
+            //}
+        }// LoadPartGroupsOfAModelGraph
+
+        public void savePartGroupsOfAModelGraph(List<PartGroup> pgs, string filename)
+        {
+            if (pgs == null || pgs.Count == 0)
+            {
+                return;
+            }
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine(pgs.Count.ToString() + " part groups.");
+                foreach (PartGroup pg in pgs)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    foreach (Node node in pg._NODES)
+                    {
+                        sb.Append(node._INDEX.ToString());
+                        sb.Append(" ");
+                    }
+                    sw.WriteLine(sb.ToString());
+                    int n = pg._featureVector.Length;
+                    sw.WriteLine(n.ToString() + " dim of features.");
+                    sb = new StringBuilder();
+                    for (int i = 0; i < n; ++i)
+                    {
+                        sb.Append(pg._featureVector[i].ToString());
+                        sb.Append(" ");
+                    }
+                    sw.WriteLine(sb.ToString());
+                }
+            }
+        }// savePartGroupsOfAModelGraph
+
+        public void LoadAGraph(Model m, string filename, bool unify)
+        {
+            if (m == null || !File.Exists(filename))
+            {
+                return;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                string s = sr.ReadLine().Trim();
+                string[] strs = s.Split(separator);
+                int nNodes = int.Parse(strs[0]);
+                if (nNodes != m._NPARTS)
+                {
+                    MessageBox.Show("Unmatched graph nodes and mesh parts.");
+                    return;
+                }
+                Graph g = new Graph();
+                List<int> symGroups = new List<int>();
+                bool hasGroundTouching = false;
+                for (int i = 0; i < nNodes; ++i)
+                {
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    int j = int.Parse(strs[0]);
+                    int k = int.Parse(strs[1]);
+                    Node node = new Node(m._PARTS[i], j);
+                    node._isGroundTouching = k == 1 ? true : false;
+                    if (node._isGroundTouching)
+                    {
+                        hasGroundTouching = true;
+                        node.addFunctionality(Functionality.Functions.GROUND_TOUCHING);
+                    }
+                    if (strs.Length > 4)
+                    {
+                        Color c = Color.FromArgb(int.Parse(strs[2]), int.Parse(strs[3]), int.Parse(strs[4]));
+                        node._PART._COLOR = c;
+                    }
+                    if (strs.Length > 5)
+                    {
+                        int sym = int.Parse(strs[5]);
+                        if (sym > i) // sym != -1
+                        {
+                            symGroups.Add(i);
+                            symGroups.Add(sym);
+                        }
+                    }
+                    if (strs.Length > 6)
+                    {
+                        for (int f = 6; f < strs.Length; ++f)
+                        {
+                            Functionality.Functions func = getFunctionalityFromString(strs[f]);
+                            node.addFunctionality(func);
+                        }
+                    }
+                    g.addANode(node);
+                }
+                // add symmetry
+                for (int i = 0; i < symGroups.Count; i += 2)
+                {
+                    g.markSymmtry(g._NODES[symGroups[i]], g._NODES[symGroups[i + 1]]);
+                }
+                if (!hasGroundTouching)
+                {
+                    g.markGroundTouchingNodes();
+                }
+                s = sr.ReadLine().Trim();
+                strs = s.Split(separator);
+                int nEdges = int.Parse(strs[0]);
+                for (int i = 0; i < nEdges; ++i)
+                {
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    int j = int.Parse(strs[0]);
+                    int k = int.Parse(strs[1]);
+                    if (strs.Length > 4)
+                    {
+                        int t = 2;
+                        List<Contact> contacts = new List<Contact>();
+                        while (t + 2 < strs.Length)
+                        {
+                            Vector3d v = new Vector3d(double.Parse(strs[t++]), double.Parse(strs[t++]), double.Parse(strs[t++]));
+                            Contact c = new Contact(v);
+                            contacts.Add(c);
+                        }
+                        g.addAnEdge(g._NODES[j], g._NODES[k], contacts);
+                    }
+                    else
+                    {
+                        g.addAnEdge(g._NODES[j], g._NODES[k]);
+                    }
+                }
+                g._functionalityValues = new FunctionalityFeatures();
+                List<Functionality.Category> cats = new List<Functionality.Category>();
+                if (sr.Peek() > -1)
+                {
+                    // functionality
+                    for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
+                    {
+                        if (sr.Peek() == -1)
+                        {
+                            break;
+                        }
+                        s = sr.ReadLine().Trim();
+                        strs = s.Split(separator);
+                        if (strs.Length < 2) // old version, less categories
+                        {
+                            break;
+                        }
+                        int cid = (int)Functionality.getCategory(strs[0]);
+                        g._functionalityValues._funScores[cid] = double.Parse(strs[1]);
+                        cats.Add(Functionality.getCategory(strs[0]));
+                    }
+                    if (sr.Peek() > -1)
+                    {
+                        s = sr.ReadLine().Trim();
+                        strs = s.Split(separator);
+                        for (int c = 0; c < strs.Length; ++c)
+                        {
+                            g._functionalityValues._parentCategories.Add(Functionality.getCategory(strs[c]));
+                        }
+                    }
+                }
+
+                if (unify)
+                {
+                    g.unify();
+                    m.composeMesh();
+                }
+                g.init();
+
+                string fsaName = filename.Substring(0, filename.LastIndexOf('.')) + ".fsa";
+                if (File.Exists(fsaName))
+                {
+                    this.loadFunctionalSpaceAgent(g, fsaName);
+                }
+                if (!m._model_name.StartsWith("gen"))
+                {
+                    char[] sepChar = { '_' };
+                    string[] names = m._model_name.Split(sepChar);
+                    g._functionalityValues._parentCategories = new List<Functionality.Category>();
+                    g._functionalityValues._parentCategories.Add(Functionality.getCategory(names[0]));
+                    // save the fsa to store new info                    
+                    if (!File.Exists(fsaName))
+                    {
+                        g.fitNodeFunctionalSpaceAgent();
+                        this.saveFunctionalSpaceAgent(g, fsaName); // always save the original fs
+                    }
+                }
+                else
+                {
+                    List<Functionality.Category> parentCats = new List<Functionality.Category>();
+                    foreach (Part part in m._PARTS)
+                    {
+                        if (!parentCats.Contains(part._orignCategory))
+                        {
+                            parentCats.Add(part._orignCategory);
+                        }
+                    }
+                    g._functionalityValues._parentCategories = parentCats;
+                }
+                m.setGraph(g);
+                //this.calculateProbability(m);
+                foreach (Node node in m._GRAPH._NODES)
+                {
+                    node._PART._MESH.afterUpdatePos();
+                }
+            }
+        }// LoadAGraph
+
+        public void saveAGraph(Graph g, string filename)
+        {
+            if (g == null)
+            {
+                return;
+            }
+            // node:
+            // idx, isGroundTouching, Color, Sym (-1: no sym, idx)
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine(g._NNodes.ToString() + " nodes.");
+                for (int i = 0; i < g._NNodes; ++i)
+                {
+                    Node iNode = g._NODES[i];
+                    sw.Write(iNode._INDEX.ToString() + " ");
+                    int isGround = iNode._isGroundTouching ? 1 : 0;
+                    sw.Write(isGround.ToString() + " ");
+                    // color
+                    sw.Write(iNode._PART._COLOR.R.ToString() + " " + iNode._PART._COLOR.G.ToString() + " " + iNode._PART._COLOR.B.ToString() + " ");
+                    // sym
+                    int symIdx = -1;
+                    if (iNode.symmetry != null)
+                    {
+                        symIdx = iNode.symmetry._INDEX;
+                    }
+                    sw.Write(symIdx.ToString());
+                    // functionality
+                    if (iNode._funcs != null)
+                    {
+                        foreach (Functionality.Functions func in iNode._funcs)
+                        {
+                            sw.Write(" " + func.ToString());
+                        }
+                    }
+                    sw.WriteLine();
+                }
+                sw.WriteLine(g._EDGES.Count.ToString() + " edges.");
+                foreach (Edge e in g._EDGES)
+                {
+                    sw.Write(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString() + " ");
+                    foreach (Contact pnt in e._contacts)
+                    {
+                        sw.Write(this.vector3dToString(pnt._pos3d, " ", " "));
+                    }
+                    sw.WriteLine();
+                }
+                if (g._functionalityValues != null)
+                {
+                    for (int i = 0; i < g._functionalityValues._cats.Length; ++i)
+                    {
+                        sw.WriteLine(g._functionalityValues._cats[i] + " " + g._functionalityValues._funScores[i].ToString());
+                    }
+                    // parent categories
+                    StringBuilder sb = new StringBuilder();
+                    foreach (Functionality.Category pc in g._functionalityValues._parentCategories)
+                    {
+                        sb.Append(Functionality.getCategoryName((int)pc));
+                        sb.Append(" ");
+                    }
+                    sw.WriteLine(sb.ToString());
+                }
+            }
+        }// saveAGraph
+
+        public void saveFunctionalSpaceAgent(Graph g, string filename)
+        {
+            if (g == null)
+            {
+                return;
+            }
+            int nFSA = 0;
+            foreach (Node node in g._NODES)
+            {
+                if (node._functionalSpaceAgent != null)
+                {
+                    ++nFSA;
+                }
+            }
+            // idx, isGroundTouching, Color, Sym (-1: no sym, idx)
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                sw.WriteLine(nFSA.ToString() + " functional spaces.");
+                for (int i = 0; i < g._NNodes; ++i)
+                {
+                    Node iNode = g._NODES[i];
+                    if (iNode._functionalSpaceAgent == null)
+                    {
+                        continue;
+                    }
+                    sw.WriteLine(iNode._INDEX.ToString() + " ");
+                    // prism
+                    foreach (Vector3d v in iNode._functionalSpaceAgent._POINTS3D)
+                    {
+                        sw.Write(vector3dToString(v, " ", " "));
+                    }
+                    sw.WriteLine();
+                }
+            }
+        }// saveFunctionalSpaceAgent
+
+        public void loadFunctionalSpaceAgent(Graph g, string filename)
+        {
+            if (g == null)
+            {
+                return;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                string s = sr.ReadLine().Trim();
+                string[] strs = s.Split(separator);
+                int nFSA = int.Parse(strs[0]);
+                for (int i = 0; i < nFSA; ++i)
+                {
+                    // read a part
+                    // bbox vertices:
+                    s = sr.ReadLine().Trim(); // description of #i part
+                    strs = s.Split(separator);
+                    int nodeIdx = int.Parse(strs[0]);
+                    // prism vertices
+                    s = sr.ReadLine().Trim();
+                    strs = s.Split(separator);
+                    int nVertices = strs.Length / 3;
+                    Vector3d[] pnts = new Vector3d[nVertices];
+                    for (int j = 0, k = 0; j < nVertices; ++j)
+                    {
+                        pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
+                    }
+                    Prism prim = new Prism(pnts);
+                    g._NODES[nodeIdx]._functionalSpaceAgent = prim;
+                }
+            }
+        }// loadFunctionalSpaceAgent
+
         /******************** End - Load & Save ********************/
 
         public string nextModel()
@@ -3348,487 +3854,6 @@ namespace FameBase
             }
             return false;
         }
-
-        public void saveReplaceablePairs()
-        {
-            if (_crossOverBasket.Count < 2)
-            {
-                return;
-            }
-            Model model_i = _crossOverBasket[_crossOverBasket.Count - 2];
-            Model model_j = _crossOverBasket[_crossOverBasket.Count - 1];
-            Graph graph_i = model_i._GRAPH;
-            Graph graph_j = model_j._GRAPH;
-            if (graph_i == null || graph_j == null || graph_i.selectedNodePairs.Count != graph_j.selectedNodePairs.Count)
-            {
-                return;
-            }
-            string filename = model_i._path + model_i._model_name + "_" + model_j._model_name + ".corr";
-            using (StreamWriter sw = new StreamWriter(filename))
-            {
-                int n = graph_i.selectedNodePairs.Count;
-                sw.WriteLine(n.ToString());
-                for (int i = 0; i < n; ++i)
-                {
-                    for (int j = 0; j < graph_i.selectedNodePairs[i].Count; ++j)
-                    {
-                        sw.Write(graph_i.selectedNodePairs[i][j]._INDEX.ToString() + " ");
-                    }
-                    sw.WriteLine();
-                    for (int j = 0; j < graph_j.selectedNodePairs[i].Count; ++j)
-                    {
-                        sw.Write(graph_j.selectedNodePairs[i][j]._INDEX.ToString() + " ");
-                    }
-                    sw.WriteLine();
-                }
-            }
-        }// saveLoadReplaceablePairs
-
-        private void tryLoadReplaceablePairs()
-        {
-            if (_ancesterModelViewers.Count == 0)
-            {
-                return;
-            }
-            int n = _ancesterModelViewers.Count;
-            _replaceablePairs = new ReplaceablePair[n, n];
-            for (int i = 0; i < n - 1; ++i)
-            {
-                Model model_i = _ancesterModelViewers[i]._MODEL;
-                Graph graph_i = _ancesterModelViewers[i]._GRAPH;
-                for (int j = i + 1; j < n; ++j)
-                {
-                    Model model_j = _ancesterModelViewers[j]._MODEL;
-                    Graph graph_j = _ancesterModelViewers[j]._GRAPH;
-                    string filename = model_i._path + model_i._model_name + "_" + model_j._model_name + ".corr";
-                    List<List<int>> pairs_i = new List<List<int>>();
-                    List<List<int>> pairs_j = new List<List<int>>();
-                    loadReplaceablePair(filename, out pairs_i, out pairs_j);
-                    _replaceablePairs[i, j] = new ReplaceablePair(graph_i, graph_j, pairs_i, pairs_j);
-                }
-            }
-        }// tryLoadReplacePairs
-
-        private void loadReplaceablePair(string filename, out List<List<int>> pairs_1, out List<List<int>> pairs_2)
-        {
-            pairs_1 = new List<List<int>>();
-            pairs_2 = new List<List<int>>();
-            if (!File.Exists(filename))
-            {
-                return;
-            }
-            using (StreamReader sr = new StreamReader(filename))
-            {
-                char[] separator = { ' ', '\t' };
-                string s = sr.ReadLine().Trim();
-                string[] strs = s.Split(separator);
-                int npairs = int.Parse(strs[0]);
-                for (int i = 0; i < npairs; ++i)
-                {
-                    List<int> p1 = new List<int>();
-                    List<int> p2 = new List<int>();
-                    s = sr.ReadLine().Trim();
-                    strs = s.Split(separator);
-                    for (int j = 0; j < strs.Length; ++j)
-                    {
-                        p1.Add(int.Parse(strs[j]));
-                    }
-                    s = sr.ReadLine().Trim();
-                    strs = s.Split(separator);
-                    for (int j = 0; j < strs.Length; ++j)
-                    {
-                        p2.Add(int.Parse(strs[j]));
-                    }
-                    pairs_1.Add(p1);
-                    pairs_2.Add(p2);
-                }
-            }
-        }// loadReplaceablePair
-
-        public void LoadPartGroupsOfAModelGraph(Graph graph, string filename, string model_name)
-        {
-            if (graph == null || !File.Exists(filename))
-            {
-                return;
-            }
-            graph._partGroups = new List<PartGroup>();
-            using (StreamReader sr = new StreamReader(filename))
-            {
-                char[] separator = { ' ', '\t' };
-                string s = sr.ReadLine().Trim();
-                string[] strs = s.Split(separator);
-                int nPGs = int.Parse(strs[0]);
-                for (int i = 0; i < nPGs;++i )
-                {
-                    s = sr.ReadLine().Trim();
-                    strs = s.Split(separator);
-                    List<Node> nodes = new List<Node>();
-                    if (strs[0] != "") // empty
-                    {
-                        for (int j = 0; j < strs.Length; ++j)
-                        {
-                            int idx = int.Parse(strs[j]);
-                            nodes.Add(graph._NODES[idx]);
-                        }
-                    }
-                    s = sr.ReadLine().Trim();
-                    strs = s.Split(separator);
-                    int n = int.Parse(strs[0]);
-                    double[] features = new double[n];
-                    s = sr.ReadLine().Trim();
-                    strs = s.Split(separator);
-                    if (strs.Length < n)
-                    {
-                        MessageBox.Show("Feature vector data error.");
-                        break;
-                    }
-                    for (int j = 0; j < n; ++j)
-                    {
-                        features[j] = double.Parse(strs[j]);
-                    }
-                    PartGroup pg = new PartGroup(nodes, features);
-                    graph._partGroups.Add(pg);
-                }
-            }
-            //if (graph._partGroups.Count < 2)
-            //{
-            //    graph.initializePartGroups(model_name);
-            //}
-        }// LoadPartGroupsOfAModelGraph
-
-        public void savePartGroupsOfAModelGraph(List<PartGroup> pgs, string filename)
-        {
-            if (pgs == null || pgs.Count == 0)
-            {
-                return;
-            }
-            using (StreamWriter sw = new StreamWriter(filename))
-            {
-                sw.WriteLine(pgs.Count.ToString() + " part groups.");
-                foreach (PartGroup pg in pgs)
-                {
-                    StringBuilder sb = new StringBuilder();
-                    foreach (Node node in pg._NODES)
-                    {
-                        sb.Append(node._INDEX.ToString());
-                        sb.Append(" ");
-                    }
-                    sw.WriteLine(sb.ToString());
-                    int n = pg._featureVector.Length;
-                    sw.WriteLine(n.ToString() + " dim of features.");
-                    sb = new StringBuilder();
-                    for (int i = 0; i < n; ++i)
-                    {
-                        sb.Append(pg._featureVector[i].ToString());
-                        sb.Append(" ");
-                    }
-                    sw.WriteLine(sb.ToString());
-                }
-            }
-        }// savePartGroupsOfAModelGraph
-
-        public void LoadAGraph(Model m, string filename, bool unify)
-        {
-            if (m == null || !File.Exists(filename))
-            {
-                return;
-            }
-            using (StreamReader sr = new StreamReader(filename))
-            {
-                char[] separator = { ' ', '\t' };
-                string s = sr.ReadLine().Trim();
-                string[] strs = s.Split(separator);
-                int nNodes = int.Parse(strs[0]);
-                if (nNodes != m._NPARTS)
-                {
-                    MessageBox.Show("Unmatched graph nodes and mesh parts.");
-                    return;
-                }
-                Graph g = new Graph();
-                List<int> symGroups = new List<int>();
-                bool hasGroundTouching = false;
-                for (int i = 0; i < nNodes; ++i)
-                {
-                    s = sr.ReadLine().Trim();
-                    strs = s.Split(separator);
-                    int j = int.Parse(strs[0]);
-                    int k = int.Parse(strs[1]);
-                    Node node = new Node(m._PARTS[i], j);
-                    node._isGroundTouching = k == 1 ? true : false;
-                    if (node._isGroundTouching)
-                    {
-                        hasGroundTouching = true;
-                        node.addFunctionality(Functionality.Functions.GROUND_TOUCHING);
-                    }
-                    if (strs.Length > 4)
-                    {
-                        Color c = Color.FromArgb(int.Parse(strs[2]), int.Parse(strs[3]), int.Parse(strs[4]));
-                        node._PART._COLOR = c;
-                    }
-                    if (strs.Length > 5)
-                    {
-                        int sym = int.Parse(strs[5]);
-                        if (sym > i) // sym != -1
-                        {
-                            symGroups.Add(i);
-                            symGroups.Add(sym);
-                        }
-                    }
-                    if (strs.Length > 6)
-                    {
-                        for (int f = 6; f < strs.Length; ++f)
-                        {
-                            Functionality.Functions func = getFunctionalityFromString(strs[f]);
-                            node.addFunctionality(func);
-                        }
-                    }
-                    g.addANode(node);
-                }
-                // add symmetry
-                for (int i = 0; i < symGroups.Count; i += 2)
-                {
-                    g.markSymmtry(g._NODES[symGroups[i]], g._NODES[symGroups[i + 1]]);
-                }
-                if (!hasGroundTouching)
-                {
-                    g.markGroundTouchingNodes();
-                }
-                s = sr.ReadLine().Trim();
-                strs = s.Split(separator);
-                int nEdges = int.Parse(strs[0]);
-                for (int i = 0; i < nEdges; ++i)
-                {
-                    s = sr.ReadLine().Trim();
-                    strs = s.Split(separator);
-                    int j = int.Parse(strs[0]);
-                    int k = int.Parse(strs[1]);
-                    if (strs.Length > 4)
-                    {
-                        int t = 2;
-                        List<Contact> contacts = new List<Contact>();
-                        while (t + 2 < strs.Length)
-                        {
-                            Vector3d v = new Vector3d(double.Parse(strs[t++]), double.Parse(strs[t++]), double.Parse(strs[t++]));
-                            Contact c = new Contact(v);
-                            contacts.Add(c);
-                        }
-                        g.addAnEdge(g._NODES[j], g._NODES[k], contacts);
-                    }
-                    else
-                    {
-                        g.addAnEdge(g._NODES[j], g._NODES[k]);
-                    }
-                }
-                g._functionalityValues = new FunctionalityFeatures();
-                List<Functionality.Category> cats = new List<Functionality.Category>();
-                if (sr.Peek() > -1)
-                {
-                    // functionality
-                    for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
-                    {
-                        if (sr.Peek() == -1)
-                        {
-                            break;
-                        }
-                        s = sr.ReadLine().Trim();
-                        strs = s.Split(separator);
-                        if (strs.Length < 2) // old version, less categories
-                        {
-                            break;
-                        }
-                        int cid = (int)Functionality.getCategory(strs[0]);
-                        g._functionalityValues._funScores[cid] = double.Parse(strs[1]);
-                        cats.Add(Functionality.getCategory(strs[0]));
-                    }
-                    if (sr.Peek() > -1)
-                    {
-                        s = sr.ReadLine().Trim();
-                        strs = s.Split(separator);
-                        for (int c = 0; c < strs.Length; ++c)
-                        {
-                            g._functionalityValues._parentCategories.Add(Functionality.getCategory(strs[c]));
-                        }
-                    }
-                }
-
-                if (unify  )
-                {
-                    g.unify();
-                    m.composeMesh();
-                }
-                g.init();
-
-                string fsaName = filename.Substring(0, filename.LastIndexOf('.')) + ".fsa";
-                if (File.Exists(fsaName))
-                {
-                    this.loadFunctionalSpaceAgent(g, fsaName);
-                }
-                if (!m._model_name.StartsWith("gen"))
-                {
-                    char[] sepChar = { '_' };
-                    string[] names = m._model_name.Split(sepChar);
-                    g._functionalityValues._parentCategories = new List<Functionality.Category>();
-                    g._functionalityValues._parentCategories.Add(Functionality.getCategory(names[0]));
-                    // save the fsa to store new info                    
-                    if (!File.Exists(fsaName))
-                    {
-                        g.fitNodeFunctionalSpaceAgent();
-                        this.saveFunctionalSpaceAgent(g, fsaName); // always save the original fs
-                    } 
-                } else
-                {
-                    List<Functionality.Category> parentCats = new List<Functionality.Category>();
-                    foreach (Part part in m._PARTS)
-                    {
-                        if (!parentCats.Contains(part._orignCategory))
-                        {
-                            parentCats.Add(part._orignCategory);
-                        }
-                    }
-                    g._functionalityValues._parentCategories = parentCats;
-                }
-                m.setGraph(g);
-                //this.calculateProbability(m);
-                foreach(Node node in m._GRAPH._NODES)
-                {
-                    node._PART._MESH.afterUpdatePos();
-                }
-            }
-        }// LoadAGraph
-
-        public void saveAGraph(Graph g, string filename)
-        {
-            if (g == null)
-            {
-                return;
-            }
-            // node:
-            // idx, isGroundTouching, Color, Sym (-1: no sym, idx)
-            using (StreamWriter sw = new StreamWriter(filename))
-            {
-                sw.WriteLine(g._NNodes.ToString() + " nodes.");
-                for (int i = 0; i < g._NNodes; ++i)
-                {
-                    Node iNode = g._NODES[i];
-                    sw.Write(iNode._INDEX.ToString() + " ");
-                    int isGround = iNode._isGroundTouching ? 1 : 0;
-                    sw.Write(isGround.ToString() + " ");
-                    // color
-                    sw.Write(iNode._PART._COLOR.R.ToString() + " " + iNode._PART._COLOR.G.ToString() + " " + iNode._PART._COLOR.B.ToString() + " ");
-                    // sym
-                    int symIdx = -1;
-                    if (iNode.symmetry != null)
-                    {
-                        symIdx = iNode.symmetry._INDEX;
-                    }
-                    sw.Write(symIdx.ToString());
-                    // functionality
-                    if (iNode._funcs != null)
-                    {
-                        foreach (Functionality.Functions func in iNode._funcs)
-                        {
-                            sw.Write(" " + func.ToString());
-                        }
-                    }
-                    sw.WriteLine();
-                }
-                sw.WriteLine(g._EDGES.Count.ToString() + " edges.");
-                foreach (Edge e in g._EDGES)
-                {
-                    sw.Write(e._start._INDEX.ToString() + " " + e._end._INDEX.ToString() + " ");
-                    foreach (Contact pnt in e._contacts)
-                    {
-                        sw.Write(this.vector3dToString(pnt._pos3d, " ", " "));
-                    }
-                    sw.WriteLine();
-                }
-                if (g._functionalityValues != null)
-                {
-                    for (int i = 0; i < g._functionalityValues._cats.Length; ++i)
-                    {
-                        sw.WriteLine(g._functionalityValues._cats[i] + " " + g._functionalityValues._funScores[i].ToString());
-                    }
-                    // parent categories
-                    StringBuilder sb = new StringBuilder();
-                    foreach (Functionality.Category pc in g._functionalityValues._parentCategories)
-                    {
-                        sb.Append(Functionality.getCategoryName((int)pc));
-                        sb.Append(" ");
-                    }
-                    sw.WriteLine(sb.ToString());
-                }
-            }
-        }// saveAGraph
-
-        public void saveFunctionalSpaceAgent(Graph g, string filename)
-        {
-            if (g == null)
-            {
-                return;
-            }
-            int nFSA = 0;
-            foreach(Node node in g._NODES)
-            {
-                if (node._functionalSpaceAgent != null)
-                {
-                    ++nFSA;
-                }
-            }
-            // idx, isGroundTouching, Color, Sym (-1: no sym, idx)
-            using (StreamWriter sw = new StreamWriter(filename))
-            {
-                sw.WriteLine(nFSA.ToString() + " functional spaces.");
-                for (int i = 0; i < g._NNodes; ++i)
-                {
-                    Node iNode = g._NODES[i];
-                    if (iNode._functionalSpaceAgent == null)
-                    {
-                        continue;
-                    }
-                    sw.WriteLine(iNode._INDEX.ToString() + " ");
-                    // prism
-                    foreach (Vector3d v in iNode._functionalSpaceAgent._POINTS3D)
-                    {
-                        sw.Write(vector3dToString(v, " ", " "));
-                    }
-                    sw.WriteLine();
-                }
-            }
-        }// saveFunctionalSpaceAgent
-
-        public void loadFunctionalSpaceAgent(Graph g, string filename)
-        {
-            if (g == null)
-            {
-                return;
-            }
-            using (StreamReader sr = new StreamReader(filename))
-            {
-                char[] separator = { ' ', '\t' };
-                string s = sr.ReadLine().Trim();
-                string[] strs = s.Split(separator);
-                int nFSA = int.Parse(strs[0]);
-                for (int i = 0; i < nFSA; ++i)
-                {
-                    // read a part
-                    // bbox vertices:
-                    s = sr.ReadLine().Trim(); // description of #i part
-                    strs = s.Split(separator);
-                    int nodeIdx = int.Parse(strs[0]);
-                    // prism vertices
-                    s = sr.ReadLine().Trim();
-                    strs = s.Split(separator);
-                    int nVertices = strs.Length / 3;
-                    Vector3d[] pnts = new Vector3d[nVertices];
-                    for (int j = 0, k = 0; j < nVertices; ++j)
-                    {
-                        pnts[j] = new Vector3d(double.Parse(strs[k++]), double.Parse(strs[k++]), double.Parse(strs[k++]));
-                    }
-                    Prism prim = new Prism(pnts);
-                    g._NODES[nodeIdx]._functionalSpaceAgent = prim;
-                }
-            }
-        }// loadFunctionalSpaceAgent
 
         public void refreshModelViewers()
         {
@@ -10412,6 +10437,56 @@ namespace FameBase
         {
         }// removeAFunction
 
+        private bool storePartCombination(Model m)
+        {
+            // if there exist a subset, do not store and do not perform this operation either
+            if (this.partNameToInteger == null || this.partCombinationMemory == null)
+            {
+                return false;
+            }
+            List<int> cur = new List<int>();
+            foreach (Part p in m._PARTS)
+            {
+                int id = -1;
+                if (this.partNameToInteger.TryGetValue(p._partName, out id))
+                {
+                    cur.Add(id);
+                }
+                else
+                {
+                    MessageBox.Show("Part name map error: " + p._partName);
+                    return false;
+                }
+            }
+            cur.Sort();
+            List<List<int>> iSet = this.partCombinationMemory[m._PARTS.Count];
+            if (iSet == null)
+            {
+                this.partCombinationMemory[m._PARTS.Count] = new List<List<int>>();
+                iSet = this.partCombinationMemory[m._PARTS.Count];
+            }
+            else
+            {
+                foreach (List<int> s in iSet)
+                {
+                    int i = 0;
+                    for (; i < s.Count; ++i)
+                    {
+                        if (s[i] != cur[i])
+                        {
+                            break;
+                        }
+                    }
+                    if (i == s.Count)
+                    {
+                        return false;
+                    }
+                }
+            }
+            this.partCombinationMemory[m._PARTS.Count].Add(cur);
+            return true;
+        }// storePartCombination
+
         public List<ModelViewer> runByUserSelection()
         {
             // evolve the current model
@@ -10483,6 +10558,10 @@ namespace FameBase
                         if (!Functionality.hasCompatibleFunctions(funcs1, funcs2))
                         {
                             continue;
+                        }
+                        if (pgs_1[i]._NODES.Count == 0 && pgs_2[j]._NODES.Count > 0)
+                        {
+                            int test = 0;
                         }
                         Model m1_cloned = this.crossOverTwoModelsWithFunctionalConstraints(m1, m2, pgs_1[i]._NODES, pgs_2[j]._NODES, idx[0]);
                         ++idx[0];
@@ -10590,8 +10669,6 @@ namespace FameBase
                 currLevels.Clear();
                 ++nlevel;
             }
-            
-
             return res;
         }// tryCrossOverTwoModelsWithFunctionalConstraints
 
@@ -10740,10 +10817,10 @@ namespace FameBase
 
             if (!m._GRAPH.isValid())
             {
-                //m._model_name += "_invalid";
-                //Program.GetFormMain().updateStats();
-                //this.setCurrentModel(m, -1);
-                //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                m._model_name += "_invalid";
+                Program.GetFormMain().updateStats();
+                this.setCurrentModel(m, -1);
+                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
                 saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
             }

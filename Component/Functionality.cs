@@ -193,6 +193,10 @@ namespace Component
                     }
                 }
             }
+            //if (funcs1.Count == 0 && funcs2.Count > 0)
+            //{
+            //    return true;
+            //}
             return false;
         }// hasCompatibleFunctions
 
