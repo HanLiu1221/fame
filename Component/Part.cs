@@ -675,6 +675,8 @@ namespace Component
 
         public Functionality.Category _CAT = Functionality.Category.None;
         public bool isDuplicated = false;
+
+        public PartFormation _partForm;
         // test 
         public List<Vector3d> pointsTest = new List<Vector3d>();
 
@@ -699,7 +701,6 @@ namespace Component
         {
             _mesh = mesh;
             _parts = parts;
-            this.init();
         }
 
         public Model(Mesh mesh, SamplePoints sp, FunctionalSpace[] fss, bool needNormalize)
@@ -747,23 +748,46 @@ namespace Component
         {
             if (_mesh == null)
             {
-                return;
+                this.composeMesh();
             }
             Vector3d maxCoord = _mesh.MaxCoord;
             Vector3d minCoord = _mesh.MinCoord;
             Vector3d scale = maxCoord - minCoord;
+            if (_GRAPH != null)
+            {
+                foreach (Node node in _GRAPH._NODES)
+                {
+                    maxCoord = Vector3d.Max(maxCoord, node._PART._MESH.MaxCoord);
+                    minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
+                }
+                scale = maxCoord - minCoord;
+            }
             double maxS = scale.x > scale.y ? scale.x : scale.y;
             maxS = maxS > scale.z ? maxS : scale.z;
             maxS = 1.0 / maxS;
-            //Vector3d center = (maxCoord + minCoord) / 2;
-            //Vector3d unit_center = new Vector3d(0, 0.5, 0);
-            Vector3d lower_center = (maxCoord + minCoord) / 2;
-            lower_center.y = minCoord.y;
-            Vector3d unit_center = new Vector3d(0, 0, 0);
-            //Matrix4d T = Matrix4d.TranslationMatrix(center);
+            Vector3d center = (maxCoord + minCoord) / 2;
+            Matrix4d T = Matrix4d.TranslationMatrix(center);
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
-            Matrix4d Q = Matrix4d.TranslationMatrix(unit_center) * S * Matrix4d.TranslationMatrix(new Vector3d() - lower_center);
+            Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
             this.Transform(Q);
+            // y == 0
+            minCoord = Vector3d.MaxCoord;
+            if (_GRAPH != null)
+            {
+                foreach (Node node in _GRAPH._NODES)
+                {
+                    minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
+                }
+            }
+            else
+            {
+                minCoord = _mesh.MinCoord;
+            }
+            Vector3d t = new Vector3d();
+            t.y = -minCoord.y;
+            T = Matrix4d.TranslationMatrix(t);
+
+            this.Transform(T);
         }// unify
 
         public void setParentNames(List<Model> models)
@@ -1256,7 +1280,11 @@ namespace Component
                     }
                 }
             }
-            if (_parts != null)
+            if (_GRAPH != null)
+            {
+                _GRAPH.transformAll(T);
+            }
+            else if (_parts != null)
             {
                 foreach (Part p in _parts)
                 {
@@ -2201,6 +2229,35 @@ namespace Component
         }
     }// Joint
 
+    public class PartFormation
+    {
+        List<int> _partIdxs;
+        double _rate = 0; // valid: 1, invalid: 0, user select: 2?
+
+        public PartFormation(List<int> partIdxs, double rate)
+        {
+            _partIdxs = partIdxs;
+            _rate = rate;
+        }
+
+        public List<int> getPartIdxs()
+        {
+            return _partIdxs;
+        }
+
+        public double _RATE
+        {
+            get
+            {
+                return _rate;
+            }
+            set
+            {
+                _rate = value;
+            }
+        }
+    }// PartFormation
+
     public class FunctionalityModel
     {
         int _dim = 0;
@@ -2269,6 +2326,10 @@ namespace Component
             _faceIdx = faceIdxs;
             _totalNfaces = totalNFaces;
             _blendColors = blendColors;
+            if (_blendColors == null)
+            {
+                _blendColors = new Color[_points.Length];
+            }
             buildFaceSamplePointsMap(totalNFaces);
         }
 

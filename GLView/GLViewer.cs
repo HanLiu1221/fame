@@ -249,7 +249,7 @@ namespace FameBase
 
         // record the part combinations to avoid repetition
         Dictionary<string, int> partNameToInteger;
-        List<List<int>>[] partCombinationMemory;
+        List<PartFormation>[] partCombinationMemory;
 
         /******************** Functions ********************/
 
@@ -989,7 +989,7 @@ namespace FameBase
             {
                 //if (model._GRAPH != null)
                 //{
-                //    model._GRAPH.unify();
+                //    model.unify();
                 //}
                 sw.Write("%parents: ");
                 foreach (string name in model._parent_names)
@@ -1066,17 +1066,17 @@ namespace FameBase
             this.saveModelSamplePoints(model, ptsname);
 
             // save mesh sample points & normals & faceindex
+            if (model._SP != null)
+            {
+                string modelSPname = foldername + model_name + ".sp";
+                this.saveSamplePointsInfo(model._SP, modelSPname);
+                string spColorname = foldername + model_name + ".color";
+                this.saveSamplePointsColor(model._SP._blendColors, spColorname);
+                string weightsPerCatName = foldername + "points_weights_per_cat\\" + model_name + "\\" + model_name + ".pw";
+                this.saveSamplePointWeightsPerCategory(model._SP._weightsPerCat, weightsPerCatName);
+            }
             if (isOriginalModel)
             {
-                if (model._SP != null)
-                {
-                    string modelSPname = foldername + model_name + ".sp";
-                    this.saveSamplePointsInfo(model._SP, modelSPname);
-                    string spColorname = foldername + model_name + ".color";
-                    this.saveSamplePointsColor(model._SP._blendColors, spColorname);
-                    string weightsPerCatName = foldername + "points_weights_per_cat\\" + model_name + "\\" + model_name + ".pw";
-                    this.saveSamplePointWeightsPerCategory(model._SP._weightsPerCat, weightsPerCatName);
-                }
                 if (model._funcSpaces != null)
                 {
                     int fsId = 1;
@@ -2044,6 +2044,7 @@ namespace FameBase
                     part._orignCategory = Functionality.getCategory(names[0]);
                     parts.Add(part);
                 }
+                // NOTE!! the old version including unify, e.g., _SP will be shifted
                 Model model = new Model(modelMesh, parts);
                 //model.checkInSamplePoints(sp);
                 model._funcSpaces = fss.ToArray();
@@ -2058,6 +2059,7 @@ namespace FameBase
                     // used for calculating contact point
                     this.reSamplingForANewShape(model);
                 }
+                model.unify();
                 return model;
             }
         }// loadOnePartBasedModel
@@ -2092,7 +2094,7 @@ namespace FameBase
             {
                 if (model._GRAPH != null)
                 {
-                    model._GRAPH.initializePartGroups(model._model_name);
+                    model._GRAPH.initializePartGroups();
                 }
             }
             else
@@ -2220,10 +2222,10 @@ namespace FameBase
             }
             // the number of a subset could be from 1 - n
             // a subset is a set of parts from the original input set
-            this.partCombinationMemory = new List<List<int>>[partNameToInteger.Count];
+            this.partCombinationMemory = new List<PartFormation>[partNameToInteger.Count];
             foreach (Model m in _ancesterModels)
             {
-                this.storePartCombination(m);
+                m._partForm = this.tryCreateANewPartFormation(m._PARTS, 1.0);
             }
             // set the default model as the last one
             if (_ancesterModelViewers.Count > 0)
@@ -2430,7 +2432,7 @@ namespace FameBase
                             pg._ParentModelIndex = _modelIndex;
                         }
                     }
-                    m._GRAPH.unify();
+                    m.unify();
                     m.composeMesh();
                     m._index = idx;
                     this.setCurrentModel(m, idx);
@@ -2689,7 +2691,7 @@ namespace FameBase
             {
                 if (m._GRAPH._partGroups.Count == 0)
                 {
-                    m._GRAPH.initializePartGroups(m._model_name);
+                    m._GRAPH.initializePartGroups();
                 }
                 nPGs += m._GRAPH._partGroups.Count;
                 foreach (PartGroup pg in m._GRAPH._partGroups)
@@ -4578,7 +4580,7 @@ namespace FameBase
             // only use mix part groups
             foreach (Model model in _userSelectedModelsBeforeRecompute)
             {
-                model._GRAPH.initializePartGroups(model._model_name);
+                model._GRAPH.initializePartGroups();
                 // check
                 for (int i = 0; i < model._GRAPH._partGroups.Count; ++i)
                 {
@@ -5070,7 +5072,7 @@ namespace FameBase
                 }
 
                 // screenshot
-                m._GRAPH.unify();
+                m.unify();
                 m.composeMesh();
                 this.setCurrentModel(m, -1);
 
@@ -6215,7 +6217,7 @@ namespace FameBase
 
                 // valid graph
                 this.tryRestoreFunctionalNodes(m);
-                m._GRAPH.unify();
+                m.unify();
                 m.composeMesh();
                 // record the post analysis feature - REPEAT the last statement, REMOVED after testing
                 StringBuilder sb = new StringBuilder();
@@ -7402,7 +7404,7 @@ namespace FameBase
                 model._GRAPH._functionalityValues = iModel._GRAPH._functionalityValues.clone() as FunctionalityFeatures;
                 if (model._GRAPH.isValid())
                 {
-                    model._GRAPH.unify();
+                    model.unify();
                     model.composeMesh();
                     mutated.Add(model);
                     // screenshot
@@ -8130,7 +8132,7 @@ namespace FameBase
             mc._GRAPH.deleteNodes(indices);
             mc._model_name += "_test";
             mc.deleteParts(indices);
-            mc._GRAPH.unify();
+            mc.unify();
             mc.composeMesh();
             this.saveAPartBasedModel(mc, mc._path + mc._model_name + ".pam", true);
             //pointFeatures = this.computePointFeatures(mc);
@@ -8220,7 +8222,7 @@ namespace FameBase
                 mc._GRAPH.deleteNodes(indices);
                 mc._model_name += "_" + id.ToString();
                 mc.deleteParts(indices);
-                mc._GRAPH.unify();
+                mc.unify();
                 mc.composeMesh();
                 this.saveAPartBasedModel(mc, mc._path + mc._model_name + ".pam", true);
                 // check functional space
@@ -8562,7 +8564,7 @@ namespace FameBase
                         if (m._GRAPH.isValid())
                         {
                             // unify first, transform poitns, and then compose
-                            m._GRAPH.unify();
+                            m.unify();
                             m.composeMesh();
                             crossed.Add(m);
                             //if (crossed.Count > 15) { return crossed; }
@@ -10437,15 +10439,15 @@ namespace FameBase
         {
         }// removeAFunction
 
-        private bool storePartCombination(Model m)
+        private PartFormation tryCreateANewPartFormation(List<Part> parts, double rate)
         {
             // if there exist a subset, do not store and do not perform this operation either
             if (this.partNameToInteger == null || this.partCombinationMemory == null)
             {
-                return false;
+                return null;
             }
             List<int> cur = new List<int>();
-            foreach (Part p in m._PARTS)
+            foreach (Part p in parts)
             {
                 int id = -1;
                 if (this.partNameToInteger.TryGetValue(p._partName, out id))
@@ -10455,42 +10457,39 @@ namespace FameBase
                 else
                 {
                     MessageBox.Show("Part name map error: " + p._partName);
-                    return false;
+                    return null;
                 }
             }
             cur.Sort();
-            List<List<int>> iSet = this.partCombinationMemory[m._PARTS.Count];
+            PartFormation partForm = new PartFormation(cur, rate);
+            int n = parts.Count;
+            List<PartFormation> iSet = this.partCombinationMemory[n];
             if (iSet == null)
             {
-                this.partCombinationMemory[m._PARTS.Count] = new List<List<int>>();
-                iSet = this.partCombinationMemory[m._PARTS.Count];
+                this.partCombinationMemory[n] = new List<PartFormation>();
+                iSet = this.partCombinationMemory[n];
             }
             else
             {
-                foreach (List<int> s in iSet)
+                foreach (PartFormation pf in iSet)
                 {
-                    int i = 0;
-                    for (; i < s.Count; ++i)
+                    List<int> idxs = pf.getPartIdxs();
+                    var sub = cur.Except(idxs);
+                    if (sub.Count() == 0)
                     {
-                        if (s[i] != cur[i])
-                        {
-                            break;
-                        }
-                    }
-                    if (i == s.Count)
-                    {
-                        return false;
+                        // exist
+                        return null;
                     }
                 }
             }
-            this.partCombinationMemory[m._PARTS.Count].Add(cur);
-            return true;
-        }// storePartCombination
+            this.partCombinationMemory[n].Add(partForm);
+            return partForm;
+        }// tryCreateANewPartFormation
 
         public List<ModelViewer> runByUserSelection()
         {
             // evolve the current model
-            if (_currModel == null)
+            if (_currModel == null || _ancesterModels.Count == 0)
             {
                 return null;
             }
@@ -10507,6 +10506,13 @@ namespace FameBase
                 {
                     otherModels.Add(m);
                 }
+            }
+            // more iterations
+            foreach (ModelViewer mv in _currGenModelViewers)
+            {
+                Model m = mv._MODEL;
+                m._GRAPH.initializePartGroups();
+                otherModels.Add(m);
             }
             //_prevUserFunctions = new List<Functionality.Functions>(_currUserFunctions);
             // target functions
@@ -10543,9 +10549,9 @@ namespace FameBase
             // 
             var sub = _currUserFunctions.Except(m1._GRAPH.collectAllDistinceFunctions());
             List<Functionality.Functions> lackedFuncs = sub.ToList();
+            // degenerate to part replacement
             if (lackedFuncs.Count() == 0)
             {
-                // 2. replace
                 // as long as the original functions are preserved
                 List<PartGroup> pgs_1 = m1._GRAPH._partGroups;
                 List<PartGroup> pgs_2 = m2._GRAPH._partGroups;
@@ -10558,10 +10564,6 @@ namespace FameBase
                         if (!Functionality.hasCompatibleFunctions(funcs1, funcs2))
                         {
                             continue;
-                        }
-                        if (pgs_1[i]._NODES.Count == 0 && pgs_2[j]._NODES.Count > 0)
-                        {
-                            int test = 0;
                         }
                         Model m1_cloned = this.crossOverTwoModelsWithFunctionalConstraints(m1, m2, pgs_1[i]._NODES, pgs_2[j]._NODES, idx[0]);
                         ++idx[0];
@@ -10656,8 +10658,12 @@ namespace FameBase
                             this.insertPlacement(mCloned, supportNodes, toReplace);
                         }
                     }
-                    if (this.processAnOffspringModel(mCloned))
+                    bool isValid = this.processAnOffspringModel(mCloned);
+                    PartFormation pf = this.tryCreateANewPartFormation(mCloned._PARTS, 0);
+                    if (isValid)
                     {
+                        pf._RATE = 1.0;
+                        mCloned._partForm = pf;
                         res.Add(mCloned);
                         currLevels.Add(mCloned);
                     }
@@ -10763,6 +10769,25 @@ namespace FameBase
 
         private Model crossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, List<Node> nodes1, List<Node> nodes2, int idx)
         {
+            // check if such combination already exists
+            List<Part> parts = new List<Part>();
+            foreach (Node node in m1._GRAPH._NODES)
+            {
+                if (!nodes1.Contains(node))
+                {
+                    parts.Add(node._PART);
+                }
+            }
+            foreach (Node node in nodes2)
+            {
+                parts.Add(node._PART);
+            }
+            PartFormation pf = this.tryCreateANewPartFormation(parts, 0);
+            if (pf == null)
+            {
+                return null;
+            }
+
             this.setSelectedNodes(m1, nodes1);
             this.setSelectedNodes(m2, nodes2);
             Model newModel = m1.Clone() as Model;
@@ -10801,6 +10826,8 @@ namespace FameBase
 
             if (this.processAnOffspringModel(newModel))
             {
+                pf._RATE = 1.0;
+                newModel._partForm = pf;
                 return newModel;
             }
             else
@@ -10812,14 +10839,14 @@ namespace FameBase
         private bool processAnOffspringModel(Model m)
         {
             // screenshot
-            m._GRAPH.unify();
+            m.unify();
             m.composeMesh();
 
             if (!m._GRAPH.isValid())
             {
                 m._model_name += "_invalid";
-                Program.GetFormMain().updateStats();
                 this.setCurrentModel(m, -1);
+                Program.GetFormMain().updateStats();
                 this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
                 saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
@@ -12997,7 +13024,7 @@ namespace FameBase
                 }
                 if (this.drawEdge)
                 {
-                    GLDrawer.drawMeshEdge(part._MESH);
+                    GLDrawer.drawMeshEdge(part._MESH, GLDrawer.ColorSet[1]);
                 }
                 if (this.drawVertex)
                 {

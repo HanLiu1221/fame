@@ -490,6 +490,12 @@ namespace Component
                     }
                 }
             }
+            // possibly the edge should be deleted, e.g., a middle part group connecting chair seat and ground touching nodes
+            // if try to connect the new groud nodes to a node below it, we could not find one
+            if (min_dis > 0.3)
+            {
+                return null;
+            }
             return res;
         }// getNodeNearestToContact
 
@@ -1165,7 +1171,7 @@ namespace Component
             }
         }
 
-        private void transformAll(Matrix4d T)
+        public void transformAll(Matrix4d T)
         {
             foreach (Node node in _nodes)
             {
@@ -1788,6 +1794,32 @@ namespace Component
             return supportingNodes;
         }// getAllSupprotingNodes
 
+        private List<Node> getHumanSittingNodes()
+        {
+            List<Node> sitNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.SITTING);
+            sitNodes = this.bfs_regionGrowingNonFunctionanlNodes(sitNodes);
+            List<Node> backNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.HUMAN_BACK);
+            backNodes = this.bfs_regionGrowingNonFunctionanlNodes(backNodes);
+            List<Node> handNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.HAND_HOLD);
+            handNodes = this.bfs_regionGrowingNonFunctionanlNodes(handNodes);
+            List<Node> sittingNodes = new List<Node>(sitNodes);
+            foreach (Node node in backNodes)
+            {
+                if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
+                {
+                    sittingNodes.Add(node);
+                }
+            }
+            foreach (Node node in handNodes)
+            {
+                if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
+                {
+                    sittingNodes.Add(node);
+                }
+            }
+            return sittingNodes;
+        }// getAllSupprotingNodes
+
         private bool hasConnections(Node node, List<Node> nodes)
         {
             foreach (Node adj in node._adjNodes)
@@ -1800,9 +1832,8 @@ namespace Component
             return false;
         }// hasConnections
 
-        public void initializePartGroups(string modelName)
+        public void initializePartGroups()
         {
-            string model_name = modelName.ToLower();
             _partGroups = new List<PartGroup>();
             // 1. connected parts
             List<List<int>> comIndices = new List<List<int>>();
@@ -1849,7 +1880,8 @@ namespace Component
                     }
                 }
             }
-            // special case for all support structure
+            // special cases: 
+            // s1. all support structure
             List<int> indices_support = new List<int>();
             List<Node> supportingNodes = this.getAllSupprotingNodes();
             if (supportingNodes != null)
@@ -1862,6 +1894,22 @@ namespace Component
                 {
                     comIndices.Add(indices_support);
                     PartGroup ng = new PartGroup(supportingNodes, 0);
+                    _partGroups.Add(ng);
+                }
+            }
+            // s2. chair back and seat
+            List<int> indices_human = new List<int>();
+            List<Node> sittingNodes = this.getHumanSittingNodes();
+            if (sittingNodes != null)
+            {
+                foreach (Node node in sittingNodes)
+                {
+                    indices_human.Add(node._INDEX);
+                }
+                if (getIndex(comIndices, indices_human) == -1 && shouldCreateNewPartGroup(_partGroups, sittingNodes))
+                {
+                    comIndices.Add(indices_human);
+                    PartGroup ng = new PartGroup(sittingNodes, 0);
                     _partGroups.Add(ng);
                 }
             }
