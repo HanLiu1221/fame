@@ -678,9 +678,20 @@ namespace FameBase
         {
             this.glViewer.markFunctionPart(7);
         }
+
         private void groundtouchingToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.markFunctionPart(0);
+        }
+
+        private void rollingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(8);
+        }
+
+        private void rockingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(9);
         }
 
         private void autoSnapshotsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1102,6 +1113,37 @@ namespace FameBase
             this.glViewer.editFunctions("rolling", this.rolling.Checked);
         }
 
+        private void rocking_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("rocking", this.rocking.Checked);
+        }
+
+        public List<string> getUserSelectedFunctions()
+        {
+            List<string> res = new List<string>();
+            if (this.sitting.Checked)
+            {
+                res.Add("sitting");
+            }
+            if (this.placement.Checked)
+            {
+                res.Add("placement");
+            }
+            if (this.storage.Checked)
+            {
+                res.Add("storage");
+            }
+            if (this.rolling.Checked)
+            {
+                res.Add("rolling");
+            }
+            if (this.rocking.Checked)
+            {
+                res.Add("rocking");
+            }
+            return res;
+        }
+
         private void runByUser_Click(object sender, EventArgs e)
         {
             List<ModelViewer> modelViews = this.glViewer.runByUserSelection();
@@ -1157,11 +1199,6 @@ namespace FameBase
             double val = e.OldValue - e.NewValue; // up to down
             double scale = val / e.OldValue * 0.2;
             this.glViewer.deformFunctionPart(scale, 1, false);
-        }
-
-        private void rollingToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.glViewer.markFunctionPart(8);
-        }
+        }       
     }// Interface
 }// namespace

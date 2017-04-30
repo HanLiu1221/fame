@@ -38,7 +38,7 @@ namespace Component
         public static int _CONVEXHULL_FEAT_DIM = 2;
         public static int _POINT_FEATURE_DIM = 18;
 
-        public enum Functions { PLACEMENT, STORAGE, SITTING, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, ROLLING, NONE };
+        public enum Functions { PLACEMENT, STORAGE, SITTING, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, ROLLING, ROCKING, NONE };
 
         public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Robot, Shelf, 
             Stand, Stroller, Table, TVBench, Vase, None };
@@ -200,6 +200,12 @@ namespace Component
             return false;
         }// hasCompatibleFunctions
 
+        public static bool isTrivialReplace(List<Node> nodes1, List<Node> nodes2)
+        {
+            // if the functionality of nodes1 is compatible with nodes2
+            return nodes1.Count == nodes2.Count && nodes1.Count == 1;
+        }
+
         private static bool isFunctionCompatible(Functions f1, Functions f2)
         {
             if (f1 == f2)
@@ -271,6 +277,11 @@ namespace Component
             }
             return res;
         }// IsFunctionCompatible
+
+        public static bool isRollableFunction(Functions f)
+        {
+            return f == Functions.ROCKING || f == Functions.ROLLING;
+        }
 
         public static void CheckFunctions(List<Functions> funcs,
             out bool containsMainFunc,
@@ -393,6 +404,8 @@ namespace Component
                     return Functions.SUPPORT;
                 case "rolling":
                     return Functions.ROLLING;
+                case "rocking":
+                    return Functions.ROCKING;
                 case "groundtouching":
                     return Functions.GROUND_TOUCHING;
                 case "sitting":
@@ -417,6 +430,8 @@ namespace Component
                     return "support";
                 case Functions.ROLLING:
                     return "rolling";
+                case Functions.ROCKING:
+                    return "rocking";
                 case Functions.GROUND_TOUCHING:
                     return "groundtouching";
                 case Functions.SITTING:

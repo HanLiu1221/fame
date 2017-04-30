@@ -878,14 +878,10 @@ namespace Component
             }
             StringBuilder sb = new StringBuilder();
             // connection
-            int nIsolatedNodes = 0;
+            int nIsolatedNodes = _GRAPH.hasNIsolatedNodes();
             bool hasMainFunction = true;
             foreach (Node node in this._GRAPH._NODES)
             {
-                if (node._edges == null || node._edges.Count == 0)
-                {
-                    ++nIsolatedNodes;
-                }
                 foreach (Functionality.Functions f in node._funcs)
                 {
                     if (Functionality.IsMainFunction(f))

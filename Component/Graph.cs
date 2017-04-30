@@ -222,8 +222,7 @@ namespace Component
                     nodes.Add(node);
                 }
             }
-            List<Node> dependentNodes = this.bfs_regionGrowingNonFunctionanlNodes(nodes);
-            nodes.AddRange(dependentNodes);
+            nodes = this.bfs_regionGrowingNonFunctionanlNodes(nodes);
             return nodes;
         }// getNodesAndDependentsByFunctionality
 
@@ -345,14 +344,107 @@ namespace Component
                 }
             }
             // 4. adjust contacts for new nodes
-            this.resetUpdateStatus();
-            foreach (Node node in newNodes)
-            {
-                adjustContacts(node);
-            }
+            //this.resetUpdateStatus();
+            //foreach (Node node in newNodes)
+            //{
+            //    adjustContacts(node);
+            //}
+            this.adjustContacts();
             this.resetUpdateStatus();
             _NEdges = _edges.Count;
         }// replaceNodes
+
+        public void adjustContacts()
+        {
+            foreach (Edge e in _edges)
+            {
+                Node n1 = e._start;
+                Node n2 = e._end;
+                // find a list of closest points between n1 and n2
+                List<Vector3d> pnts = findClosestPointsBetweenNodes(n1, n2);
+                if (pnts.Count < e._contacts.Count)
+                {
+                    continue;
+                }
+                foreach (Contact c in e._contacts)
+                {
+                    Vector3d p = c._pos3d;
+                    double mind = double.MaxValue;
+                    int idx = -1;
+                    for (int i = 0; i < pnts.Count; ++i)
+                    {
+                        double d = (p - pnts[i]).Length();
+                        if (d < mind)
+                        {
+                            mind = d;
+                            idx = i;
+                        }
+                    }
+                    c._pos3d = pnts[idx];
+                    pnts.RemoveAt(idx);
+                }
+            }
+        }// adjustContacts
+
+        private List<Vector3d> findClosestPointsBetweenNodes(Node m, Node n)
+        {
+            Vector3d[] m_pnts = m._PART._MESH.VertexVectorArray;
+            Vector3d[] n_pnts = n._PART._MESH.VertexVectorArray;
+            if (m._PART._partSP != null && m._PART._partSP._points != null &&
+                m._PART._partSP._points.Length > m_pnts.Length)
+            {
+                m_pnts = m._PART._partSP._points;
+            }
+            if (n._PART._partSP != null && n._PART._partSP._points != null &&
+                n._PART._partSP._points.Length > n_pnts.Length)
+            {
+                n_pnts = n._PART._partSP._points;
+            }
+            List<Vector3d> points = new List<Vector3d>();
+            double thr = 0.04;
+            while (points.Count < Common._min_point_num && thr < 0.1)
+            {
+                points.Clear();
+                for (int i = 0; i < m_pnts.Length; ++i)
+                {
+                    for (int j = 0; j < n_pnts.Length; ++j)
+                    {
+                        double d = (m_pnts[i] - n_pnts[j]).Length();
+                        if (d < 0.08)
+                        {
+                            Vector3d c = (m_pnts[i] + n_pnts[j]) / 2;
+                            points.Add(c);
+                        }
+                    }
+                }
+                thr += 0.02;
+            }
+            return points;
+            // TOO COST TO SORT THE DISTANCES
+            //List<double> distances = new List<double>();
+            //for (int i = 0; i < m_pnts.Length; ++i)
+            //{
+            //    for (int j = 0; j < n_pnts.Length; ++j)
+            //    {
+            //        double d = (m_pnts[i] - n_pnts[j]).Length();
+            //        int idx = 0;
+            //        for (int t = 0; t < distances.Count; ++t)
+            //        {
+            //            if (d < distances[t])
+            //            {
+            //                idx = t;
+            //            }
+            //        }
+            //        Vector3d c = (m_pnts[i] + n_pnts[j]) / 2;
+            //        distances.Insert(idx, d);
+            //        points.Insert(idx, c);
+            //    }
+            //}
+            //// get the most nearest ones
+            //int num = 20;
+            //int nn = points.Count > num ? num : points.Count;
+            //return points.GetRange(0, nn);
+        }
 
         public void addSubGraph(List<Node> toConnect, List<Node> newNodes)
         {
@@ -409,11 +501,12 @@ namespace Component
                 }
             }
             // 4. adjust contacts for new nodes
-            this.resetUpdateStatus();
-            foreach (Node node in newNodes)
-            {
-                adjustContacts(node);
-            }
+            //this.resetUpdateStatus();
+            //foreach (Node node in newNodes)
+            //{
+            //    adjustContacts(node);
+            //}
+            this.adjustContacts();
             this.resetUpdateStatus();
             _NEdges = _edges.Count;
         }// replaceNodes
@@ -1246,11 +1339,16 @@ namespace Component
         //*********** Validation ***********//
         public bool isValid()
         {
+            resetNodeIndex();
             if (!isIndexValid())
             {
                 return false;
             }
             if (!isValidContacts())
+            {
+                return false;
+            }
+            if (hasNIsolatedNodes() > 0)
             {
                 return false;
             }
@@ -1558,6 +1656,28 @@ namespace Component
             return true;
         }// isValidContacts
 
+        public int hasNIsolatedNodes()
+        {
+            int nIsolatedNodes = 0;
+            foreach (Node node in this._nodes)
+            {
+                if (node._edges == null || node._edges.Count == 0)
+                {
+                    ++nIsolatedNodes;
+                    continue;
+                }
+            }
+            if (nIsolatedNodes > 0)
+            {
+                return nIsolatedNodes;
+            }
+            // try to walk through one node to all the others
+            List<Node> start = new List<Node>();
+            start.Add(_nodes[0]);
+            List<Node> bfs_nodes = this.bfs_regionGrowingAnyNodes(start);
+            return _nodes.Count - bfs_nodes.Count;
+        }// hasNIsolatedNodes
+
         private bool isViolateOriginalScales()
         {
             // geometry filter
@@ -1610,7 +1730,6 @@ namespace Component
 
             // if any node that is detached
             // check if we can walk through one node to all the other nodes
-            resetNodeIndex();
             bool[] visited = new bool[_nodes.Count];
             Node start = _nodes[0];
             List<Node> queue = new List<Node>();
@@ -1776,7 +1895,7 @@ namespace Component
             // only if the supporting nodes connect to ground touching nodes
             // hinting ground touching nodes do not connect to main functional nodes directly
             List<Node> supportNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.SUPPORT);
-            supportNodes = this.bfs_regionGrowingNonFunctionanlNodes(supportNodes);
+            List<Node> dependNodes = this.bfs_regionGrowingNonFunctionanlNodes(supportNodes);
             List<Node> groundNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.GROUND_TOUCHING);
             groundNodes = this.bfs_regionGrowingNonFunctionanlNodes(groundNodes);
             if (supportNodes.Count == 0 || groundNodes.Count == 0)
@@ -1974,7 +2093,6 @@ namespace Component
                 List<Node> propogationNodes = bfs_regionGrowingNonFunctionanlNodes(pg._NODES);
                 if (propogationNodes.Count > 0)
                 {
-                    propogationNodes.AddRange(pg._NODES);
                     List<int> indices = new List<int>();
                     foreach (Node node in propogationNodes)
                     {
@@ -1992,6 +2110,43 @@ namespace Component
             }
         }// initializePartGroups
 
+        private List<Node> bfs_regionGrowingAnyNodes(List<Node> nodes)
+        {
+            List<Node> res = new List<Node>();
+            Queue<Node> queue = new Queue<Node>();
+            bool[] visited = new bool[_nodes.Count];
+            foreach (Node node in nodes)
+            {
+                queue.Enqueue(node);
+                visited[node._INDEX] = true;
+                res.Add(node);
+            }
+
+            while (queue.Count > 0)
+            {
+                List<Node> cur = new List<Node>();
+                while (queue.Count > 0)
+                {
+                    Node qn = queue.Dequeue();
+                    cur.Add(qn);
+                }
+                foreach (Node nd in cur)
+                {
+                    foreach (Node adj in nd._adjNodes)
+                    {
+                        if (visited[adj._INDEX])
+                        {
+                            continue;
+                        }
+                        queue.Enqueue(adj);
+                        visited[adj._INDEX] = true;
+                        res.Add(adj);
+                    }
+                }
+            }// while
+            return res;
+        }// bfs_regionGrowingNonFunctionanlNodes
+
         private List<Node> bfs_regionGrowingNonFunctionanlNodes(List<Node> nodes)
         {
             List<Node> res = new List<Node>();
@@ -2001,6 +2156,7 @@ namespace Component
             {
                 queue.Enqueue(node);
                 visited[node._INDEX] = true;
+                res.Add(node);
             }
             
             while (queue.Count > 0)
@@ -2052,7 +2208,6 @@ namespace Component
                 {
                     foreach (Node adj in nd._adjNodes)
                     {
-                        // only consider region growing on trivial parts
                         if (visited[adj._INDEX] || adj._funcs.Contains(Functionality.Functions.GROUND_TOUCHING))
                         {
                             continue;
@@ -2064,7 +2219,7 @@ namespace Component
                 }
             }// while
             return res;
-        }// bfs_regionGrowingNonFunctionanlNodes
+        }// bfs_regionGrowingDependentNodes
 
         private bool shouldCreateNewPartGroup(List<PartGroup> partGroups, List<Node> nodes)
         {

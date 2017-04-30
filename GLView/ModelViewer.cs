@@ -44,6 +44,7 @@ namespace FameBase
         // 1: last parent
         // > 1: children
         private int _gen = -1;
+        bool _isSelected = false;
 
         public void setModelViewMatrix(Matrix4d m)
         {
@@ -86,17 +87,30 @@ namespace FameBase
             back_color[2] = (float)c.B / 255;
         }
 
+        public bool isSelected()
+        {
+            return _isSelected;
+        }
+
+        public void unSelect()
+        {
+            _isSelected = false;
+        }
+
         protected override void OnMouseClick(System.Windows.Forms.MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            bool selcted = _mainView.userSelectModel(this._model);
-            if (selcted)
+            _isSelected = !_isSelected;
+            _mainView.userSelectModel(this._model, _isSelected);
+            if (_isSelected)
             {
                 this.setBackColor(GLDrawer.SelectedBackgroundColor);
+                this._model._partForm._RATE = 2.0;
             }
             else
             {
                 this.setBackColor(Color.White);
+                this._model._partForm._RATE = 0.0;
             }
             this.Refresh();
         }

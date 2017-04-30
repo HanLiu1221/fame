@@ -34,6 +34,7 @@ namespace FameBase
         public void Init()
         {
             this.initializeVariables();
+            
             //// glsl shaders
             //this.shader = new Shader(
             //    @"shaders\vertexshader.glsl",
@@ -219,7 +220,7 @@ namespace FameBase
         Edge _selectedEdge = null;
         Contact _selectedContact = null;
         private ReplaceablePair[,] _replaceablePairs = null;
-        private int _currGenId = 1;
+        private int _currGenId = 0;
         private int _mutateOrCross = -1;
         private int _modelViewIndex = -1;
         private int _modelIndex = 0; // only serves as a model index for all selected models including inputs
@@ -3904,18 +3905,16 @@ namespace FameBase
             _prevUserFunctions = new List<Functionality.Functions>(_currUserFunctions);
         }
 
-        public bool userSelectModel(Model m)
+        public void userSelectModel(Model m, bool addOrReomove)
         {
             // from user selction
-            if (_userSelectedModels.Contains(m))
+            if (addOrReomove)
             {
-                _userSelectedModels.Remove(m);
-                return false;
+                _userSelectedModels.Add(m);
             }
             else
             {
-                _userSelectedModels.Add(m);
-                return true;
+                _userSelectedModels.Remove(m);
             }
         }// userSelectModel
 
@@ -4315,6 +4314,8 @@ namespace FameBase
                     return Functionality.Functions.STORAGE;
                 case 8:
                     return Functionality.Functions.ROLLING;
+                case 9:
+                    return Functionality.Functions.ROCKING;
                 default:
                     return Functionality.Functions.NONE;
             }
@@ -4340,6 +4341,8 @@ namespace FameBase
                     return Functionality.Functions.HANG;
                 case "ROLLING":
                     return Functionality.Functions.ROLLING;
+                case "ROCKING":
+                    return Functionality.Functions.ROCKING;
                 case "GROUND_TOUCHING":
                     return Functionality.Functions.GROUND_TOUCHING;
                 default:
@@ -4546,12 +4549,12 @@ namespace FameBase
 
         private void saveUserSelections(int gen)
         {
-            string dir = userFolder + "\\selections_" + _userReCompute.ToString();
+            string dir = userFolder + "\\selections_" + _userReCompute.ToString() + "\\";
             if (!Directory.Exists(dir))
             {
                 Directory.CreateDirectory(dir);
             }
-            string selectionTxt = dir + "\\gen_" + gen.ToString() + ".txt";
+            string selectionTxt = dir + "gen_" + gen.ToString() + ".txt";
             using (StreamWriter sw = new StreamWriter(selectionTxt))
             {
                 sw.WriteLine("User " + _userIndex.ToString());
@@ -4559,6 +4562,9 @@ namespace FameBase
                 foreach (Model model in _userSelectedModels)
                 {
                     sw.WriteLine(model._path + model._model_name);
+
+                    string meshName = dir + model._model_name + ".obj";
+                    this.saveModelObj(model, meshName);
                 }
             }
         }// saveUserSelections
@@ -5404,6 +5410,23 @@ namespace FameBase
             List<Vector3d> targets = collectPoints(edgesToConnect_1);
             List<Vector3d> sources = collectPoints(edgesToConnect_2);
 
+            List<Node> ground1 = this.getGroundTouchingNode(nodes1);
+            List<Node> ground2 = this.getGroundTouchingNode(nodes2);
+            if (ground1.Count == 0 && ground2.Count > 0)
+            {
+                foreach (Node gn in ground2)
+                {
+                    Vector3d[] groundPoints = this.getGroundTouchingPoints(gn, ground2.Count == 2 ? 2 : 1);
+                    if (groundPoints != null)
+                    {
+                        for (int i = 0; i < groundPoints.Length; ++i)
+                        {
+                            sources.Add(groundPoints[i]);
+                        }
+                    }
+                }
+            }
+
             Vector3d maxv_s = Vector3d.MinCoord;
             Vector3d minv_s = Vector3d.MaxCoord;
             Vector3d maxv_t = Vector3d.MinCoord;
@@ -5515,9 +5538,7 @@ namespace FameBase
                 sources.Add(center2);
             }
 
-            Node ground1 = hasGroundTouchingNode(nodes1);
-            Node ground2 = hasGroundTouchingNode(nodes2);
-            bool useGround = ground1 != null && ground2 != null;
+            bool useGround = ground1.Count > 0 && ground2.Count > 0;
             if (useGround)
             {
                 //targets.Add(this.getGroundTouchingNodesCenter(nodes1));
@@ -10431,6 +10452,17 @@ namespace FameBase
             }
         }// editFunctions
 
+        private void checkInUserSelectedFunctions()
+        {
+            List<string> res = Program.GetFormMain().getUserSelectedFunctions();
+            _currUserFunctions.Clear();
+            foreach (string s in res)
+            {
+                Functionality.Functions f = Functionality.getFunction(s);
+                _currUserFunctions.Add(f);
+            }
+        }// checkInUserSelectedFunctions
+
         private void addAFunction(Functionality.Functions func)
         {
         }// addAFunction
@@ -10497,6 +10529,9 @@ namespace FameBase
             {
                 this.registerANewUser();
             }
+            this.checkInUserSelectedFunctions();
+
+            this._showContactPoint = true;
             this.decideWhichToDraw(true, false, false, true, false, false);
             List<Model> targetMoels = new List<Model>(_userSelectedModels);
             List<Model> otherModels = new List<Model>();
@@ -10508,13 +10543,23 @@ namespace FameBase
                 }
             }
             // more iterations
+            _userSelectedModels.Clear();
             foreach (ModelViewer mv in _currGenModelViewers)
             {
+                if (!mv.isSelected())
+                {
+                    continue;
+                }
                 Model m = mv._MODEL;
                 m._GRAPH.initializePartGroups();
                 otherModels.Add(m);
+                _userSelectedModels.Add(m);
             }
-            //_prevUserFunctions = new List<Functionality.Functions>(_currUserFunctions);
+
+            // store user selections
+            this.saveUserSelections(_currGenId);
+            ++_currGenId;
+
             // target functions
             if (targetMoels.Count == 0)
             {
@@ -10533,6 +10578,11 @@ namespace FameBase
                     List<Model> res = this.tryCrossOverTwoModelsWithFunctionalConstraints(m1, m2, idx);
                     candidates.AddRange(res);
                 }
+            }
+            foreach (ModelViewer mv in _currGenModelViewers)
+            {
+                mv.unSelect();
+                _userSelectedModels.Remove(mv._MODEL);
             }
             _currGenModelViewers = new List<ModelViewer>();
             for (int i = 0; i < candidates.Count; ++i)
@@ -10561,7 +10611,8 @@ namespace FameBase
                     for (int j = 0; j < pgs_2.Count; ++j)
                     {
                         List<Functionality.Functions> funcs2 = Functionality.getNodesFunctionalities(pgs_2[j]._NODES);
-                        if (!Functionality.hasCompatibleFunctions(funcs1, funcs2))
+                        if (!Functionality.hasCompatibleFunctions(funcs1, funcs2) 
+                            || Functionality.isTrivialReplace(pgs_1[i]._NODES, pgs_2[j]._NODES))
                         {
                             continue;
                         }
@@ -10594,15 +10645,15 @@ namespace FameBase
                 foreach (Model m in prevLevels)
                 {
                     Model mCloned = m.Clone() as Model;
-                    mCloned._path = crossoverFolder + "gen_1\\";
+                    mCloned._path = crossoverFolder + "gen_" +_currGenId.ToString() + "\\";
                     if (!Directory.Exists(mCloned._path))
                     {
                         Directory.CreateDirectory(mCloned._path);
                     }
-                    mCloned._model_name = m1._model_name + "-gen_1" + "_num_" + idx[0].ToString();
+                    mCloned._model_name = m1._model_name + "-gen_" + _currGenId.ToString() + "_num_" + idx[0].ToString();
                     bool useReplace = pgs[0]._NODES.Count > 0 && nlevel == 0;
                     List<Node> supportNodes = mCloned._GRAPH.getNodesByFunctionality(Functionality.Functions.SUPPORT);
-                    if ((f == Functionality.Functions.ROLLING || f == Functionality.Functions.PLACEMENT) && supportNodes.Count == 0)
+                    if ((Functionality.isRollableFunction(f) || f == Functionality.Functions.PLACEMENT) && supportNodes.Count == 0)
                     {
                         useReplace = false;
                     }
@@ -10620,28 +10671,34 @@ namespace FameBase
                     }
                     else
                     {
-                        List<Node> groundNodes = mCloned._GRAPH.getNodesAndDependentsByFunctionality(Functionality.Functions.GROUND_TOUCHING);
+                        List<Node> groundNodes = mCloned._GRAPH.getNodesByFunctionality(Functionality.Functions.GROUND_TOUCHING);
+                        List<Node> groundNodesDep = mCloned._GRAPH.getNodesAndDependentsByFunctionality(Functionality.Functions.GROUND_TOUCHING);
                         List<Node> toReplace = pgs[1]._NODES;
-                        if (f == Functionality.Functions.ROLLING)
+                        if (Functionality.isRollableFunction(f))
                         {
                             List<Vector3d> targets = new List<Vector3d>();
+                            // find the ground touching points,
+                            // the box center is not working, e.g., two crossed legs have the same centers
                             foreach (Node gn in groundNodes)
                             {
-                                Vector3d c = gn._PART._BOUNDINGBOX.CENTER;
-                                if (groundNodes.Count == 2)
+                                Vector3d[] groundPoints = this.getGroundTouchingPoints(gn, groundNodes.Count == 2 ? 2 : 1);
+                                if (groundPoints == null)
                                 {
-                                    targets.Add(new Vector3d(c.x, gn._PART._BOUNDINGBOX.MinCoord.y, gn._PART._BOUNDINGBOX.MinCoord.z));
-                                    targets.Add(new Vector3d(c.x, gn._PART._BOUNDINGBOX.MinCoord.y, gn._PART._BOUNDINGBOX.MaxCoord.z));
+                                    continue;
                                 }
-                                else
+                                for (int i = 0; i < groundPoints.Length; ++i)
                                 {
-                                    targets.Add(new Vector3d(c.x, gn._PART._BOUNDINGBOX.MinCoord.y, c.z));
+                                    targets.Add(groundPoints[i]);
                                 }
+                            }
+                            if (targets.Count == 0)
+                            {
+                                continue;
                             }
                             List<Node> updateNodes2 = this.replaceNodes(mCloned._GRAPH, m2._GRAPH, targets, toReplace);
                             mCloned.replaceNodes(new List<Node>(), updateNodes2);
                             // topology
-                            mCloned._GRAPH.addSubGraph(groundNodes, updateNodes2);
+                            mCloned._GRAPH.addSubGraph(groundNodesDep, updateNodes2);
                             mCloned.nNewNodes = updateNodes2.Count;
                             foreach (Node node in groundNodes)
                             {
@@ -10658,14 +10715,17 @@ namespace FameBase
                             this.insertPlacement(mCloned, supportNodes, toReplace);
                         }
                     }
-                    bool isValid = this.processAnOffspringModel(mCloned);
                     PartFormation pf = this.tryCreateANewPartFormation(mCloned._PARTS, 0);
-                    if (isValid)
+                    if (pf != null)
                     {
+                        bool isValid = this.processAnOffspringModel(mCloned);
                         pf._RATE = 1.0;
-                        mCloned._partForm = pf;
-                        res.Add(mCloned);
-                        currLevels.Add(mCloned);
+                        if (isValid)
+                        {
+                            mCloned._partForm = pf;
+                            res.Add(mCloned);
+                            currLevels.Add(mCloned);
+                        }
                     }
                     ++idx[0];
                 }
@@ -10677,6 +10737,52 @@ namespace FameBase
             }
             return res;
         }// tryCrossOverTwoModelsWithFunctionalConstraints
+
+        private Vector3d[] getGroundTouchingPoints(Node node, int n)
+        {
+            if (!node._isGroundTouching || n <= 0)
+            {
+                return null;
+            }
+            Vector3d[] res = new Vector3d[n];
+            List<Vector3d> pnts = new List<Vector3d>();
+            List<Vector3d> points = node._PART._MESH.VertexVectorArray.ToList();
+            if (node._PART._partSP != null && node._PART._partSP._points != null)
+                //&& node._PART._partSP._points.Length > points.Count)
+            {
+                points.AddRange(node._PART._partSP._points);
+                //points = node._PART._partSP._points.ToList();
+            }
+            Vector3d center = new Vector3d();
+            Vector3d minCoord = Vector3d.MaxCoord;
+            Vector3d maxCoord = Vector3d.MinCoord;
+            foreach (Vector3d v in points)
+            {
+                if (Math.Abs(v.y) < Common._magic_thresh)
+                {
+                    pnts.Add(v);
+                    center += v;
+                    minCoord = Vector3d.Min(minCoord, v);
+                    maxCoord = Vector3d.Max(maxCoord, v);
+                }
+            }
+            if (pnts.Count == 0)
+            {
+                return null;
+            }
+            center /= pnts.Count;
+            center.y = 0;
+            if (n == 1)
+            {
+                res[0] = center;
+            }
+            else if (n == 2)
+            {
+                res[0] = new Vector3d(center.x, 0, minCoord.z);
+                res[1] = new Vector3d(center.x, 0, maxCoord.z);
+            }
+            return res;
+        }// getGroundTouchingPoints
 
         private void insertPlacement(Model m, List<Node> supportNodes, List<Node> toReplace)
         {
@@ -10707,16 +10813,19 @@ namespace FameBase
                 if (c.x < center.x)
                 {
                     left.Add(node);
-                    x1 = x1 < c.x ? x1 : c.x;
+                    //x1 = x1 < c.x ? x1 : c.x;
+                    x1 = x1 < node._PART._MESH.MaxCoord.x ? x1 : node._PART._MESH.MaxCoord.x;
                 }
                 else
                 {
                     right.Add(node);
-                    x2 = x2 > c.x ? x2 : c.x;
+                    //x2 = x2 > c.x ? x2 : c.x;
+                    x2 = x2 > node._PART._MESH.MinCoord.x ? x2 : node._PART._MESH.MinCoord.x;
                 }
                 z1 = node._PART._BOUNDINGBOX.MinCoord.z < z1 ? node._PART._BOUNDINGBOX.MinCoord.z : z1;
                 z2 = node._PART._BOUNDINGBOX.MaxCoord.z > z2 ? node._PART._BOUNDINGBOX.MaxCoord.z : z2;
             }
+            List<Node> insertion = new List<Node>();
             for (int i = 0; i < nplacement; ++i)
             {
                 double hpos = start + (i + 1) * hinterv;
@@ -10729,9 +10838,7 @@ namespace FameBase
                 Matrix4d S = Matrix4d.ScalingMatrix(scale);
                 Matrix4d Q = Matrix4d.TranslationMatrix(newCenter) * S * Matrix4d.TranslationMatrix(new Vector3d() - toInsert._PART._BOUNDINGBOX.CENTER);
                 toInsert.Transform(Q);
-                List<Node> insertion = new List<Node>();
                 insertion.Add(toInsert);
-                m.replaceNodes(new List<Node>(), insertion);
                 if (left.Count == 1)
                 {
                     // one edge, two contacts
@@ -10765,6 +10872,12 @@ namespace FameBase
                     }
                 }
             }
+            m.replaceNodes(new List<Node>(), insertion);
+            foreach (Node node in insertion)
+            {
+                m._GRAPH.addANode(node);
+            }
+            m._GRAPH.adjustContacts();
         }// insertPlacement
 
         private Model crossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, List<Node> nodes1, List<Node> nodes2, int idx)
@@ -10799,7 +10912,7 @@ namespace FameBase
                 slashId = name.Length;
             }
             string originalModelName = name.Substring(0, slashId);
-            newModel._path = crossoverFolder + "gen_1\\";
+            newModel._path = crossoverFolder + "gen_" + _currGenId.ToString() + "\\";
             if (!Directory.Exists(newModel._path))
             {
                 Directory.CreateDirectory(newModel._path);
@@ -10814,7 +10927,7 @@ namespace FameBase
             {
                 updateNodes1.Add(newModel._GRAPH._NODES[node._INDEX]);
             }
-            newModel._model_name = originalModelName + "-gen_1" + "_num_" + idx.ToString();
+            newModel._model_name = originalModelName + "-gen_" + _currGenId.ToString() + "_num_" + idx.ToString();
             List<Node> reduced = reduceRepeatedNodes(new List<Node>(updateNodes1), new List<Node>(nodes2));
             this.setSelectedNodes(m2, reduced);
             // switch
@@ -10845,10 +10958,10 @@ namespace FameBase
             if (!m._GRAPH.isValid())
             {
                 m._model_name += "_invalid";
-                this.setCurrentModel(m, -1);
-                Program.GetFormMain().updateStats();
-                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
-                saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                //this.setCurrentModel(m, -1);
+                //Program.GetFormMain().updateStats();
+                //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                //saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
             }
             this.setCurrentModel(m, -1);

@@ -24,7 +24,8 @@ namespace Geometry
         public static int _max_edge_contacts = 4; // max number of contacts between two nodes
         public static int _MAX_FACE_COUNT = 300000;
         public static double _min_shelf_interval = 0.1;
-        public static int _min_point_num = 10; 
+        public static int _min_point_num = 10;
+        public static double _magic_thresh = 0.01;
 
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
