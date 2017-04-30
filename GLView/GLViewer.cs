@@ -10534,12 +10534,12 @@ namespace FameBase
             this._showContactPoint = true;
             this.decideWhichToDraw(true, false, false, true, false, false);
             List<Model> targetMoels = new List<Model>(_userSelectedModels);
-            List<Model> otherModels = new List<Model>();
+            List<Model> sourceModels = new List<Model>();
             foreach (Model m in _ancesterModels)
             {
                 if (!targetMoels.Contains(m))
                 {
-                    otherModels.Add(m);
+                    sourceModels.Add(m);
                 }
             }
             // more iterations
@@ -10552,7 +10552,7 @@ namespace FameBase
                 }
                 Model m = mv._MODEL;
                 m._GRAPH.initializePartGroups();
-                otherModels.Add(m);
+                sourceModels.Add(m);
                 _userSelectedModels.Add(m);
             }
 
@@ -10563,12 +10563,15 @@ namespace FameBase
             // target functions
             if (targetMoels.Count == 0)
             {
-                targetMoels = otherModels;
+                targetMoels = sourceModels;
             }
             List<Model> candidates = new List<Model>();
             foreach (Model m1 in targetMoels)
             {
                 int[] idx = new int[1];
+                List<Model> otherModels = new List<Model>(sourceModels);
+                otherModels.AddRange(targetMoels);
+                otherModels.Remove(m1);
                 foreach (Model m2 in otherModels)
                 {
                     if (m1 == m2)
