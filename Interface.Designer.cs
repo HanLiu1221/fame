@@ -124,6 +124,7 @@
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.functionsPanel = new System.Windows.Forms.Panel();
             this.functionGroup = new System.Windows.Forms.Panel();
+            this.rocking = new System.Windows.Forms.CheckBox();
             this.yScaleBar = new System.Windows.Forms.VScrollBar();
             this.xScaleBar = new System.Windows.Forms.HScrollBar();
             this.runByUser = new System.Windows.Forms.Button();
@@ -146,6 +147,7 @@
             this.prev_mesh = new System.Windows.Forms.Button();
             this.next_mesh = new System.Windows.Forms.Button();
             this.statsLabel = new System.Windows.Forms.Label();
+            this.glViewer = new FameBase.GLViewer();
             this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
@@ -166,6 +168,7 @@
             this.hangToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.removeallToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rollingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rockingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partNameToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.chairLegToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.chairBackToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -179,9 +182,7 @@
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.rockingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.glViewer = new FameBase.GLViewer();
-            this.rocking = new System.Windows.Forms.CheckBox();
+            this.supportToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -1032,6 +1033,17 @@
             this.functionGroup.Size = new System.Drawing.Size(332, 74);
             this.functionGroup.TabIndex = 22;
             // 
+            // rocking
+            // 
+            this.rocking.AutoSize = true;
+            this.rocking.Location = new System.Drawing.Point(79, 26);
+            this.rocking.Name = "rocking";
+            this.rocking.Size = new System.Drawing.Size(61, 17);
+            this.rocking.TabIndex = 7;
+            this.rocking.Text = "rocking";
+            this.rocking.UseVisualStyleBackColor = true;
+            this.rocking.CheckedChanged += new System.EventHandler(this.rocking_CheckedChanged);
+            // 
             // yScaleBar
             // 
             this.yScaleBar.LargeChange = 1;
@@ -1297,6 +1309,26 @@
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
             // 
+            // glViewer
+            // 
+            this.glViewer.AccumBits = ((byte)(0));
+            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.glViewer.AutoCheckErrors = false;
+            this.glViewer.AutoFinish = false;
+            this.glViewer.AutoMakeCurrent = true;
+            this.glViewer.AutoSwapBuffers = true;
+            this.glViewer.BackColor = System.Drawing.Color.Black;
+            this.glViewer.ColorBits = ((byte)(32));
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
+            this.glViewer.DepthBits = ((byte)(16));
+            this.glViewer.Location = new System.Drawing.Point(216, 3);
+            this.glViewer.Name = "glViewer";
+            this.glViewer.Size = new System.Drawing.Size(626, 511);
+            this.glViewer.StencilBits = ((byte)(0));
+            this.glViewer.TabIndex = 16;
+            // 
             // partBasket
             // 
             this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -1331,40 +1363,40 @@
             this.partNameToolStripMenuItem,
             this.partGroupToolStripMenuItem});
             this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(132, 180);
+            this.partRelatedTools.Size = new System.Drawing.Size(153, 202);
             // 
             // groupToolStripMenuItem
             // 
             this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
             // unGroupToolStripMenuItem
             // 
             this.unGroupToolStripMenuItem.Name = "unGroupToolStripMenuItem";
-            this.unGroupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.unGroupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.unGroupToolStripMenuItem.Text = "UnGroup";
             this.unGroupToolStripMenuItem.Click += new System.EventHandler(this.unGroupToolStripMenuItem_Click);
             // 
             // addEdgeToolStripMenuItem
             // 
             this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.addEdgeToolStripMenuItem.Text = "Add edge";
             this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // delEdgeToolStripMenuItem
             // 
             this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.delEdgeToolStripMenuItem.Text = "Del edge";
             this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // selectToolStripMenuItem
             // 
             this.selectToolStripMenuItem.Name = "selectToolStripMenuItem";
-            this.selectToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.selectToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
@@ -1383,7 +1415,7 @@
             this.rollingToolStripMenuItem,
             this.rockingToolStripMenuItem});
             this.functionalityToolStripMenuItem.Name = "functionalityToolStripMenuItem";
-            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.functionalityToolStripMenuItem.Text = "Functions";
             // 
             // humanbackToolStripMenuItem
@@ -1456,6 +1488,13 @@
             this.rollingToolStripMenuItem.Text = "rolling";
             this.rollingToolStripMenuItem.Click += new System.EventHandler(this.rollingToolStripMenuItem_Click);
             // 
+            // rockingToolStripMenuItem
+            // 
+            this.rockingToolStripMenuItem.Name = "rockingToolStripMenuItem";
+            this.rockingToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
+            this.rockingToolStripMenuItem.Text = "rocking";
+            this.rockingToolStripMenuItem.Click += new System.EventHandler(this.rockingToolStripMenuItem_Click);
+            // 
             // partNameToolStripMenuItem
             // 
             this.partNameToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -1469,9 +1508,10 @@
             this.handleToolStripMenuItem,
             this.hangerToolStripMenuItem,
             this.groundSupportToolStripMenuItem,
-            this.connectorToolStripMenuItem});
+            this.connectorToolStripMenuItem,
+            this.supportToolStripMenuItem1});
             this.partNameToolStripMenuItem.Name = "partNameToolStripMenuItem";
-            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.partNameToolStripMenuItem.Text = "Part Name";
             // 
             // chairLegToolStripMenuItem
@@ -1554,47 +1594,16 @@
             // partGroupToolStripMenuItem
             // 
             this.partGroupToolStripMenuItem.Name = "partGroupToolStripMenuItem";
-            this.partGroupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.partGroupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.partGroupToolStripMenuItem.Text = "Part Group";
             this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
             // 
-            // rockingToolStripMenuItem
+            // supportToolStripMenuItem1
             // 
-            this.rockingToolStripMenuItem.Name = "rockingToolStripMenuItem";
-            this.rockingToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
-            this.rockingToolStripMenuItem.Text = "rocking";
-            this.rockingToolStripMenuItem.Click += new System.EventHandler(this.rockingToolStripMenuItem_Click);
-            // 
-            // glViewer
-            // 
-            this.glViewer.AccumBits = ((byte)(0));
-            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.glViewer.AutoCheckErrors = false;
-            this.glViewer.AutoFinish = false;
-            this.glViewer.AutoMakeCurrent = true;
-            this.glViewer.AutoSwapBuffers = true;
-            this.glViewer.BackColor = System.Drawing.Color.Black;
-            this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(216, 3);
-            this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(626, 511);
-            this.glViewer.StencilBits = ((byte)(0));
-            this.glViewer.TabIndex = 16;
-            // 
-            // rocking
-            // 
-            this.rocking.AutoSize = true;
-            this.rocking.Location = new System.Drawing.Point(79, 26);
-            this.rocking.Name = "rocking";
-            this.rocking.Size = new System.Drawing.Size(61, 17);
-            this.rocking.TabIndex = 7;
-            this.rocking.Text = "rocking";
-            this.rocking.UseVisualStyleBackColor = true;
-            this.rocking.CheckedChanged += new System.EventHandler(this.rocking_CheckedChanged);
+            this.supportToolStripMenuItem1.Name = "supportToolStripMenuItem1";
+            this.supportToolStripMenuItem1.Size = new System.Drawing.Size(156, 22);
+            this.supportToolStripMenuItem1.Text = "Support";
+            this.supportToolStripMenuItem1.Click += new System.EventHandler(this.supportToolStripMenuItem1_Click);
             // 
             // Interface
             // 
@@ -1783,6 +1792,7 @@
         private System.Windows.Forms.ToolStripMenuItem rollingToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem rockingToolStripMenuItem;
         private System.Windows.Forms.CheckBox rocking;
+        private System.Windows.Forms.ToolStripMenuItem supportToolStripMenuItem1;
     }
 }
 

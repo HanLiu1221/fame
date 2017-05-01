@@ -755,7 +755,7 @@ namespace Component
 
         private double getDistBetweenParts(Part p1, Part p2, out Vector3d contact)
         {
-            return getDistBetweenMeshes(p1._MESH, p2._MESH, out contact);
+            //return getDistBetweenMeshes(p1._MESH, p2._MESH, out contact);
             // after correct the face index of sampling points
             if (p1._partSP == null || p2._partSP == null ||
                 p1._partSP._points == null || p2._partSP._points == null)

@@ -948,6 +948,11 @@ namespace FameBase
             this.glViewer.nameParts("Connector");
         }
 
+        private void supportToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            this.glViewer.nameParts("Support");
+        } 
+
         private void sortResToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //List<ModelViewer> modelViews = this.glViewer.sortEvolutionResults();
@@ -1199,6 +1204,6 @@ namespace FameBase
             double val = e.OldValue - e.NewValue; // up to down
             double scale = val / e.OldValue * 0.2;
             this.glViewer.deformFunctionPart(scale, 1, false);
-        }       
+        }      
     }// Interface
 }// namespace

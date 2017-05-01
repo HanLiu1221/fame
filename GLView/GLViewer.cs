@@ -5400,6 +5400,26 @@ namespace FameBase
             return insertNodes;
         }// insertionOperation
 
+        private Vector3d[] getScales(List<Node> nodes)
+        {
+            Vector3d[] res = new Vector3d[3];
+            Vector3d center = new Vector3d();
+            Vector3d maxv_t = Vector3d.MinCoord;
+            Vector3d minv_t = Vector3d.MaxCoord;
+            foreach (Node node in nodes)
+            {
+                center += node._PART._BOUNDINGBOX.CENTER;
+                maxv_t = Vector3d.Max(maxv_t, node._PART._BOUNDINGBOX.MaxCoord);
+                minv_t = Vector3d.Min(minv_t, node._PART._BOUNDINGBOX.MinCoord);
+            }
+            //center /= nodes.Count;
+            center = (maxv_t + minv_t) / 2;
+            res[0] = center;
+            res[1] = maxv_t;
+            res[2] = minv_t;
+            return res;
+        }
+
         private List<Node> replaceNodes(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2)
         {
             // replace nodes1 by nodes2 in g1
@@ -5427,28 +5447,18 @@ namespace FameBase
                 }
             }
 
-            Vector3d maxv_s = Vector3d.MinCoord;
-            Vector3d minv_s = Vector3d.MaxCoord;
-            Vector3d maxv_t = Vector3d.MinCoord;
-            Vector3d minv_t = Vector3d.MaxCoord;
+            Vector3d[] scaleVecs_1 = this.getScales(nodes1);
+            Vector3d[] scaleVecs_2 = this.getScales(nodes2);
 
-            Vector3d center1 = new Vector3d();
-            foreach (Node node in nodes1)
-            {
-                center1 += node._PART._BOUNDINGBOX.CENTER;
-                maxv_t = Vector3d.Max(maxv_t, node._PART._BOUNDINGBOX.MaxCoord);
-                minv_t = Vector3d.Min(minv_t, node._PART._BOUNDINGBOX.MinCoord);
-            }
-            center1 /= nodes1.Count;
+            Vector3d center1 = scaleVecs_1[0];
+            Vector3d maxv_t = scaleVecs_1[1];
+            Vector3d minv_t = scaleVecs_1[2];
 
-            Vector3d center2 = new Vector3d();
-            foreach (Node node in nodes2)
-            {
-                center2 += node._PART._BOUNDINGBOX.CENTER;
-                maxv_s = Vector3d.Max(maxv_s, node._PART._BOUNDINGBOX.MaxCoord);
-                minv_s = Vector3d.Min(minv_s, node._PART._BOUNDINGBOX.MinCoord);
-            }
-            center2 /= nodes2.Count;
+           
+            Vector3d center2 = scaleVecs_2[0];
+            Vector3d maxv_s = scaleVecs_2[1];
+            Vector3d minv_s = scaleVecs_2[2];
+
 
             double[] scale1 = { 1.0, 1.0, 1.0 };
             if (nodes1.Count > 0)
@@ -5457,7 +5467,7 @@ namespace FameBase
                 scale1[1] = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
                 scale1[2] = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
             }
-            
+
             double[] scale2 = { 1.0, 1.0, 1.0 };
             if (nodes2.Count > 0)
             {
@@ -5465,8 +5475,8 @@ namespace FameBase
                 scale2[1] = (maxv_s.y - minv_s.y) / (maxv_t.y - minv_t.y);
                 scale2[2] = (maxv_s.z - minv_s.z) / (maxv_t.z - minv_t.z);
             }
-            
-            int axis = this.hasCylinderNode(nodes2);         
+
+            int axis = this.hasCylinderNode(nodes2);
             Vector3d boxScale = new Vector3d(scale1[0], scale1[1], scale1[2]);
 
             // try to scale and translate the new part group to the target place
@@ -5476,11 +5486,13 @@ namespace FameBase
             List<Vector3d> simPoints = new List<Vector3d>();
             for (int i = 0; i < sources.Count; ++i)
             {
-                Vector3d simV = ( simQ * new Vector4d(sources[i], 1)).ToVector3D();
+                Vector3d simV = (simQ * new Vector4d(sources[i], 1)).ToVector3D();
                 simPoints.Add(simV);
             }
 
-            Matrix4d S, T, Q;
+            Matrix4d S = Matrix4d.ScalingMatrix(1, 1, 1);
+            Matrix4d T = Matrix4d.IdentityMatrix();
+            Matrix4d Q = Matrix4d.IdentityMatrix();
             // sort corresponding points
             int nps = targets.Count;
             bool swapped = false;
@@ -5532,12 +5544,17 @@ namespace FameBase
 
             useScale = updateNodes2.Count == 1 && !Functionality.ContainsMainFunction(updateNodes2[0]._funcs);
 
+            if (sources.Count == 0)
+            {
+                useScale = true;
+                boxScale = new Vector3d(1, 1, 1);
+            }
+
             if (targets.Count < 1)
             {
                 targets.Add(center1);
                 sources.Add(center2);
             }
-
             bool useGround = ground1.Count > 0 && ground2.Count > 0;
             if (useGround)
             {
@@ -5572,6 +5589,7 @@ namespace FameBase
                 g1.resetUpdateStatus();
                 this.restoreCyclinderNodes(updateNodes2, S);
             }
+
 
             if (ground1 != null)
             {
@@ -10561,6 +10579,7 @@ namespace FameBase
             ++_currGenId;
 
             // target functions
+            this.isUserTargeted = targetMoels.Count == 1;
             if (targetMoels.Count == 0)
             {
                 targetMoels = sourceModels;
@@ -10578,8 +10597,17 @@ namespace FameBase
                     {
                         continue;
                     }
+                    if (isUserTargeted)
+                    {
+                        m2._GRAPH._partGroups.Add(new PartGroup(m2._GRAPH._NODES, 0));
+                    }
                     List<Model> res = this.tryCrossOverTwoModelsWithFunctionalConstraints(m1, m2, idx);
                     candidates.AddRange(res);
+                    int pgid = m2._GRAPH._partGroups.Count - 1;
+                    if (isUserTargeted)
+                    {
+                        m2._GRAPH._partGroups.RemoveAt(pgid);
+                    }
                 }
             }
             foreach (ModelViewer mv in _currGenModelViewers)
@@ -10595,6 +10623,8 @@ namespace FameBase
             }
             return _currGenModelViewers;
         }// runByUserSelection
+
+        private bool isUserTargeted = false;
 
         private List<Model> tryCrossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, int[] idx)
         {
@@ -10616,6 +10646,11 @@ namespace FameBase
                         List<Functionality.Functions> funcs2 = Functionality.getNodesFunctionalities(pgs_2[j]._NODES);
                         if (!Functionality.hasCompatibleFunctions(funcs1, funcs2) 
                             || Functionality.isTrivialReplace(pgs_1[i]._NODES, pgs_2[j]._NODES))
+                        {
+                            continue;
+                        }
+                        if (pgs_2[j]._NODES.Count == m2._GRAPH._NODES.Count && 
+                            !funcs1.Contains(Functionality.Functions.GROUND_TOUCHING))
                         {
                             continue;
                         }
@@ -10933,8 +10968,15 @@ namespace FameBase
             newModel._model_name = originalModelName + "-gen_" + _currGenId.ToString() + "_num_" + idx.ToString();
             List<Node> reduced = reduceRepeatedNodes(new List<Node>(updateNodes1), new List<Node>(nodes2));
             this.setSelectedNodes(m2, reduced);
-            // switch
-            updatedNodes2 = this.replaceNodes(newModel._GRAPH, m2._GRAPH, updateNodes1, reduced);
+            // replace
+            if (nodes2.Count == m2._GRAPH._NNodes)
+            {
+                updatedNodes2 = this.replaceWithAFullGraph(newModel._GRAPH, m2._GRAPH, updateNodes1, reduced);
+            }
+            else
+            {
+                updatedNodes2 = this.replaceNodes(newModel._GRAPH, m2._GRAPH, updateNodes1, reduced);
+            }
             newModel.replaceNodes(updateNodes1, updatedNodes2);
             // topology
             newModel._GRAPH.replaceNodes(updateNodes1, updatedNodes2);
@@ -10951,6 +10993,89 @@ namespace FameBase
                 return null;
             }
         }// crossOverTwoModelsWithFunctionalConstraints
+
+        private List<Node> replaceWithAFullGraph(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2)
+        {
+            // replace nodes1 by nodes2 in g1
+            List<Node> updateNodes2 = cloneNodesAndRelations(nodes2);
+
+            List<Edge> edgesToConnect_1 = g1.getOutgoingEdges(nodes1);
+            List<Vector3d> targets = collectPoints(edgesToConnect_1);
+            Vector3d center_t = new Vector3d();
+            Vector3d mint = Vector3d.MaxCoord;
+            Vector3d maxt = Vector3d.MinCoord;
+            foreach (Vector3d v in targets)
+            {
+                center_t += v;
+                mint = Vector3d.Min(mint, v);
+                maxt = Vector3d.Max(maxt, v);
+            }
+            center_t /= targets.Count;
+
+            List<Node> ground1 = this.getGroundTouchingNode(nodes1);
+            List<Node> ground2 = this.getGroundTouchingNode(nodes2);
+
+            Vector3d[] scaleVecs_1 = this.getScales(nodes1);
+            Vector3d[] scaleVecs_2 = this.getScales(nodes2);
+
+            Vector3d center1 = scaleVecs_1[0];
+            Vector3d maxv_t = scaleVecs_1[1];
+            Vector3d minv_t = scaleVecs_1[2];
+
+
+            Vector3d center2 = scaleVecs_2[0];
+            Vector3d maxv_s = scaleVecs_2[1];
+            Vector3d minv_s = scaleVecs_2[2];
+
+            double[] scale1 = { 1.0, 1.0, 1.0 };
+            if (nodes1.Count > 0)
+            {
+                scale1[0] = (maxv_t.x - minv_t.x) / (maxv_s.x - minv_s.x);
+                scale1[1] = (maxv_t.y - minv_t.y) / (maxv_s.y - minv_s.y);
+                scale1[2] = (maxv_t.z - minv_t.z) / (maxv_s.z - minv_s.z);
+            }
+
+            Matrix4d T = Matrix4d.IdentityMatrix();
+            Matrix4d S = Matrix4d.IdentityMatrix();
+            Matrix4d Q = Matrix4d.IdentityMatrix();
+
+            // case 1:
+            // if nodes1 contain all ground nodes
+            List<Node> ground_g1 = this.getGroundTouchingNode(g1._NODES);
+            if (ground_g1.Count == ground1.Count)
+            {
+                S = Matrix4d.ScalingMatrix((maxt.x - mint.x) / (maxv_s.x - minv_s.x), scale1[1], scale1[2]);
+                center1.x = (maxt.x + mint.x) / 2;
+                Q = Matrix4d.TranslationMatrix(center1) * S * Matrix4d.TranslationMatrix(new Vector3d() - center2);
+                //Vector3d[] simPoints = new Vector3d[2];
+                //simPoints[0] = (S * new Vector4d(minv_s, 1)).ToVector3D();
+                //simPoints[1] = (S * new Vector4d(maxv_s, 1)).ToVector3D();
+                //Q = Matrix4d.TranslationMatrix(center1) * S * 
+                //    Matrix4d.TranslationMatrix(new Vector3d() - (simPoints[0] + simPoints[1]) / 2);
+            }
+            else
+            {
+                if (center1.x > center_t.x)
+                {
+                    // right
+                    Vector3d tv = new Vector3d(mint.x, 0, (maxt.z + mint.z) / 2);
+                    Q = Matrix4d.TranslationMatrix(tv) * Matrix4d.ScalingMatrix(scale1[2], 1, scale1[2]) *
+                        Matrix4d.TranslationMatrix(new Vector3d() - new Vector3d(minv_s.x, 0, (minv_s.z + maxv_s.z) / 2));
+                }
+                else
+                {
+                    Vector3d tv = new Vector3d(maxt.x, 0, (maxt.z + mint.z) / 2);
+                    Q = Matrix4d.TranslationMatrix(tv) * Matrix4d.ScalingMatrix(scale1[2], 1, scale1[2]) *
+                        Matrix4d.TranslationMatrix(new Vector3d() - new Vector3d(maxv_s.x, 0, (minv_s.z + maxv_s.z) / 2));
+
+                }
+            }
+            this.deformNodesAndEdges(updateNodes2, Q);
+            g1.resetUpdateStatus();
+            this.restoreCyclinderNodes(updateNodes2, S);
+
+            return updateNodes2;
+        }// replaceWithAFullGraph
 
         private bool processAnOffspringModel(Model m)
         {
@@ -11304,7 +11429,7 @@ namespace FameBase
             Part newPart = _currModel.groupParts(_selectedParts);
             _selectedParts.Clear();
             _selectedParts.Add(newPart);
-            _currModel.initializeGraph();
+            //_currModel.initializeGraph();
             this.cal2D();
             this.Refresh();
         }// groupParts
