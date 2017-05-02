@@ -755,6 +755,7 @@ namespace FameBase
                 foreach (Part p in model._PARTS)
                 {
                     Mesh mesh = p._MESH;
+                    sw.WriteLine("g " + p._partName);
                     // face
                     string s = "";
                     for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
@@ -1032,6 +1033,17 @@ namespace FameBase
                     this.saveObj(ipart._MESH, meshDir + meshName, ipart._COLOR);
                     sw.WriteLine("\\" + modelName + "\\" + meshName);
                 }
+                string model_group_path = model._path + model._model_name + "\\";
+                if (!isOriginalModel)
+                {
+                    model_group_path = crossoverFolder + "meshes\\gen_" + _currGenId.ToString() + "\\";
+                    if (!Directory.Exists(model_group_path))
+                    {
+                        Directory.CreateDirectory(model_group_path);
+                    }
+                }
+                string meshGroupName = model_group_path + model._model_name + "_group.obj";
+                this.saveModelObj(_currModel, meshGroupName);
                 if (model._GRAPH != null)
                 {
                     string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
@@ -1042,6 +1054,7 @@ namespace FameBase
                 saveModelInfo(model, meshDir, modelName, isOriginalModel);
             }
         }// saveAPartBasedModel
+
         
         private void saveModelInfo(Model model, string foldername, string model_name, bool isOriginalModel)
         {
@@ -1340,7 +1353,7 @@ namespace FameBase
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
             string samplingCmd = exePath + "StyleSimilarity.exe ";
-            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 1";
+            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 0";
 
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -5208,6 +5221,20 @@ namespace FameBase
             return new List<Node>(nodes2);
         }// reduceRepeatedNodes
 
+        private bool needReduceRepeatedNodes(List<Node> nodes1, List<Node> nodes2)
+        {
+            // if #nodes2 contain only main functional parts, and its m --> 1
+            // since single functional part exisits in one part group, skip this option
+            List<Functionality.Functions> func2 = Functionality.getNodesFunctionalitiesIncludeNone(nodes2);
+            int nMainNodes1 = containsNMainNodes(nodes1);
+            int nMainNodes2 = containsNMainNodes(nodes2);
+            if (func2.Count == 1 && Functionality.IsMainFunction(func2[0]) && nMainNodes2 > nMainNodes1)
+            {
+                return true;
+            }
+            return false;
+        }// reduceRepeatedNodes
+
         private int containsNMainNodes(List<Node> nodes)
         {
             int n = 0;
@@ -5862,7 +5889,10 @@ namespace FameBase
                 {
                     string part_name = node._PART._partName;
                     node.calRatios();
-                    _functionalPartScales.Add(part_name, node._ratios);
+                    if (node._funcs.Contains(Functionality.Functions.STORAGE))
+                    {
+                        _functionalPartScales.Add(part_name, node._ratios);
+                    }
                 }
                 ++mid;
             }
@@ -6429,7 +6459,8 @@ namespace FameBase
             {
                 bool hasFuncPart = _currModel._GRAPH.hasAnyNonObstructedFunctionalPart(-1);
                 //_currModel._GRAPH.isPhysicalValid();
-                this.tryRestoreFunctionalNodes(_currModel);
+                //this.tryRestoreFunctionalNodes(_currModel);
+                _currModel._GRAPH.isValid();
             }
         }
         private void tryRestoreFunctionalNodes(Model m)
@@ -6476,6 +6507,7 @@ namespace FameBase
             double thr1 = 3.0;
             double thr2 = 1.0/thr1;
             bool needReScale = false;
+
             if (ry >= thr1 && rz >= thr1)
             {
                 scale[0] *= Math.Min(ry, rz);
@@ -6491,6 +6523,9 @@ namespace FameBase
                 scale[2] = originalRatio[2] / node._ratios[2];
                 needReScale = true;
             }
+            Vector3d dif = node._PART._BOUNDINGBOX.MaxCoord - node._PART._BOUNDINGBOX.MinCoord;
+            double vol = dif.x * dif.y * dif.z;
+            needReScale = vol < 0.01;
             if (needReScale)
             {
                 Vector3d center = node._PART._BOUNDINGBOX.CENTER;
@@ -6500,8 +6535,8 @@ namespace FameBase
                 Matrix4d T = Matrix4d.TranslationMatrix(center) * Matrix4d.ScalingMatrix(scale) 
                     * Matrix4d.TranslationMatrix(new Vector3d() - center);
                 this.deformNodesAndEdges(nodes, T);
-                
-                Program.GetFormMain().outputSystemStatus("Re-scale a functional part of model: " + m._model_name);
+
+                Program.GetFormMain().outputSystemStatus("Re-scale a functional part: " + node_name);
             }
             return needReScale;
         }// tryRestoreAFunctionalNode
@@ -10549,7 +10584,7 @@ namespace FameBase
             }
             this.checkInUserSelectedFunctions();
 
-            this._showContactPoint = true;
+            //this._showContactPoint = true;
             this.decideWhichToDraw(true, false, false, true, false, false);
             List<Model> targetMoels = new List<Model>(_userSelectedModels);
             List<Model> sourceModels = new List<Model>();
@@ -10572,6 +10607,16 @@ namespace FameBase
                 m._GRAPH.initializePartGroups();
                 sourceModels.Add(m);
                 _userSelectedModels.Add(m);
+            }
+            if (_userSelectedModels.Count == 0)
+            {
+                // select all
+                foreach (ModelViewer mv in _currGenModelViewers)
+                {
+                    Model m = mv._MODEL;
+                    m._GRAPH.initializePartGroups();
+                    sourceModels.Add(m);
+                }
             }
 
             // store user selections
@@ -10639,18 +10684,10 @@ namespace FameBase
                 List<PartGroup> pgs_1 = m1._GRAPH._partGroups;
                 List<PartGroup> pgs_2 = m2._GRAPH._partGroups;
                 for (int i = 0; i < pgs_1.Count; ++i)
-                {
-                    List<Functionality.Functions> funcs1 = Functionality.getNodesFunctionalities(pgs_1[i]._NODES);
+                {                    
                     for (int j = 0; j < pgs_2.Count; ++j)
                     {
-                        List<Functionality.Functions> funcs2 = Functionality.getNodesFunctionalities(pgs_2[j]._NODES);
-                        if (!Functionality.hasCompatibleFunctions(funcs1, funcs2) 
-                            || Functionality.isTrivialReplace(pgs_1[i]._NODES, pgs_2[j]._NODES))
-                        {
-                            continue;
-                        }
-                        if (pgs_2[j]._NODES.Count == m2._GRAPH._NODES.Count && 
-                            !funcs1.Contains(Functionality.Functions.GROUND_TOUCHING))
+                        if (!shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes))
                         {
                             continue;
                         }
@@ -10775,6 +10812,33 @@ namespace FameBase
             }
             return res;
         }// tryCrossOverTwoModelsWithFunctionalConstraints
+
+        private bool shouldReplace(List<Node> nodes1, List<Node> nodes2, int n)
+        {
+            List<Functionality.Functions> funcs1 = Functionality.getNodesFunctionalities(nodes1);
+            List<Functionality.Functions> funcs2 = Functionality.getNodesFunctionalities(nodes2);
+            if (nodes2.Count == n && !funcs1.Contains(Functionality.Functions.GROUND_TOUCHING))
+            {
+                return false;
+            }
+
+            if (!Functionality.hasCompatibleFunctions(funcs1, funcs2)
+                || Functionality.isTrivialReplace(nodes1, nodes2))
+            {
+                return false;
+            }
+            if (funcs1.Count == 1 && funcs2.Count == 1 && funcs1[0] == Functionality.Functions.PLACEMENT
+                && nodes1.Count > nodes2.Count)
+            {
+                return false;
+            }
+            if (needReduceRepeatedNodes(nodes1, nodes2))
+            {
+                // multiple placement replace one
+                return false;
+            }
+            return true;
+        }
 
         private Vector3d[] getGroundTouchingPoints(Node node, int n)
         {
@@ -10966,16 +11030,15 @@ namespace FameBase
                 updateNodes1.Add(newModel._GRAPH._NODES[node._INDEX]);
             }
             newModel._model_name = originalModelName + "-gen_" + _currGenId.ToString() + "_num_" + idx.ToString();
-            List<Node> reduced = reduceRepeatedNodes(new List<Node>(updateNodes1), new List<Node>(nodes2));
-            this.setSelectedNodes(m2, reduced);
+            this.setSelectedNodes(m2, nodes2);
             // replace
             if (nodes2.Count == m2._GRAPH._NNodes)
             {
-                updatedNodes2 = this.replaceWithAFullGraph(newModel._GRAPH, m2._GRAPH, updateNodes1, reduced);
+                updatedNodes2 = this.replaceWithAFullGraph(newModel._GRAPH, m2._GRAPH, updateNodes1, nodes2);
             }
             else
             {
-                updatedNodes2 = this.replaceNodes(newModel._GRAPH, m2._GRAPH, updateNodes1, reduced);
+                updatedNodes2 = this.replaceNodes(newModel._GRAPH, m2._GRAPH, updateNodes1, nodes2);
             }
             newModel.replaceNodes(updateNodes1, updatedNodes2);
             // topology
@@ -11080,16 +11143,22 @@ namespace FameBase
         private bool processAnOffspringModel(Model m)
         {
             // screenshot
+            this.tryRestoreFunctionalNodes(m);
             m.unify();
             m.composeMesh();
+            //this.reSamplingForANewShape(m);
 
             if (!m._GRAPH.isValid())
             {
+                if (m._model_name == "coffeeTable_1-gen_1_num_6" || m._model_name == "dress_1-gen_1_num_10")
+                {
+                    m._GRAPH.isValid();
+                }
                 m._model_name += "_invalid";
-                //this.setCurrentModel(m, -1);
-                //Program.GetFormMain().updateStats();
-                //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
-                //saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                this.setCurrentModel(m, -1);
+                Program.GetFormMain().updateStats();
+                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
             }
             this.setCurrentModel(m, -1);
@@ -11429,7 +11498,7 @@ namespace FameBase
             Part newPart = _currModel.groupParts(_selectedParts);
             _selectedParts.Clear();
             _selectedParts.Add(newPart);
-            //_currModel.initializeGraph();
+            _currModel.initializeGraph();
             this.cal2D();
             this.Refresh();
         }// groupParts

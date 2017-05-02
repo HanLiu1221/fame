@@ -1348,7 +1348,15 @@ namespace Component
             {
                 return false;
             }
+            if (isNotProperlyScaled())
+            {
+                return false;
+            }
             if (hasNIsolatedNodes() > 0)
+            {
+                return false;
+            }
+            if (hasObstructedParts())
             {
                 return false;
             }
@@ -1678,6 +1686,31 @@ namespace Component
             return _nodes.Count - bfs_nodes.Count;
         }// hasNIsolatedNodes
 
+        private bool isNotProperlyScaled()
+        {
+            Vector3d minCoord = Vector3d.MaxCoord;
+            Vector3d maxCoord = Vector3d.MinCoord;
+            foreach (Node node in _nodes)
+            {
+                minCoord = Vector3d.Min(minCoord, node._PART._BOUNDINGBOX.MinCoord);
+                maxCoord = Vector3d.Max(maxCoord, node._PART._BOUNDINGBOX.MaxCoord);
+            }
+            Vector3d scale = maxCoord - minCoord;
+            double minV = scale[0] < scale[1] ? scale[0] : scale[1];
+            minV = minV < scale[2] ? minV : scale[2];
+            if (minV < 0.01) {
+                return true;
+            }
+            for (int i = 0; i < 3; ++i)
+            {
+                if (scale[i] / minV > 5)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// isNotProperlyScaled
+
         private bool isViolateOriginalScales()
         {
             // geometry filter
@@ -1716,6 +1749,49 @@ namespace Component
             //}
             return false;
         }// isLoseOriginalFunctionality
+
+        private Vector3d[] getSamplePoints(Node node)
+        {
+            Vector3d[] res = node._PART._MESH.VertexVectorArray;
+            if (node._PART._partSP != null && node._PART._partSP._points != null
+                && node._PART._partSP._points.Length > res.Length)
+            {
+                res = node._PART._partSP._points;
+            }
+            return res;
+        }
+
+        private bool hasObstructedParts()
+        {
+            // check if any part is obstructed by the other
+            // measuring how many sample points are inside the other part
+            double thr = 0.6;
+            for (int i = 0; i < _NNodes;++i)
+            {
+                Vector3d[] vi = this.getSamplePoints(_nodes[i]);
+                double n_thr = vi.Length * thr;
+                for (int j = 0; j < _NNodes; ++j)
+                {
+                    if (i == j)
+                    {
+                        continue;
+                    }
+                    int nIncluded = 0;
+                    foreach (Vector3d v in vi)
+                    {
+                        if (Common.IsPointInBox(v, _nodes[j]._PART._BOUNDINGBOX))
+                        {
+                            ++nIncluded;
+                        }
+                    }
+                    if (nIncluded >= n_thr)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }// hasObstructedParts
 
         private bool hasDetachedParts()
         {
@@ -1999,6 +2075,28 @@ namespace Component
                     }
                 }
             }
+            // connected main functional parts
+            foreach (Node node in _nodes)
+            {
+                if (!Functionality.ContainsMainFunction(node._funcs) || node._funcs.Contains(Functionality.Functions.GROUND_TOUCHING))
+                {
+                    continue;
+                }
+                List<int> indices_main = new List<int>();
+                List<Node> connectedMainNodes = new List<Node>();
+                connectedMainNodes.Add(node);
+                connectedMainNodes = this.bfs_regionGrowingConnectedMainNodes(connectedMainNodes);
+                foreach (Node nd in connectedMainNodes)
+                {
+                    indices_main.Add(nd._INDEX);
+                }
+                if (getIndex(comIndices, indices_main) == -1 && shouldCreateNewPartGroup(_partGroups, connectedMainNodes))
+                {
+                    comIndices.Add(indices_main);
+                    PartGroup ng = new PartGroup(connectedMainNodes, 0);
+                    _partGroups.Add(ng);
+                }
+            }
             // special cases: 
             // s1. all support structure
             List<int> indices_support = new List<int>();
@@ -2220,6 +2318,43 @@ namespace Component
             }// while
             return res;
         }// bfs_regionGrowingDependentNodes
+
+        public List<Node> bfs_regionGrowingConnectedMainNodes(List<Node> nodes)
+        {
+            List<Node> res = new List<Node>();
+            Queue<Node> queue = new Queue<Node>();
+            bool[] visited = new bool[_nodes.Count];
+            foreach (Node node in nodes)
+            {
+                queue.Enqueue(node);
+                visited[node._INDEX] = true;
+                res.Add(node);
+            }
+
+            while (queue.Count > 0)
+            {
+                List<Node> cur = new List<Node>();
+                while (queue.Count > 0)
+                {
+                    Node qn = queue.Dequeue();
+                    cur.Add(qn);
+                }
+                foreach (Node nd in cur)
+                {
+                    foreach (Node adj in nd._adjNodes)
+                    {
+                        if (visited[adj._INDEX] || !Functionality.ContainsMainFunction(adj._funcs))
+                        {
+                            continue;
+                        }
+                        queue.Enqueue(adj);
+                        visited[adj._INDEX] = true;
+                        res.Add(adj);
+                    }
+                }
+            }// while
+            return res;
+        }// bfs_regionGrowingConnectedMainNodes
 
         private bool shouldCreateNewPartGroup(List<PartGroup> partGroups, List<Node> nodes)
         {

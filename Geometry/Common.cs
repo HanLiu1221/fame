@@ -96,6 +96,17 @@ namespace Geometry
             return x;
         }// isValidNumber
 
+        public static bool IsPointInBox(Vector3d p, Prism b)
+        {
+            if (p.x >= b.MinCoord.x && p.x <= b.MaxCoord.x &&
+                p.y >= b.MinCoord.y && p.y <= b.MaxCoord.y &&
+                p.z >= b.MinCoord.z && p.z <= b.MaxCoord.z)
+            {
+                return true;
+            }
+            return false;
+        }
+
         public static double PointDistToPlane(Vector3d pos, Vector3d center, Vector3d normal)
         {
             double d = (pos - center).Dot(normal) / normal.Length();

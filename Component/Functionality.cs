@@ -75,7 +75,7 @@ namespace Component
         public static bool IsPlacementFunction(Functions f)
         {
             return f == Functions.PLACEMENT || f == Functions.STORAGE
-                || f == Functions.SITTING;
+                || f == Functions.SITTING || f == Functions.HANG;
         }
 
         public static bool IsMainFunction(Functions f)
@@ -203,8 +203,30 @@ namespace Component
         public static bool isTrivialReplace(List<Node> nodes1, List<Node> nodes2)
         {
             // if the functionality of nodes1 is compatible with nodes2
-            return nodes1.Count == nodes2.Count && nodes1.Count == 1;
-        }
+            if (nodes1.Count == 0 || nodes2.Count == 0)
+            {
+                return false;
+            }
+            Functions f1 = getMainFunction(nodes1[0]);
+            Functions f2 = getMainFunction(nodes2[0]);
+            if (nodes2.Count == 1 && f1 == f2 && f2 == Functions.PLACEMENT)
+            {
+                return true;
+            }
+            return nodes1.Count == nodes2.Count;
+        }// isTrivialReplace
+
+        private static Functions getMainFunction(Node node)
+        {
+            foreach (Functions f in node._funcs)
+            {
+                if (IsMainFunction(f))
+                {
+                    return f;
+                }
+            }
+            return Functions.NONE;
+        }// getMainFunction
 
         private static bool isFunctionCompatible(Functions f1, Functions f2)
         {
