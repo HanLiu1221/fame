@@ -285,7 +285,10 @@ namespace Component
             List<Edge> out_new_edges = getOutgoingEdges(newNodes);
             List<Node> out_nodes = new List<Node>();
             List<Edge> out_edges = new List<Edge>();
-            if (out_new_edges.Count > out_old_edges.Count)
+            int n_old_contact = this.getContactNumber(out_old_edges);
+            int n_new_contacs = this.getContactNumber(out_new_edges);
+            //if (out_new_edges.Count > out_old_edges.Count)
+            if (n_new_contacs > n_old_contact)
             {
                 out_nodes = newNodes;
                 out_edges = out_new_edges;
@@ -960,6 +963,16 @@ namespace Component
 
             return res;
         }// findReplaceableNodes
+
+        private int getContactNumber(List<Edge> edges)
+        {
+            int n = 0;
+            foreach (Edge e in edges)
+            {
+                n += e._contacts.Count;
+            }
+            return n;
+        }// getContactNumber
 
         public List<Edge> getOutgoingEdges(List<Node> nodes)
         {
@@ -1753,8 +1766,8 @@ namespace Component
         private Vector3d[] getSamplePoints(Node node)
         {
             Vector3d[] res = node._PART._MESH.VertexVectorArray;
-            if (node._PART._partSP != null && node._PART._partSP._points != null
-                && node._PART._partSP._points.Length > res.Length)
+            if (node._PART._partSP != null && node._PART._partSP._points != null)
+                //&& node._PART._partSP._points.Length > res.Length)
             {
                 res = node._PART._partSP._points;
             }
@@ -1769,39 +1782,106 @@ namespace Component
             for (int i = 0; i < _NNodes;++i)
             {
                 Vector3d[] vi = this.getSamplePoints(_nodes[i]);
+                // changed on May 3rd. Han
+                // sum up all obstructed points of one part by all the left parts, not just one by the other
+                bool[] obstructed = new bool[vi.Length];
                 double n_thr = vi.Length * thr;
+                int nIncluded = 0;
                 for (int j = 0; j < _NNodes; ++j)
                 {
                     if (i == j)
                     {
                         continue;
                     }
-                    int nIncluded = 0;
-                    foreach (Vector3d v in vi)
+                    for (int k = 0; k < vi.Length; ++k )
                     {
+                        Vector3d v = vi[k];
+                        if (obstructed[k])
+                        {
+                            continue;
+                        }
                         if (Common.IsPointInBox(v, _nodes[j]._PART._BOUNDINGBOX))
                         {
                             ++nIncluded;
+                            obstructed[k] = true;
                         }
                     }
-                    if (nIncluded >= n_thr)
+                }// other nodes
+                if (nIncluded >= n_thr)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// hasObstructedParts
+
+        private bool hasIllConnectedEdges()
+        {
+            // 1. tow parts need to be conneceted if there is a connection
+            int[] detacehdCount = new int[_NNodes];
+            foreach (Edge e in _edges)
+            {
+                double mdist = getMinDistBetweenNodes(e._start, e._end);
+                if (mdist > 0.06)
+                {
+                    return true;
+                }
+                if (mdist > 0.02)
+                {
+                    int id1 = _nodes.IndexOf(e._start);
+                    int id2 = _nodes.IndexOf(e._end);
+                    detacehdCount[id1]++;
+                    detacehdCount[id2]++;
+                }
+            }
+            // if there is one node that detached from all connections, it must be isolated, so the thresh can be small
+            for (int i = 0; i < _nodes.Count;++i )
+            {
+                if (detacehdCount[i] == _nodes[i]._edges.Count)
+                {
+                    return true;
+                }
+            }
+            double thr = 0.1;
+            foreach (Edge e in _edges)
+            {
+                // if any contact shifts away from any node
+                Node n1 = e._start;
+                Node n2 = e._end;
+                foreach (Contact c in e._contacts)
+                {
+                    double d1 = this.getMinDistToContact(c._pos3d, n1);
+                    double d2 = this.getMinDistToContact(c._pos3d, n2);
+                    if (d1 > thr && d2 > thr)
                     {
                         return true;
                     }
                 }
             }
             return false;
-        }// hasObstructedParts
+        }// hasIllConnectedEdges
+
+        private double getMinDistToContact(Vector3d c, Node node)
+        {
+            Vector3d[] pnts = this.getSamplePoints(node);
+            double mind = double.MaxValue;
+            foreach (Vector3d v in pnts)
+            {
+                double d = (v - c).Length();
+                if (d < mind)
+                {
+                    mind = d;
+                }
+            }
+            return mind;
+        }// getMinDistToContact
 
         private bool hasDetachedParts()
         {
             // 1. tow parts need to be conneceted if there is a connection
-            foreach (Edge e in _edges)
+            if (hasIllConnectedEdges())
             {
-                if (!isPartConnected(e._start._PART, e._end._PART))
-                {
-                    return true;
-                }
+                return true;
             }
 
             // if any node that is detached
@@ -1829,7 +1909,8 @@ namespace Component
                             continue;
                         }
                         Mesh m2 = node._PART._MESH;
-                        if (isPartConnected( c._PART, node._PART))
+                        double mdist = getMinDistBetweenNodes(c, node);
+                        if (mdist < 0.04)
                         {
                             queue.Add(node);
                         }
@@ -1846,46 +1927,25 @@ namespace Component
             return false;
         }// hasDetachedParts
 
-        private bool isPartConnected(Part p1, Part p2)
+        private double getMinDistBetweenNodes(Node n1, Node n2)
         {
             // uniformly sampled points on mesh
-            double thr = 0.04;
             double mind = double.MaxValue;
-            Vector3d[] v1 = p1._partSP == null ? p1._MESH.VertexVectorArray : p1._partSP._points;
-            Vector3d[] v2 = p2._partSP == null ? p2._MESH.VertexVectorArray : p2._partSP._points;
-            bool useMesh1 = false;
-            bool useMesh2 = false;
-            if (v1 == null || v1.Length < 10)
-            {
-                v1 = p1._MESH.VertexVectorArray;
-                useMesh1 = true;
-            }
-            if (v2 == null || v2.Length < 10)
-            {
-                v2 = p2._MESH.VertexVectorArray;
-                useMesh2 = true;
-            }
-            if (useMesh1 && useMesh2)
-            {
-                thr = 0.08;
-            }
+            Vector3d[] v1 = getSamplePoints(n1);
+            Vector3d[] v2 = getSamplePoints(n2);
             for (int i = 0; i < v1.Length; ++i)
             {
                 for (int j = 0; j < v2.Length; ++j)
                 {
                     double d = (v1[i] - v2[j]).Length();
-                    if (d < thr)
-                    {
-                        return true;
-                    }
                     if (d < mind)
                     {
                         mind = d;
                     }
                 }
             }
-            return mind < thr;
-        }// isPartConnected
+            return mind;
+        }// getMinDistBetweenNodes
 
         private bool isConnected(Mesh m1, Mesh m2, double thr)
         {
@@ -2000,18 +2060,18 @@ namespace Component
             List<Node> sittingNodes = new List<Node>(sitNodes);
             foreach (Node node in backNodes)
             {
-                if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
+                if (!sittingNodes.Contains(node))
                 {
                     sittingNodes.Add(node);
                 }
             }
-            foreach (Node node in handNodes)
-            {
-                if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
-                {
-                    sittingNodes.Add(node);
-                }
-            }
+            //foreach (Node node in handNodes)
+            //{
+            //    if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
+            //    {
+            //        sittingNodes.Add(node);
+            //    }
+            //}
             return sittingNodes;
         }// getAllSupprotingNodes
 
@@ -2063,16 +2123,20 @@ namespace Component
                 if (Functionality.IsMainFunction(func))
                 {
                     // main functionality part
-                    List<Node> single = new List<Node>();
-                    single.Add(nodes[0]);
-                    ng = new PartGroup(single, 0);
-                    indices = new List<int>();
-                    indices.Add(nodes[0]._INDEX);
-                    if (getIndex(comIndices, indices) == -1 && shouldCreateNewPartGroup(_partGroups, nodes))
-                    {
-                        comIndices.Add(indices);
-                        _partGroups.Add(ng);
-                    }
+                    //foreach (Node mn in nodes)
+                    //{
+                    Node mn = nodes[0];
+                        List<Node> single = new List<Node>();
+                        single.Add(mn);
+                        ng = new PartGroup(single, 0);
+                        indices = new List<int>();
+                        indices.Add(mn._INDEX);
+                        if (getIndex(comIndices, indices) == -1 && shouldCreateNewPartGroup(_partGroups, nodes))
+                        {
+                            comIndices.Add(indices);
+                            _partGroups.Add(ng);
+                        }
+                    //}
                 }
             }
             // connected main functional parts
@@ -2188,6 +2252,7 @@ namespace Component
                 {
                     continue;
                 }
+                // region growing to non-functional nodes
                 List<Node> propogationNodes = bfs_regionGrowingNonFunctionanlNodes(pg._NODES);
                 if (propogationNodes.Count > 0)
                 {
@@ -2204,6 +2269,31 @@ namespace Component
                     PartGroup ppg = new PartGroup(propogationNodes, 0);
                     //_partGroups.Add(ppg);
                     _partGroups[i] = ppg; //! in this way, only use connected nodes
+                }
+                // region growing any directly connectd nodes
+                List<Node> directDependentNodes = new List<Node>(pg._NODES);
+                foreach (Node node in pg._NODES)
+                {
+                    foreach (Node adj in node._adjNodes)
+                    {
+                        if (adj._edges.Count == 1 && !directDependentNodes.Contains(adj))
+                        {
+                            directDependentNodes.Add(adj);
+                        }
+                    }
+                }
+                if (directDependentNodes.Count > pg._NODES.Count)
+                {
+                    List<int> indices = new List<int>();
+                    foreach (Node node in directDependentNodes)
+                    {
+                        indices.Add(node._INDEX);
+                    }
+                    if (getIndex(comIndices, indices) == -1)
+                    {
+                        comIndices.Add(indices);
+                        _partGroups.Add(new PartGroup(directDependentNodes, 0));
+                    }
                 }
             }
         }// initializePartGroups

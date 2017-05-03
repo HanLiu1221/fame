@@ -734,6 +734,8 @@ namespace FameBase
 
         private void saveModelObj(Model model, string filename)
         {
+            double xs = this.xstart;
+            double zs = this.zstart;
             using (StreamWriter sw = new StreamWriter(filename))
             {
                 int start = 0;
@@ -770,6 +772,55 @@ namespace FameBase
                 }
             }
         }// saveModelObj
+
+        private void saveModelGroupObj(Model model, string filename)
+        {
+            double xs = this.xstart;
+            double zs = this.zstart;
+            using (StreamWriter sw = new StreamWriter(filename))
+            {
+                int start = 0;
+                foreach (Part p in model._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+
+                    // vertex
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.VertexCount; ++i)
+                    {
+                        s = "v";
+                        double x = mesh.VertexPos[j++] + xs;
+                        s += " " + x.ToString();
+                        s += " " + mesh.VertexPos[j++].ToString();
+                        double z = mesh.VertexPos[j++] + zs;
+                        s += " " + z.ToString();
+                        sw.WriteLine(s);
+                    }
+                }
+                foreach (Part p in model._PARTS)
+                {
+                    Mesh mesh = p._MESH;
+                    sw.WriteLine("g " + p._partName);
+                    // face
+                    string s = "";
+                    for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
+                    {
+                        s = "f";
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        s += " " + (mesh.FaceVertexIndex[j++] + 1 + start).ToString();
+                        sw.WriteLine(s);
+                    }
+                    start += mesh.VertexCount;
+                }
+            }
+            xstart += 1.5;
+            if (xstart > xmax)
+            {
+                xstart = xmin;
+                zstart += 1.5;
+            }
+        }// saveModelGroupObj
 
         public void saveMergedObj(string filename)
         {
@@ -1034,16 +1085,23 @@ namespace FameBase
                     sw.WriteLine("\\" + modelName + "\\" + meshName);
                 }
                 string model_group_path = model._path + model._model_name + "\\";
+                string model_group_shifted_path = model._path + model._model_name + "\\";
                 if (!isOriginalModel)
                 {
                     model_group_path = crossoverFolder + "meshes\\gen_" + _currGenId.ToString() + "\\";
+                    model_group_shifted_path = crossoverFolder + "group_meshes\\gen_" + _currGenId.ToString() + "\\";
                     if (!Directory.Exists(model_group_path))
                     {
                         Directory.CreateDirectory(model_group_path);
                     }
+                    if (!Directory.Exists(model_group_shifted_path))
+                    {
+                        Directory.CreateDirectory(model_group_shifted_path);
+                    }
                 }
-                string meshGroupName = model_group_path + model._model_name + "_group.obj";
-                this.saveModelObj(_currModel, meshGroupName);
+                string meshGroupName = model_group_shifted_path + model._model_name + "_group.obj";
+                this.saveModelGroupObj(_currModel, meshGroupName);
+                this.saveModelObj(_currModel, model_group_path + model._model_name + ".obj");
                 if (model._GRAPH != null)
                 {
                     string graphName = filename.Substring(0, filename.LastIndexOf('.')) + ".graph";
@@ -2073,7 +2131,7 @@ namespace FameBase
                     // used for calculating contact point
                     this.reSamplingForANewShape(model);
                 }
-                model.unify();
+                //model.unify();
                 return model;
             }
         }// loadOnePartBasedModel
@@ -2126,6 +2184,8 @@ namespace FameBase
             //    model._MESH.testNormals.Add(v);
             //    model._MESH.testNormals.Add(v + nor * 0.05);
             //}
+            model.unify();
+            model.composeMesh();
             return model;
         }// loadAPartBasedModel
 
@@ -2134,6 +2194,8 @@ namespace FameBase
             this.clearContext();
             this.clearHighlights();
             _currModel = this.loadAPartBasedModelAgent(filename, true);
+            xstart = 0;
+            zstart = 0;
             this.setUIMode(0);
             // model check
             if (_currModel != null)
@@ -2236,7 +2298,7 @@ namespace FameBase
             }
             // the number of a subset could be from 1 - n
             // a subset is a set of parts from the original input set
-            this.partCombinationMemory = new List<PartFormation>[partNameToInteger.Count];
+            this.partCombinationMemory = new List<PartFormation>[partNameToInteger.Count * 2];
             foreach (Model m in _ancesterModels)
             {
                 m._partForm = this.tryCreateANewPartFormation(m._PARTS, 1.0);
@@ -6467,13 +6529,13 @@ namespace FameBase
         {
             foreach(Node node in m._GRAPH._NODES)
             {
-                if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
+                if (node._funcs.Contains(Functionality.Functions.HANG))
                 {
-                    this.tryRestoreFunctionalNodeArea(m, node);
+                    this.tryRestoreFunctionalNodeVolume(m, node, Functionality.Functions.HANG);
                 }
                 else if (node._funcs.Contains(Functionality.Functions.STORAGE))
                 {
-                    this.tryRestoreFunctionalNodeVolume(m, node);
+                    this.tryRestoreFunctionalNodeVolume(m, node, Functionality.Functions.STORAGE);
                 }
             }
         }// tryRestoreFunctionalNodes
@@ -6482,7 +6544,7 @@ namespace FameBase
         {
         }
 
-        private bool tryRestoreFunctionalNodeVolume(Model m, Node node)
+        private bool tryRestoreFunctionalNodeVolume(Model m, Node node, Functionality.Functions f)
         {
             //Random rand = new Random();
             //int randnum = rand.Next(1);
@@ -6525,7 +6587,10 @@ namespace FameBase
             }
             Vector3d dif = node._PART._BOUNDINGBOX.MaxCoord - node._PART._BOUNDINGBOX.MinCoord;
             double vol = dif.x * dif.y * dif.z;
-            needReScale = vol < 0.01;
+            if (f == Functionality.Functions.STORAGE)
+            {
+                needReScale = vol < 0.01;
+            }
             if (needReScale)
             {
                 Vector3d center = node._PART._BOUNDINGBOX.CENTER;
@@ -9633,12 +9698,27 @@ namespace FameBase
             {
                 Vector3d t1 = new Vector3d();
                 Vector3d t2 = new Vector3d();
+                Vector3d mint = Vector3d.MaxCoord;
+                Vector3d maxt = Vector3d.MinCoord;
                 foreach (Vector3d tt in srcpts)
+                {
                     t1 += tt;
-                foreach (Vector3d tt in tarpts)
-                    t2 += tt;
+                    mint = Vector3d.Min(mint, tt);
+                    maxt = Vector3d.Min(maxt, tt);
+                }
                 t1 /= srcpts.Count;
+                //t1 = (maxt - mint) / 2;
+
+                mint = Vector3d.MaxCoord;
+                maxt = Vector3d.MinCoord;
+                foreach (Vector3d tt in tarpts)
+                {
+                    t2 += tt;
+                    mint = Vector3d.Min(mint, tt);
+                    maxt = Vector3d.Min(maxt, tt);
+                }
                 t2 /= tarpts.Count;
+                //t2 = (mint + maxt) / 2;
 
                 Vector3d trans = t2 - t1;
                 T = Matrix4d.TranslationMatrix(trans);
@@ -10548,6 +10628,10 @@ namespace FameBase
             cur.Sort();
             PartFormation partForm = new PartFormation(cur, rate);
             int n = parts.Count;
+            if (n > this.partCombinationMemory.Length)
+            {
+                return partForm;
+            }
             List<PartFormation> iSet = this.partCombinationMemory[n];
             if (iSet == null)
             {
@@ -10571,8 +10655,38 @@ namespace FameBase
             return partForm;
         }// tryCreateANewPartFormation
 
+        private double xstart = 0;
+        private double zstart = 0;
+        private double xmax = 0;
+        private double xmin = 0;
+        private void initializeMeshStartPoint()
+        {
+            if (_currGenId == 0)
+            {
+                xstart = -5;
+                zstart = -5;
+                xmin = -5;
+                xmax = 5;
+            }
+            if (_currGenId == 1)
+            {
+                xstart = -10;
+                zstart = -10;
+                xmin = -10;
+                xmax = 10;
+            }
+            if (_currGenId == 2)
+            {
+                xstart = -16;
+                zstart = -10;
+                xmin = -16;
+                xmax = 16;
+            }
+        }
+
         public List<ModelViewer> runByUserSelection()
         {
+            initializeMeshStartPoint();
             // evolve the current model
             if (_currModel == null || _ancesterModels.Count == 0)
             {
@@ -10586,8 +10700,15 @@ namespace FameBase
 
             //this._showContactPoint = true;
             this.decideWhichToDraw(true, false, false, true, false, false);
-            List<Model> targetMoels = new List<Model>(_userSelectedModels);
+            List<Model> targetMoels = new List<Model>();
             List<Model> sourceModels = new List<Model>();
+            foreach (ModelViewer mv in _ancesterModelViewers)
+            {
+                if (mv.isSelected())
+                {
+                    targetMoels.Add(mv._MODEL);
+                }
+            }
             foreach (Model m in _ancesterModels)
             {
                 if (!targetMoels.Contains(m))
@@ -10608,6 +10729,7 @@ namespace FameBase
                 sourceModels.Add(m);
                 _userSelectedModels.Add(m);
             }
+            targetMoels.AddRange(_userSelectedModels);
             if (_userSelectedModels.Count == 0)
             {
                 // select all
@@ -10618,10 +10740,10 @@ namespace FameBase
                     sourceModels.Add(m);
                 }
             }
-
+            _currGenModelViewers.Clear();
             // store user selections
             this.saveUserSelections(_currGenId);
-            ++_currGenId;
+            ++_currGenId; 
 
             // target functions
             this.isUserTargeted = targetMoels.Count == 1;
@@ -10630,6 +10752,13 @@ namespace FameBase
                 targetMoels = sourceModels;
             }
             List<Model> candidates = new List<Model>();
+            //if (isUserTargeted)
+            //{
+            //    List<Node> nodes = new List<Node>();
+            //    nodes.Add(targetMoels[0]._GRAPH._NODES[3]);
+            //    nodes.Add(targetMoels[0]._GRAPH._NODES[9]);
+            //    targetMoels[0]._GRAPH._partGroups.Add(new PartGroup(nodes, 0));
+            //}
             foreach (Model m1 in targetMoels)
             {
                 int[] idx = new int[1];
@@ -10647,7 +10776,11 @@ namespace FameBase
                         m2._GRAPH._partGroups.Add(new PartGroup(m2._GRAPH._NODES, 0));
                     }
                     List<Model> res = this.tryCrossOverTwoModelsWithFunctionalConstraints(m1, m2, idx);
-                    candidates.AddRange(res);
+                    if (_currGenId < 5)
+                    {
+                        // to avoid out of memory
+                        candidates.AddRange(res);
+                    }
                     int pgid = m2._GRAPH._partGroups.Count - 1;
                     if (isUserTargeted)
                     {
@@ -10684,14 +10817,24 @@ namespace FameBase
                 List<PartGroup> pgs_1 = m1._GRAPH._partGroups;
                 List<PartGroup> pgs_2 = m2._GRAPH._partGroups;
                 for (int i = 0; i < pgs_1.Count; ++i)
-                {                    
+                {
                     for (int j = 0; j < pgs_2.Count; ++j)
                     {
-                        if (!shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes))
+                        PartFormation pf = this.getANewPartFormation(m1, pgs_1[i]._NODES, pgs_2[j]._NODES);
+                        //if (isUserTargeted && i == pgs_1.Count - 1 && j == pgs_2.Count - 1)
+                        //{
+                        //    Model test = this.crossOverTwoModelsWithFunctionalConstraints(m1, m2, pgs_1[i]._NODES, pgs_2[j]._NODES, idx[0], pf);
+                        //    ++idx[0];
+                        //    if (test != null)
+                        //    {
+                        //        res.Add(test);
+                        //    }
+                        //}
+                        if (pf == null || !shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes))
                         {
                             continue;
                         }
-                        Model m1_cloned = this.crossOverTwoModelsWithFunctionalConstraints(m1, m2, pgs_1[i]._NODES, pgs_2[j]._NODES, idx[0]);
+                        Model m1_cloned = this.crossOverTwoModelsWithFunctionalConstraints(m1, m2, pgs_1[i]._NODES, pgs_2[j]._NODES, idx[0], pf);
                         ++idx[0];
                         if (m1_cloned != null)
                         {
@@ -10982,7 +11125,7 @@ namespace FameBase
             m._GRAPH.adjustContacts();
         }// insertPlacement
 
-        private Model crossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, List<Node> nodes1, List<Node> nodes2, int idx)
+        private PartFormation getANewPartFormation(Model m1, List<Node> nodes1, List<Node> nodes2)
         {
             // check if such combination already exists
             List<Part> parts = new List<Part>();
@@ -10998,11 +11141,11 @@ namespace FameBase
                 parts.Add(node._PART);
             }
             PartFormation pf = this.tryCreateANewPartFormation(parts, 0);
-            if (pf == null)
-            {
-                return null;
-            }
+            return pf;
+        }// getANewPartFormation
 
+        private Model crossOverTwoModelsWithFunctionalConstraints(Model m1, Model m2, List<Node> nodes1, List<Node> nodes2, int idx, PartFormation pf)
+        {
             this.setSelectedNodes(m1, nodes1);
             this.setSelectedNodes(m2, nodes2);
             Model newModel = m1.Clone() as Model;
@@ -11047,8 +11190,11 @@ namespace FameBase
 
             if (this.processAnOffspringModel(newModel))
             {
-                pf._RATE = 1.0;
-                newModel._partForm = pf;
+                if (pf != null)
+                {
+                    pf._RATE = 1.0;
+                    newModel._partForm = pf;
+                }
                 return newModel;
             }
             else
@@ -11147,18 +11293,17 @@ namespace FameBase
             m.unify();
             m.composeMesh();
             //this.reSamplingForANewShape(m);
-
             if (!m._GRAPH.isValid())
             {
-                if (m._model_name == "coffeeTable_1-gen_1_num_6" || m._model_name == "dress_1-gen_1_num_10")
+                if (m._model_name == "coffeeTable_1-gen_1_num_9" || m._model_name == "dress_1-gen_1_num_0" || m._model_name == "dress_1-gen_1_num_19")
                 {
                     m._GRAPH.isValid();
                 }
                 m._model_name += "_invalid";
-                this.setCurrentModel(m, -1);
-                Program.GetFormMain().updateStats();
-                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
-                saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                //this.setCurrentModel(m, -1);
+                //Program.GetFormMain().updateStats();
+                //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                //saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
             }
             this.setCurrentModel(m, -1);

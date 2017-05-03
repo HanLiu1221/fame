@@ -720,8 +720,8 @@ namespace Geometry
             getVertexFaceIndex();
             this.buildHalfEdge();
             this.buildKdtree();
-            _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
-            _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
+            //_vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
+            //_vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
             this.originVertextPos = this.vertexPos.Clone() as double[];
             this.afterUpdatePos();
             this.flags = new bool[this.vertexCount];

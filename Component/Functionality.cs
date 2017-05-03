@@ -169,8 +169,8 @@ namespace Component
             // 0: funcs1 can be replaced by funcs2
             // 1: funcs2 can be replaced by funcs1
             // 2: both are replaceable
-            bool containsMainFunc1 = false;
-            bool containsMainFunc2 = false;
+            bool containsMainFunc1 = ContainsMainFunction(funcs1);
+            bool containsMainFunc2 = ContainsMainFunction(funcs2);
             bool containsSecondaryFunc1 = false;
             bool containsSecondaryFunc2 = false;
             bool containsSupportFunc1 = false;
@@ -180,6 +180,17 @@ namespace Component
             //var same = funcs1.Intersect(funcs2);
             //return same.Count() > 0;
             if (funcs1.Count > funcs2.Count)
+            {
+                return false;
+            }
+            if (containsMainFunc1 && containsMainFunc2)
+            {
+                if (!funcs1.Contains(Functions.GROUND_TOUCHING) && funcs2.Contains(Functions.GROUND_TOUCHING))
+                {
+                    return false;
+                }
+            }
+            if (containsMainFunc1 && !containsMainFunc2)
             {
                 return false;
             }
@@ -207,13 +218,13 @@ namespace Component
             {
                 return false;
             }
-            Functions f1 = getMainFunction(nodes1[0]);
-            Functions f2 = getMainFunction(nodes2[0]);
-            if (nodes2.Count == 1 && f1 == f2 && f2 == Functions.PLACEMENT)
+            List<Functions> funcs1 = getNodesFunctionalities(nodes1);
+            List<Functions> funcs2 = getNodesFunctionalities(nodes2);
+            if (funcs1.Count == funcs2.Count && funcs1.Count == 1 && funcs1[0] == funcs2[0])
             {
                 return true;
             }
-            return nodes1.Count == nodes2.Count;
+            return false;
         }// isTrivialReplace
 
         private static Functions getMainFunction(Node node)

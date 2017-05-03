@@ -755,6 +755,8 @@ namespace Component
             Vector3d scale = maxCoord - minCoord;
             if (_GRAPH != null)
             {
+                maxCoord = Vector3d.MinCoord;
+                minCoord = Vector3d.MaxCoord;
                 foreach (Node node in _GRAPH._NODES)
                 {
                     maxCoord = Vector3d.Max(maxCoord, node._PART._MESH.MaxCoord);
