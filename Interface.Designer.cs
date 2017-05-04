@@ -124,6 +124,8 @@
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.functionsPanel = new System.Windows.Forms.Panel();
             this.functionGroup = new System.Windows.Forms.Panel();
+            this.leaning = new System.Windows.Forms.CheckBox();
+            this.hang = new System.Windows.Forms.CheckBox();
             this.rocking = new System.Windows.Forms.CheckBox();
             this.yScaleBar = new System.Windows.Forms.VScrollBar();
             this.xScaleBar = new System.Windows.Forms.HScrollBar();
@@ -147,7 +149,6 @@
             this.prev_mesh = new System.Windows.Forms.Button();
             this.next_mesh = new System.Windows.Forms.Button();
             this.statsLabel = new System.Windows.Forms.Label();
-            this.glViewer = new FameBase.GLViewer();
             this.partBasket = new System.Windows.Forms.FlowLayoutPanel();
             this.modelViewLayoutPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.strokeColorDialog = new System.Windows.Forms.ColorDialog();
@@ -181,8 +182,10 @@
             this.hangerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groundSupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.supportToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.glViewer = new FameBase.GLViewer();
+            this.handhold = new System.Windows.Forms.CheckBox();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -1020,6 +1023,9 @@
             // 
             this.functionGroup.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.functionGroup.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.functionGroup.Controls.Add(this.handhold);
+            this.functionGroup.Controls.Add(this.leaning);
+            this.functionGroup.Controls.Add(this.hang);
             this.functionGroup.Controls.Add(this.rocking);
             this.functionGroup.Controls.Add(this.yScaleBar);
             this.functionGroup.Controls.Add(this.xScaleBar);
@@ -1033,10 +1039,32 @@
             this.functionGroup.Size = new System.Drawing.Size(332, 74);
             this.functionGroup.TabIndex = 22;
             // 
+            // leaning
+            // 
+            this.leaning.AutoSize = true;
+            this.leaning.Location = new System.Drawing.Point(79, 4);
+            this.leaning.Name = "leaning";
+            this.leaning.Size = new System.Drawing.Size(60, 17);
+            this.leaning.TabIndex = 9;
+            this.leaning.Text = "leaning";
+            this.leaning.UseVisualStyleBackColor = true;
+            this.leaning.CheckedChanged += new System.EventHandler(this.leaning_CheckedChanged);
+            // 
+            // hang
+            // 
+            this.hang.AutoSize = true;
+            this.hang.Location = new System.Drawing.Point(79, 49);
+            this.hang.Name = "hang";
+            this.hang.Size = new System.Drawing.Size(50, 17);
+            this.hang.TabIndex = 8;
+            this.hang.Text = "hang";
+            this.hang.UseVisualStyleBackColor = true;
+            this.hang.CheckedChanged += new System.EventHandler(this.hang_CheckedChanged);
+            // 
             // rocking
             // 
             this.rocking.AutoSize = true;
-            this.rocking.Location = new System.Drawing.Point(79, 26);
+            this.rocking.Location = new System.Drawing.Point(135, 51);
             this.rocking.Name = "rocking";
             this.rocking.Size = new System.Drawing.Size(61, 17);
             this.rocking.TabIndex = 7;
@@ -1047,7 +1075,7 @@
             // yScaleBar
             // 
             this.yScaleBar.LargeChange = 1;
-            this.yScaleBar.Location = new System.Drawing.Point(297, 2);
+            this.yScaleBar.Location = new System.Drawing.Point(306, 2);
             this.yScaleBar.Maximum = 10;
             this.yScaleBar.Minimum = 1;
             this.yScaleBar.Name = "yScaleBar";
@@ -1059,7 +1087,7 @@
             // xScaleBar
             // 
             this.xScaleBar.LargeChange = 1;
-            this.xScaleBar.Location = new System.Drawing.Point(197, 4);
+            this.xScaleBar.Location = new System.Drawing.Point(214, 4);
             this.xScaleBar.Maximum = 10;
             this.xScaleBar.Minimum = 1;
             this.xScaleBar.Name = "xScaleBar";
@@ -1072,7 +1100,7 @@
             // 
             this.runByUser.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
             this.runByUser.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.runByUser.Location = new System.Drawing.Point(197, 49);
+            this.runByUser.Location = new System.Drawing.Point(246, 49);
             this.runByUser.Name = "runByUser";
             this.runByUser.Size = new System.Drawing.Size(49, 22);
             this.runByUser.TabIndex = 4;
@@ -1083,7 +1111,7 @@
             // rolling
             // 
             this.rolling.AutoSize = true;
-            this.rolling.Location = new System.Drawing.Point(79, 3);
+            this.rolling.Location = new System.Drawing.Point(79, 26);
             this.rolling.Name = "rolling";
             this.rolling.Size = new System.Drawing.Size(53, 17);
             this.rolling.TabIndex = 3;
@@ -1309,26 +1337,6 @@
             this.statsLabel.TabIndex = 14;
             this.statsLabel.Text = "Stats:";
             // 
-            // glViewer
-            // 
-            this.glViewer.AccumBits = ((byte)(0));
-            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.glViewer.AutoCheckErrors = false;
-            this.glViewer.AutoFinish = false;
-            this.glViewer.AutoMakeCurrent = true;
-            this.glViewer.AutoSwapBuffers = true;
-            this.glViewer.BackColor = System.Drawing.Color.Black;
-            this.glViewer.ColorBits = ((byte)(32));
-            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
-            this.glViewer.DepthBits = ((byte)(16));
-            this.glViewer.Location = new System.Drawing.Point(216, 3);
-            this.glViewer.Name = "glViewer";
-            this.glViewer.Size = new System.Drawing.Size(626, 511);
-            this.glViewer.StencilBits = ((byte)(0));
-            this.glViewer.TabIndex = 16;
-            // 
             // partBasket
             // 
             this.partBasket.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -1363,40 +1371,40 @@
             this.partNameToolStripMenuItem,
             this.partGroupToolStripMenuItem});
             this.partRelatedTools.Name = "partRelatedTools";
-            this.partRelatedTools.Size = new System.Drawing.Size(153, 202);
+            this.partRelatedTools.Size = new System.Drawing.Size(132, 180);
             // 
             // groupToolStripMenuItem
             // 
             this.groupToolStripMenuItem.Name = "groupToolStripMenuItem";
-            this.groupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.groupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.groupToolStripMenuItem.Text = "Group";
             this.groupToolStripMenuItem.Click += new System.EventHandler(this.groupToolStripMenuItem_Click);
             // 
             // unGroupToolStripMenuItem
             // 
             this.unGroupToolStripMenuItem.Name = "unGroupToolStripMenuItem";
-            this.unGroupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.unGroupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.unGroupToolStripMenuItem.Text = "UnGroup";
             this.unGroupToolStripMenuItem.Click += new System.EventHandler(this.unGroupToolStripMenuItem_Click);
             // 
             // addEdgeToolStripMenuItem
             // 
             this.addEdgeToolStripMenuItem.Name = "addEdgeToolStripMenuItem";
-            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.addEdgeToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.addEdgeToolStripMenuItem.Text = "Add edge";
             this.addEdgeToolStripMenuItem.Click += new System.EventHandler(this.addEdgeToolStripMenuItem_Click);
             // 
             // delEdgeToolStripMenuItem
             // 
             this.delEdgeToolStripMenuItem.Name = "delEdgeToolStripMenuItem";
-            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.delEdgeToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.delEdgeToolStripMenuItem.Text = "Del edge";
             this.delEdgeToolStripMenuItem.Click += new System.EventHandler(this.delEdgeToolStripMenuItem_Click);
             // 
             // selectToolStripMenuItem
             // 
             this.selectToolStripMenuItem.Name = "selectToolStripMenuItem";
-            this.selectToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.selectToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.selectToolStripMenuItem.Text = "Select";
             this.selectToolStripMenuItem.Click += new System.EventHandler(this.selectToolStripMenuItem_Click);
             // 
@@ -1415,7 +1423,7 @@
             this.rollingToolStripMenuItem,
             this.rockingToolStripMenuItem});
             this.functionalityToolStripMenuItem.Name = "functionalityToolStripMenuItem";
-            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.functionalityToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.functionalityToolStripMenuItem.Text = "Functions";
             // 
             // humanbackToolStripMenuItem
@@ -1511,7 +1519,7 @@
             this.connectorToolStripMenuItem,
             this.supportToolStripMenuItem1});
             this.partNameToolStripMenuItem.Name = "partNameToolStripMenuItem";
-            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.partNameToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
             this.partNameToolStripMenuItem.Text = "Part Name";
             // 
             // chairLegToolStripMenuItem
@@ -1591,19 +1599,50 @@
             this.connectorToolStripMenuItem.Text = "Connector";
             this.connectorToolStripMenuItem.Click += new System.EventHandler(this.connectorToolStripMenuItem_Click);
             // 
-            // partGroupToolStripMenuItem
-            // 
-            this.partGroupToolStripMenuItem.Name = "partGroupToolStripMenuItem";
-            this.partGroupToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.partGroupToolStripMenuItem.Text = "Part Group";
-            this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
-            // 
             // supportToolStripMenuItem1
             // 
             this.supportToolStripMenuItem1.Name = "supportToolStripMenuItem1";
             this.supportToolStripMenuItem1.Size = new System.Drawing.Size(156, 22);
             this.supportToolStripMenuItem1.Text = "Support";
             this.supportToolStripMenuItem1.Click += new System.EventHandler(this.supportToolStripMenuItem1_Click);
+            // 
+            // partGroupToolStripMenuItem
+            // 
+            this.partGroupToolStripMenuItem.Name = "partGroupToolStripMenuItem";
+            this.partGroupToolStripMenuItem.Size = new System.Drawing.Size(131, 22);
+            this.partGroupToolStripMenuItem.Text = "Part Group";
+            this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
+            // 
+            // glViewer
+            // 
+            this.glViewer.AccumBits = ((byte)(0));
+            this.glViewer.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.glViewer.AutoCheckErrors = false;
+            this.glViewer.AutoFinish = false;
+            this.glViewer.AutoMakeCurrent = true;
+            this.glViewer.AutoSwapBuffers = true;
+            this.glViewer.BackColor = System.Drawing.Color.Black;
+            this.glViewer.ColorBits = ((byte)(32));
+            this.glViewer.CurrentUIMode = FameBase.GLViewer.UIMode.Viewing;
+            this.glViewer.DepthBits = ((byte)(16));
+            this.glViewer.Location = new System.Drawing.Point(216, 3);
+            this.glViewer.Name = "glViewer";
+            this.glViewer.Size = new System.Drawing.Size(626, 511);
+            this.glViewer.StencilBits = ((byte)(0));
+            this.glViewer.TabIndex = 16;
+            // 
+            // handhold
+            // 
+            this.handhold.AutoSize = true;
+            this.handhold.Location = new System.Drawing.Point(135, 28);
+            this.handhold.Name = "handhold";
+            this.handhold.Size = new System.Drawing.Size(70, 17);
+            this.handhold.TabIndex = 10;
+            this.handhold.Text = "handhold";
+            this.handhold.UseVisualStyleBackColor = true;
+            this.handhold.CheckedChanged += new System.EventHandler(this.handhold_CheckedChanged);
             // 
             // Interface
             // 
@@ -1793,6 +1832,9 @@
         private System.Windows.Forms.ToolStripMenuItem rockingToolStripMenuItem;
         private System.Windows.Forms.CheckBox rocking;
         private System.Windows.Forms.ToolStripMenuItem supportToolStripMenuItem1;
+        private System.Windows.Forms.CheckBox leaning;
+        private System.Windows.Forms.CheckBox hang;
+        private System.Windows.Forms.CheckBox handhold;
     }
 }
 

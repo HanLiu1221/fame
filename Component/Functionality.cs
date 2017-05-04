@@ -38,7 +38,7 @@ namespace Component
         public static int _CONVEXHULL_FEAT_DIM = 2;
         public static int _POINT_FEATURE_DIM = 18;
 
-        public enum Functions { PLACEMENT, STORAGE, SITTING, HUMAN_BACK, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, ROLLING, ROCKING, NONE };
+        public enum Functions { PLACEMENT, STORAGE, SITTING, LEANING, HAND_HOLD, GROUND_TOUCHING, SUPPORT, HANG, ROLLING, ROCKING, NONE };
 
         public enum Category { Backpack, Basket, Bicycle, Chair, Desk, DryingRack, Handcart, Hanger, Hook, Robot, Shelf, 
             Stand, Stroller, Table, TVBench, Vase, None };
@@ -87,7 +87,7 @@ namespace Component
         public static bool IsSecondaryFunction(Functions f)
         {
             // usually connect to the main functional parts
-            return f == Functions.HUMAN_BACK || f == Functions.HAND_HOLD;
+            return f == Functions.LEANING || f == Functions.HAND_HOLD;
         }
 
         public static bool IsSupportFunction(Functions f)
@@ -444,8 +444,11 @@ namespace Component
                 case "sitting":
                 case "human_hip":
                     return Functions.SITTING;
-                case "backsupport":
-                    return Functions.HUMAN_BACK;
+                case "leaning":
+                case "human_back":
+                    return Functions.LEANING;
+                case "handhold":
+                    return Functions.HAND_HOLD;
                 default:
                     return Functions.NONE;
             }
@@ -469,8 +472,10 @@ namespace Component
                     return "groundtouching";
                 case Functions.SITTING:
                     return "sitting";
-                case Functions.HUMAN_BACK:
-                    return "backsupport";
+                case Functions.LEANING:
+                    return "leaning";
+                case Functions.HAND_HOLD:
+                    return "handhold";
                 default:
                     return "none";
             }
@@ -540,7 +545,7 @@ namespace Component
             {
                 funcs.Add(Functions.SITTING);
                 funcs.Add(Functions.GROUND_TOUCHING);
-                funcs.Add(Functions.HUMAN_BACK);
+                funcs.Add(Functions.LEANING);
             }
             if (cat == Category.Handcart)
             {
@@ -577,7 +582,7 @@ namespace Component
             {
                 funcs.Add(Functions.GROUND_TOUCHING);
                 funcs.Add(Functions.PLACEMENT);
-                funcs.Add(Functions.HUMAN_BACK);
+                funcs.Add(Functions.LEANING);
             }
             if (cat == Category.Robot)
             {

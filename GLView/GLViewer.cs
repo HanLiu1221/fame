@@ -379,6 +379,7 @@ namespace FameBase
             _userSelectedNodes.Clear();
             _userSelectedParts.Clear();
             _selected_cat = Functionality.Category.None; // reset the current category
+            _currUserFunctions.Clear();
         }// clearHighlights
 
         /******************** Load & Save ********************/
@@ -757,7 +758,6 @@ namespace FameBase
                 foreach (Part p in model._PARTS)
                 {
                     Mesh mesh = p._MESH;
-                    sw.WriteLine("g " + p._partName);
                     // face
                     string s = "";
                     for (int i = 0, j = 0; i < mesh.FaceCount; ++i)
@@ -3972,8 +3972,8 @@ namespace FameBase
                 return;
             }
             Program.GetFormMain().clearCheckBoxes();
-            _currUserFunctions = m._GRAPH.collectMainFunctions();
-            foreach (Functionality.Functions f in _currUserFunctions)
+            List<Functionality.Functions> funcs = m._GRAPH.collectMainFunctions();
+            foreach (Functionality.Functions f in funcs)
             {
                 Program.GetFormMain().setCheckBox(Functionality.getFunctionString(f));
             }
@@ -4374,7 +4374,7 @@ namespace FameBase
                 case 0:
                     return Functionality.Functions.GROUND_TOUCHING;
                 case 1:
-                    return Functionality.Functions.HUMAN_BACK;
+                    return Functionality.Functions.LEANING;
                 case 2:
                     return Functionality.Functions.SITTING;
                 case 3:
@@ -4400,8 +4400,9 @@ namespace FameBase
         {
             switch (s.ToUpper())
             {
+                case "LEANING":
                 case "HUMAN_BACK":
-                    return Functionality.Functions.HUMAN_BACK;
+                    return Functionality.Functions.LEANING;
                 case "SITTING":
                     return Functionality.Functions.SITTING;
                 case "HAND_HOLD":

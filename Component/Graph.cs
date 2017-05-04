@@ -1337,7 +1337,7 @@ namespace Component
             Node attach = null;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Functionality.Functions.HUMAN_BACK) || node._funcs.Contains(Functionality.Functions.PLACEMENT))
+                if (node._funcs.Contains(Functionality.Functions.LEANING) || node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     if (node._PART._MESH.MinCoord.z < minz)
                     {
@@ -2053,7 +2053,7 @@ namespace Component
         {
             List<Node> sitNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.SITTING);
             sitNodes = this.bfs_regionGrowingNonFunctionanlNodes(sitNodes);
-            List<Node> backNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.HUMAN_BACK);
+            List<Node> backNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.LEANING);
             backNodes = this.bfs_regionGrowingNonFunctionanlNodes(backNodes);
             List<Node> handNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.HAND_HOLD);
             handNodes = this.bfs_regionGrowingNonFunctionanlNodes(handNodes);
@@ -2555,7 +2555,7 @@ namespace Component
             {
                 foreach (Functionality.Functions f in node._funcs)
                 {
-                    if ((Functionality.IsMainFunction(f) || f == Functionality.Functions.ROLLING) && !res.Contains(f))
+                    if ((Functionality.IsMainFunction(f) || Functionality.IsSecondaryFunction(f)) && !res.Contains(f))
                     {
                         res.Add(f);
                     }

@@ -1123,6 +1123,21 @@ namespace FameBase
             this.glViewer.editFunctions("rocking", this.rocking.Checked);
         }
 
+        private void hang_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("hang", this.rolling.Checked);
+        }
+
+        private void leaning_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("leaning", this.rolling.Checked);
+        }
+
+        private void handhold_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("handhold", this.rocking.Checked);
+        } 
+
         public List<string> getUserSelectedFunctions()
         {
             List<string> res = new List<string>();
@@ -1145,6 +1160,18 @@ namespace FameBase
             if (this.rocking.Checked)
             {
                 res.Add("rocking");
+            }
+            if (this.leaning.Checked)
+            {
+                res.Add("leaning");
+            }
+            if (this.hang.Checked)
+            {
+                res.Add("hang");
+            }
+            if (this.handhold.Checked)
+            {
+                res.Add("handhold");
             }
             return res;
         }
@@ -1169,6 +1196,10 @@ namespace FameBase
             this.placement.Checked = false;
             this.storage.Checked = false;
             this.rolling.Checked = false;
+            this.hang.Checked = false;
+            this.leaning.Checked = false;
+            this.rocking.Checked = false;
+            this.handhold.Checked = false;
         }
 
         public void setCheckBox(string str)
@@ -1187,6 +1218,18 @@ namespace FameBase
                 case "rolling":
                     this.rolling.Checked = true;
                     break;
+                case "rocking":
+                    this.rocking.Checked = true;
+                    break;
+                case "leaning":
+                    this.leaning.Checked = true;
+                    break;
+                case "handhold":
+                    this.handhold.Checked = true;
+                    break;
+                case "hang":
+                    this.hang.Checked = true;
+                    break;
                 default:
                     break;
             }
@@ -1204,6 +1247,7 @@ namespace FameBase
             double val = e.OldValue - e.NewValue; // up to down
             double scale = val / e.OldValue * 0.2;
             this.glViewer.deformFunctionPart(scale, 1, false);
-        }      
+        }
+   
     }// Interface
 }// namespace
