@@ -1606,21 +1606,24 @@ namespace Component
             }
             
             // center of mass falls in the supporting polygon
-                _centerOfMass = new Vector3d();
+            _centerOfMass = new Vector3d();
             List<Vector2d> centers2d = new List<Vector2d>();
             List<Vector3d> groundPnts = new List<Vector3d>();
             foreach (Node node in _nodes)
             {
-                Vector3d v = node._PART._BOUNDINGBOX.CENTER;
-                _centerOfMass += v;
-                centers2d.Add(new Vector2d(v.x, v.z));
-                if (node._funcs.Contains(Functionality.Functions.GROUND_TOUCHING))
+                Vector3d[] pnts = getSamplePoints(node);
+                foreach (Vector3d v in pnts)
+                {
+                    _centerOfMass += v;
+                    centers2d.Add(new Vector2d(v.x, v.z));
+                }
+                if (Math.Abs(node._PART._MESH.MinCoord.y) < 0.001)
                 {
                     groundPnts.Add(node._PART._BOUNDINGBOX.MinCoord);
                     groundPnts.Add(node._PART._BOUNDINGBOX.MaxCoord);
                 }
             }
-            _centerOfMass /= _NNodes;
+            _centerOfMass /= centers2d.Count;
             Vector2d center = new Vector2d(_centerOfMass.x, _centerOfMass.z);
             Vector2d minCoord = Vector2d.MaxCoord();
             Vector2d maxCoord = Vector2d.MinCoord();
@@ -1711,7 +1714,7 @@ namespace Component
             Vector3d scale = maxCoord - minCoord;
             double minV = scale[0] < scale[1] ? scale[0] : scale[1];
             minV = minV < scale[2] ? minV : scale[2];
-            if (minV < 0.01) {
+            if (minV < 0.1) {
                 return true;
             }
             for (int i = 0; i < 3; ++i)

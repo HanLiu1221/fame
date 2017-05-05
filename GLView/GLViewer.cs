@@ -2706,7 +2706,7 @@ namespace FameBase
 
                 foreach (Node node in model._GRAPH._NODES)
                 {
-                    if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
+                    if (Functionality.ContainsPlacementFunction(node._funcs))
                     {
                         string part_name = node._PART._partName;
                         node.calRatios();
@@ -5872,7 +5872,6 @@ namespace FameBase
                     nums[rot_axis]++;
                     toUpdate.Add(node);
                     axes.Add(rot_axis);
-                    
                 }
             }
             for (int i = 0; i < 3; ++i)
@@ -5952,7 +5951,7 @@ namespace FameBase
                 {
                     string part_name = node._PART._partName;
                     node.calRatios();
-                    if (node._funcs.Contains(Functionality.Functions.STORAGE))
+                    if (Functionality.ContainsPlacementFunction(node._funcs))
                     {
                         _functionalPartScales.Add(part_name, node._ratios);
                     }
@@ -6530,20 +6529,16 @@ namespace FameBase
         {
             foreach(Node node in m._GRAPH._NODES)
             {
-                if (node._funcs.Contains(Functionality.Functions.HANG))
+                foreach(Functionality.Functions f in node._funcs)
                 {
-                    this.tryRestoreFunctionalNodeVolume(m, node, Functionality.Functions.HANG);
-                }
-                else if (node._funcs.Contains(Functionality.Functions.STORAGE))
-                {
-                    this.tryRestoreFunctionalNodeVolume(m, node, Functionality.Functions.STORAGE);
+                    if (Functionality.IsPlacementFunction(f))
+                    {
+                        this.tryRestoreFunctionalNodeVolume(m, node, f);
+                        break;
+                    }
                 }
             }
         }// tryRestoreFunctionalNodes
-
-        private void tryRestoreFunctionalNodeArea(Model m, Node node)
-        {
-        }
 
         private bool tryRestoreFunctionalNodeVolume(Model m, Node node, Functionality.Functions f)
         {
@@ -6576,22 +6571,25 @@ namespace FameBase
                 scale[0] *= Math.Min(ry, rz);
                 needReScale = true;
             }
-            if (ry <= thr2)
+            else
             {
-                scale[1] = originalRatio[1] / node._ratios[1];
-                needReScale = true;
-            }
-            if (rz <= thr2)
-            {
-                scale[2] = originalRatio[2] / node._ratios[2];
-                needReScale = true;
+                if (ry >= thr1 || ry <= thr2)
+                {
+                    scale[1] = originalRatio[1] / node._ratios[1];
+                    needReScale = true;
+                }
+                if (rz >= thr1 || rz <= thr2)
+                {
+                    scale[2] = originalRatio[2] / node._ratios[2];
+                    needReScale = true;
+                }
             }
             Vector3d dif = node._PART._BOUNDINGBOX.MaxCoord - node._PART._BOUNDINGBOX.MinCoord;
             double vol = dif.x * dif.y * dif.z;
-            if (f == Functionality.Functions.STORAGE)
-            {
-                needReScale = vol < 0.01;
-            }
+            //if (f == Functionality.Functions.STORAGE)
+            //{
+            //    needReScale = vol < 0.01;
+            //}
             if (needReScale)
             {
                 Vector3d center = node._PART._BOUNDINGBOX.CENTER;

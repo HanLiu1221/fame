@@ -124,6 +124,7 @@
             this.fileNameTabs = new System.Windows.Forms.TabControl();
             this.functionsPanel = new System.Windows.Forms.Panel();
             this.functionGroup = new System.Windows.Forms.Panel();
+            this.handhold = new System.Windows.Forms.CheckBox();
             this.leaning = new System.Windows.Forms.CheckBox();
             this.hang = new System.Windows.Forms.CheckBox();
             this.rocking = new System.Windows.Forms.CheckBox();
@@ -185,7 +186,6 @@
             this.supportToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.glViewer = new FameBase.GLViewer();
-            this.handhold = new System.Windows.Forms.CheckBox();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -1039,6 +1039,17 @@
             this.functionGroup.Size = new System.Drawing.Size(332, 74);
             this.functionGroup.TabIndex = 22;
             // 
+            // handhold
+            // 
+            this.handhold.AutoSize = true;
+            this.handhold.Location = new System.Drawing.Point(135, 28);
+            this.handhold.Name = "handhold";
+            this.handhold.Size = new System.Drawing.Size(70, 17);
+            this.handhold.TabIndex = 10;
+            this.handhold.Text = "handhold";
+            this.handhold.UseVisualStyleBackColor = true;
+            this.handhold.CheckedChanged += new System.EventHandler(this.handhold_CheckedChanged);
+            // 
             // leaning
             // 
             this.leaning.AutoSize = true;
@@ -1632,17 +1643,6 @@
             this.glViewer.Size = new System.Drawing.Size(626, 511);
             this.glViewer.StencilBits = ((byte)(0));
             this.glViewer.TabIndex = 16;
-            // 
-            // handhold
-            // 
-            this.handhold.AutoSize = true;
-            this.handhold.Location = new System.Drawing.Point(135, 28);
-            this.handhold.Name = "handhold";
-            this.handhold.Size = new System.Drawing.Size(70, 17);
-            this.handhold.TabIndex = 10;
-            this.handhold.Text = "handhold";
-            this.handhold.UseVisualStyleBackColor = true;
-            this.handhold.CheckedChanged += new System.EventHandler(this.handhold_CheckedChanged);
             // 
             // Interface
             // 

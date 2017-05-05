@@ -850,14 +850,10 @@ namespace FameBase
                         normal *= -1.0;
                     }
 
-                   
-                    //Gl.glNormal3dv(n1.ToArray());
                     Gl.glNormal3dv(normal.ToArray());
                     Gl.glVertex3d(v1.x, v1.y, v1.z);
-                    //Gl.glNormal3dv(n2.ToArray());
                     Gl.glNormal3dv(normal.ToArray());
-                    Gl.glVertex3d(v2.x, v2.y, v2.z);                   
-                    //Gl.glNormal3dv(n3.ToArray());
+                    Gl.glVertex3d(v2.x, v2.y, v2.z);
                     Gl.glNormal3dv(normal.ToArray());
                     Gl.glVertex3d(v3.x, v3.y, v3.z);
                 }

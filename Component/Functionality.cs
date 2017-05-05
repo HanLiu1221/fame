@@ -78,6 +78,18 @@ namespace Component
                 || f == Functions.SITTING || f == Functions.HANG;
         }
 
+        public static bool ContainsPlacementFunction(List<Functions> funcs)
+        {
+            foreach (Functions f in funcs)
+            {
+                if (IsPlacementFunction(f))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public static bool IsMainFunction(Functions f)
         {
             return f == Functions.PLACEMENT || f == Functions.STORAGE 
