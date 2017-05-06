@@ -99,13 +99,31 @@ namespace Component
         public static bool IsSecondaryFunction(Functions f)
         {
             // usually connect to the main functional parts
-            return f == Functions.LEANING || f == Functions.HAND_HOLD;
+            return f == Functions.LEANING || f == Functions.HAND_HOLD || f == Functions.ROCKING || f == Functions.ROLLING;
         }
 
         public static bool IsSupportFunction(Functions f)
         {
             // ground touching points
             return f == Functions.GROUND_TOUCHING;
+        }
+
+        public static bool IsGroundFunction(Functions f)
+        {
+            // ground touching points
+            return f == Functions.GROUND_TOUCHING || f == Functions.ROCKING || f == Functions.ROLLING;
+        }
+
+        public static bool containsGroundFunction(List<Functions> funcs)
+        {
+            foreach (Functions f in funcs)
+            {
+                if (IsGroundFunction(f))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static bool IsSecondarySupportFunction(Functions f)
