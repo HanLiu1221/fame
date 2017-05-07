@@ -1085,6 +1085,7 @@ namespace FameBase
                     this.saveObj(ipart._MESH, meshDir + meshName, ipart._COLOR);
                     sw.WriteLine("\\" + modelName + "\\" + meshName);
                 }
+                // model group format for rendering
                 string model_group_path = model._path + model._model_name + "\\";
                 string model_group_shifted_path = model._path + model._model_name + "\\";
                 if (!isOriginalModel)
@@ -1102,6 +1103,7 @@ namespace FameBase
                 }
                 string meshGroupName = model_group_shifted_path + model._model_name + "_group.obj";
                 this.saveModelGroupObj(_currModel, meshGroupName);
+                this.savePartConnection(model, model_group_shifted_path);
                 this.saveModelObj(_currModel, model_group_path + model._model_name + ".obj");
                 if (model._GRAPH != null)
                 {
@@ -1113,7 +1115,6 @@ namespace FameBase
                 saveModelInfo(model, meshDir, modelName, isOriginalModel);
             }
         }// saveAPartBasedModel
-
         
         private void saveModelInfo(Model model, string foldername, string model_name, bool isOriginalModel)
         {
@@ -1182,6 +1183,35 @@ namespace FameBase
                 }
             }
         }// saveModelInfo
+
+        private void savePartConnection(Model m, string folder)
+        {
+            if (m == null || m._GRAPH == null)
+            {
+                return;
+            }
+            foreach (Node node in m._GRAPH._NODES)
+            {
+                string filename = folder + node._PART._partName + ".txt";
+                using (StreamWriter sw = new StreamWriter(filename))
+                {
+                    sw.Write("functions: ");
+                    StringBuilder sb = new StringBuilder();
+                    foreach (Functionality.Functions f in node._funcs)
+                    {
+                        sb.Append(Functionality.getFunctionString(f));
+                        sb.Append(" ");
+                    }
+                    sw.WriteLine(sb.ToString());
+                    // edges 
+                    sw.WriteLine("#connections: ");
+                    foreach (Node adj in node._adjNodes)
+                    {
+                        sw.WriteLine(adj._PART._partName);
+                    }
+                }
+            }
+        }// savePartConnection
 
         public void saveSamplePointWeightsPerCategory(List<PatchWeightPerCategory> weights, string filename)
         {
@@ -1412,7 +1442,7 @@ namespace FameBase
             string exeFolder = @"..\..\external\";
             string exePath = Path.GetFullPath(exeFolder);
             string samplingCmd = exePath + "StyleSimilarity.exe ";
-            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 0";
+            string samplingCmdPara = "-sample " + meshName + " -numSamples 2000 -visibilityChecking 1";
 
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -2707,7 +2737,7 @@ namespace FameBase
 
                 foreach (Node node in model._GRAPH._NODES)
                 {
-                    if (Functionality.ContainsPlacementFunction(node._funcs))
+                    if (Functionality.ContainsMainFunction(node._funcs))
                     {
                         string part_name = node._PART._partName;
                         node.calRatios();
@@ -5353,15 +5383,14 @@ namespace FameBase
             List<Node> insertNodes = cloneNodesAndRelations(insertNodes2);
             Graph g1 = growModel._GRAPH;
             Graph g2 = m2._GRAPH;
-            List<Edge> edgesToConnect = g2.getOutgoingEdges(insertNodes);
+            List<Edge> outgoingEdges = g2.getOutgoingEdges(insertNodes);
             // check what kinds of nodes the part group connect to
-            List<Node> nodesToConnect = g2.getOutConnectedNodes(insertNodes);
-            List<Functionality.Functions> functions = Functionality.getNodesFunctionalities(nodesToConnect);
+            List<Node> connectedNodes = g2.getOutConnectedNodes(insertNodes);
+            List<Functionality.Functions> functions = Functionality.getNodesFunctionalities(connectedNodes);
             List<Node> candidteNodes = new List<Node>();
-            int nConns = 0; // use it as importance of nodes
-            Node toConnect = null;
             Node mainNode = null;
             // look for nodes with same functions in g1
+            // if there are multiple nodes
             foreach (Node node in g1._NODES)
             {
                 foreach (Functionality.Functions f in node._funcs)
@@ -5379,25 +5408,19 @@ namespace FameBase
                         {
                             candidteNodes.Add(node);
                         }
-                        if (node._edges.Count > nConns || (node._edges.Count == nConns && Functionality.IsMainFunction(f)))
-                        { 
-                            nConns = node._edges.Count;
-                            toConnect = node;
-                            //break;
-                        }
                     }
                 }
             }
-            if (toConnect == null)
+            if (candidteNodes.Count == 0)
             {
                 // use the main functional node
                 // find similar struture from its source model
-                toConnect = mainNode;
+                candidteNodes.Add(mainNode);
             }
 
             Vector3d maxCoordInConn = Vector3d.MinCoord;
             Vector3d minCoordInConn = Vector3d.MaxCoord;
-            foreach (Node node in nodesToConnect)
+            foreach (Node node in connectedNodes)
             {
                 maxCoordInConn = Vector3d.Max(maxCoordInConn, node._PART._BOUNDINGBOX.MaxCoord);
                 minCoordInConn = Vector3d.Min(maxCoordInConn, node._PART._BOUNDINGBOX.MinCoord);
@@ -5418,23 +5441,41 @@ namespace FameBase
             }
             bool isEmbed = !isUpper && !isLower;
 
+            // if there are many nodes to connect, rigid transform the node and see which parts close to it
+            Vector3d vmin = Vector3d.MaxCoord;
+            Vector3d vmax = Vector3d.MinCoord;
+            foreach (Node node in candidteNodes)
+            {
+                vmin = Vector3d.Min(vmin, node._PART._BOUNDINGBOX.MinCoord);
+                vmax = Vector3d.Max(vmax, node._PART._BOUNDINGBOX.MaxCoord);
+            }
+
+            // try to scale and translate the new part group to the target place
+            // and estimate the contact mapping from there
+            Vector3d[] boxScale1 = this.getScales(g1._NODES);
+            Vector3d[] boxScale2 = this.getScales(g2._NODES);
+            Vector3d boxScale = (boxScale1[1] - boxScale1[2]) / (boxScale2[1] - boxScale2[2]);
+            Matrix4d simS = Matrix4d.ScalingMatrix(boxScale);
+            Matrix4d simQ = Matrix4d.TranslationMatrix(boxScale1[0]) * simS * Matrix4d.TranslationMatrix(new Vector3d() - boxScale2[0]);
+
             List<Vector3d> targets = new List<Vector3d>();
-            List<Vector3d> sourcePnts = collectPoints(edgesToConnect);
+            List<Vector3d> sourcePnts = collectPoints(outgoingEdges);
             List<Vector3d> sources = new List<Vector3d>();
             Vector3d center1 = new Vector3d();
-            Vector3d vmin = toConnect._PART._BOUNDINGBOX.MinCoord;
-            Vector3d vmax = toConnect._PART._BOUNDINGBOX.MaxCoord;
+            Vector3d center2 = new Vector3d();
             // add nodes and inner edges
             foreach (Node node in insertNodes)
             {
                 g1.addANode(node);
             }
+            growModel.replaceNodes(new List<Node>(), insertNodes);
+            g1.reset();
             List<Edge> innerEdges = Graph.GetInnerEdges(insertNodes);
             foreach (Edge e in innerEdges)
             {
                 g1.addAnEdge(e._start, e._end, e._contacts);
             }
-            foreach (Edge e in edgesToConnect)
+            foreach (Edge e in outgoingEdges)
             {
                 Node toInsert = insertNodes.Contains(e._start) ? e._start : e._end;
                 Node nodeInContact = e._start == toInsert ? e._end : e._start;
@@ -5446,41 +5487,70 @@ namespace FameBase
                 {
                     Vector3d v = c._pos3d;
                     center1 += v;
+                    Vector3d oriRelativeScale = (v - v1) / (v2 - v1);
                     // try to find correspondence in target
-                    Vector3d s1 = (v - v1) / (v2 - v1);
-                    Vector3d s2 = vmin + s1 * (vmax - vmin);
+                    Vector3d simPoint = (simQ * new Vector4d(v, 1)).ToVector3D();
+                    // find the nearest part to attach
+                    double mind = double.MaxValue;
+                    Node toConnect = null;
+                    Vector3d newContact = new Vector3d();
+                    foreach (Node node in candidteNodes)
+                    {
+                        Vector3d[] pnts = node.getSamplePoints();
+                        double min_dist = double.MaxValue;
+                        Vector3d newc = new Vector3d();
+                        foreach (Vector3d pt in pnts)
+                        {
+                            double d = (pt - simPoint).Length();
+                            if (d < min_dist)
+                            {
+                                min_dist = d;
+                                newc = pt;
+                            }
+                        }
+                        if (min_dist < mind)
+                        {
+                            mind = min_dist;
+                            toConnect = node;
+                            newContact = newc;
+                        }
+                    }
+                    Vector3d node_minCoord = toConnect._PART._BOUNDINGBOX.MinCoord;
+                    Vector3d node_maxCoord = toConnect._PART._BOUNDINGBOX.MaxCoord;
+                    Vector3d newv = node_minCoord + oriRelativeScale * (node_maxCoord - node_minCoord);
                     sources.Add(v);
-                    targets.Add(s2);
-                    newContacts.Add(new Contact(s2));
+                    targets.Add(newv);
+                    g1.addAnEdge(toInsert, toConnect, newv);
+                    center2 += newContact;
                 }
-                g1.addAnEdge(toInsert, toConnect, newContacts);
                 // remove old out edges
                 toInsert.deleteAnEdge(e);
             }
-            center1 /= sourcePnts.Count;
-
-            if (isGround)
+            center1 /= sources.Count;
+            center2 /= targets.Count;
+            Matrix4d S = Matrix4d.IdentityMatrix();
+            if (sources.Count == 2)
             {
-                targets.Add(g1.getGroundTouchingNodesCenter());
-                sources.Add(g2.getGroundTouchingNodesCenter());
+                double ss = (targets[1] - targets[0]).Length() / (sources[1] - sources[0]).Length();
+                S = Matrix4d.ScalingMatrix(ss, ss, ss);
+            }
+            else if (sources.Count > 2)
+            {
+                Vector3d sv = new Vector3d();
+                for (int i = 0; i < sources.Count; ++i)
+                {
+                    Vector3d p1 = sources[i] - center1;
+                    Vector3d p2 = targets[i] - center2;
+                    sv.x += p2.x / p1.x;
+                    sv.y += p2.y / p1.y;
+                    sv.z += p2.z / p1.z;
+                }
+                sv /= sources.Count;
+                S = Matrix4d.ScalingMatrix(sv);
             }
 
-            Vector3d center2 = new Vector3d();
-            Vector3d maxv = Vector3d.MinCoord;
-            Vector3d minv = Vector3d.MaxCoord;
-            foreach (Node node in insertNodes)
-            {
-                center2 += node._PART._BOUNDINGBOX.CENTER;
-                maxv = Vector3d.Max(maxv, node._PART._BOUNDINGBOX.MaxCoord);
-                minv = Vector3d.Min(minv, node._PART._BOUNDINGBOX.MinCoord);
-            }
-            center2 = (maxv + minv) / 2;
-
-            Vector3d scale2 = new Vector3d(1, 1, 1);
-
-            Matrix4d S, T, Q;
-            getTransformation(sources, targets, out S, out T, out Q, scale2, false, center1, center2, false, -1, isGround);
-            this.deformNodesAndEdges(insertNodes, Q);
+            Matrix4d T = Matrix4d.TranslationMatrix(center2) * S * Matrix4d.TranslationMatrix(new Vector3d() - center1);
+            this.deformNodesAndEdges(insertNodes, T);
 
             if (isGround)
             {
@@ -5952,7 +6022,7 @@ namespace FameBase
                 {
                     string part_name = node._PART._partName;
                     node.calRatios();
-                    if (Functionality.ContainsPlacementFunction(node._funcs))
+                    if (Functionality.ContainsMainFunction(node._funcs))
                     {
                         _functionalPartScales.Add(part_name, node._ratios);
                     }
@@ -10928,7 +10998,35 @@ namespace FameBase
                                     {
                                         supportNodes = groundNodes;
                                     }
-                                    this.insertPlacement(mCloned, supportNodes, toReplace);
+                                    List<Node> placementNodes = new List<Node>();
+                                    foreach (Node pn in toReplace)
+                                    {
+                                        if (Functionality.ContainsPlacementFunction(pn._funcs))
+                                        {
+                                            placementNodes.Add(pn);
+                                        }
+                                    }
+                                    this.insertPlacement(mCloned, supportNodes, placementNodes);
+                                }// placement
+                                else if (Functionality.IsHandFunction(f))
+                                {
+                                    this.insertHandRelatedNodes(mCloned, m2._GRAPH, toReplace);
+                                }// hand related
+                                else if (f == Functionality.Functions.LEANING)
+                                {
+                                    this.insertBackRelatedNodes(mCloned, m2._GRAPH, toReplace);
+                                }// back
+                                else
+                                {
+                                    // general case
+                                    List<Node> updatedNodes = new List<Node>();
+                                    foreach (List<Node> cluster in pgs[np + 1]._clusters)
+                                    {
+                                        List<Node> newNodes = this.insertionOperation(mCloned, m2, cluster);
+                                        updatedNodes.AddRange(newNodes);
+                                    }
+                                    mCloned.replaceNodes(new List<Node>(), updatedNodes);
+                                    mCloned._GRAPH.replaceNodes(new List<Node>(), updatedNodes);
                                 }
                             }
                             PartFormation pf = this.tryCreateANewPartFormation(mCloned._PARTS, 0);
@@ -10953,6 +11051,220 @@ namespace FameBase
             }// each function
             return res;
         }// tryCrossOverAddingNewFunctions
+
+        private void insertBackRelatedNodes(Model m, Graph g2, List<Node> backNodes)
+        {
+            Node toAttach = this.getAttachNode(m._GRAPH);
+            if (toAttach == null)
+            {
+                return;
+            }
+            List<Edge> edges = m._GRAPH.getOutgoingEdges(backNodes);
+            Vector3d contact_center = new Vector3d();
+            List<Vector3d> contacts = new List<Vector3d>();
+            foreach (Edge e in edges)
+            {
+                foreach (Contact c in e._contacts)
+                {
+                    contacts.Add(c._pos3d);
+                    contact_center += c._pos3d;
+                }
+            }
+            contact_center /= contacts.Count;
+            double x = toAttach._PART._BOUNDINGBOX.MaxCoord.x -
+                        toAttach._PART._BOUNDINGBOX.MinCoord.x;
+            double y = toAttach._PART._BOUNDINGBOX.MaxCoord.y -
+                    toAttach._PART._BOUNDINGBOX.MinCoord.y;
+            double z = toAttach._PART._BOUNDINGBOX.MaxCoord.z -
+                    toAttach._PART._BOUNDINGBOX.MinCoord.z;
+            Vector3d minCoord = Vector3d.MaxCoord;
+            Vector3d maxCoord = Vector3d.MinCoord;
+            foreach (Node node in backNodes)
+            {
+                minCoord = Vector3d.Min(node._PART._BOUNDINGBOX.MinCoord, minCoord);
+                maxCoord = Vector3d.Max(node._PART._BOUNDINGBOX.MaxCoord, maxCoord);
+            }
+            Vector3d g1_minCoord = Vector3d.MaxCoord;
+            Vector3d g1_maxCoord = Vector3d.MinCoord;
+            foreach (Node node in m._GRAPH._NODES)
+            {
+                g1_minCoord = Vector3d.Min(node._PART._BOUNDINGBOX.MinCoord, g1_minCoord);
+                g1_maxCoord = Vector3d.Max(node._PART._BOUNDINGBOX.MaxCoord, g1_maxCoord);
+            }
+            Vector3d g2_minCoord = Vector3d.MaxCoord;
+            Vector3d g2_maxCoord = Vector3d.MinCoord;
+            foreach (Node node in g2._NODES)
+            {
+                g2_minCoord = Vector3d.Min(node._PART._BOUNDINGBOX.MinCoord, g2_minCoord);
+                g2_maxCoord = Vector3d.Max(node._PART._BOUNDINGBOX.MaxCoord, g2_maxCoord);
+            }
+            Vector3d new_contact = new Vector3d(
+                            (toAttach._PART._BOUNDINGBOX.MaxCoord.x + toAttach._PART._BOUNDINGBOX.MinCoord.x) / 2,
+                            toAttach._PART._BOUNDINGBOX.MaxCoord.y - y / 10,
+                            toAttach._PART._BOUNDINGBOX.MinCoord.z + z / 5);
+            double source_scale = maxCoord.x - minCoord.x;
+            double target_scale = toAttach._PART._BOUNDINGBOX.MaxCoord.x - toAttach._PART._BOUNDINGBOX.MinCoord.x;
+            double sx = target_scale / source_scale;
+            double sz = (g1_maxCoord.z - g1_minCoord.z) / (g2_maxCoord.z - g2_minCoord.z);
+            Matrix4d S = Matrix4d.ScalingMatrix(sx, sx, sx);
+            Matrix4d Q = Matrix4d.TranslationMatrix(new_contact) * S *
+                Matrix4d.TranslationMatrix(new Vector3d() - contact_center);
+            List<Node> updated = cloneNodesAndRelations(backNodes);
+            this.deformNodesAndEdges(updated, Q);
+            m.replaceNodes(new List<Node>(), updated);
+            List<Node> toConnect = new List<Node>();
+            toConnect.Add(toAttach);
+            m._GRAPH.addSubGraph(toConnect, updated);
+            m._GRAPH.reset();
+        }// insertBackRelatedNodes
+
+        private void insertHandRelatedNodes(Model m, Graph g2, List<Node> handNodes)
+        {
+            Node toAttach = this.getAttachNode(m._GRAPH);
+            if (toAttach == null)
+            {
+                return;
+            }
+            Vector3d center2 = new Vector3d();
+            int n = 0;
+            foreach (Node node in g2._NODES)
+            {
+                if (handNodes.Contains(node))
+                {
+                    continue;
+                }
+                center2 += node._PART._BOUNDINGBOX.CENTER;
+                ++n;
+            }
+            center2 /= n;
+            foreach (Node node in handNodes)
+            {
+                if (!Functionality.containsHandFunction(node._funcs))
+                {
+                    continue;
+                }
+                // check the position - left right back
+                List<Node> cur  = new List<Node>();
+                cur.Add(node);
+                List<Edge> edges = m._GRAPH.getOutgoingEdges(cur);
+                Vector3d contact_center = new Vector3d();
+                List<Vector3d> contacts = new List<Vector3d>();
+                foreach (Edge e in edges)
+                {
+                    foreach (Contact c in e._contacts)
+                    {
+                        contacts.Add(c._pos3d);
+                        contact_center += c._pos3d;
+                    }
+                }
+                contact_center /= contacts.Count;
+                Vector3d center_sameh = new Vector3d(center2.x, contact_center.y, center2.z);
+                Vector3d vec = contact_center - center_sameh;
+                Vector3d new_contact = new Vector3d();
+                double x = toAttach._PART._BOUNDINGBOX.MaxCoord.x -
+                        toAttach._PART._BOUNDINGBOX.MinCoord.x;
+                double y = toAttach._PART._BOUNDINGBOX.MaxCoord.y -
+                        toAttach._PART._BOUNDINGBOX.MinCoord.y;
+                double z = toAttach._PART._BOUNDINGBOX.MaxCoord.z -
+                        toAttach._PART._BOUNDINGBOX.MinCoord.z;
+                Vector3d source = node._PART._BOUNDINGBOX.MaxCoord -
+                    node._PART._BOUNDINGBOX.MinCoord;
+                double source_scale = 1.0;
+                double target_scale = 1.0;
+                if (Math.Abs(vec.x) > Math.Abs(vec.z))
+                {
+                    if (vec.x > 0)
+                    {
+                        new_contact = new Vector3d(toAttach._PART._BOUNDINGBOX.MaxCoord.x - x / 10,
+                            toAttach._PART._BOUNDINGBOX.MaxCoord.y - y / 10,
+                            (toAttach._PART._BOUNDINGBOX.MaxCoord.z + toAttach._PART._BOUNDINGBOX.MinCoord.z) / 2);
+                    }
+                    else
+                    {
+                        new_contact = new Vector3d(toAttach._PART._BOUNDINGBOX.MinCoord.x + x / 10,
+                            toAttach._PART._BOUNDINGBOX.MaxCoord.y - y / 10,
+                            (toAttach._PART._BOUNDINGBOX.MaxCoord.z + toAttach._PART._BOUNDINGBOX.MinCoord.z) / 2);
+                    }
+                    source_scale = source.z;
+                    target_scale =  toAttach._PART._BOUNDINGBOX.MaxCoord.z - toAttach._PART._BOUNDINGBOX.MinCoord.z;
+                }
+                else
+                {
+                    if (vec.z > 0)
+                    {
+                        new_contact = new Vector3d(
+                            (toAttach._PART._BOUNDINGBOX.MaxCoord.x + toAttach._PART._BOUNDINGBOX.MinCoord.x) / 2,
+                            toAttach._PART._BOUNDINGBOX.MaxCoord.y - y / 10,
+                            toAttach._PART._BOUNDINGBOX.MaxCoord.z - z / 10);
+                    }
+                    else
+                    {
+                        new_contact = new Vector3d(
+                            (toAttach._PART._BOUNDINGBOX.MaxCoord.x + toAttach._PART._BOUNDINGBOX.MinCoord.x) / 2,
+                            toAttach._PART._BOUNDINGBOX.MaxCoord.y - y / 10,
+                            toAttach._PART._BOUNDINGBOX.MinCoord.z + z / 10);
+                    }
+                    source_scale = source.x;
+                    target_scale =  toAttach._PART._BOUNDINGBOX.MaxCoord.x - toAttach._PART._BOUNDINGBOX.MinCoord.x;
+                }
+                // add a node
+                Node updated = node.Clone() as Node;
+                double ss = target_scale/source_scale;
+                if (contacts.Count == 1)
+                {
+                    ss = 1;
+                }
+                Matrix4d S = Matrix4d.ScalingMatrix(ss, ss, ss);
+                Matrix4d Q = Matrix4d.TranslationMatrix(new_contact) * S *
+                    Matrix4d.TranslationMatrix(new Vector3d() - contact_center);
+                this.deformANodeAndEdges(updated, Q);
+                m._GRAPH.addANode(updated);
+                m.addAPart(updated._PART);
+                List<Edge> edgse = new List<Edge>(updated._edges);
+                updated._edges.Clear();
+                foreach (Edge e in edges)
+                {
+                    foreach (Contact c in e._contacts)
+                    {
+                        Vector3d newc = (Q * new Vector4d(c._pos3d, 1)).ToVector3D();
+                        m._GRAPH.addAnEdge(updated, toAttach, newc);
+                    }
+                }
+            }
+            m._GRAPH.reset();
+        }// insertHandRelatedNodes
+
+        private Node getAttachNode(Graph g)
+        {
+            // find the node to attach
+            List<Node> placements = new List<Node>();
+            foreach (Node node in g._NODES)
+            {
+                if (Functionality.ContainsPlacementFunction(node._funcs))
+                {
+                    placements.Add(node);
+                }
+            }
+            if (placements.Count == 0)
+            {
+                return null;
+            }
+            Node toAttach = placements[0];
+            if (placements.Count > 0)
+            {
+                double maxh = double.MinValue;
+                foreach (Node node in placements)
+                {
+                    double h = node._PART._BOUNDINGBOX.CENTER.y;
+                    if (h > maxh)
+                    {
+                        maxh = h;
+                        toAttach = node;
+                    }
+                }
+            }
+            return toAttach;
+        }// getAttachNode
 
         private bool shouldReplace(List<Node> nodes1, List<Node> nodes2, int n)
         {
@@ -11298,10 +11610,10 @@ namespace FameBase
                     m._GRAPH.isValid();
                 }
                 m._model_name += "_invalid";
-                this.setCurrentModel(m, -1);
-                Program.GetFormMain().updateStats();
-                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
-                saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                //this.setCurrentModel(m, -1);
+                //Program.GetFormMain().updateStats();
+                //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                //saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
             }
             this.setCurrentModel(m, -1);
@@ -11347,10 +11659,15 @@ namespace FameBase
                     {
                         continue;
                     }
-                    if (Functionality.IsGroundFunction(f) & !Functionality.containsGroundFunction(funcs1))
+                    if (Functionality.IsGroundFunction(f) && funcs1.Count > 0 && !Functionality.containsGroundFunction(funcs1))
                     {
                         continue;
                     }
+                    if (Functionality.IsHandFunction(f) && funcs1.Count > 0 && !funcs1.Contains(f))
+                    {
+                        continue;
+                    }
+
                     // add or replace
                     bool replace = false;
                     for (int i = 0; i < res.Count; i += 2)

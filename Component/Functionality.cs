@@ -75,7 +75,7 @@ namespace Component
         public static bool IsPlacementFunction(Functions f)
         {
             return f == Functions.PLACEMENT || f == Functions.STORAGE
-                || f == Functions.SITTING || f == Functions.HANG;
+                || f == Functions.SITTING;
         }
 
         public static bool ContainsPlacementFunction(List<Functions> funcs)
@@ -96,6 +96,18 @@ namespace Component
                 || f == Functions.SITTING || f == Functions.HANG;
         }
 
+        public static bool ContainsMainFunction(List<Functions> funcs)
+        {
+            foreach (Functions f in funcs)
+            {
+                if (IsMainFunction(f))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// ContainsMainFunction
+
         public static bool IsSecondaryFunction(Functions f)
         {
             // usually connect to the main functional parts
@@ -110,7 +122,6 @@ namespace Component
 
         public static bool IsGroundFunction(Functions f)
         {
-            // ground touching points
             return f == Functions.GROUND_TOUCHING || f == Functions.ROCKING || f == Functions.ROLLING;
         }
 
@@ -126,23 +137,28 @@ namespace Component
             return false;
         }
 
-        public static bool IsSecondarySupportFunction(Functions f)
+        public static bool IsHandFunction(Functions f)
         {
-            // connect the main functional parts and ground touching parts
-            return f == Functions.SUPPORT;
+            return f == Functionality.Functions.HAND_HOLD || f == Functionality.Functions.HANG;
         }
 
-        public static bool ContainsMainFunction(List<Functions> funcs)
+        public static bool containsHandFunction(List<Functions> funcs)
         {
             foreach (Functions f in funcs)
             {
-                if (IsMainFunction(f))
+                if (IsHandFunction(f))
                 {
                     return true;
                 }
             }
             return false;
-        }// ContainsMainFunction
+        }
+
+        public static bool IsSecondarySupportFunction(Functions f)
+        {
+            // connect the main functional parts and ground touching parts
+            return f == Functions.SUPPORT;
+        }
 
         public static double[] GetPartGroupCompatibility(Model m1, Model m2, PartGroup pg1, PartGroup pg2)
         {

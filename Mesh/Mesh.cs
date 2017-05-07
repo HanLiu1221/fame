@@ -121,7 +121,7 @@ namespace Geometry
                 idx = edge.nextHalfEdge.index;
                 this.halfEdges[i].nextHalfEdge = this.halfEdges[idx];
             }
-            this.collectMeshInfo();
+            this.collectMeshInfo(false);
         }
 
         public Mesh(double[] vPos, int[] fIndex)
@@ -130,7 +130,7 @@ namespace Geometry
             this.faceCount = fIndex.Length / 3; // tri mesh
             this.faceVertexIndex = fIndex;
             this.vertexPos = vPos;
-            this.collectMeshInfo();
+            this.collectMeshInfo(false);
         }
 
         public Mesh(double[] vPos, byte[] color)
@@ -177,7 +177,7 @@ namespace Geometry
                 }
                 sr.Close();
             }
-            this.collectMeshInfo();
+            this.collectMeshInfo(true);
 		}
 
         public Object Clone()
@@ -711,7 +711,7 @@ namespace Geometry
             }
         }
 
-        private void collectMeshInfo()
+        private void collectMeshInfo(bool isBuild)
         {
             if (isOverSize())
             {
@@ -720,8 +720,11 @@ namespace Geometry
             getVertexFaceIndex();
             this.buildHalfEdge();
             this.buildKdtree();
-            //_vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
-            //_vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
+            if (isBuild)
+            {
+                _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
+                _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
+            }
             this.originVertextPos = this.vertexPos.Clone() as double[];
             this.afterUpdatePos();
             this.flags = new bool[this.vertexCount];

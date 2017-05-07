@@ -451,7 +451,6 @@ namespace Component
 
         public void addSubGraph(List<Node> toConnect, List<Node> newNodes)
         {
-
             foreach (Node node in newNodes)
             {
                 _nodes.Add(node);
@@ -1611,7 +1610,7 @@ namespace Component
             List<Vector3d> groundPnts = new List<Vector3d>();
             foreach (Node node in _nodes)
             {
-                Vector3d[] pnts = getSamplePoints(node);
+                Vector3d[] pnts = node.getSamplePoints();
                 foreach (Vector3d v in pnts)
                 {
                     _centerOfMass += v;
@@ -1766,17 +1765,6 @@ namespace Component
             return false;
         }// isLoseOriginalFunctionality
 
-        private Vector3d[] getSamplePoints(Node node)
-        {
-            Vector3d[] res = node._PART._MESH.VertexVectorArray;
-            if (node._PART._partSP != null && node._PART._partSP._points != null)
-                //&& node._PART._partSP._points.Length > res.Length)
-            {
-                res = node._PART._partSP._points;
-            }
-            return res;
-        }
-
         private bool hasObstructedParts()
         {
             // check if any part is obstructed by the other
@@ -1784,7 +1772,7 @@ namespace Component
             double thr = 0.6;
             for (int i = 0; i < _NNodes;++i)
             {
-                Vector3d[] vi = this.getSamplePoints(_nodes[i]);
+                Vector3d[] vi = _nodes[i].getSamplePoints();
                 // changed on May 3rd. Han
                 // sum up all obstructed points of one part by all the left parts, not just one by the other
                 bool[] obstructed = new bool[vi.Length];
@@ -1825,11 +1813,11 @@ namespace Component
             foreach (Edge e in _edges)
             {
                 double mdist = getMinDistBetweenNodes(e._start, e._end);
-                if (mdist > 0.06)
+                if (mdist > 0.08)
                 {
                     return true;
                 }
-                if (mdist > 0.02)
+                if (mdist > 0.06)
                 {
                     int id1 = _nodes.IndexOf(e._start);
                     int id2 = _nodes.IndexOf(e._end);
@@ -1866,7 +1854,7 @@ namespace Component
 
         private double getMinDistToContact(Vector3d c, Node node)
         {
-            Vector3d[] pnts = this.getSamplePoints(node);
+            Vector3d[] pnts = node.getSamplePoints();
             double mind = double.MaxValue;
             foreach (Vector3d v in pnts)
             {
@@ -1934,8 +1922,8 @@ namespace Component
         {
             // uniformly sampled points on mesh
             double mind = double.MaxValue;
-            Vector3d[] v1 = getSamplePoints(n1);
-            Vector3d[] v2 = getSamplePoints(n2);
+            Vector3d[] v1 = n1.getSamplePoints();
+            Vector3d[] v2 = n2.getSamplePoints();
             for (int i = 0; i < v1.Length; ++i)
             {
                 for (int j = 0; j < v2.Length; ++j)
@@ -2763,6 +2751,17 @@ namespace Component
         {
             _part = p;
             _pos = p._BOUNDINGBOX.CENTER;
+        }
+
+        public Vector3d[] getSamplePoints()
+        {
+            Vector3d[] res = this._part._MESH.VertexVectorArray;
+            if (this._part._partSP != null && this._part._partSP._points != null)
+            //&& this._part._partSP._points.Length > res.Length)
+            {
+                res = this._part._partSP._points;
+            }
+            return res;
         }
 
         public bool isAllNeighborsUpdated()
