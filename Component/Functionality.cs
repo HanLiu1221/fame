@@ -116,8 +116,20 @@ namespace Component
 
         public static bool IsSupportFunction(Functions f)
         {
+            return f == Functions.SUPPORT || IsGroundFunction(f);
+        }
+
+        public static bool ContainsSupportFunction(List<Functions> funcs)
+        {
             // ground touching points
-            return f == Functions.GROUND_TOUCHING;
+            foreach (Functions f in funcs)
+            {
+                if (IsSupportFunction(f))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static bool IsGroundFunction(Functions f)

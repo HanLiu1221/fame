@@ -1101,7 +1101,7 @@ namespace FameBase
                         Directory.CreateDirectory(model_group_shifted_path);
                     }
                 }
-                string meshGroupName = model_group_shifted_path + model._model_name + "_group.obj";
+                string meshGroupName = model_group_shifted_path + model._model_name + ".obj";
                 this.saveModelGroupObj(_currModel, meshGroupName);
                 this.savePartConnection(model, model_group_shifted_path);
                 this.saveModelObj(_currModel, model_group_path + model._model_name + ".obj");
@@ -1190,9 +1190,14 @@ namespace FameBase
             {
                 return;
             }
+            string model_path = folder + m._model_name + "\\";
+            if (!Directory.Exists(model_path))
+            {
+                Directory.CreateDirectory(model_path);
+            }
             foreach (Node node in m._GRAPH._NODES)
             {
-                string filename = folder + node._PART._partName + ".txt";
+                string filename = model_path + node._PART._partName + ".txt";
                 using (StreamWriter sw = new StreamWriter(filename))
                 {
                     sw.Write("functions: ");
@@ -10935,7 +10940,8 @@ namespace FameBase
                             {
                                 Directory.CreateDirectory(mCloned._path);
                             }
-                            mCloned._model_name = m1._model_name + "-gen_" + _currGenId.ToString() + "_num_" + idx[0].ToString();
+                            string original_model_name = this.getOriginalModelName(m._model_name);
+                            mCloned._model_name = original_model_name + "-gen_" + _currGenId.ToString() + "_num_" + idx[0].ToString() + "_add";
                             bool useReplace = pgs[np]._NODES.Count > 0;
                             List<Node> supportNodes = mCloned._GRAPH.getNodesByFunctionality(Functionality.Functions.SUPPORT);
                             if ((Functionality.isRollableFunction(f) || f == Functionality.Functions.PLACEMENT) && supportNodes.Count == 0)
@@ -11285,6 +11291,21 @@ namespace FameBase
             {
                 return false;
             }
+            // multiple nodes, e.g., support+ground replace ground ---> support + support + ground
+            if (funcs2.Contains(Functionality.Functions.SUPPORT) && funcs2.Contains(Functionality.Functions.GROUND_TOUCHING))
+            {
+                // check if #nodes1 connect to some support nodes
+                foreach (Node node in nodes1)
+                {
+                    foreach (Node adj in node._adjNodes)
+                    {
+                        if (Functionality.ContainsSupportFunction(adj._funcs))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
             if (needReduceRepeatedNodes(nodes1, nodes2))
             {
                 // multiple placement replace one
@@ -11460,13 +11481,7 @@ namespace FameBase
             this.setSelectedNodes(m2, nodes2);
             Model newModel = m1.Clone() as Model;
             // m1 starts name
-            string name = m1._model_name;
-            int slashId = name.IndexOf('-');
-            if (slashId == -1)
-            {
-                slashId = name.Length;
-            }
-            string originalModelName = name.Substring(0, slashId);
+            string originalModelName = this.getOriginalModelName(m1._model_name);
             newModel._path = crossoverFolder + "gen_" + _currGenId.ToString() + "\\";
             if (!Directory.Exists(newModel._path))
             {
@@ -11482,7 +11497,7 @@ namespace FameBase
             {
                 updateNodes1.Add(newModel._GRAPH._NODES[node._INDEX]);
             }
-            newModel._model_name = originalModelName + "-gen_" + _currGenId.ToString() + "_num_" + idx.ToString();
+            newModel._model_name = originalModelName + "-gen_" + _currGenId.ToString() + "_num_" + idx.ToString() + "_cross";
             this.setSelectedNodes(m2, nodes2);
             // replace
             if (nodes2.Count == m2._GRAPH._NNodes)
@@ -11512,6 +11527,16 @@ namespace FameBase
                 return null;
             }
         }// crossOverTwoModelsWithFunctionalConstraints
+
+        private string getOriginalModelName(string model_name)
+        {
+            int slashId = model_name.IndexOf('-');
+            if (slashId == -1)
+            {
+                slashId = model_name.Length;
+            }
+            return model_name.Substring(0, slashId);
+        }// getOriginalModelName
 
         private List<Node> replaceWithAFullGraph(Graph g1, Graph g2, List<Node> nodes1, List<Node> nodes2)
         {
