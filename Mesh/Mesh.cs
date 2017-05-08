@@ -511,7 +511,8 @@ namespace Geometry
                     Vector3d v = new Vector3d();
                     int i = 0;
                     int j = 0;
-                    while (++i < array.Length)
+                    int n3 = Math.Min(array.Length, 4);
+                    while (++i < n3)
                     {
                         if (array[i] == "")
                         {

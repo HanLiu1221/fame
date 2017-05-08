@@ -251,6 +251,8 @@ namespace FameBase
         // record the part combinations to avoid repetition
         Dictionary<string, int> partNameToInteger;
         List<PartFormation>[] partCombinationMemory;
+        private List<Functionality.CatInfo> _inputCategories;
+        private List<Functionality.CatInfo> _allCategoryInfo;
 
         /******************** Functions ********************/
 
@@ -2355,6 +2357,24 @@ namespace FameBase
             return _ancesterModelViewers;
         }// loadPartBasedModels
 
+        private void loadCategoryInfo(string segfolder)
+        {
+            _allCategoryInfo = new List<Functionality.CatInfo>();
+            string folder = segfolder.Substring(0, segfolder.LastIndexOf('\\'));
+            folder += "cats\\";
+            string[] files = Directory.GetFiles(folder, "*.ci");
+            foreach (string file in files)
+            {
+                string cstr = file.Substring(file.LastIndexOf('\\') + 1);
+                using (StreamReader sr = new StreamReader(file))
+                {
+                    Functionality.Category cat = Functionality.getCategory(cstr);
+                    // read the category
+
+                }
+            }
+        }// loadCategoryInfo
+
         public void batchLoadPartGroupScores(string segfolder)
         {
             if (!Directory.Exists(segfolder))
@@ -3011,6 +3031,7 @@ namespace FameBase
                 }
             }
         }
+
         private void loadTrainedFeautres()
         {
             string featureFolder = Interface.MODLES_PATH + "patchFeature\\";
@@ -6008,6 +6029,7 @@ namespace FameBase
             // evaluate pairs of part groups
             _partGroupLibrary = new List<PartGroup>();
             _functionalPartScales = new Dictionary<string, Vector3d>();
+            _inputCategories = new List<Functionality.CatInfo>();
             // list all part groups and index
             int id = 0;
             int mid = 0;
@@ -6033,6 +6055,20 @@ namespace FameBase
                     }
                 }
                 ++mid;
+                bool added = false;
+                foreach (Functionality.CatInfo ci in _inputCategories)
+                {
+                    if (ci._cat == m._CAT)
+                    {
+                        added = true;
+                        break;
+                    }
+                }
+                if (!added)
+                {
+                    Functionality.CatInfo cinfo = new Functionality.CatInfo(m._CAT);
+                    _inputCategories.Add(cinfo);
+                }
             }
             int n = _partGroupLibrary.Count;
             _validityMatrixPG = new SparseMatrix(n, n);
@@ -6057,6 +6093,30 @@ namespace FameBase
                 }
             }
         }// calculatePartGroupCompatibility
+
+        private void initializeACategoryInfo(Functionality.CatInfo cinfo)
+        {
+            switch (cinfo._cat)
+            {
+                case Functionality.Category.Chair:
+                    {
+                        int[] ranges = { 1, 1, 1, 4, 1, 5 };
+                        cinfo._ranges = ranges.Clone() as int[];
+                        cinfo._funcEdgs.Add(new Functionality.FunctionEdge(Functionality.Functions.SITTING, Functionality.Functions.LEANING, 1, 5));
+                        cinfo._funcEdgs.Add(new Functionality.FunctionEdge(Functionality.Functions.SITTING, Functionality.Functions.LEANING, 1, 5));
+                        break;
+                    }
+                case Functionality.Category.Desk:
+                    break;
+                case Functionality.Category.Handcart:
+                    break;
+                case Functionality.Category.Basket:
+                    break;
+                case Functionality.Category.Table:
+                default:
+                    break;
+            }
+        }// initializeACategoryInfo
 
         private List<Vector3d> sortInOrder(List<Vector3d> points)
         {
@@ -11648,8 +11708,50 @@ namespace FameBase
             saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
             m._index = _modelIndex;
             ++_modelIndex;
+            // cal an initial partial shape
+
             return true;
         }// processAnOffspringModel
+
+        private List<Functionality.CatInfo> _categoryInfos;
+        private void initializeAPartialShape(Model m)
+        {
+            // min graph of a category
+            // max graph of a category
+            // TARGET: find a subgraph that is closest to the category graph
+            // 1. find the main start node, measure the similarity by
+            //  a. functional label
+            //  b. connections [fi, n], n is a range (n1 ~ n2), the number of directly connected parts having the functioanl label fi
+            foreach (Functionality.Category c in _inputSetCats)
+            {
+                List<Functionality.Functions> funcs = Functionality.getFunctionalityFromCategory(m._CAT);
+                Functionality.Functions mainf = funcs[0];
+                Node start = null;
+                Node backup = null;
+                foreach (Node node in m._GRAPH._NODES)
+                {
+                    if (node._funcs.Contains(mainf))
+                    {
+                        start = node;
+                        break;
+                    }
+                    if (backup == null && Functionality.ContainsMainFunction(node._funcs))
+                    {
+                        backup = node;
+                    }
+                }
+                if (start == null && backup == null)
+                {
+                    return;
+                }
+                if (start == null)
+                {
+                    start = backup;
+                }
+                // region growing
+
+            }
+        }// initializeAPartialShape
 
         private List<PartGroup> findAPairPartGroupsWithFunctionalConstraints(Graph g1, Graph g2, Functionality.Functions f)
         {

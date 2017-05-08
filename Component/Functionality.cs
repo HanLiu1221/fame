@@ -607,18 +607,26 @@ namespace Component
             }
             if (cat == Category.Handcart)
             {
-                funcs.Add(Functions.HAND_HOLD);
-                funcs.Add(Functions.GROUND_TOUCHING);
                 funcs.Add(Functions.PLACEMENT);
+                funcs.Add(Functions.HAND_HOLD);
+                funcs.Add(Functions.SUPPORT);
+                funcs.Add(Functions.ROLLING);
             }
             if (cat == Category.Basket)
             {
+                funcs.Add(Functions.STORAGE);
                 funcs.Add(Functions.HAND_HOLD);
+            }
+            if (cat == Category.Desk)
+            {
+                funcs.Add(Functions.PLACEMENT);
+                funcs.Add(Functions.STORAGE);
                 funcs.Add(Functions.GROUND_TOUCHING);
             }
             if (cat == Category.Shelf)
             {
                 funcs.Add(Functions.PLACEMENT);
+                funcs.Add(Functions.SUPPORT);
                 funcs.Add(Functions.GROUND_TOUCHING);
             }
             if (cat == Category.DryingRack)
@@ -695,5 +703,36 @@ namespace Component
             return funcs;
         }// getNodesFunctionalities
 
+        public class CatInfo
+        {
+            public Category _cat;
+            public Functions[] _funcs;
+            public int[] _ranges;
+            public List<FunctionEdge> _funcEdgs;
+
+            public CatInfo(Category c)
+            {
+                _cat = c;
+                List<Functions> funcs = getFunctionalityFromCategory(c);
+                _funcs = new Functions[funcs.Count];
+                _ranges = new int[funcs.Count * 2]; // min, max
+                _funcEdgs = new List<FunctionEdge>();
+            }
+        }// CatInfo
+
+        public class FunctionEdge
+        {
+            public Functions _f1;
+            public Functions _f2;
+            int _min = 0;
+            int _max = 0;
+            public FunctionEdge(Functions f1, Functions f2, int nmin, int nmax)
+            {
+                _f1 = f1;
+                _f2 = f2;
+                _min = nmin;
+                _max = nmax;
+            }
+        }// FunctionEdge
     }// Functionality
 }
