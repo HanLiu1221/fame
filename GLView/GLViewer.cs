@@ -1115,6 +1115,10 @@ namespace FameBase
                     savePartGroupsOfAModelGraph(model._GRAPH._partGroups, pgName);
                 }
                 saveModelInfo(model, meshDir, modelName, isOriginalModel);
+                if (!isOriginalModel)
+                {
+                    this.initializeAPartialShape(model, model_group_shifted_path);
+                }
             }
         }// saveAPartBasedModel
         
@@ -2352,8 +2356,9 @@ namespace FameBase
 
             // pre-process models
             //this.preProcessInputSet(_ancesterModels);
+            this.loadCategoryInfo(segfolder);
             this.calculatePartGroupCompatibility(_ancesterModels);
-
+            
             return _ancesterModelViewers;
         }// loadPartBasedModels
 
@@ -2361,17 +2366,54 @@ namespace FameBase
         {
             _allCategoryInfo = new List<Functionality.CatInfo>();
             string folder = segfolder.Substring(0, segfolder.LastIndexOf('\\'));
-            folder += "cats\\";
+            folder += "\\cats\\";
             string[] files = Directory.GetFiles(folder, "*.ci");
             foreach (string file in files)
             {
                 string cstr = file.Substring(file.LastIndexOf('\\') + 1);
+                cstr = cstr.Substring(0, cstr.IndexOf('.'));
+                Functionality.Category cat = Functionality.getCategory(cstr);
+                Functionality.CatInfo ci = new Functionality.CatInfo(cat);
                 using (StreamReader sr = new StreamReader(file))
                 {
-                    Functionality.Category cat = Functionality.getCategory(cstr);
                     // read the category
-
-                }
+                    char[] separator = { ' ', '\t' };
+                    List<Functionality.Functions> funcs = new List<Functionality.Functions>();
+                    List<int> ranges = new List<int>();
+                    while (sr.Peek() > -1)
+                    {
+                        string s = sr.ReadLine().Trim();
+                        string[] strs = s.Split(separator);
+                        int nfunctions = int.Parse(strs[0]);
+                        for (int i = 0; i < nfunctions; ++i)
+                        {
+                            s = sr.ReadLine().Trim();
+                            strs = s.Split(separator);
+                            Functionality.Functions f = Functionality.getFunction(strs[0]);
+                            int nmin = int.Parse(strs[1]);
+                            int nmax = int.Parse(strs[2]);
+                            funcs.Add(f);
+                            ranges.Add(nmin);
+                            ranges.Add(nmax);
+                        }
+                        ci._funcs = funcs.ToArray();
+                        ci._ranges = ranges.ToArray();
+                        s = sr.ReadLine().Trim();
+                        strs = s.Split(separator);
+                        int nFunctionalEdges = int.Parse(strs[0]);
+                        for (int i = 0; i < nFunctionalEdges; ++i)
+                        {
+                            s = sr.ReadLine().Trim();
+                            strs = s.Split(separator);
+                            Functionality.Functions f1 = Functionality.getFunction(strs[0]);
+                            Functionality.Functions f2 = Functionality.getFunction(strs[1]);
+                            int nmin = int.Parse(strs[2]);
+                            int nmax = int.Parse(strs[3]);
+                            ci._funcEdgs.Add(new Functionality.FunctionEdge(f1, f2, nmin, nmax));
+                        }
+                    }
+                }// read a file
+                _allCategoryInfo.Add(ci);
             }
         }// loadCategoryInfo
 
@@ -6066,8 +6108,13 @@ namespace FameBase
                 }
                 if (!added)
                 {
-                    Functionality.CatInfo cinfo = new Functionality.CatInfo(m._CAT);
-                    _inputCategories.Add(cinfo);
+                    foreach (Functionality.CatInfo ci in _allCategoryInfo)
+                    {
+                        if (ci._cat == m._CAT)
+                        {
+                            _inputCategories.Add(ci);
+                        }
+                    }
                 }
             }
             int n = _partGroupLibrary.Count;
@@ -6093,30 +6140,6 @@ namespace FameBase
                 }
             }
         }// calculatePartGroupCompatibility
-
-        private void initializeACategoryInfo(Functionality.CatInfo cinfo)
-        {
-            switch (cinfo._cat)
-            {
-                case Functionality.Category.Chair:
-                    {
-                        int[] ranges = { 1, 1, 1, 4, 1, 5 };
-                        cinfo._ranges = ranges.Clone() as int[];
-                        cinfo._funcEdgs.Add(new Functionality.FunctionEdge(Functionality.Functions.SITTING, Functionality.Functions.LEANING, 1, 5));
-                        cinfo._funcEdgs.Add(new Functionality.FunctionEdge(Functionality.Functions.SITTING, Functionality.Functions.LEANING, 1, 5));
-                        break;
-                    }
-                case Functionality.Category.Desk:
-                    break;
-                case Functionality.Category.Handcart:
-                    break;
-                case Functionality.Category.Basket:
-                    break;
-                case Functionality.Category.Table:
-                default:
-                    break;
-            }
-        }// initializeACategoryInfo
 
         private List<Vector3d> sortInOrder(List<Vector3d> points)
         {
@@ -11713,8 +11736,7 @@ namespace FameBase
             return true;
         }// processAnOffspringModel
 
-        private List<Functionality.CatInfo> _categoryInfos;
-        private void initializeAPartialShape(Model m)
+        private void initializeAPartialShape(Model m, string path)
         {
             // min graph of a category
             // max graph of a category
@@ -11722,9 +11744,10 @@ namespace FameBase
             // 1. find the main start node, measure the similarity by
             //  a. functional label
             //  b. connections [fi, n], n is a range (n1 ~ n2), the number of directly connected parts having the functioanl label fi
-            foreach (Functionality.Category c in _inputSetCats)
+            foreach (Functionality.CatInfo ci in _inputCategories)
             {
-                List<Functionality.Functions> funcs = Functionality.getFunctionalityFromCategory(m._CAT);
+                Functionality.Category cat = ci._cat;
+                Functionality.Functions[] funcs = ci._funcs;
                 Functionality.Functions mainf = funcs[0];
                 Node start = null;
                 Node backup = null;
@@ -11749,8 +11772,66 @@ namespace FameBase
                     start = backup;
                 }
                 // region growing
-
-            }
+                List<Functionality.Functions> required = funcs.ToList();
+                required.Remove(mainf);
+                bool include = false;
+                List<Node> prev = new List<Node>();
+                prev.Add(start);
+                List<Node> res = new List<Node>();
+                res.Add(start);
+                bool[] visited = new bool[m._GRAPH._NNodes];
+                visited[start._INDEX]=true;
+                while (required.Count > 0 && res.Count < m._GRAPH._NNodes)
+                {
+                    List<Node> cur = new List<Node>();
+                    foreach (Node node in prev)
+                    {
+                        foreach (Node adj in node._adjNodes)
+                        {
+                            if (visited[adj._INDEX])
+                            {
+                                continue;
+                            }
+                            var sub = required.Except(adj._funcs);
+                            if (sub.Count() == 0 && !include)
+                            {
+                                continue;
+                            }
+                            res.Add(adj);
+                            visited[adj._INDEX] = true;
+                            cur.Add(adj);
+                        }
+                    }
+                    foreach (Node node in cur)
+                    {
+                        foreach (Functionality.Functions f in node._funcs)
+                        {
+                            required.Remove(f);
+                        }
+                    }
+                    if (cur.Count == 0 && include)
+                    {
+                        //no more nodes can be included
+                        break;
+                    }
+                    include = false;
+                    if (cur.Count == 0)
+                    {
+                        cur = prev;
+                        include = true;
+                    }
+                    prev = new List<Node>(cur);
+                }// iteration
+                string  folder = path + m._model_name + "\\";
+                string filename = folder + m._model_name + "_" + Functionality.getCategoryName((int)ci._cat) + ".txt";
+                using (StreamWriter sw = new StreamWriter(filename))
+                {
+                    foreach (Node node in res)
+                    {
+                        sw.WriteLine(node._PART._partName);
+                    }
+                }
+            }// each category
         }// initializeAPartialShape
 
         private List<PartGroup> findAPairPartGroupsWithFunctionalConstraints(Graph g1, Graph g2, Functionality.Functions f)
