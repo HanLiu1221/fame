@@ -27,6 +27,7 @@ namespace Geometry
         public static int _min_point_num = 10;
         public static double _magic_thresh = 0.01;
 
+
         public static Random rand = new Random();
         public enum PrimType { Cuboid, Cylinder };
         public enum NodeRelationType { Orthogonal, Parallel, None };

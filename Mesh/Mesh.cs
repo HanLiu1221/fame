@@ -121,7 +121,7 @@ namespace Geometry
                 idx = edge.nextHalfEdge.index;
                 this.halfEdges[i].nextHalfEdge = this.halfEdges[idx];
             }
-            this.collectMeshInfo(false);
+            this.collectMeshInfo();
         }
 
         public Mesh(double[] vPos, int[] fIndex)
@@ -130,7 +130,7 @@ namespace Geometry
             this.faceCount = fIndex.Length / 3; // tri mesh
             this.faceVertexIndex = fIndex;
             this.vertexPos = vPos;
-            this.collectMeshInfo(false);
+            this.collectMeshInfo();
         }
 
         public Mesh(double[] vPos, byte[] color)
@@ -177,7 +177,7 @@ namespace Geometry
                 }
                 sr.Close();
             }
-            this.collectMeshInfo(true);
+            this.collectMeshInfo();
 		}
 
         public Object Clone()
@@ -511,8 +511,7 @@ namespace Geometry
                     Vector3d v = new Vector3d();
                     int i = 0;
                     int j = 0;
-                    int n3 = Math.Min(array.Length, 4);
-                    while (++i < n3)
+                    while (++i < array.Length && j < 3)
                     {
                         if (array[i] == "")
                         {
@@ -712,7 +711,7 @@ namespace Geometry
             }
         }
 
-        private void collectMeshInfo(bool isBuild)
+        private void collectMeshInfo()
         {
             if (isOverSize())
             {
@@ -721,15 +720,20 @@ namespace Geometry
             getVertexFaceIndex();
             this.buildHalfEdge();
             this.buildKdtree();
-            if (isBuild)
-            {
-                _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
-                _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
-            }
+            
+                //_vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
+                //_vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
+            
             this.originVertextPos = this.vertexPos.Clone() as double[];
             this.afterUpdatePos();
             this.flags = new bool[this.vertexCount];
         }// collectMeshInfo
+
+        public void buildVVandVF()
+        {
+            _vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
+            _vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();
+        }
 
         private void buildKdtree()
         {

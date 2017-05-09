@@ -1429,6 +1429,10 @@ namespace Component
                 {
                     int cur = q.Dequeue();
                     vIndex.Add(cur);
+                    if (mesh._VV == null)
+                    {
+                        mesh.buildVVandVF();
+                    }
                     int[] curRow = mesh._VV[cur];
                     foreach (int j in curRow)
                     {
@@ -1450,6 +1454,10 @@ namespace Component
                 HashSet<int> fIndex = new HashSet<int>();
                 foreach (int i in vIndex)
                 {
+                    if (mesh._VF == null)
+                    {
+                        mesh.buildVVandVF();
+                    }
                     foreach (int f in mesh._VF[i])
                     {
                         fIndex.Add(f);
@@ -1493,6 +1501,10 @@ namespace Component
                         int totalSamplePoints = spPerPart.Count;
                         for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
                         {
+                            if (weightsPerCat[c]._weights == null)
+                            {
+                                continue;
+                            }
                             weightsPerCat[c]._weights = new double[spPerPart.Count, meshSP._weightsPerCat[c]._nPatches];
                             for (int np = 0; np < totalSamplePoints; ++np)
                             {
@@ -2049,6 +2061,10 @@ namespace Component
                 {
                     int cur = q.Dequeue();
                     vIndex.Add(cur);
+                    if (mesh._VV == null)
+                    {
+                        mesh.buildVVandVF();
+                    }
                     int[] curRow = mesh._VV[cur];
                     foreach (int j in curRow)
                     {
@@ -2077,6 +2093,10 @@ namespace Component
                 List<int> faceVertexIndex = new List<int>();
                 foreach (int i in vIndex)
                 {
+                    if (mesh._VF == null)
+                    {
+                        mesh.buildVVandVF();
+                    }
                     foreach (int f in mesh._VF[i])
                     {
                         if (!fIndex.Contains(f))
@@ -2128,6 +2148,10 @@ namespace Component
                 {
                     int cur = q.Dequeue();
                     vIndex.Add(cur);
+                    if (mesh._VV == null)
+                    {
+                        mesh.buildVVandVF();
+                    }
                     int[] curRow = mesh._VV[cur];
                     foreach (int j in curRow)
                     {
@@ -2158,6 +2182,10 @@ namespace Component
                 List<Vector3d> points = new List<Vector3d>();
                 foreach (int i in vIndex)
                 {
+                    if (mesh._VF == null)
+                    {
+                        mesh.buildVVandVF();
+                    }
                     foreach (int f in mesh._VF[i])
                     {
                         if (weights[f] < thr)
@@ -2425,9 +2453,12 @@ namespace Component
             }
             SamplePoints sp = new SamplePoints(cpoints, cnormals, cfaceIdx, ccolors, _totalNfaces);
             sp._weightsPerCat = new List<PatchWeightPerCategory>();
-            foreach (PatchWeightPerCategory pw in this._weightsPerCat)
+            if (this._weightsPerCat != null)
             {
-                sp._weightsPerCat.Add(pw.Clone() as PatchWeightPerCategory);
+                foreach (PatchWeightPerCategory pw in this._weightsPerCat)
+                {
+                    sp._weightsPerCat.Add(pw.Clone() as PatchWeightPerCategory);
+                }
             }
             return sp;
         }

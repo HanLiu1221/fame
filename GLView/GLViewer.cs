@@ -9926,8 +9926,7 @@ namespace FameBase
                 }
 
                 Vector3d scale = new Vector3d(sx, sy, sz);
-                scale = adjustScale(scale);
-                //if (double.IsNaN(scale.x) || double.IsNaN(trans.x)) throw new Exception();
+                //scale = adjustScale(scale);
 
                 S = Matrix4d.ScalingMatrix(scale.x, scale.y, scale.z);
 
@@ -10907,7 +10906,11 @@ namespace FameBase
             this.isUserTargeted = targetMoels.Count == 1;
             if (targetMoels.Count == 0)
             {
-                targetMoels = sourceModels;
+                targetMoels = new List<Model>(sourceModels);
+            }
+            else
+            {
+                sourceModels = new List<Model>(targetMoels);
             }
             List<Model> candidates = new List<Model>();
             //if (isUserTargeted)
@@ -10976,7 +10979,8 @@ namespace FameBase
                     for (int j = 0; j < pgs_2.Count; ++j)
                     {
                         PartFormation pf = this.getANewPartFormation(m1, pgs_1[i]._NODES, pgs_2[j]._NODES);
-                        if (pf == null || !shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes))
+                        if (pf == null || !shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes)
+                            || isAgainstOriginalFunc(m1, pgs_1[i]._NODES, pgs_2[j]._NODES))
                         {
                             continue;
                         }
@@ -11395,7 +11399,45 @@ namespace FameBase
                 return false;
             }
             return true;
-        }
+        }// shouldReplace
+
+        private bool isAgainstOriginalFunc(Model m1, List<Node> nodes1, List<Node> nodes2)
+        {
+            bool containHang = false;
+            foreach (Node node in nodes2)
+            {
+                if (node._funcs.Contains(Functionality.Functions.HANG))
+                {
+                    containHang = true;
+                    break;
+                }
+            }
+            if (!containHang)
+            {
+                return false;
+            }
+            // check if there exist noded higher than nodes1
+            double minh = double.MaxValue;
+            foreach (Node node in nodes1)
+            {
+                if (node._PART._BOUNDINGBOX.CENTER.y < minh)
+                {
+                    minh = node._PART._BOUNDINGBOX.CENTER.y;
+                }
+            }
+            foreach (Node node in m1._GRAPH._NODES)
+            {
+                if (nodes1.Contains(node))
+                {
+                    continue;
+                }
+                if (node._PART._BOUNDINGBOX.CENTER.y > minh)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// isAgainstOriginalFunc
 
         private Vector3d[] getGroundTouchingPoints(Node node, int n)
         {
@@ -11718,10 +11760,10 @@ namespace FameBase
                     m._GRAPH.isValid();
                 }
                 m._model_name += "_invalid";
-                //this.setCurrentModel(m, -1);
-                //Program.GetFormMain().updateStats();
-                //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
-                //saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                this.setCurrentModel(m, -1);
+                Program.GetFormMain().updateStats();
+                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
             }
             this.setCurrentModel(m, -1);
@@ -12180,7 +12222,7 @@ namespace FameBase
             Part newPart = _currModel.groupParts(_selectedParts);
             _selectedParts.Clear();
             _selectedParts.Add(newPart);
-            _currModel.initializeGraph();
+            //_currModel.initializeGraph();
             this.cal2D();
             this.Refresh();
         }// groupParts
