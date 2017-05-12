@@ -151,7 +151,7 @@ namespace Component
 
         public static bool IsHandFunction(Functions f)
         {
-            return f == Functionality.Functions.HAND_HOLD || f == Functionality.Functions.HANG;
+            return f == Functionality.Functions.HAND_HOLD;// || f == Functionality.Functions.HANG;
         }
 
         public static bool containsHandFunction(List<Functions> funcs)
@@ -243,7 +243,8 @@ namespace Component
             }
             if (containsMainFunc1 && containsMainFunc2)
             {
-                if (!funcs1.Contains(Functions.GROUND_TOUCHING) && funcs2.Contains(Functions.GROUND_TOUCHING))
+                if (!funcs1.Contains(Functions.GROUND_TOUCHING) && funcs2.Contains(Functions.GROUND_TOUCHING)
+                    && !funcs2.Contains(Functions.STORAGE))
                 {
                     return false;
                 }
@@ -262,10 +263,10 @@ namespace Component
                     }
                 }
             }
-            //if (funcs1.Count == 0 && funcs2.Count > 0)
-            //{
-            //    return true;
-            //}
+            if (funcs1.Count == 0 && funcs2.Count > 0)
+            {
+                return true;
+            }
             return false;
         }// hasCompatibleFunctions
 
@@ -278,7 +279,8 @@ namespace Component
             }
             List<Functions> funcs1 = getNodesFunctionalities(nodes1);
             List<Functions> funcs2 = getNodesFunctionalities(nodes2);
-            if (funcs1.Count == funcs2.Count && funcs1.Count == 1 && funcs1[0] == funcs2[0])
+            if (funcs1.Count == funcs2.Count && funcs1.Count == 1 
+                && funcs1[0] == funcs2[0] && funcs1[0] == Functions.PLACEMENT)
             {
                 return true;
             }
@@ -507,6 +509,8 @@ namespace Component
                     return Functions.LEANING;
                 case "handhold":
                     return Functions.HAND_HOLD;
+                case "hang":
+                    return Functions.HANG;
                 default:
                     return Functions.NONE;
             }

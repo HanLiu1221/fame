@@ -369,6 +369,7 @@ namespace FameBase
             _meshClasses.Clear();
             _humanposes.Clear();
             _currGenModelViewers.Clear();
+            Program.GetFormMain().clearModelViewers();
         }
 
         private void clearHighlights()
@@ -1311,7 +1312,7 @@ namespace FameBase
             {
                 return;
             }
-            //string folder = Interface.MODLES_PATH + "ValidityMatrix\\";
+            //string folder = Interface.MODELS_PATH + "ValidityMatrix\\";
             //string[] files = Directory.GetFiles(folder, "*.vdm");
             //List<string> fileStrs = new List<string>(files);
             //int id = 0;
@@ -2243,8 +2244,10 @@ namespace FameBase
             if (_currModel != null)
             {
                 Program.GetFormMain().outputSystemStatus(_currModel._model_name + " loaded.");
-                String s = _currModel.graphValidityCheck();
-                Program.GetFormMain().outputSystemStatus(s);
+                string s = _currModel.graphValidityCheck();
+                string ss = _currModel._model_name + " loaded.\n";
+                ss += s;
+                Program.GetFormMain().outputSystemStatus(ss);
                 this.getModelMainFuncs(_currModel);
             }
             this.Refresh();
@@ -2362,6 +2365,95 @@ namespace FameBase
             return _ancesterModelViewers;
         }// loadPartBasedModels
 
+        public int loadPartBasedModels()
+        {
+            string segfolder = Interface.MODELS_PATH;
+            segfolder = segfolder.Substring(0, segfolder.LastIndexOf('\\'));
+            segfolder = segfolder.Substring(0, segfolder.LastIndexOf('\\'));
+            segfolder += "\\set_4";
+            if (!Directory.Exists(segfolder))
+            {
+                MessageBox.Show("Directory does not exist!");
+                return 0;
+            }
+            this.foldername = segfolder;
+            this.clearContext();
+            this.clearHighlights();
+            string[] files = Directory.GetFiles(segfolder, "*.pam");
+            int idx = 0;
+            Program.writeToConsole("Loading all " + files.Length.ToString() + " models...");
+            _ancesterModels = new List<Model>();
+            // when load a new set, reset the dictionary 
+            _modelIndex = 0;
+            foreach (string file in files)
+            {
+                string modelName = file.Substring(file.LastIndexOf('\\') + 1);
+                modelName = modelName.Substring(0, modelName.LastIndexOf('.'));
+                Program.writeToConsole("Loading Model info #" + (idx + 1).ToString() + " " + modelName + "...");
+                Model m = loadOnePartBasedModel(file);
+                if (m != null)
+                {
+                    _ancesterModels.Add(m);
+                    // load graph
+                    string graphName = file.Substring(0, file.LastIndexOf('.')) + ".graph";
+                    LoadAGraph(m, graphName, false);
+                    if (m._GRAPH == null)
+                    {
+                        MessageBox.Show("Cannot find the GRAPH Info of model: " + modelName);
+                        return 0;
+                    }
+                    // load part groups
+                    string pgName = file.Substring(0, file.LastIndexOf('.')) + ".pg";
+                    LoadPartGroupsOfAModelGraph(m._GRAPH, pgName, m._model_name);
+                    if (m._GRAPH._partGroups == null)
+                    {
+                        MessageBox.Show("Cannot find the PART GROUP Info of model: " + modelName);
+                        return 0;
+                    }
+
+                    m._index = idx;
+                    foreach (PartGroup pg in m._GRAPH._partGroups)
+                    {
+                        pg._ParentModelIndex = idx;
+                    }
+
+                    ModelViewer modelViewer = new ModelViewer(m, idx++, this, 0); // ancester
+                    _ancesterModelViewers.Add(modelViewer);
+                    ++_modelIndex;
+                }
+            }
+            // map part names to int
+            int id = 0;
+            this.partNameToInteger = new Dictionary<string, int>();
+            foreach (Model m in _ancesterModels)
+            {
+                foreach (Part p in m._PARTS)
+                {
+                    this.partNameToInteger.Add(p._partName, id++);
+                }
+            }
+            // the number of a subset could be from 1 - n
+            // a subset is a set of parts from the original input set
+            this.partCombinationMemory = new List<PartFormation>[partNameToInteger.Count * 2];
+            foreach (Model m in _ancesterModels)
+            {
+                m._partForm = this.tryCreateANewPartFormation(m._PARTS, 1.0);
+            }
+            // set the default model as the last one
+            if (_ancesterModelViewers.Count > 0)
+            {
+                this.setCurrentModel(_ancesterModelViewers[_ancesterModelViewers.Count - 1]._MODEL, _ancesterModelViewers.Count - 1);
+            }
+            this.readModelModelViewMatrix(foldername + "\\view.mat");
+
+            this.setUIMode(0);
+
+            this.loadCategoryInfo(segfolder);
+            this.calculatePartGroupCompatibility(_ancesterModels);
+
+            return _ancesterModels.Count;
+        }// loadPartBasedModels
+
         private void loadCategoryInfo(string segfolder)
         {
             _allCategoryInfo = new List<Functionality.CatInfo>();
@@ -2476,7 +2568,7 @@ namespace FameBase
                 insertAVal(topVailityModels, topNValidityValues, maxValidity, model_name);
                 insertAVal(topNoveltyModels, topNNoveltyValues, novelty * maxValidity, model_name);
             }
-            string validityMatrixFolder = Interface.MODLES_PATH + "ValidityMatrix\\";
+            string validityMatrixFolder = Interface.MODELS_PATH + "ValidityMatrix\\";
             string validityMatrixFileName = validityMatrixFolder + "Set_1_dec_gen_" + _currGenId.ToString() + ".vdm";
             this.saveValidityMatrix(validityMatrixFileName);
 
@@ -2939,7 +3031,7 @@ namespace FameBase
 
         private void loadAllCategoryScores()
         {
-            string scoreFolder = Interface.MODLES_PATH + "categoryScores\\";
+            string scoreFolder = Interface.MODELS_PATH + "categoryScores\\";
             string[] files = Directory.GetFiles(scoreFolder, "*.score");
             int nShapes = files.Length;
             int[] index = new int[Functionality._NUM_CATEGORIY];
@@ -3076,7 +3168,7 @@ namespace FameBase
 
         private void loadTrainedFeautres()
         {
-            string featureFolder = Interface.MODLES_PATH + "patchFeature\\";
+            string featureFolder = Interface.MODELS_PATH + "patchFeature\\";
             _trainingFeaturesPerCategory = new List<TrainedFeaturePerCategory>();
             for (int c = 0; c < Functionality._NUM_CATEGORIY; ++c)
             {
@@ -4306,14 +4398,20 @@ namespace FameBase
             {
                 using (var gfx = Graphics.FromImage(bmp))
                 {
-                    gfx.CopyFromScreen((int)(this.Location.X), (int)(this.Location.Y) + 90,
+                    try
+                    {
+                        gfx.CopyFromScreen((int)(this.Location.X), (int)(this.Location.Y) + 90,
                         0, 0, newSize, CopyPixelOperation.SourceCopy);
-                    //var copyTosolveGDIError = new Bitmap(bmp);
-                    //copyTosolveGDIError.Save(filename, System.Drawing.Imaging.ImageFormat.Png);
-                    bmp.Save(filename, System.Drawing.Imaging.ImageFormat.Png);
+                        //var copyTosolveGDIError = new Bitmap(bmp);
+                        //copyTosolveGDIError.Save(filename, System.Drawing.Imaging.ImageFormat.Png);
+                        bmp.Save(filename, System.Drawing.Imaging.ImageFormat.Png);
+                    }
+                    catch (System.Exception)
+                    {
+                    }
                 }
             }
-        }
+        }// captureScreen
 
         private Vector3d getCurPos(Vector3d v)
         {
@@ -4693,22 +4791,24 @@ namespace FameBase
             Directory.CreateDirectory(userFolder);
 
             mutateFolder = userFolder + "\\models\\mutate\\";
-            crossoverFolder = userFolder + "\\models\\crossover\\";
+            //crossoverFolder = userFolder + "\\models\\crossover\\";
+            crossoverFolder = userFolder + "\\models\\";
             growthFolder = userFolder + "\\models\\growth\\";
             funcFolder = userFolder + "\\models\\funcTest\\";
 
-            createDirectory(mutateFolder);
             createDirectory(crossoverFolder);
-            createDirectory(growthFolder);
+            //createDirectory(mutateFolder);
+            //createDirectory(growthFolder);
 
             imageFolder_m = userFolder + "\\screenCapture\\mutate\\";
-            imageFolder_c = userFolder + "\\screenCapture\\crossover\\";
+            //imageFolder_c = userFolder + "\\screenCapture\\crossover\\";
+            imageFolder_c = userFolder + "\\screenCapture\\";
             imageFolder_g = userFolder + "\\screenCapture\\growth\\";
             string invalidImagefolder = imageFolder_c + "invald\\";
 
-            createDirectory(imageFolder_m);
             createDirectory(imageFolder_c);
-            createDirectory(imageFolder_g);
+            //createDirectory(imageFolder_m);
+            //createDirectory(imageFolder_g);
             createDirectory(invalidImagefolder);
 
             return _userIndex;
@@ -4844,7 +4944,7 @@ namespace FameBase
                     _validityMatrixPG.AddTriplet(j, i, 0.5 + rand.NextDouble() / 2);
                 }
             }
-            string validityMatrixFolder = Interface.MODLES_PATH + "ValidityMatrix\\";
+            string validityMatrixFolder = Interface.MODELS_PATH + "ValidityMatrix\\";
             string validityMatrixFileName = validityMatrixFolder + "User_" + _userIndex.ToString() +
             "_Recompute_" + _userReCompute.ToString() + ".vdm";
             this.saveValidityMatrix(validityMatrixFileName);
@@ -4891,7 +4991,7 @@ namespace FameBase
             // for capturing screen            
             this.reloadView();
 
-            string validityMatrixFolder = Interface.MODLES_PATH + "ValidityMatrix\\";
+            string validityMatrixFolder = Interface.MODELS_PATH + "ValidityMatrix\\";
             string validityMatrixFileName = validityMatrixFolder + "User_" + _userIndex.ToString() +
                 "_gen_" + _currGenId.ToString() + ".vdm";
 
@@ -5061,7 +5161,7 @@ namespace FameBase
             // for capturing screen            
             this.reloadView();
 
-            string validityMatrixFolder = Interface.MODLES_PATH + "ValidityMatrix\\";
+            string validityMatrixFolder = Interface.MODELS_PATH + "ValidityMatrix\\";
             if (!Directory.Exists(validityMatrixFolder))
             {
                 Directory.CreateDirectory(validityMatrixFolder);
@@ -5676,6 +5776,9 @@ namespace FameBase
                 }
             }
 
+            bool userBoxCenter = nodes1.Count == 1 && nodes2.Count == 1 && targets.Count < 3;
+            bool useScale = false;
+
             Vector3d[] scaleVecs_1 = this.getScales(nodes1);
             Vector3d[] scaleVecs_2 = this.getScales(nodes2);
 
@@ -5754,6 +5857,11 @@ namespace FameBase
                         t = j;
                     }
                 }
+                if (mind > 0.2)
+                {
+                    userBoxCenter = true;
+                    useScale = true;
+                }
                 trt.Add(swapped ? right[t] : sources[t]); // right use sim points
                 visited[t] = true;
             }
@@ -5769,9 +5877,11 @@ namespace FameBase
                 sources = trt;
             }
 
-            bool useScale = targets.Count == 0 || sources.Count == 0 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
-
-            useScale = updateNodes2.Count == 1 && !Functionality.ContainsMainFunction(updateNodes2[0]._funcs);
+            if (!useScale)
+            {
+                useScale = targets.Count == 0 || sources.Count == 0 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
+                useScale = updateNodes2.Count == 1 && !Functionality.ContainsMainFunction(updateNodes2[0]._funcs);
+            }
 
             if (sources.Count == 0)
             {
@@ -5792,17 +5902,23 @@ namespace FameBase
                 targets.Add(new Vector3d(center1.x, 0, center1.z));
                 sources.Add(new Vector3d(center2.x, 0, center2.z));
             }
-            bool userCenter = false;
+
+            if (!useScale)
+            {
+                useScale = userBoxCenter && left.Count != right.Count;
+            }
             double storageScale = -1;
 
             if (crossoverFolder.Contains("set_1"))
             {
                 useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
             }
+
             if (this.containsFunc(updateNodes2, Functionality.Functions.STORAGE))
             {
                 useScale = true;
-                boxScale[1] = 1.0;
+                // maxv_s.y - minv_s.y: the scale of depth (y-value) for the storage compared to the maximum scale of the shape box, which is 1
+                boxScale[1] = Math.Max(scale1[1], (maxv_s.y - minv_s.y));
             }
             // when replacing a storage part by a placement part, the volume is not necessary
             if (this.containsFunc(nodes1, Functionality.Functions.STORAGE)
@@ -5813,8 +5929,9 @@ namespace FameBase
 
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userCenter, storageScale, useGround);
+                getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userBoxCenter, storageScale, useGround);
                 this.deformNodesAndEdges(updateNodes2, Q);
+                //getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, userBoxCenter, storageScale, useGround);
                 g1.resetUpdateStatus();
                 this.restoreCyclinderNodes(updateNodes2, S);
             }
@@ -5936,7 +6053,7 @@ namespace FameBase
                 sources.Add(center2);
             }
 
-            bool userCenter = false;
+            bool useCenter = false;
             double storageScale = -1;
 
             if (this.containsFunc(updateNodes2, Functionality.Functions.STORAGE))
@@ -5948,7 +6065,7 @@ namespace FameBase
             if (nodes2.Count > 0)
             {
                 getTransformation(sources, targets, out S, out T, out Q, boxScale, useScale, center1, center2, 
-                    userCenter, storageScale, false);
+                    useCenter, storageScale, false);
                 this.deformNodesAndEdges(updateNodes2, Q);
                 g1.resetUpdateStatus();
                 this.restoreCyclinderNodes(updateNodes2, S);
@@ -8029,7 +8146,7 @@ namespace FameBase
             // save the scores
             if (!_currModel._model_name.StartsWith("gen"))
             {
-                string scoreFolder = Interface.MODLES_PATH + "fameScore\\";
+                string scoreFolder = Interface.MODELS_PATH + "fameScore\\";
                 if (!Directory.Exists(scoreFolder))
                 {
                     Directory.CreateDirectory(scoreFolder);
@@ -9272,10 +9389,10 @@ namespace FameBase
                 //sources.Add(new Vector3d(sources[0].x, 0, sources[0].z));
                 //targets.Add(new Vector3d(targets[0].x, 0, targets[0].z));
             }
-            bool userCenter = nodes1.Count == 1 || nodes2.Count == 1;
+            bool useCenter = nodes1.Count == 1 || nodes2.Count == 1;
             if (nodes1.Count > 0 && nodes2.Count > 0)
             {
-                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center2, center1, userCenter, -1, useGround);
+                getTransformation(sources, targets, out S, out T, out Q, boxScale_1, true, center2, center1, useCenter, -1, useGround);
                 this.deformNodesAndEdges(updateNodes1, Q);
             }
             
@@ -9288,7 +9405,7 @@ namespace FameBase
 
             if (nodes2.Count > 0 && nodes1.Count > 0)
             {
-                getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true, center1, center2, userCenter, -1, useGround);
+                getTransformation(targets, sources, out S, out T, out Q, boxScale_2, true, center1, center2, useCenter, -1, useGround);
                 this.deformNodesAndEdges(updateNodes2, Q);
             }
             
@@ -10874,6 +10991,11 @@ namespace FameBase
                 }
             }
             // more iterations
+            //if (_currUserFunctions.Count > 0)
+            //{
+            //    _currGenModelViewers.Clear();
+            //    this.partCombinationMemory = new List<PartFormation>[this.partCombinationMemory.Length];
+            //}
             _userSelectedModels.Clear();
             foreach (ModelViewer mv in _currGenModelViewers)
             {
@@ -10887,7 +11009,7 @@ namespace FameBase
                 _userSelectedModels.Add(m);
             }
             targetMoels.AddRange(_userSelectedModels);
-            if (_userSelectedModels.Count == 0)
+            if (_userSelectedModels.Count <= 1)
             {
                 // select all
                 foreach (ModelViewer mv in _currGenModelViewers)
@@ -10908,10 +11030,10 @@ namespace FameBase
             {
                 targetMoels = new List<Model>(sourceModels);
             }
-            else
-            {
-                sourceModels = new List<Model>(targetMoels);
-            }
+            //else if (targetMoels.Count > 1)
+            //{
+            //    sourceModels = new List<Model>(targetMoels);
+            //}
             List<Model> candidates = new List<Model>();
             //if (isUserTargeted)
             //{
@@ -11058,6 +11180,21 @@ namespace FameBase
                                     List<Vector3d> targets = new List<Vector3d>();
                                     // find the ground touching points,
                                     // the box center is not working, e.g., two crossed legs have the same centers
+                                    List<Functionality.Functions> toReplace_funcs = this.collectFunctions(toReplace);
+                                    List<Functionality.Functions> mcloned_funcs = this.collectFunctions(mCloned._GRAPH._NODES);
+                                    int nground = 0;
+                                    foreach (Node node in mCloned._GRAPH._NODES)
+                                    {
+                                        if (node._funcs.Contains(Functionality.Functions.GROUND_TOUCHING))
+                                        {
+                                            ++nground;
+                                        }
+                                    }
+                                    if (toReplace_funcs.Count > 1 && toReplace_funcs.Contains(Functionality.Functions.SUPPORT))
+                                        //&& (mcloned_funcs.Contains(Functionality.Functions.SUPPORT) || nground > 1))
+                                    {
+                                        continue; // double support
+                                    }
                                     foreach (Node gn in groundNodes)
                                     {
                                         Vector3d[] groundPoints = this.getGroundTouchingPoints(gn, groundNodes.Count == 2 ? 2 : 1);
@@ -11089,7 +11226,17 @@ namespace FameBase
                                 {
                                     if (supportNodes.Count == 0)
                                     {
-                                        supportNodes = groundNodes;
+                                        foreach (Node node in groundNodes)
+                                        {
+                                            if (!Functionality.ContainsMainFunction(node._funcs))
+                                            {
+                                                supportNodes.Add(node);
+                                            }
+                                        }
+                                    }
+                                    if (supportNodes.Count == 0)
+                                    {
+                                        continue;
                                     }
                                     List<Node> placementNodes = new List<Node>();
                                     foreach (Node pn in toReplace)
@@ -11109,6 +11256,10 @@ namespace FameBase
                                 {
                                     this.insertBackRelatedNodes(mCloned, m2._GRAPH, toReplace);
                                 }// back
+                                else if (f == Functionality.Functions.HANG)
+                                {
+                                    this.insertHangNodes(mCloned, m2._GRAPH, toReplace);
+                                }
                                 else
                                 {
                                     // general case
@@ -11144,6 +11295,22 @@ namespace FameBase
             }// each function
             return res;
         }// tryCrossOverAddingNewFunctions
+
+        private List<Functionality.Functions> collectFunctions(List<Node> nodes)
+        {
+            List<Functionality.Functions> res = new List<Functionality.Functions>();
+            foreach (Node node in nodes)
+            {
+                foreach (Functionality.Functions f in node._funcs)
+                {
+                    if (!res.Contains(f))
+                    {
+                        res.Add(f);
+                    }
+                }
+            }
+            return res;
+        }//collectFunctions
 
         private void insertBackRelatedNodes(Model m, Graph g2, List<Node> backNodes)
         {
@@ -11209,7 +11376,107 @@ namespace FameBase
             toConnect.Add(toAttach);
             m._GRAPH.addSubGraph(toConnect, updated);
             m._GRAPH.reset();
-        }// insertBackRelatedNodes
+        }// insertBackRelatedNodes 
+
+        private void insertHangNodes(Model m, Graph g2, List<Node> hangNodes)
+        {
+            List<Functionality.Functions> allFuncs = this.collectFunctions(hangNodes);
+            if (allFuncs.Count > 1 || !allFuncs.Contains(Functionality.Functions.HANG))
+            {
+                return;
+            }
+            Node toAttach = this.getAttachNode(m._GRAPH);
+            if (toAttach == null)
+            {
+                return;
+            }
+            List<Node> conn_nodes = m._GRAPH.getOutConnectedNodes(hangNodes);
+            if (conn_nodes.Count == 0)
+            {
+                return;
+            }
+            Node old_conn = conn_nodes[0];
+            foreach (Node node in conn_nodes)
+            {
+                if (Functionality.ContainsPlacementFunction(node._funcs))
+                {
+                    old_conn = node;
+                }
+            }
+            List<Edge> edges = m._GRAPH.getOutgoingEdges(hangNodes);
+            Vector3d contact_center = new Vector3d();
+            List<Vector3d> contacts = new List<Vector3d>();
+            foreach (Edge e in edges)
+            {
+                foreach (Contact c in e._contacts)
+                {
+                    contacts.Add(c._pos3d);
+                    contact_center += c._pos3d;
+                }
+            }
+            contact_center /= contacts.Count;
+            // local frame
+            double x = toAttach._PART._BOUNDINGBOX.MaxCoord.x -
+                        toAttach._PART._BOUNDINGBOX.MinCoord.x;
+            double y = toAttach._PART._BOUNDINGBOX.MaxCoord.y -
+                    toAttach._PART._BOUNDINGBOX.MinCoord.y;
+            double z = toAttach._PART._BOUNDINGBOX.MaxCoord.z -
+                    toAttach._PART._BOUNDINGBOX.MinCoord.z;
+            Vector3d toAttach_scale = new Vector3d(x,y,z);
+            Vector3d minCoord = Vector3d.MaxCoord;
+            Vector3d maxCoord = Vector3d.MinCoord;
+            foreach (Node node in hangNodes)
+            {
+                minCoord = Vector3d.Min(node._PART._BOUNDINGBOX.MinCoord, minCoord);
+                maxCoord = Vector3d.Max(node._PART._BOUNDINGBOX.MaxCoord, maxCoord);
+            }
+            List<Vector3d> trans_contacts = new List<Vector3d>();
+            Vector3d new_contact = new Vector3d();
+            foreach(Vector3d v in contacts) {
+                Vector3d rel = (v - old_conn._PART._BOUNDINGBOX.MinCoord) / (old_conn._PART._BOUNDINGBOX.MaxCoord - old_conn._PART._BOUNDINGBOX.MinCoord);
+                Vector3d newv = toAttach._PART._BOUNDINGBOX.MinCoord + rel * toAttach_scale;
+                if (toAttach._funcs.Contains(Functionality.Functions.SITTING))
+                {
+                    newv.y -= y/5;
+                    newv.z = toAttach._PART._BOUNDINGBOX.MinCoord.z + z / 10;
+                }
+                trans_contacts.Add(newv);
+                new_contact +=newv;
+            }
+            new_contact/=contacts.Count;
+            Vector3d g1_minCoord = Vector3d.MaxCoord;
+            Vector3d g1_maxCoord = Vector3d.MinCoord;
+            foreach (Node node in m._GRAPH._NODES)
+            {
+                g1_minCoord = Vector3d.Min(node._PART._BOUNDINGBOX.MinCoord, g1_minCoord);
+                g1_maxCoord = Vector3d.Max(node._PART._BOUNDINGBOX.MaxCoord, g1_maxCoord);
+            }
+            Vector3d g2_minCoord = Vector3d.MaxCoord;
+            Vector3d g2_maxCoord = Vector3d.MinCoord;
+            foreach (Node node in g2._NODES)
+            {
+                g2_minCoord = Vector3d.Min(node._PART._BOUNDINGBOX.MinCoord, g2_minCoord);
+                g2_maxCoord = Vector3d.Max(node._PART._BOUNDINGBOX.MaxCoord, g2_maxCoord);
+            }
+
+           Vector3d boxScale = (g1_maxCoord - g1_minCoord) / (g2_maxCoord - g2_minCoord);
+           double ss = (boxScale.x + boxScale.y + boxScale.z) / 3;
+            boxScale = new Vector3d(ss, ss, ss);
+            Matrix4d S;
+            Matrix4d T;
+            Matrix4d Q;
+
+            this.getTransformation(contacts, trans_contacts, out S, out T, out Q, boxScale, false, new_contact, contact_center, true, 1, false);
+
+            List<Node> updated = cloneNodesAndRelations(hangNodes);
+            this.deformNodesAndEdges(updated, Q);
+            m.replaceNodes(new List<Node>(), updated);
+            List<Node> toConnect = new List<Node>();
+            toConnect.Add(toAttach);
+            m._GRAPH.addSubGraph(toConnect, updated);
+            m._GRAPH.reset();
+        }// insertHangNodes 
+
 
         private void insertHandRelatedNodes(Model m, Graph g2, List<Node> handNodes)
         {
@@ -11368,8 +11635,8 @@ namespace FameBase
                 return false;
             }
 
-            if (!Functionality.hasCompatibleFunctions(funcs1, funcs2)
-                || Functionality.isTrivialReplace(nodes1, nodes2))
+            if (!Functionality.hasCompatibleFunctions(funcs1, funcs2))
+                //|| Functionality.isTrivialReplace(nodes1, nodes2))
             {
                 return false;
             }
@@ -11379,14 +11646,28 @@ namespace FameBase
                 return false;
             }
             // multiple nodes, e.g., support+ground replace ground ---> support + support + ground
-            if (funcs2.Contains(Functionality.Functions.SUPPORT) && funcs2.Contains(Functionality.Functions.GROUND_TOUCHING))
+            if (funcs2.Contains(Functionality.Functions.GROUND_TOUCHING))
             {
                 // check if #nodes1 connect to some support nodes
-                foreach (Node node in nodes1)
+                if (funcs2.Contains(Functionality.Functions.SUPPORT))
                 {
-                    foreach (Node adj in node._adjNodes)
+                    foreach (Node node in nodes1)
                     {
-                        if (Functionality.ContainsSupportFunction(adj._funcs))
+                        foreach (Node adj in node._adjNodes)
+                        {
+                            if (Functionality.ContainsSupportFunction(adj._funcs))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                // if the ground touching nodes are basket
+                if (funcs1.Contains(Functionality.Functions.GROUND_TOUCHING))
+                {
+                    foreach (Node node in nodes2)
+                    {
+                        if (node._PART._partName.ToLower().Contains("basket") && node._funcs.Contains(Functionality.Functions.STORAGE))
                         {
                             return false;
                         }
@@ -11751,22 +12032,59 @@ namespace FameBase
             // screenshot
             this.tryRestoreFunctionalNodes(m);
             m.unify();
-            m.composeMesh();
+            if (!m.composeMesh())
+            {
+                return false;
+            }
             //this.reSamplingForANewShape(m);
+            if (_currUserFunctions.Contains(Functionality.Functions.SITTING))
+            {
+                double maxh = double.MinValue;
+                Node top = null;
+                foreach (Node node in m._GRAPH._NODES)
+                {
+                    if (Functionality.ContainsPlacementFunction(node._funcs) &&
+                        node._PART._BOUNDINGBOX.CENTER.y > maxh)
+                    {
+                        maxh = node._PART._BOUNDINGBOX.CENTER.y;
+                        top = node;
+                    }
+                }
+                if (!top._funcs.Contains(Functionality.Functions.PLACEMENT) &&
+                    !top._funcs.Contains(Functionality.Functions.SITTING))
+                {
+                    return false;
+                }
+            }
             if (!m._GRAPH.isValid())
             {
-                if (m._model_name == "coffeeTable_1-gen_1_num_9" || m._model_name == "dress_1-gen_1_num_0" || m._model_name == "dress_1-gen_1_num_19")
+                if (m._model_name == "cart_2-gen_1_num_8_cross" || m._model_name == "dress_1-gen_1_num_14_cross")
                 {
                     m._GRAPH.isValid();
                 }
                 m._model_name += "_invalid";
-                this.setCurrentModel(m, -1);
-                Program.GetFormMain().updateStats();
-                this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
-                saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
+                //this.setCurrentModel(m, -1);
+                //Program.GetFormMain().updateStats();
+                //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");
+                //saveAPartBasedModel(m, m._path + m._model_name + ".pam", false);
                 return false;
             }
+            // update ground touching
+            foreach (Node node in m._GRAPH._NODES)
+            {
+                if (!Functionality.ContainsSupportFunction(node._funcs))
+                {
+                    continue;
+                }
+                if (node._PART._BOUNDINGBOX.MinCoord.y > 0.01)
+                {
+                    node.addFunctionality(Functionality.Functions.SUPPORT);
+                    node._funcs.Remove(Functionality.Functions.GROUND_TOUCHING);
+                    node._isGroundTouching = false;
+                }
+            }
             this.setCurrentModel(m, -1);
+            m._GRAPH.initializePartGroups();
             Program.GetFormMain().updateStats();
             // valid graph
             this.captureScreen(imageFolder_c + m._model_name + ".png");

@@ -352,6 +352,29 @@ namespace Component
             //{
             //    adjustContacts(node);
             //}
+            foreach (Node cur in nodes_in_oppo_list)
+            {
+                if (cur._edges.Count > 0)
+                {
+                    continue;
+                }
+                // try to build new edges
+                foreach (Edge e in out_old_edges)
+                {
+                    if (e._start != cur && e._end != cur)
+                    {
+                        continue;
+                    }
+                    foreach (Contact c in e._contacts)
+                    {
+                        Node closest = getNodeNearestToContact(out_nodes, c);
+                        if (closest != null)
+                        {
+                            this.addAnEdge(cur, closest, c._pos3d);
+                        }
+                    }
+                }
+            }
             this.adjustContacts();
             this.resetUpdateStatus();
             _NEdges = _edges.Count;
@@ -2056,13 +2079,13 @@ namespace Component
                     sittingNodes.Add(node);
                 }
             }
-            //foreach (Node node in handNodes)
-            //{
-            //    if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
-            //    {
-            //        sittingNodes.Add(node);
-            //    }
-            //}
+            foreach (Node node in handNodes)
+            {
+                if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
+                {
+                    sittingNodes.Add(node);
+                }
+            }
             return sittingNodes;
         }// getAllSupprotingNodes
 

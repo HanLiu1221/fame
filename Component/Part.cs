@@ -763,6 +763,7 @@ namespace Component
                     minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
                 }
                 scale = maxCoord - minCoord;
+                _GRAPH.resetUpdateStatus();
             }
             double maxS = scale.x > scale.y ? scale.x : scale.y;
             maxS = maxS > scale.z ? maxS : scale.z;
@@ -771,6 +772,7 @@ namespace Component
             Matrix4d T = Matrix4d.TranslationMatrix(new Vector3d());
             Matrix4d S = Matrix4d.ScalingMatrix(new Vector3d(maxS, maxS, maxS));
             Matrix4d Q = T * S * Matrix4d.TranslationMatrix(new Vector3d() - center);
+            
             this.Transform(Q);
             // y == 0
             minCoord = Vector3d.MaxCoord;
@@ -806,7 +808,7 @@ namespace Component
             }
         }// setParentNames
 
-        public void composeMesh()
+        public bool composeMesh()
         {
             List<double> vertexPos = new List<double>();
             List<int> faceIndex = new List<int>();
@@ -825,6 +827,10 @@ namespace Component
                 for (int i = 0; i < mesh.VertexCount; ++i)
                 {
                     Vector3d ipos = mesh.getVertexPos(i);
+                    if (!ipos.isValidVector())
+                    {
+                        return false;
+                    }
                     vertexPos.Add(ipos.x);
                     vertexPos.Add(ipos.y);
                     vertexPos.Add(ipos.z);
@@ -869,6 +875,7 @@ namespace Component
                 _SP = new SamplePoints(points.ToArray(), normals.ToArray(), faceIdxs.ToArray(), colors.ToArray(), _mesh.FaceCount);
                 _SP.updateNormals(_mesh);
             }
+            return true;
         }// composeMesh
 
         public string graphValidityCheck()

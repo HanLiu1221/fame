@@ -24,7 +24,7 @@ namespace FameBase
 
         /*********Var**********/
         //// test paths
-        //public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
+        //public static string MODELS_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
         //public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
         //public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
         //public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
@@ -34,7 +34,7 @@ namespace FameBase
         //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
         //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
 
-        public static string MODLES_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_3\";
+        public static string MODELS_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_3\";
         public static string PATCH_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\";
         public static string MATLAB_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\";
         public static string MATLAB_INPUT_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\test\input\";
@@ -220,7 +220,7 @@ namespace FameBase
 
         private void loadPartBasedModels_Click(object sender, EventArgs e)
         {
-            var dialog = new FolderBrowserDialog() { SelectedPath = MODLES_PATH };
+            var dialog = new FolderBrowserDialog() { SelectedPath = MODELS_PATH };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
@@ -391,6 +391,11 @@ namespace FameBase
                 this.modelViewLayoutPanel.Controls.Add(mv);
             }
             this.updateStats();
+        }
+
+        public void clearModelViewers()
+        {
+            this.modelViewLayoutPanel.Controls.Clear();
         }
 
         private void loadHumanPoseToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1125,7 +1130,7 @@ namespace FameBase
 
         private void hang_CheckedChanged(object sender, EventArgs e)
         {
-            this.glViewer.editFunctions("hang", this.rolling.Checked);
+            this.glViewer.editFunctions("hang", this.hang.Checked);
         }
 
         private void leaning_CheckedChanged(object sender, EventArgs e)
@@ -1247,6 +1252,12 @@ namespace FameBase
             double val = e.OldValue - e.NewValue; // up to down
             double scale = val / e.OldValue * 0.2;
             this.glViewer.deformFunctionPart(scale, 1, false);
+        }
+
+        private void lOADToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            int n = this.glViewer.loadPartBasedModels();
+            this.outputSystemStatus(n.ToString() + " models loaded.");
         }
    
     }// Interface
