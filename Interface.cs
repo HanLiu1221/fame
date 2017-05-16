@@ -34,7 +34,7 @@ namespace FameBase
         //public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
         //public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
 
-        public static string MODELS_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_3\";
+        public static string MODELS_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_4\";
         public static string PATCH_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\";
         public static string MATLAB_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\";
         public static string MATLAB_INPUT_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\test\input\";
@@ -1256,8 +1256,17 @@ namespace FameBase
 
         private void lOADToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            int n = this.glViewer.loadPartBasedModels();
-            this.outputSystemStatus(n.ToString() + " models loaded.");
+            //int n = this.glViewer.loadPartBasedModels();
+            //this.outputSystemStatus(n.ToString() + " models loaded.");
+
+            // batch re-save models to save connection files
+            string folder = Interface.MODELS_PATH + "Users\\User_1_full_res\\models\\crossover\\gen_4";
+            string[] files = Directory.GetFiles(folder, "*.pam");
+            foreach (string fileName in files)
+            {
+                this.glViewer.loadAPartBasedModel(fileName);
+                this.glViewer.savePartConnections(fileName, true);
+            }
         }
    
     }// Interface

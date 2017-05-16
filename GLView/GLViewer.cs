@@ -1013,6 +1013,13 @@ namespace FameBase
             this.saveAPartBasedModel(_currModel, filename, isOriginal);
         }// saveTheCurrentModel
 
+        public void savePartConnections(string filename, bool isOriginal)
+        {
+           string folder = @"C:\scratch\HLiu\Fame\data_sets\shapes\set_2\Users\User_1_full_res\models\crossover\group_meshes\gen_4\";
+           folder += _currModel._model_name + "\\";
+           this.savePartConnection(_currModel, folder);
+        }
+
         public void saveAPartBasedModel(Model model, string filename, bool isOriginalModel)
         {
             if (!Directory.Exists(Path.GetDirectoryName(filename)))
@@ -1104,9 +1111,15 @@ namespace FameBase
                         Directory.CreateDirectory(model_group_shifted_path);
                     }
                 }
-                string meshGroupName = model_group_shifted_path + model._model_name + ".obj";
+                
+                string model_path = model_group_shifted_path + model._model_name + "\\";
+                if (!Directory.Exists(model_path))
+                {
+                    Directory.CreateDirectory(model_path);
+                }
+                this.savePartConnection(model, model_path);
+                string meshGroupName = model_path + model._model_name + ".obj";
                 this.saveModelGroupObj(_currModel, meshGroupName);
-                this.savePartConnection(model, model_group_shifted_path);
                 this.saveModelObj(_currModel, model_group_path + model._model_name + ".obj");
                 if (model._GRAPH != null)
                 {
@@ -1191,13 +1204,12 @@ namespace FameBase
             }
         }// saveModelInfo
 
-        private void savePartConnection(Model m, string folder)
+        private void savePartConnection(Model m, string model_path)
         {
             if (m == null || m._GRAPH == null)
             {
                 return;
             }
-            string model_path = folder + m._model_name + "\\";
             if (!Directory.Exists(model_path))
             {
                 Directory.CreateDirectory(model_path);
@@ -5857,7 +5869,7 @@ namespace FameBase
                         t = j;
                     }
                 }
-                if (mind > 0.2)
+                if (mind > 0.4)
                 {
                     userBoxCenter = true;
                     useScale = true;
@@ -5885,7 +5897,6 @@ namespace FameBase
 
             if (sources.Count == 0)
             {
-                useScale = true;
                 boxScale = new Vector3d(1, 1, 1);
             }
 
@@ -5909,7 +5920,7 @@ namespace FameBase
             }
             double storageScale = -1;
 
-            if (crossoverFolder.Contains("set_1"))
+            if  (!useScale && crossoverFolder.Contains("set_1"))
             {
                 useScale = nodes1.Count == 1 || nodes2.Count == 1 || left.Count >= right.Count * 2 || right.Count >= left.Count * 2;
             }
@@ -5919,12 +5930,21 @@ namespace FameBase
                 useScale = true;
                 // maxv_s.y - minv_s.y: the scale of depth (y-value) for the storage compared to the maximum scale of the shape box, which is 1
                 boxScale[1] = Math.Max(scale1[1], (maxv_s.y - minv_s.y));
+                if (boxScale[1] < 0.4 || boxScale[1] > 1)
+                {
+                    boxScale[1] = 1;
+                }
             }
             // when replacing a storage part by a placement part, the volume is not necessary
             if (this.containsFunc(nodes1, Functionality.Functions.STORAGE)
                 && updateNodes2.Count == 1 && updateNodes2[0]._funcs.Contains(Functionality.Functions.PLACEMENT))
             {
                 storageScale = 1.0;
+            }
+            if (useScale && !userBoxCenter)
+            {
+                userBoxCenter = true;
+
             }
 
             if (nodes1.Count > 0 && nodes2.Count > 0)
@@ -6874,7 +6894,9 @@ namespace FameBase
                 // involved nodes
                 Matrix4d T = Matrix4d.TranslationMatrix(center) * Matrix4d.ScalingMatrix(scale) 
                     * Matrix4d.TranslationMatrix(new Vector3d() - center);
+                m._GRAPH.resetUpdateStatus();
                 this.deformNodesAndEdges(nodes, T);
+                this.deformPropagation(m._GRAPH, node);
 
                 Program.GetFormMain().outputSystemStatus("Re-scale a functional part: " + node_name);
             }
@@ -11056,18 +11078,21 @@ namespace FameBase
                 otherModels.Remove(m1);
                 var sub = _currUserFunctions.Except(m1._GRAPH.collectAllDistinceFunctions());
                 List<Functionality.Functions> missingFuncs = sub.ToList();
+                List<Model> crossOrAddRes = new List<Model>();
                 if (missingFuncs.Count() == 0)
                 {
                     // 1. preserve its original functions
-                    List<Model> crossRes = this.tryCrossOverPreservingOriginalFunctions(m1, otherModels, idx);
-                    candidates.AddRange(crossRes);
+                    crossOrAddRes = this.tryCrossOverPreservingOriginalFunctions(m1, otherModels, idx);
                 }
                 else
                 {
                     // 2. need to add new functions
-                    List<Model> addRes = this.tryCrossOverAddingNewFunctions(m1, otherModels, missingFuncs, idx);
-                    candidates.AddRange(addRes);
-                }                
+                    crossOrAddRes = this.tryCrossOverAddingNewFunctions(m1, otherModels, missingFuncs, idx);
+                }
+                if (_currGenId < 3)
+                {
+                    candidates.AddRange(crossOrAddRes);
+                }
             }
             foreach (ModelViewer mv in _currGenModelViewers)
             {
@@ -11075,11 +11100,11 @@ namespace FameBase
                 _userSelectedModels.Remove(mv._MODEL);
             }
             _currGenModelViewers = new List<ModelViewer>();
-            for (int i = 0; i < candidates.Count; ++i)
-            {
-                Model imodel = candidates[i];
-                _currGenModelViewers.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
-            }
+            //for (int i = 0; i < candidates.Count; ++i)
+            //{
+            //    Model imodel = candidates[i];
+            //    _currGenModelViewers.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
+            //}
             return _currGenModelViewers;
         }// runByUserSelection
 
@@ -11104,6 +11129,7 @@ namespace FameBase
                         if (pf == null || !shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes)
                             || isAgainstOriginalFunc(m1, pgs_1[i]._NODES, pgs_2[j]._NODES))
                         {
+                            shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes);
                             continue;
                         }
                         Model m1_cloned = this.crossOverTwoModelsWithFunctionalConstraints(m1, m2, pgs_1[i]._NODES, pgs_2[j]._NODES, idx[0], pf);
@@ -11635,8 +11661,8 @@ namespace FameBase
                 return false;
             }
 
-            if (!Functionality.hasCompatibleFunctions(funcs1, funcs2))
-                //|| Functionality.isTrivialReplace(nodes1, nodes2))
+            if (!Functionality.hasCompatibleFunctions(funcs1, funcs2)
+                || Functionality.isTrivialReplace(nodes1, nodes2))
             {
                 return false;
             }
@@ -11906,6 +11932,10 @@ namespace FameBase
             newModel._model_name = originalModelName + "-gen_" + _currGenId.ToString() + "_num_" + idx.ToString() + "_cross";
             this.setSelectedNodes(m2, nodes2);
             // replace
+            if (newModel._model_name == "shelf_1-gen_1_num_3_cross")
+            {
+                int test = 1;
+            }
             if (nodes2.Count == m2._GRAPH._NNodes)
             {
                 updatedNodes2 = this.replaceWithAFullGraph(newModel._GRAPH, m2._GRAPH, updateNodes1, nodes2);
@@ -12058,11 +12088,11 @@ namespace FameBase
             }
             if (!m._GRAPH.isValid())
             {
-                if (m._model_name == "cart_2-gen_1_num_8_cross" || m._model_name == "dress_1-gen_1_num_14_cross")
+                if (m._model_name == "shelf_1-gen_1_num_1_cross" || m._model_name == "shelf_1-gen_1_num_3_cross")
                 {
                     m._GRAPH.isValid();
                 }
-                m._model_name += "_invalid";
+                //m._model_name += "_invalid";
                 //this.setCurrentModel(m, -1);
                 //Program.GetFormMain().updateStats();
                 //this.captureScreen(imageFolder_c + "invald\\" + m._model_name + ".png");

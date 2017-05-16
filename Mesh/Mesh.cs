@@ -200,7 +200,10 @@ namespace Geometry
                 m.vertexFaceIndex[fIndex[j++]].Add(i);
                 m.vertexFaceIndex[fIndex[j++]].Add(i);
             }
-            m.singleHalfEdges = this.singleHalfEdges.Clone() as HalfEdge[];
+            if (this.singleHalfEdges != null)
+            {
+                m.singleHalfEdges = this.singleHalfEdges.Clone() as HalfEdge[];
+            }
             m.originVertextPos = this.vertexPos.Clone() as double[];
             m._maxCoord = new Vector3d(_maxCoord);
             m._minCoord = new Vector3d(_minCoord);
@@ -718,8 +721,8 @@ namespace Geometry
                 return;
             }
             getVertexFaceIndex();
-            this.buildHalfEdge();
-            this.buildKdtree();
+            //this.buildHalfEdge();
+            //this.buildKdtree();
             
                 //_vf = this.buildFaceVertexAdjancencyMatrix().getColIndex();
                 //_vv = this.buildVertexToVertexAdjancenyMatrix().getRowIndex();

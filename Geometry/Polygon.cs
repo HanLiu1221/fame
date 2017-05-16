@@ -15,21 +15,27 @@ namespace Geometry
         public Polygon2D()
         { }
 
-        static public bool isPointInPolygon(Vector2d v, Vector2d[] points3d)
+        static public bool isPointInPolygon(Vector2d v, Vector2d[] point2d)
         {
             bool odd = false;
-            for (int i = 0, j = points3d.Length - 1; i < points3d.Length; j = i++ )
+            for (int i = 0, j = point2d.Length - 1; i < point2d.Length; j = i++ )
             {
-                if ((points3d[i].y < v.y && points3d[j].y >= v.y) ||
-                    (points3d[j].y < v.y && points3d[i].y >= v.y))
+                if ((point2d[i].y < v.y && point2d[j].y >= v.y) ||
+                    (point2d[j].y < v.y && point2d[i].y >= v.y))
                 {
-                    if (points3d[i].x + (v.y - points3d[i].y) / (points3d[j].y - points3d[i].y) * (points3d[j].x - points3d[i].x) < v.x)
+                    if (point2d[i].x + (v.y - point2d[i].y) / (point2d[j].y - point2d[i].y) * (point2d[j].x - point2d[i].x) < v.x)
                     {
                         odd = !odd;
                     }
                 }
             }
             return odd;
+        }
+
+        static public bool isPointInPolygon2D(Vector2d v, Vector2d minCoord, Vector2d maxCoord)
+        {
+            return v.x < maxCoord.x + Common._thresh && v.x > minCoord.x - Common._thresh &&
+                v.y < maxCoord.y + Common._thresh && v.y > minCoord.y - Common._thresh;
         }
 
         static public double getRandomDoubleInRange(Random rand, double s, double e)

@@ -239,7 +239,16 @@ namespace Component
             //return same.Count() > 0;
             if (funcs1.Count > funcs2.Count)
             {
-                return false;
+                List<Functionality.Functions> f1 = new List<Functions>(funcs1);
+                List<Functionality.Functions> f2 = new List<Functions>(funcs2);
+                f1.Remove(Functions.GROUND_TOUCHING);
+                f1.Remove(Functions.SUPPORT);
+                f2.Remove(Functions.GROUND_TOUCHING);
+                f2.Remove(Functions.SUPPORT);
+                if (f1.Count != 0 && f2.Count != 0)
+                {
+                    return false;
+                }
             }
             if (containsMainFunc1 && containsMainFunc2)
             {

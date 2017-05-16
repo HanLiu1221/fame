@@ -266,6 +266,7 @@ namespace Component
             {
                 _nodes.Remove(old);
             }
+            List<Node> allNodesBeforeInsertion  = new List<Node>(_nodes);
             List<Node> nodes_in_oppo_list = getOutConnectedNodes(oldNodes);
             foreach (Node node in newNodes)
             {
@@ -292,6 +293,10 @@ namespace Component
             {
                 out_nodes = newNodes;
                 out_edges = out_new_edges;
+                //if (nodes_in_oppo_list.Count == 0)
+                //{
+                //    nodes_in_oppo_list = allNodesBeforeInsertion;
+                //}
             }
             else
             {
@@ -1397,6 +1402,7 @@ namespace Component
             }
             if (hasDetachedParts())
             {
+                hasDetachedParts();
                 return false;
             }
             if (!isPhysicalValid())
@@ -1639,7 +1645,7 @@ namespace Component
                     _centerOfMass += v;
                     centers2d.Add(new Vector2d(v.x, v.z));
                 }
-                if (Math.Abs(node._PART._MESH.MinCoord.y) < 0.001)
+                if (Math.Abs(node._PART._MESH.MinCoord.y) < 0.01)
                 {
                     groundPnts.Add(node._PART._BOUNDINGBOX.MinCoord);
                     groundPnts.Add(node._PART._BOUNDINGBOX.MaxCoord);
@@ -1656,12 +1662,8 @@ namespace Component
                 maxCoord = Vector2d.Max(v2, maxCoord);
             }
             // in case some model only has 2 ground touching points
-            Vector2d[] groundPnts2d = new Vector2d[4];
-            groundPnts2d[0] = new Vector2d(minCoord.x, minCoord.y);
-            groundPnts2d[1] = new Vector2d(minCoord.x, maxCoord.y);
-            groundPnts2d[2] = new Vector2d(maxCoord.x, maxCoord.y);
-            groundPnts2d[3] = new Vector2d(maxCoord.x, minCoord.y);
-            if (!Polygon2D.isPointInPolygon(center, groundPnts2d))
+            
+            if (!Polygon2D.isPointInPolygon2D(center, minCoord, maxCoord))
             {
                 return false;
             }
@@ -1801,6 +1803,10 @@ namespace Component
                 bool[] obstructed = new bool[vi.Length];
                 double n_thr = vi.Length * thr;
                 int nIncluded = 0;
+                if (_nodes[i]._funcs.Contains(Functionality.Functions.ROLLING))
+                {
+                    n_thr = vi.Length * 0.3;
+                }
                 for (int j = 0; j < _NNodes; ++j)
                 {
                     if (i == j)
@@ -1818,6 +1824,11 @@ namespace Component
                         {
                             ++nIncluded;
                             obstructed[k] = true;
+                            if (_nodes[i]._funcs.Contains(Functionality.Functions.ROLLING) &&
+                                _nodes[j]._funcs.Contains(Functionality.Functions.ROLLING))
+                            {
+                                return true;
+                            }
                         }
                     }
                 }// other nodes
