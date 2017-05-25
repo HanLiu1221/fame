@@ -1239,6 +1239,7 @@ namespace FameBase
 
         public void saveSamplePointWeightsPerCategory(List<PatchWeightPerCategory> weights, string filename)
         {
+            return;
             if (weights == null)
             {
                 return;
@@ -1670,6 +1671,67 @@ namespace FameBase
             this.LFD(_ancesterModels);
         }
 
+        public void LFD_existingFiles()
+        {
+            // compare the similarity between shapes to select a set of diverse shapes
+            string path = @"..\..\external\LFD\";
+            string prstCmdPara = "";
+            string listFile = path + "list.txt";
+            string prefix = "Models/";
+            string model_path = path + prefix;
+
+            if (!Directory.Exists(model_path))
+            {
+                MessageBox.Show("Folder does not exist.");
+                return;
+            }
+
+            // 1. write .obj file name to "list.txt"
+            string[] files = Directory.GetFiles(model_path);
+            if (files == null || files.Length < 2)
+            {
+                MessageBox.Show("Not enough models for comparison.");
+                return;
+            }
+
+            using (StreamWriter sw = new StreamWriter(listFile))
+            {
+                foreach (string file in files)
+                {
+                    string model_name = file.Substring(file.LastIndexOf('/') + 1);
+                    model_name = model_name.Substring(0, model_name.LastIndexOf('.'));
+                    string name = prefix + model_name;
+                    sw.WriteLine(name);
+                }
+            }
+
+            string result_folder = path + "Results/Models/";
+            if (!Directory.Exists(result_folder))
+            {
+                Directory.CreateDirectory(result_folder);
+            }
+
+        }
+
+        public void analyzeLFDRes(string filename)
+        {
+            if (!File.Exists(filename))
+            {
+                return;
+            }
+            using (StreamReader sr = new StreamReader(filename))
+            {
+                char[] separator = { ' ', '\t' };
+                while (sr.Peek() > -1)
+                {
+                    string s = sr.ReadLine().Trim();
+                    string[] strs = s.Split(separator);
+
+                }
+
+            }
+        }// analyzeLFDRes
+
         private void LFD(List<Model> models)
         {
             // compare the similarity between shapes to select a set of diverse shapes
@@ -1686,6 +1748,11 @@ namespace FameBase
                 Directory.CreateDirectory(model_path);
             }
 
+            System.IO.DirectoryInfo di = new DirectoryInfo(model_path);
+            foreach (FileInfo file in di.GetFiles())
+            {
+                file.Delete();
+            }
             // 1. write .obj file name to "list.txt"
             if (models == null || models.Count < 2)
             {
@@ -1703,7 +1770,6 @@ namespace FameBase
                 }
             }
 
-
             // 2. call "3DAlignment.exe" for computing features
 
             Process process = new Process();
@@ -1715,6 +1781,12 @@ namespace FameBase
             process.WaitForExit();
 
             // 2. read model names from "list.txt" to compute the similarity of pairs of models using "GroundTruth.exe"
+            // !!!have to create the requried folders to run this st exe
+            string result_folder = path + "Results/Models/";
+            if (!Directory.Exists(result_folder))
+            {
+                Directory.CreateDirectory(result_folder);
+            }
             process = new Process();
             startInfo = new ProcessStartInfo();
             startInfo.FileName = lfdCmd;
@@ -2356,9 +2428,11 @@ namespace FameBase
             // the number of a subset could be from 1 - n
             // a subset is a set of parts from the original input set
             this.partCombinationMemory = new List<PartFormation>[partNameToInteger.Count * 2];
+            int npg = 0;
             foreach (Model m in _ancesterModels)
             {
                 m._partForm = this.tryCreateANewPartFormation(m._PARTS, 1.0);
+                npg += m._GRAPH._partGroups.Count;
             }
             // set the default model as the last one
             if (_ancesterModelViewers.Count > 0)
@@ -2373,7 +2447,9 @@ namespace FameBase
             //this.preProcessInputSet(_ancesterModels);
             this.loadCategoryInfo(segfolder);
             this.calculatePartGroupCompatibility(_ancesterModels);
-            
+
+            Program.writeToConsole(npg.ToString() + " part groups in total.");
+
             return _ancesterModelViewers;
         }// loadPartBasedModels
 
@@ -5869,7 +5945,7 @@ namespace FameBase
                         t = j;
                     }
                 }
-                if (mind > 0.4)
+                if (mind > 0.5)
                 {
                     userBoxCenter = true;
                     useScale = true;
@@ -10979,7 +11055,9 @@ namespace FameBase
                 xmax = 16;
             }
         }
-
+        int nfiltered = 0;
+        long run_time = 0;
+        int nvalid = 0;
         public List<ModelViewer> runByUserSelection()
         {
             initializeMeshStartPoint();
@@ -10988,6 +11066,9 @@ namespace FameBase
             {
                 return null;
             }
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             if (!Directory.Exists(userFolder))
             {
                 this.registerANewUser();
@@ -11089,22 +11170,32 @@ namespace FameBase
                     // 2. need to add new functions
                     crossOrAddRes = this.tryCrossOverAddingNewFunctions(m1, otherModels, missingFuncs, idx);
                 }
-                if (_currGenId < 3)
+                if (_currGenId < 1)
                 {
                     candidates.AddRange(crossOrAddRes);
                 }
+                run_time = stopWatch.ElapsedMilliseconds / 1000;
+                nvalid += crossOrAddRes.Count;
             }
             foreach (ModelViewer mv in _currGenModelViewers)
             {
                 mv.unSelect();
                 _userSelectedModels.Remove(mv._MODEL);
             }
-            _currGenModelViewers = new List<ModelViewer>();
-            //for (int i = 0; i < candidates.Count; ++i)
-            //{
-            //    Model imodel = candidates[i];
-            //    _currGenModelViewers.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
-            //}
+            if (_currGenId < 3)
+            {
+                _currGenModelViewers = new List<ModelViewer>();
+                for (int i = 0; i < candidates.Count; ++i)
+                {
+                    Model imodel = candidates[i];
+                    _currGenModelViewers.Add(new ModelViewer(imodel, imodel._index, this, _currGenId));
+                }
+            }
+            run_time = stopWatch.ElapsedMilliseconds / 1000;
+            Program.writeToConsole("Time: " + _currGenId.ToString() + " iteration, " + targetMoels.Count.ToString()
+            + " orginal models, takes " + run_time.ToString() + " senconds.");
+            Program.writeToConsole(nvalid.ToString() + " valid.");
+            Program.writeToConsole(nfiltered.ToString() + " filtered.");
             return _currGenModelViewers;
         }// runByUserSelection
 
@@ -11127,9 +11218,9 @@ namespace FameBase
                     {
                         PartFormation pf = this.getANewPartFormation(m1, pgs_1[i]._NODES, pgs_2[j]._NODES);
                         if (pf == null || !shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes)
-                            || isAgainstOriginalFunc(m1, pgs_1[i]._NODES, pgs_2[j]._NODES))
+                            || isAgainstOriginalFunc(m1, pgs_1[i]._NODES, pgs_2[j]._NODES)
+                            || isLoseFunc(m1,pgs_1[i]._NODES, pgs_2[j]._NODES, _currUserFunctions))
                         {
-                            shouldReplace(pgs_1[i]._NODES, pgs_2[j]._NODES, m2._GRAPH._NNodes);
                             continue;
                         }
                         Model m1_cloned = this.crossOverTwoModelsWithFunctionalConstraints(m1, m2, pgs_1[i]._NODES, pgs_2[j]._NODES, idx[0], pf);
@@ -11708,6 +11799,22 @@ namespace FameBase
             return true;
         }// shouldReplace
 
+        private bool isLoseFunc(Model m1, List<Node> nodes1, List<Node> nodes2, List<Functionality.Functions> funcs)
+        {
+            List<Node> nodes = new List<Node>( m1._GRAPH._NODES);
+            foreach (Node node in nodes1)
+            {
+                nodes.Remove(node);
+            }
+            foreach (Node node in nodes2)
+            {
+                nodes.Add(node);
+            }
+            List<Functionality.Functions> cur_funcs = this.collectFunctions(nodes);
+            var sub = funcs.Except(cur_funcs);
+            return sub.Count() > 0;
+        }// isAgainstOriginalFunc
+
         private bool isAgainstOriginalFunc(Model m1, List<Node> nodes1, List<Node> nodes2)
         {
             bool containHang = false;
@@ -12080,14 +12187,15 @@ namespace FameBase
                         top = node;
                     }
                 }
-                if (!top._funcs.Contains(Functionality.Functions.PLACEMENT) &&
-                    !top._funcs.Contains(Functionality.Functions.SITTING))
+                if (top == null || (!top._funcs.Contains(Functionality.Functions.PLACEMENT) &&
+                    !top._funcs.Contains(Functionality.Functions.SITTING)))
                 {
                     return false;
                 }
             }
             if (!m._GRAPH.isValid())
             {
+                ++nfiltered;
                 if (m._model_name == "shelf_1-gen_1_num_1_cross" || m._model_name == "shelf_1-gen_1_num_3_cross")
                 {
                     m._GRAPH.isValid();

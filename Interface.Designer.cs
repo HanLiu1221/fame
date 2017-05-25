@@ -41,6 +41,7 @@
             this.autoSnapshotsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.batchLoadTestToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.lFDTestToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.lOADToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.file = new System.Windows.Forms.ToolStripDropDownButton();
             this.open3D = new System.Windows.Forms.ToolStripMenuItem();
             this.open3DGroupedToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -186,7 +187,7 @@
             this.connectorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.supportToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.partGroupToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.lOADToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.lFDAnalyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.viewPanel)).BeginInit();
             this.viewPanel.Panel1.SuspendLayout();
@@ -233,7 +234,8 @@
             this.autoSnapshotsToolStripMenuItem,
             this.batchLoadTestToolStripMenuItem,
             this.lFDTestToolStripMenuItem,
-            this.lOADToolStripMenuItem});
+            this.lOADToolStripMenuItem,
+            this.lFDAnalyToolStripMenuItem});
             this.model.Image = ((System.Drawing.Image)(resources.GetObject("model.Image")));
             this.model.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.model.Name = "model";
@@ -303,6 +305,13 @@
             this.lFDTestToolStripMenuItem.Size = new System.Drawing.Size(158, 22);
             this.lFDTestToolStripMenuItem.Text = "LFD test";
             this.lFDTestToolStripMenuItem.Click += new System.EventHandler(this.lFDTestToolStripMenuItem_Click);
+            // 
+            // lOADToolStripMenuItem
+            // 
+            this.lOADToolStripMenuItem.Name = "lOADToolStripMenuItem";
+            this.lOADToolStripMenuItem.Size = new System.Drawing.Size(158, 22);
+            this.lOADToolStripMenuItem.Text = "LOAD";
+            this.lOADToolStripMenuItem.Click += new System.EventHandler(this.lOADToolStripMenuItem_Click);
             // 
             // file
             // 
@@ -1646,12 +1655,12 @@
             this.partGroupToolStripMenuItem.Text = "Part Group";
             this.partGroupToolStripMenuItem.Click += new System.EventHandler(this.partGroupToolStripMenuItem_Click);
             // 
-            // lOADToolStripMenuItem
+            // lFDAnalyToolStripMenuItem
             // 
-            this.lOADToolStripMenuItem.Name = "lOADToolStripMenuItem";
-            this.lOADToolStripMenuItem.Size = new System.Drawing.Size(158, 22);
-            this.lOADToolStripMenuItem.Text = "LOAD";
-            this.lOADToolStripMenuItem.Click += new System.EventHandler(this.lOADToolStripMenuItem_Click);
+            this.lFDAnalyToolStripMenuItem.Name = "lFDAnalyToolStripMenuItem";
+            this.lFDAnalyToolStripMenuItem.Size = new System.Drawing.Size(158, 22);
+            this.lFDAnalyToolStripMenuItem.Text = "LFD analy";
+            this.lFDAnalyToolStripMenuItem.Click += new System.EventHandler(this.lFDAnalyToolStripMenuItem_Click);
             // 
             // Interface
             // 
@@ -1845,6 +1854,7 @@
         private System.Windows.Forms.CheckBox hang;
         private System.Windows.Forms.CheckBox handhold;
         private System.Windows.Forms.ToolStripMenuItem lOADToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem lFDAnalyToolStripMenuItem;
     }
 }
 

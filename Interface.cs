@@ -1079,7 +1079,8 @@ namespace FameBase
 
         private void lFDTestToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            this.glViewer.LFD_test();
+            //this.glViewer.LFD_test();
+            this.glViewer.LFD_existingFiles();
         }
 
         public void showCategorySelection()
@@ -1267,6 +1268,11 @@ namespace FameBase
                 this.glViewer.loadAPartBasedModel(fileName);
                 this.glViewer.savePartConnections(fileName, true);
             }
+        }
+
+        private void lFDAnalyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
         }
    
     }// Interface
