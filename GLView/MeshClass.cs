@@ -61,6 +61,11 @@ namespace FameBase
             }
         }
 
+        public List<int> getSelectedFaces()
+        {
+            return this.selectedFaces;
+        }
+
         private MyTriMesh2 triMesh;      
         public List<Vector3d> loadTriMesh(string filename, Vector3d eye)
         {

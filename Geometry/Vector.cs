@@ -349,10 +349,20 @@ namespace Geometry
             return new Vector3d(v.x * factor, v.y * factor, v.z * factor);
         }
 
+        static public Vector3d operator *(Vector3d v, Vector3d f)
+        {
+            return new Vector3d(v.x * f.x, v.y * f.y, v.z * f.z);
+        }
+
 		static public Vector3d operator /(Vector3d v, double factor)
 		{
 			return new Vector3d(v.x / factor, v.y / factor, v.z / factor);
 		}
+
+        static public Vector3d operator /(Vector3d v, Vector3d d)
+        {
+            return new Vector3d(v.x / d.x, v.y / d.y, v.z / d.z);
+        }
 
 		static public bool operator ==(Vector3d v1, Vector3d v2)
 		{

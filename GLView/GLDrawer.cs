@@ -36,6 +36,7 @@ namespace FameBase
         public static Color HighlightBboxColor = Color.FromArgb(50, 255, 255, 255);
         public static Color SelectedBackgroundColor = Color.FromArgb(253, 174, 107);
         public static Color ParentViewBackgroundColor = Color.FromArgb(224, 236, 244);
+        public static Color HighlightMeshColor = Color.FromArgb(255, 189, 189, 189);
 
         public static Color GradientColor_0 = Color.FromArgb(254, 204, 92);
         public static Color GradientColor_1 = Color.FromArgb(189, 0, 38);
@@ -752,6 +753,8 @@ namespace FameBase
         {
             if (m == null) return;
 
+            //drawMeshEdge(m, c);
+
             Gl.glPushAttrib(Gl.GL_COLOR_BUFFER_BIT);
             int iMultiSample = 0;
             int iNumSamples = 0;
@@ -763,12 +766,12 @@ namespace FameBase
                 Gl.glPolygonMode(Gl.GL_FRONT_AND_BACK, Gl.GL_FILL);
 
                 //Gl.glEnable(Gl.GL_POLYGON_SMOOTH);
-                //Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
+                Gl.glHint(Gl.GL_POLYGON_SMOOTH_HINT, Gl.GL_NICEST);
 
-                //Gl.glDisable(Gl.GL_CULL_FACE);
+                Gl.glDisable(Gl.GL_CULL_FACE);
 
-                //Gl.glEnable(Gl.GL_BLEND);
-                //Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
+                Gl.glEnable(Gl.GL_BLEND);
+                Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
                 Gl.glShadeModel(Gl.GL_SMOOTH);
             }
             else
@@ -780,7 +783,6 @@ namespace FameBase
 
             Gl.glEnable(Gl.GL_LIGHTING);
             Gl.glEnable(Gl.GL_NORMALIZE);
-            Gl.glEnable(Gl.GL_DEPTH_TEST);
 
             float[] mat = new float[4] { c.R / 255f, c.G / 255f, c.B / 255f, 1.0f };
             Gl.glMaterialfv(Gl.GL_FRONT_AND_BACK, Gl.GL_AMBIENT, mat);
@@ -864,11 +866,11 @@ namespace FameBase
 
             if (iNumSamples == 0)
             {
-                //Gl.glDisable(Gl.GL_BLEND);
+                Gl.glDisable(Gl.GL_BLEND);
                 //Gl.glDisable(Gl.GL_POLYGON_SMOOTH);
                 //Gl.glDepthMask(Gl.GL_TRUE);
                 Gl.glDisable(Gl.GL_DEPTH_TEST);
-                Gl.glEnable(Gl.GL_CULL_FACE);
+                //Gl.glEnable(Gl.GL_CULL_FACE);
             }
             else
             {
@@ -938,7 +940,7 @@ namespace FameBase
             Gl.glBegin(Gl.GL_POINTS);
             for (int i = 0; i < points.Length; ++i)
             {
-                if (colors != null)
+                if (colors != null && colors.Length > 0)
                 {
                     Color c = colors[i];
                     Gl.glColor3ub(c.R, c.G, c.B);
@@ -956,14 +958,17 @@ namespace FameBase
         }// drawMeshVertices_color
 
 
-        public static void drawMeshEdge(Mesh m)
+        public static void drawMeshEdge(Mesh m, Color c)
         {
             if (m == null) return;
+            Gl.glShadeModel(Gl.GL_SMOOTH);
             Gl.glEnable(Gl.GL_LINE_SMOOTH);
+
+            Gl.glEnable(Gl.GL_BLEND);
             Gl.glBlendFunc(Gl.GL_SRC_ALPHA, Gl.GL_ONE_MINUS_SRC_ALPHA);
-            Gl.glEnable(Gl.GL_LINE_SMOOTH);
-            Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_NICEST);
-            Gl.glColor3ub(ColorSet[1].R, ColorSet[1].G, ColorSet[1].B);
+            Gl.glHint(Gl.GL_LINE_SMOOTH_HINT, Gl.GL_DONT_CARE);
+
+            Gl.glColor3ub(c.R, c.G, c.B);
             Gl.glBegin(Gl.GL_LINES);
             for (int i = 0; i < m.Edges.Length; ++i)
             {
@@ -978,7 +983,7 @@ namespace FameBase
             }
             Gl.glEnd();
             Gl.glDisable(Gl.GL_LINE_SMOOTH);
-            //Gl.glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+            Gl.glDisable(Gl.GL_BLEND);
         }
 
         public static void drawBoundingboxWithEdges(Prism box, Color planeColor, Color lineColor)

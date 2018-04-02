@@ -17,11 +17,14 @@ namespace FameBase
 		{
 			InitializeComponent();
             this.glViewer.Init();
+
+            this.category_panel.Hide();
+            this.prev_next_panel.Hide();
 		}
 
         /*********Var**********/
         // test paths
-        public static string MODLES_PATH = @"E:\Projects\fame\data_sets\patch_data\models\";
+        public static string MODLES_PATH = @"E:\Projects\fame\data_sets\shapes\set_2";
         public static string PATCH_PATH = @"E:\Projects\fame\data_sets\patch_data\";
         public static string MATLAB_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\";
         public static string MATLAB_INPUT_PATH = @"E:\Projects\fame\externalCLR\code_for_prediction_only\test\input\";
@@ -31,15 +34,15 @@ namespace FameBase
         public static string POINT_FEATURE_PATH = @"E:\Projects\fame\data_sets\patch_data\point_feature\";
         public static string WEIGHT_PATH = @"E:\Projects\fame\data_sets\patch_data\weights\";
 
-        //public static string MODLES_PATH = @"D:\fame\data_sets\patch_data\models\";
-        //public static string PATCH_PATH = @"D:\fame\data_sets\patch_data\";
-        //public static string MATLAB_PATH = @"D:\fame\externalCLR\code_for_prediction_only\";
-        //public static string MATLAB_INPUT_PATH = @"D:\fame\externalCLR\code_for_prediction_only\test\input\";
+        //public static string MODLES_PATH = @"C:\scratch\HLiu\fame\data_sets\shapes\set_1\";
+        //public static string PATCH_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\";
+        //public static string MATLAB_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\";
+        //public static string MATLAB_INPUT_PATH = @"C:\scratch\HLiu\fame\externalCLR\code_for_prediction_only\test\input\";
         //// FOR showing predicted results
-        //public static string MESH_PATH = @"D:\fame\data_sets\patch_data\meshes\";
-        //public static string POINT_SAMPLE_PATH = @"D:\fame\data_sets\patch_data\samples\";
-        //public static string POINT_FEATURE_PATH = @"D:\fame\data_sets\patch_data\point_feature\";
-        //public static string WEIGHT_PATH = @"D:\fame\data_sets\patch_data\weights\";
+        //public static string MESH_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\meshes\";
+        //public static string POINT_SAMPLE_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\samples\";
+        //public static string POINT_FEATURE_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\point_feature\";
+        //public static string WEIGHT_PATH = @"C:\scratch\HLiu\fame\data_sets\patch_data\weights\";
 
         private void open3D_Click(object sender, EventArgs e)
         {
@@ -104,10 +107,7 @@ namespace FameBase
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 bool multiple = dialog.FileNames.Length > 1;
-                foreach (string filename in dialog.FileNames)
-                {
-                    this.glViewer.importMesh(filename, multiple);
-                }
+                this.glViewer.importMesh(dialog.FileNames, multiple);
             }
             this.glViewer.Refresh();
         }
@@ -195,6 +195,9 @@ namespace FameBase
                 this.fileNameTabs.TabPages.Clear();
                 this.fileNameTabs.TabPages.Add(tp);
                 this.fileNameTabs.SelectedTab = tp;
+
+                this.xScaleBar.Value = 5;
+                this.yScaleBar.Value = 5;
             }
         }
 
@@ -223,6 +226,7 @@ namespace FameBase
                 string folderName = dialog.SelectedPath;
                 List<ModelViewer> modelViewers = this.glViewer.loadPartBasedModels(folderName);
                 layoutModelSet(modelViewers);
+                this.outputSystemStatus(modelViewers.Count().ToString() + " models loaded.");
             }
         }
 
@@ -237,7 +241,7 @@ namespace FameBase
             };
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                this.glViewer.saveAPartBasedModel(this.glViewer.getCurrModel(), dialog.FileName, true);
+                this.glViewer.saveTheCurrentModel(dialog.FileName, true);
             }
         }
 
@@ -348,11 +352,23 @@ namespace FameBase
             this.Refresh();
         }
 
+        private void unGroupToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.unGroupParts();
+            this.updateStats();
+            this.Refresh();
+        }
+
         public void updateStats()
         {
             string stats = this.glViewer.getStats();
             this.statsLabel.Text = stats;
             this.Refresh();
+        }
+
+        public void outputSystemStatus(String s)
+        {
+            this.outputTextWindow.AppendText(s + System.Environment.NewLine);
         }
 
         public ContextMenuStrip getRightButtonMenu()
@@ -580,32 +596,6 @@ namespace FameBase
             this.glViewer.setSelectedNodes();
         }
 
-        private void crossoverToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            List<ModelViewer> modelViews = this.glViewer.crossOver();
-            this.partBasket.Controls.Clear();
-            if (modelViews != null)
-            {
-                foreach (ModelViewer mv in modelViews)
-                {
-                    addModelViewerToRightPanel(mv);
-                }
-            }
-        }
-
-        private void mutateToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            List<ModelViewer> modelViews = this.glViewer.getMutateViewers();
-            this.partBasket.Controls.Clear();
-            if (modelViews != null)
-            {
-                foreach (ModelViewer mv in modelViews)
-                {
-                    addModelViewerToRightPanel(mv);
-                }
-            }
-        }
-
         private void addModelViewerToRightPanel(ModelViewer mv)
         {
             mv.Width = 200;
@@ -632,7 +622,8 @@ namespace FameBase
 
         private void autoGenerateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            List<ModelViewer> modelViews = this.glViewer.autoGenerate();
+            //List<ModelViewer> modelViews = this.glViewer.autoGenerate();
+            List<ModelViewer> modelViews = this.glViewer.runEvolution();
             this.partBasket.Controls.Clear();
             if (modelViews != null)
             {
@@ -683,9 +674,24 @@ namespace FameBase
             this.glViewer.markFunctionPart(6);
         }
 
+        private void storageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(7);
+        }
+
         private void groundtouchingToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.glViewer.markFunctionPart(0);
+        }
+
+        private void rollingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(8);
+        }
+
+        private void rockingToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.markFunctionPart(9);
         }
 
         private void autoSnapshotsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1060,5 +1066,139 @@ namespace FameBase
         {
             this.glViewer.clearPartGroups();
         }
+
+        private void lFDTestToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.LFD_test();
+        }
+
+        public void showCategorySelection()
+        {
+            this.category_panel.Show();
+        }
+
+        private void category_yes_Click(object sender, EventArgs e)
+        {
+            this.category_panel.Hide();
+            this.glViewer.setCurrentModelCategoryAndSave(this.categoryList.SelectedItem.ToString());
+        }
+
+        private void category_cancel_Click(object sender, EventArgs e)
+        {
+            this.category_panel.Hide();
+        }
+
+        private void removeallToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.glViewer.removeFunction();
+        }
+
+        private void sitting_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("sitting", this.sitting.Checked);
+        }
+
+        private void placement_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("placement", this.placement.Checked);
+        }
+
+        private void storage_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("storage", this.storage.Checked);
+        }
+
+        private void rolling_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("rolling", this.rolling.Checked);
+        }
+
+        private void rocking_CheckedChanged(object sender, EventArgs e)
+        {
+            this.glViewer.editFunctions("rocking", this.rocking.Checked);
+        }
+
+        public List<string> getUserSelectedFunctions()
+        {
+            List<string> res = new List<string>();
+            if (this.sitting.Checked)
+            {
+                res.Add("sitting");
+            }
+            if (this.placement.Checked)
+            {
+                res.Add("placement");
+            }
+            if (this.storage.Checked)
+            {
+                res.Add("storage");
+            }
+            if (this.rolling.Checked)
+            {
+                res.Add("rolling");
+            }
+            if (this.rocking.Checked)
+            {
+                res.Add("rocking");
+            }
+            return res;
+        }
+
+        private void runByUser_Click(object sender, EventArgs e)
+        {
+            List<ModelViewer> modelViews = this.glViewer.runByUserSelection();
+            this.partBasket.Controls.Clear();
+            if (modelViews != null)
+            {
+                foreach (ModelViewer mv in modelViews)
+                {
+                    addModelViewerToRightPanel(mv);
+                }
+                this.outputSystemStatus(modelViews.Count.ToString() + " valid offspring shapes are generated.");
+            }
+        }
+
+        public void clearCheckBoxes()
+        {
+            this.sitting.Checked = false;
+            this.placement.Checked = false;
+            this.storage.Checked = false;
+            this.rolling.Checked = false;
+        }
+
+        public void setCheckBox(string str)
+        {
+            switch (str)
+            {
+                case "sitting":
+                    this.sitting.Checked = true;
+                    break;
+                case "placement":
+                    this.placement.Checked = true;
+                    break;
+                case "storage":
+                    this.storage.Checked = true;
+                    break;
+                case "rolling":
+                    this.rolling.Checked = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void xScaleBar_Scroll(object sender, ScrollEventArgs e)
+        {
+            double val = e.NewValue - e.OldValue;
+            double scale = 1 + val / e.OldValue;
+            this.glViewer.deformFunctionPart(scale, 0, e.NewValue == this.xScaleBar.Maximum);
+        }
+
+        private void yScaleBar_Scroll(object sender, ScrollEventArgs e)
+        {
+            double val = e.OldValue - e.NewValue; // up to down
+            double scale = val / e.OldValue * 0.2;
+            this.glViewer.deformFunctionPart(scale, 1, false);
+        }       
     }// Interface
 }// namespace

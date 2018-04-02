@@ -21,7 +21,7 @@ namespace Component
         double _minNodeBboxScale; // min scale of a box
         double _maxAdjNodesDist; // max distance between two nodes
         
-        private List<Common.Functionality> _origin_funcs = new List<Common.Functionality>();
+        private List<Functionality.Functions> _origin_funcs = new List<Functionality.Functions>();
 
         // test
         public List<List<Node>> selectedNodePairs = new List<List<Node>>();
@@ -80,12 +80,12 @@ namespace Component
             return new Mesh(vertexPos.ToArray(), faceIndex.ToArray());
         }// composeMesh       
 
-        public List<Common.Functionality> getGraphFuncs()
+        public List<Functionality.Functions> getGraphFuncs()
         {
-            List<Common.Functionality> funcs = new List<Common.Functionality>();
+            List<Functionality.Functions> funcs = new List<Functionality.Functions>();
             foreach (Node node in _nodes)
             {
-                foreach (Common.Functionality f in node._funcs)
+                foreach (Functionality.Functions f in node._funcs)
                 {
                     if (!funcs.Contains(f))
                     {
@@ -135,7 +135,7 @@ namespace Component
             cloned._maxAdjNodesDist = _maxAdjNodesDist;
             cloned._minNodeBboxScale = _minNodeBboxScale;
             cloned._maxNodeBboxScale = _maxNodeBboxScale;
-            cloned._origin_funcs = new List<Common.Functionality>(_origin_funcs);
+            cloned._origin_funcs = new List<Functionality.Functions>(_origin_funcs);
             return cloned;
         }// clone
 
@@ -186,7 +186,7 @@ namespace Component
             return vals;
         }// calScale
 
-        public List<Node> getNodesByUniqueFunctionality(Common.Functionality func)
+        public List<Node> getNodesByUniqueFunctionality(Functionality.Functions func)
         {
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -199,7 +199,7 @@ namespace Component
             return nodes;
         }// getNodesByUniqueFunctionality
 
-        public List<Node> getNodesByFunctionality(Common.Functionality func)
+        public List<Node> getNodesByFunctionality(Functionality.Functions func)
         {
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -212,13 +212,27 @@ namespace Component
             return nodes;
         }// getNodesByFunctionality
 
-        public List<Node> getNodesByFunctionality(List<Common.Functionality> funcs)
+        public List<Node> getNodesAndDependentsByFunctionality(Functionality.Functions func)
+        {
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (!nodes.Contains(node) && node._funcs.Contains(func))
+                {
+                    nodes.Add(node);
+                }
+            }
+            nodes = this.bfs_regionGrowingNonFunctionanlNodes(nodes);
+            return nodes;
+        }// getNodesAndDependentsByFunctionality
+
+        public List<Node> getNodesAndDependentsByFunctionality(List<Functionality.Functions> funcs)
         {
             // sample functional parts (connected!)
             List<Node> nodes = new List<Node>();
-            foreach (Common.Functionality f in funcs)
+            foreach (Functionality.Functions f in funcs)
             {
-                List<Node> cur = getNodesByFunctionality(f);
+                List<Node> cur = getNodesAndDependentsByFunctionality(f);
                 foreach (Node node in cur)
                 {
                     if (!nodes.Contains(node))
@@ -228,7 +242,21 @@ namespace Component
                 }
             }
             return nodes;
-        }// getNodesByFunctionality
+        }// getNodesAndDependentsByFunctionality
+
+        public List<Node> getMainNodes()
+        {
+            // sample functional parts (connected!)
+            List<Node> nodes = new List<Node>();
+            foreach (Node node in _nodes)
+            {
+                if (Functionality.ContainsMainFunction(node._funcs))
+                {
+                    nodes.Add(node);
+                }
+            }
+            return nodes;
+        }// getMainNodes
 
         public void replaceNodes(List<Node> oldNodes, List<Node> newNodes)
         {
@@ -238,7 +266,7 @@ namespace Component
             {
                 _nodes.Remove(old);
             }
-            List<Node> nodes_in_oppo_list = new List<Node>(_nodes);
+            List<Node> nodes_in_oppo_list = getOutConnectedNodes(oldNodes);
             foreach (Node node in newNodes)
             {
                 _nodes.Add(node);
@@ -316,11 +344,169 @@ namespace Component
                 }
             }
             // 4. adjust contacts for new nodes
+            //this.resetUpdateStatus();
+            //foreach (Node node in newNodes)
+            //{
+            //    adjustContacts(node);
+            //}
+            this.adjustContacts();
             this.resetUpdateStatus();
+            _NEdges = _edges.Count;
+        }// replaceNodes
+
+        public void adjustContacts()
+        {
+            foreach (Edge e in _edges)
+            {
+                Node n1 = e._start;
+                Node n2 = e._end;
+                // find a list of closest points between n1 and n2
+                List<Vector3d> pnts = findClosestPointsBetweenNodes(n1, n2);
+                if (pnts.Count < e._contacts.Count)
+                {
+                    continue;
+                }
+                foreach (Contact c in e._contacts)
+                {
+                    Vector3d p = c._pos3d;
+                    double mind = double.MaxValue;
+                    int idx = -1;
+                    for (int i = 0; i < pnts.Count; ++i)
+                    {
+                        double d = (p - pnts[i]).Length();
+                        if (d < mind)
+                        {
+                            mind = d;
+                            idx = i;
+                        }
+                    }
+                    c._pos3d = pnts[idx];
+                    pnts.RemoveAt(idx);
+                }
+            }
+        }// adjustContacts
+
+        private List<Vector3d> findClosestPointsBetweenNodes(Node m, Node n)
+        {
+            Vector3d[] m_pnts = m._PART._MESH.VertexVectorArray;
+            Vector3d[] n_pnts = n._PART._MESH.VertexVectorArray;
+            if (m._PART._partSP != null && m._PART._partSP._points != null &&
+                m._PART._partSP._points.Length > m_pnts.Length)
+            {
+                m_pnts = m._PART._partSP._points;
+            }
+            if (n._PART._partSP != null && n._PART._partSP._points != null &&
+                n._PART._partSP._points.Length > n_pnts.Length)
+            {
+                n_pnts = n._PART._partSP._points;
+            }
+            List<Vector3d> points = new List<Vector3d>();
+            double thr = 0.04;
+            while (points.Count < Common._min_point_num && thr < 0.1)
+            {
+                points.Clear();
+                for (int i = 0; i < m_pnts.Length; ++i)
+                {
+                    for (int j = 0; j < n_pnts.Length; ++j)
+                    {
+                        double d = (m_pnts[i] - n_pnts[j]).Length();
+                        if (d < 0.08)
+                        {
+                            Vector3d c = (m_pnts[i] + n_pnts[j]) / 2;
+                            points.Add(c);
+                        }
+                    }
+                }
+                thr += 0.02;
+            }
+            return points;
+            // TOO COST TO SORT THE DISTANCES
+            //List<double> distances = new List<double>();
+            //for (int i = 0; i < m_pnts.Length; ++i)
+            //{
+            //    for (int j = 0; j < n_pnts.Length; ++j)
+            //    {
+            //        double d = (m_pnts[i] - n_pnts[j]).Length();
+            //        int idx = 0;
+            //        for (int t = 0; t < distances.Count; ++t)
+            //        {
+            //            if (d < distances[t])
+            //            {
+            //                idx = t;
+            //            }
+            //        }
+            //        Vector3d c = (m_pnts[i] + n_pnts[j]) / 2;
+            //        distances.Insert(idx, d);
+            //        points.Insert(idx, c);
+            //    }
+            //}
+            //// get the most nearest ones
+            //int num = 20;
+            //int nn = points.Count > num ? num : points.Count;
+            //return points.GetRange(0, nn);
+        }
+
+        public void addSubGraph(List<Node> toConnect, List<Node> newNodes)
+        {
+
             foreach (Node node in newNodes)
             {
-                adjustContacts(node);
+                _nodes.Add(node);
             }
+            resetNodeIndex();
+
+            // UPDATE edges
+            List<Node> out_nodes = newNodes;
+            List<Edge> out_edges = getOutgoingEdges(newNodes);
+            // 2. handle edges from newNodes
+            List<Edge> inner_edges_new = GetInnerEdges(newNodes);
+            // 2.1 remove all edges from newNodes
+            foreach (Node node in newNodes)
+            {
+                node._edges.Clear();
+                node._adjNodes.Clear();
+            }
+            // 2.2 add inner edges from newNodes
+            foreach (Edge e in inner_edges_new)
+            {
+                this.addAnEdge(e._start, e._end, e._contacts);
+            }
+            // 3. connect  
+            if (toConnect.Count > 0)
+            {
+                foreach (Edge e in out_edges)
+                {
+                    // find the nearest node depending on contacts
+                    Node cur = null;
+                    if (_nodes.Contains(e._start) && !_nodes.Contains(e._end))
+                    {
+                        cur = e._start;
+                    }
+                    else if (!_nodes.Contains(e._start) && _nodes.Contains(e._end))
+                    {
+                        cur = e._end;
+                    }
+                    else
+                    {
+                        throw new Exception();
+                    }
+                    foreach (Contact c in e._contacts)
+                    {
+                        Node closest = getNodeNearestToContact(toConnect, c);
+                        if (closest != null)
+                        {
+                            this.addAnEdge(cur, closest, c._pos3d);
+                        }
+                    }
+                }
+            }
+            // 4. adjust contacts for new nodes
+            //this.resetUpdateStatus();
+            //foreach (Node node in newNodes)
+            //{
+            //    adjustContacts(node);
+            //}
+            this.adjustContacts();
             this.resetUpdateStatus();
             _NEdges = _edges.Count;
         }// replaceNodes
@@ -343,7 +529,7 @@ namespace Component
                 }
                 // remove overlapping contacts
                 Vector3d cnt;
-                double min_d = this.getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out cnt);
+                double min_d = this.getDistBetweenParts(n1._PART, n2._PART, out cnt);
                 for (int i = 0; i < e._contacts.Count - 1; ++i)
                 {
                     for (int j = i + 1; j < e._contacts.Count; ++j)
@@ -382,6 +568,11 @@ namespace Component
             {
                 Mesh mesh = node._PART._MESH;
                 Vector3d[] vecs = mesh.VertexVectorArray;
+                if (node._PART._partSP != null && node._PART._partSP._points != null 
+                    && node._PART._partSP._points.Length > Common._min_point_num)
+                {
+                    vecs = node._PART._partSP._points;
+                }
                 for (int i = 0; i < vecs.Length; ++i)
                 {
                     double d = (vecs[i] - c._pos3d).Length();
@@ -391,6 +582,12 @@ namespace Component
                         res = node;
                     }
                 }
+            }
+            // possibly the edge should be deleted, e.g., a middle part group connecting chair seat and ground touching nodes
+            // if try to connect the new groud nodes to a node below it, we could not find one
+            if (min_dis > 0.3)
+            {
+                return null;
             }
             return res;
         }// getNodeNearestToContact
@@ -477,7 +674,7 @@ namespace Component
             return center;
         }// getGroundTouchingNode
 
-        public List<Node> selectFuncNodes(Common.Functionality func)
+        public List<Node> selectFuncNodes(Functionality.Functions func)
         {
             List<Node> nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -490,7 +687,7 @@ namespace Component
             return nodes;
         }// selectFuncNodes
 
-        public List<Node> selectSymmetryFuncNodes(Common.Functionality func)
+        public List<Node> selectSymmetryFuncNodes(Functionality.Functions func)
         {
             List<Node> sym_nodes = new List<Node>();
             foreach (Node node in _nodes)
@@ -522,7 +719,7 @@ namespace Component
                 if (Math.Abs(ydist) < Common._thresh)
                 {
                     node._isGroundTouching = true;
-                    node.addFunctionality(Common.Functionality.GROUND_TOUCHING);
+                    node.addFunctionality(Functionality.Functions.GROUND_TOUCHING);
                 }
             }
         }// markGroundTouchingNodes
@@ -541,7 +738,7 @@ namespace Component
                     Part jp = _nodes[j]._PART;
                     // measure the relation between ip and jp
                     Vector3d contact;
-                    double mind = getDistBetweenMeshes(ip._MESH, jp._MESH, out contact);
+                    double mind = getDistBetweenParts(ip, jp, out contact);
                     if (mind < Common._thresh)
                     {
                         Edge e = new Edge(_nodes[i], _nodes[j], contact);
@@ -555,6 +752,34 @@ namespace Component
         {
             _nodes.Add(node);
         }
+
+        private double getDistBetweenParts(Part p1, Part p2, out Vector3d contact)
+        {
+            //return getDistBetweenMeshes(p1._MESH, p2._MESH, out contact);
+            // after correct the face index of sampling points
+            if (p1._partSP == null || p2._partSP == null ||
+                p1._partSP._points == null || p2._partSP._points == null)
+            {
+                return getDistBetweenMeshes(p1._MESH, p2._MESH, out contact);
+            }
+            contact = new Vector3d();
+            double mind = double.MaxValue;
+            Vector3d[] v1 = p1._partSP._points;
+            Vector3d[] v2 = p2._partSP._points;
+            for (int i = 0; i < v1.Length; ++i)
+            {
+                for (int j = 0; j < v2.Length; ++j)
+                {
+                    double d = (v1[i] - v2[j]).Length();
+                    if (d < mind)
+                    {
+                        mind = d;
+                        contact = (v1[i] + v2[j]) / 2;
+                    }
+                }
+            }
+            return mind;
+        }// getDistBetweenParts
 
         private double getDistBetweenMeshes(Mesh m1, Mesh m2, out Vector3d contact)
         {
@@ -624,7 +849,7 @@ namespace Component
             if (e == null)
             {
                 Vector3d contact;
-                double mind = getDistBetweenMeshes(n1._PART._MESH, n2._PART._MESH, out contact);
+                double mind = getDistBetweenParts(n1._PART, n2._PART, out contact);
                 e = new Edge(n1, n2, contact);
                 addEdge(e);
             }
@@ -758,6 +983,24 @@ namespace Component
             return edges;
         }// getOutgoingEdges
 
+        public List<Node> getOutConnectedNodes(List<Node> nodes)
+        {
+            // for the substructure, find out the nodes that are to be connected
+            List<Node> conns = new List<Node>();
+            foreach (Node node in nodes)
+            {
+                foreach (Edge e in node._edges)
+                {
+                    Node other = e._start == node ? e._end : e._start;
+                    if (!nodes.Contains(other) && !conns.Contains(other))
+                    {
+                        conns.Add(other);
+                    }
+                }
+            }
+            return conns;
+        }// getOutConnectedNodes
+
         public List<Node> getGroundTouchingNodes()
         {
             List<Node> nodes = new List<Node>();
@@ -778,7 +1021,7 @@ namespace Component
             foreach (Node node in _nodes)
             {
                 if (node._edges.Count > nMaxConn)
-                //&& (node._funcs.Contains(Common.Functionality.HAND_PLACE) || node._funcs.Contains(Common.Functionality.HUMAN_HIP)))
+                //&& (node._funcs.Contains(Functionality.Functions.PLACEMENT) || node._funcs.Contains(Functionality.Functions.SITTING)))
                 {
                     nMaxConn = node._edges.Count;
                     key = node;
@@ -1000,7 +1243,7 @@ namespace Component
                 minCoord = Vector3d.Min(minCoord, node._PART._MESH.MinCoord);
             }
 
-            Vector3d t = new Vector3d() - center;
+            Vector3d t = new Vector3d();
             t.y = -minCoord.y;
             T = Matrix4d.TranslationMatrix(t);
 
@@ -1021,7 +1264,7 @@ namespace Component
             }
         }
 
-        private void transformAll(Matrix4d T)
+        public void transformAll(Matrix4d T)
         {
             foreach (Node node in _nodes)
             {
@@ -1081,7 +1324,7 @@ namespace Component
             Node attach = null;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Common.Functionality.HUMAN_BACK) || node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.HUMAN_BACK) || node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     if (node._PART._MESH.MinCoord.z < minz)
                     {
@@ -1096,11 +1339,16 @@ namespace Component
         //*********** Validation ***********//
         public bool isValid()
         {
+            resetNodeIndex();
             if (!isIndexValid())
             {
                 return false;
             }
             if (!isValidContacts())
+            {
+                return false;
+            }
+            if (hasNIsolatedNodes() > 0)
             {
                 return false;
             }
@@ -1119,7 +1367,7 @@ namespace Component
         {
             foreach (Node node in _nodes)
             {
-                if (!node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (!node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     continue;
                 }
@@ -1148,7 +1396,7 @@ namespace Component
                 }     
                 if (catId >= 0)
                 {
-                    string catName = Common.getCategoryName(catId).ToLower();
+                    string catName = Functionality.getCategoryName(catId).ToLower();
                     if (!name.Contains(catName))
                     {
                         continue;
@@ -1311,7 +1559,7 @@ namespace Component
             int nFuncParts = 0;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     ++nFuncParts;
                 }
@@ -1320,10 +1568,10 @@ namespace Component
             int nTitled = 0;
             foreach (Node node in _nodes)
             {
-                if (node._funcs.Contains(Common.Functionality.HAND_PLACE))
+                if (node._funcs.Contains(Functionality.Functions.PLACEMENT))
                 {
                     Vector3d nor = node._PART._BOUNDINGBOX._PLANES[0].normal;
-                    double angle = Math.Acos(nor.Dot(Common.uprightVec));
+                    double angle = Math.Acos(Math.Abs(nor.Dot(Common.uprightVec)));
                     if (angle > 0.2)
                     {
                         ++nTitled;
@@ -1345,7 +1593,7 @@ namespace Component
                 Vector3d v = node._PART._BOUNDINGBOX.CENTER;
                 _centerOfMass += v;
                 centers2d.Add(new Vector2d(v.x, v.z));
-                if (node._funcs.Contains(Common.Functionality.GROUND_TOUCHING))
+                if (node._funcs.Contains(Functionality.Functions.GROUND_TOUCHING))
                 {
                     groundPnts.Add(node._PART._BOUNDINGBOX.MinCoord);
                     groundPnts.Add(node._PART._BOUNDINGBOX.MaxCoord);
@@ -1408,6 +1656,28 @@ namespace Component
             return true;
         }// isValidContacts
 
+        public int hasNIsolatedNodes()
+        {
+            int nIsolatedNodes = 0;
+            foreach (Node node in this._nodes)
+            {
+                if (node._edges == null || node._edges.Count == 0)
+                {
+                    ++nIsolatedNodes;
+                    continue;
+                }
+            }
+            if (nIsolatedNodes > 0)
+            {
+                return nIsolatedNodes;
+            }
+            // try to walk through one node to all the others
+            List<Node> start = new List<Node>();
+            start.Add(_nodes[0]);
+            List<Node> bfs_nodes = this.bfs_regionGrowingAnyNodes(start);
+            return _nodes.Count - bfs_nodes.Count;
+        }// hasNIsolatedNodes
+
         private bool isViolateOriginalScales()
         {
             // geometry filter
@@ -1432,12 +1702,12 @@ namespace Component
 
         private bool isLoseOriginalFunctionality()
         {
-            List<Common.Functionality> funs = this.getGraphFuncs();
+            List<Functionality.Functions> funs = this.getGraphFuncs();
             if (funs.Count < _origin_funcs.Count)
             {
                 return true;
             }
-            //foreach (Common.Functionality f in _origin_funcs)
+            //foreach (Functionality.Functions f in _origin_funcs)
             //{
             //    if (!funs.Contains(f))
             //    {
@@ -1449,43 +1719,17 @@ namespace Component
 
         private bool hasDetachedParts()
         {
-            //foreach (Edge e in _edges)
-            //{
-            //    Mesh m1 = e._start._PART._MESH;
-            //    Mesh m2 = e._end._PART._MESH;
-            //    if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
-            //    {
-            //        return true;
-            //    }
-            //}
-            for (int i = 0; i < _nodes.Count; ++i)
+            // 1. tow parts need to be conneceted if there is a connection
+            foreach (Edge e in _edges)
             {
-                Mesh m1 = _nodes[i]._PART._MESH;
-                int ndetach = 0;
-                for (int j =0; j < _nodes.Count; ++j)
-                {
-                    if (i == j)
-                    {
-                        continue;
-                    }
-                    Mesh m2 = _nodes[j]._PART._MESH;
-                    if (isTwoPolyDetached(m1.MinCoord, m2.MaxCoord) || isTwoPolyDetached(m2.MinCoord, m1.MaxCoord))
-                    {
-                        ndetach++;
-                    }
-                }
-                if (ndetach == _nodes.Count - 1)
+                if (!isPartConnected(e._start._PART, e._end._PART))
                 {
                     return true;
                 }
             }
-            if (_nodes.Count == 0)
-            {
-                return true;
-            }
-                // if any node that is detached
-                // check if we can walk through one node to all the other nodes
-                resetNodeIndex();
+
+            // if any node that is detached
+            // check if we can walk through one node to all the other nodes
             bool[] visited = new bool[_nodes.Count];
             Node start = _nodes[0];
             List<Node> queue = new List<Node>();
@@ -1509,8 +1753,7 @@ namespace Component
                             continue;
                         }
                         Mesh m2 = node._PART._MESH;
-                        if (isTwoPolygonInclusive(m1.MinCoord, m1.MaxCoord, m2.MinCoord, m2.MaxCoord)
-                            || isConnected(m1, m2))
+                        if (isPartConnected( c._PART, node._PART))
                         {
                             queue.Add(node);
                         }
@@ -1527,13 +1770,29 @@ namespace Component
             return false;
         }// hasDetachedParts
 
-        private bool isConnected_vertex(Mesh m1, Mesh m2)
+        private bool isPartConnected(Part p1, Part p2)
         {
-            // work fro uniform mesh -- vertex are equally distributed
-            double thr = 0.01;
+            // uniformly sampled points on mesh
+            double thr = 0.04;
             double mind = double.MaxValue;
-            Vector3d[] v1 = m1.VertexVectorArray;
-            Vector3d[] v2 = m2.VertexVectorArray;
+            Vector3d[] v1 = p1._partSP == null ? p1._MESH.VertexVectorArray : p1._partSP._points;
+            Vector3d[] v2 = p2._partSP == null ? p2._MESH.VertexVectorArray : p2._partSP._points;
+            bool useMesh1 = false;
+            bool useMesh2 = false;
+            if (v1 == null || v1.Length < 10)
+            {
+                v1 = p1._MESH.VertexVectorArray;
+                useMesh1 = true;
+            }
+            if (v2 == null || v2.Length < 10)
+            {
+                v2 = p2._MESH.VertexVectorArray;
+                useMesh2 = true;
+            }
+            if (useMesh1 && useMesh2)
+            {
+                thr = 0.08;
+            }
             for (int i = 0; i < v1.Length; ++i)
             {
                 for (int j = 0; j < v2.Length; ++j)
@@ -1550,21 +1809,24 @@ namespace Component
                 }
             }
             return mind < thr;
-        }// is connected
+        }// isPartConnected
 
-        private bool isConnected(Mesh m1, Mesh m2)
+        private bool isConnected(Mesh m1, Mesh m2, double thr)
         {
             // work for uniform mesh -- vertex are equally distributed
-            double thr = 0.1;
             double mind = double.MaxValue;
             Vector3d[] v1 = m1.VertexVectorArray;
+            Vector3d[] v2 = m2.VertexVectorArray;
             for (int i = 0; i < v1.Length; ++i)
             {
-                for (int j = 0; j < m2.FaceCount; ++j)
+                //for (int j = 0; j < m2.FaceCount; ++j)
+                //{
+                //    Vector3d center = m2.getFaceCenter(j);
+                //    Vector3d nor = m2.getFaceNormal(j);
+                //    double d = Common.PointDistToPlane(v1[i], center, nor);
+                for (int j = 0; j < v2.Length; ++j)
                 {
-                    Vector3d center = m2.getFaceCenter(j);
-                    Vector3d nor = m2.getFaceNormal(j);
-                    double d = Common.PointDistToPlane(v1[i], center, nor);
+                    double d = (v1[i] - v2[j]).Length();
                     if (d < thr)
                     {
                         return true;
@@ -1575,7 +1837,7 @@ namespace Component
                     }
                 }
             }
-            return mind < 0.1;
+            return mind < thr;
         }// is connected
 
         private bool isTwoPolygonInclusive(Vector3d v1_min, Vector3d v1_max, Vector3d v2_min, Vector3d v2_max)
@@ -1600,7 +1862,7 @@ namespace Component
             return v1_min.x > v2_max.x + thr || v1_min.y > v2_max.y + thr || v1_min.z > v2_max.z + thr;
         }// isTwoPolyOverlap
 
-        // Functionality features
+        // Functions features
         //public void computeFeatures()
         //{
         //    // 1. point featurs
@@ -1627,9 +1889,70 @@ namespace Component
             PartGroup ng = new PartGroup(selectedNodes, 0);
             _partGroups.Add(ng);
         }
-        public void initializePartGroups(string modelName)
+
+        private List<Node> getAllSupprotingNodes()
         {
-            string model_name = modelName.ToLower();
+            // only if the supporting nodes connect to ground touching nodes
+            // hinting ground touching nodes do not connect to main functional nodes directly
+            List<Node> supportNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.SUPPORT);
+            List<Node> dependNodes = this.bfs_regionGrowingNonFunctionanlNodes(supportNodes);
+            List<Node> groundNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.GROUND_TOUCHING);
+            groundNodes = this.bfs_regionGrowingNonFunctionanlNodes(groundNodes);
+            if (supportNodes.Count == 0 || groundNodes.Count == 0)
+            {
+                return null;
+            }
+            List<Node> supportingNodes = new List<Node>(groundNodes);
+            foreach (Node node in supportNodes)
+            {
+                if (!supportingNodes.Contains(node) && hasConnections(node, groundNodes))
+                {
+                    supportingNodes.Add(node);
+                }
+            }
+            return supportingNodes;
+        }// getAllSupprotingNodes
+
+        private List<Node> getHumanSittingNodes()
+        {
+            List<Node> sitNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.SITTING);
+            sitNodes = this.bfs_regionGrowingNonFunctionanlNodes(sitNodes);
+            List<Node> backNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.HUMAN_BACK);
+            backNodes = this.bfs_regionGrowingNonFunctionanlNodes(backNodes);
+            List<Node> handNodes = this.getNodesAndDependentsByFunctionality(Functionality.Functions.HAND_HOLD);
+            handNodes = this.bfs_regionGrowingNonFunctionanlNodes(handNodes);
+            List<Node> sittingNodes = new List<Node>(sitNodes);
+            foreach (Node node in backNodes)
+            {
+                if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
+                {
+                    sittingNodes.Add(node);
+                }
+            }
+            foreach (Node node in handNodes)
+            {
+                if (!sittingNodes.Contains(node) && hasConnections(node, sittingNodes))
+                {
+                    sittingNodes.Add(node);
+                }
+            }
+            return sittingNodes;
+        }// getAllSupprotingNodes
+
+        private bool hasConnections(Node node, List<Node> nodes)
+        {
+            foreach (Node adj in node._adjNodes)
+            {
+                if (nodes.Contains(adj))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }// hasConnections
+
+        public void initializePartGroups()
+        {
             _partGroups = new List<PartGroup>();
             // 1. connected parts
             List<List<int>> comIndices = new List<List<int>>();
@@ -1637,10 +1960,15 @@ namespace Component
             _partGroups.Add(new PartGroup(new List<Node>(), 0));
             comIndices.Add(new List<int>());
             // 1. functionality group
-            var allFuncs = Enum.GetValues(typeof(Common.Functionality));
-            foreach (Common.Functionality func in allFuncs)
+            // Note that in different models, some parts have multiple functionality due to the segmentation
+            // e.g., one piece of furniture, like chair seat and back are not separable
+            // In the element level, one segment can only have one function, if a segment has multiple functions,
+            // that means it contains unserparable parts, this information should be encoded for pairing with 
+            // element(s) from another shape having the same functions.
+            var allFuncs = Enum.GetValues(typeof(Functionality.Functions));
+            foreach (Functionality.Functions func in allFuncs)
             {
-                List<Node> nodes = this.getNodesByFunctionality(func);
+                List<Node> nodes = this.getNodesAndDependentsByFunctionality(func);
                 if (nodes.Count == 0)
                 {
                     continue;
@@ -1656,7 +1984,7 @@ namespace Component
                     comIndices.Add(indices);
                     _partGroups.Add(ng);
                 }
-                if (func == Common.Functionality.HAND_PLACE && nodes.Count > 1)
+                if (Functionality.IsMainFunction(func))
                 {
                     // main functionality part
                     List<Node> single = new List<Node>();
@@ -1664,19 +1992,44 @@ namespace Component
                     ng = new PartGroup(single, 0);
                     indices = new List<int>();
                     indices.Add(nodes[0]._INDEX);
-                    comIndices.Add(indices);
-                    _partGroups.Add(ng);
-                    // 
-                    if (model_name.Contains("handcart") && nodes.Count == 2)
+                    if (getIndex(comIndices, indices) == -1 && shouldCreateNewPartGroup(_partGroups, nodes))
                     {
-                        single = new List<Node>();
-                        single.Add(nodes[1]);
-                        ng = new PartGroup(single, 0);
-                        indices = new List<int>();
-                        indices.Add(nodes[1]._INDEX);
                         comIndices.Add(indices);
                         _partGroups.Add(ng);
                     }
+                }
+            }
+            // special cases: 
+            // s1. all support structure
+            List<int> indices_support = new List<int>();
+            List<Node> supportingNodes = this.getAllSupprotingNodes();
+            if (supportingNodes != null)
+            {
+                foreach (Node node in supportingNodes)
+                {
+                    indices_support.Add(node._INDEX);
+                }
+                if (getIndex(comIndices, indices_support) == -1 && shouldCreateNewPartGroup(_partGroups, supportingNodes))
+                {
+                    comIndices.Add(indices_support);
+                    PartGroup ng = new PartGroup(supportingNodes, 0);
+                    _partGroups.Add(ng);
+                }
+            }
+            // s2. chair back and seat
+            List<int> indices_human = new List<int>();
+            List<Node> sittingNodes = this.getHumanSittingNodes();
+            if (sittingNodes != null)
+            {
+                foreach (Node node in sittingNodes)
+                {
+                    indices_human.Add(node._INDEX);
+                }
+                if (getIndex(comIndices, indices_human) == -1 && shouldCreateNewPartGroup(_partGroups, sittingNodes))
+                {
+                    comIndices.Add(indices_human);
+                    PartGroup ng = new PartGroup(sittingNodes, 0);
+                    _partGroups.Add(ng);
                 }
             }
             // 2. symmetry parts
@@ -1705,7 +2058,8 @@ namespace Component
                 // symmetry breaking
                 List<Node> nodes1 = new List<Node>();
                 nodes1.Add(_nodes[i]);
-                if (shouldCreateNewPartGroup(_partGroups, nodes1))
+                if (Functionality.ContainsMainFunction(Functionality.getNodesFunctionalities(symNodes))
+                    && shouldCreateNewPartGroup(_partGroups, nodes1))
                 {
                     _partGroups.Add(new PartGroup(nodes1, 0));
                     indices = new List<int>();
@@ -1732,117 +2086,77 @@ namespace Component
                 {
                     continue;
                 }
-                List<int> indices = breadthFirstSearch(pg._NODES);
-                if (getIndex(comIndices, indices) != -1)
+                if (pg._NODES.Count == 1 && Functionality.ContainsMainFunction(pg._NODES[0]._funcs))
                 {
                     continue;
                 }
-                comIndices.Add(indices);
-                List<Node> propogationNodes = new List<Node>();
-                foreach (int idx in indices)
+                List<Node> propogationNodes = bfs_regionGrowingNonFunctionanlNodes(pg._NODES);
+                if (propogationNodes.Count > 0)
                 {
-                    propogationNodes.Add(_nodes[idx]);
-                }
-                PartGroup ppg = new PartGroup(propogationNodes, 0);
-                //_partGroups.Add(ppg);
-                _partGroups[i] = ppg; //! in this way, only use connected nodes
-            }
-            // special case
-            if (model_name.ToLower().Equals("handcart_22") || model_name.ToLower().Equals("handcart_1"))
-            {
-                int[] setIdxs = { 3, 4};
-                List<int> indices = new List<int>(setIdxs);
-                if (model_name.ToLower().Equals("handcart_1"))
-                {
-                    indices = new List<int>();
-                    indices.Add(1); indices.Add(3);
-                }
-                if (getIndex(comIndices, indices) == -1)
-                {
-                    List<Node> setNodes = new List<Node>();
-                    foreach (int idx in indices)
+                    List<int> indices = new List<int>();
+                    foreach (Node node in propogationNodes)
                     {
-                        setNodes.Add(_nodes[idx]);
+                        indices.Add(node._INDEX);
                     }
-                    PartGroup pg = new PartGroup(setNodes, 0);
-                    _partGroups.Add(pg);
-                    comIndices.Add(indices);
-                    pg._isSymmBreak = true;
-                }
-
-                indices = new List<int>();
-                indices.Add(5); indices.Add(6);
-                if (model_name.ToLower().Equals("handcart_1"))
-                {
-                    indices = new List<int>();
-                    indices.Add(2); indices.Add(5);
-                }
-                if (getIndex(comIndices, indices) == -1)
-                {
-                    List<Node> setNodes = new List<Node>();
-                    foreach (int idx in indices)
+                    if (getIndex(comIndices, indices) != -1)
                     {
-                        setNodes.Add(_nodes[idx]);
+                        continue;
                     }
-                    PartGroup pg = new PartGroup(setNodes, 0);
-                    _partGroups.Add(pg);
                     comIndices.Add(indices);
-                    pg._isSymmBreak = true;
+                    PartGroup ppg = new PartGroup(propogationNodes, 0);
+                    //_partGroups.Add(ppg);
+                    _partGroups[i] = ppg; //! in this way, only use connected nodes
                 }
-            }
-            if (model_name.ToLower().Equals("handcart_4") || model_name.ToLower().Equals("handcart_1"))
-            {
-                List<int> indices = indices = new List<int>();
-                indices.Add(0); indices.Add(1); indices.Add(2); indices.Add(7);
-                if (model_name.ToLower().Equals("handcart_1"))
-                {
-                    indices = new List<int>();
-                    indices.Add(2); indices.Add(5); indices.Add(4); indices.Add(6);
-                }
-                if (getIndex(comIndices, indices) == -1)
-                {
-                    List<Node> setNodes = new List<Node>();
-                    foreach (int idx in indices)
-                    {
-                        setNodes.Add(_nodes[idx]);
-                    }
-                    PartGroup pg = new PartGroup(setNodes, 0);
-                    _partGroups.Add(pg);
-                    comIndices.Add(indices);
-                    pg._isSymmBreak = true;
-                }
-            }
-            // all
-            bool hasAll = false;
-            foreach(PartGroup pg in _partGroups)
-            {
-                if (pg._NODES.Count == _nodes.Count)
-                {
-                    hasAll = true;
-                }
-            }
-            if (!hasAll)
-            {
-                _partGroups.Add(new PartGroup(_nodes, 0));
-                List<int> indices = new List<int>();
-                for (int i = 0; i < _nodes.Count; ++i)
-                {
-                    indices.Add(i);
-                }
-                comIndices.Add(indices);
             }
         }// initializePartGroups
 
-        private List<int> breadthFirstSearch(List<Node> nodes)
+        private List<Node> bfs_regionGrowingAnyNodes(List<Node> nodes)
         {
-            List<int> res = new List<int>();
+            List<Node> res = new List<Node>();
             Queue<Node> queue = new Queue<Node>();
             bool[] visited = new bool[_nodes.Count];
             foreach (Node node in nodes)
             {
                 queue.Enqueue(node);
                 visited[node._INDEX] = true;
-                res.Add(node._INDEX);
+                res.Add(node);
+            }
+
+            while (queue.Count > 0)
+            {
+                List<Node> cur = new List<Node>();
+                while (queue.Count > 0)
+                {
+                    Node qn = queue.Dequeue();
+                    cur.Add(qn);
+                }
+                foreach (Node nd in cur)
+                {
+                    foreach (Node adj in nd._adjNodes)
+                    {
+                        if (visited[adj._INDEX])
+                        {
+                            continue;
+                        }
+                        queue.Enqueue(adj);
+                        visited[adj._INDEX] = true;
+                        res.Add(adj);
+                    }
+                }
+            }// while
+            return res;
+        }// bfs_regionGrowingNonFunctionanlNodes
+
+        private List<Node> bfs_regionGrowingNonFunctionanlNodes(List<Node> nodes)
+        {
+            List<Node> res = new List<Node>();
+            Queue<Node> queue = new Queue<Node>();
+            bool[] visited = new bool[_nodes.Count];
+            foreach (Node node in nodes)
+            {
+                queue.Enqueue(node);
+                visited[node._INDEX] = true;
+                res.Add(node);
             }
             
             while (queue.Count > 0)
@@ -1864,12 +2178,48 @@ namespace Component
                         }
                         queue.Enqueue(adj);
                         visited[adj._INDEX] = true;
-                        res.Add(adj._INDEX);
+                        res.Add(adj);
                     }
                 }
             }// while
             return res;
-        }// breadthFirstSearch
+        }// bfs_regionGrowingNonFunctionanlNodes
+
+        public List<Node> bfs_regionGrowingDependentNodes(List<Node> nodes)
+        {
+            List<Node> res = new List<Node>();
+            Queue<Node> queue = new Queue<Node>();
+            bool[] visited = new bool[_nodes.Count];
+            foreach (Node node in nodes)
+            {
+                queue.Enqueue(node);
+                visited[node._INDEX] = true;
+            }
+
+            while (queue.Count > 0)
+            {
+                List<Node> cur = new List<Node>();
+                while (queue.Count > 0)
+                {
+                    Node qn = queue.Dequeue();
+                    cur.Add(qn);
+                }
+                foreach (Node nd in cur)
+                {
+                    foreach (Node adj in nd._adjNodes)
+                    {
+                        if (visited[adj._INDEX] || adj._funcs.Contains(Functionality.Functions.GROUND_TOUCHING))
+                        {
+                            continue;
+                        }
+                        queue.Enqueue(adj);
+                        visited[adj._INDEX] = true;
+                        res.Add(adj);
+                    }
+                }
+            }// while
+            return res;
+        }// bfs_regionGrowingDependentNodes
 
         private bool shouldCreateNewPartGroup(List<PartGroup> partGroups, List<Node> nodes)
         {
@@ -1879,13 +2229,13 @@ namespace Component
             {
                 return true;
             }
-            List<Common.Functionality> funcs = nodes[0]._funcs;
+            List<Functionality.Functions> funcs = nodes[0]._funcs;
             foreach (PartGroup pg in partGroups)
             {
                 if (pg._NODES.Count == 1)
                 {
                     bool iden = false;
-                    foreach (Common.Functionality f in funcs)
+                    foreach (Functionality.Functions f in funcs)
                     {
                         if (pg._NODES[0]._funcs.Contains(f))
                         {
@@ -1972,6 +2322,39 @@ namespace Component
             }
             return -1;
         }// getIndex
+
+        public List<Functionality.Functions> collectMainFunctions()
+        {
+            List<Functionality.Functions> res = new List<Functionality.Functions>();
+            foreach (Node node in _nodes)
+            {
+                foreach (Functionality.Functions f in node._funcs)
+                {
+                    if ((Functionality.IsMainFunction(f) || f == Functionality.Functions.ROLLING) && !res.Contains(f))
+                    {
+                        res.Add(f);
+                    }
+                }
+            }
+            return res;
+        }// collectMainFunctions
+
+        public List<Functionality.Functions> collectAllDistinceFunctions()
+        {
+            List<Functionality.Functions> res = new List<Functionality.Functions>();
+            foreach (Node node in _nodes)
+            {
+                foreach (Functionality.Functions f in node._funcs)
+                {
+                    if (!res.Contains(f))
+                    {
+                        res.Add(f);
+                    }
+                }
+            }
+            return res;
+        }// collectAllDistinceFunctions
+
        
         public List<Node> _NODES
         {
@@ -2010,9 +2393,11 @@ namespace Component
         public bool _allNeigborUpdated = false;
         public Node symmetry = null;
         public Symmetry symm = null;
-        public List<Common.Functionality> _funcs = new List<Common.Functionality>();
+        // only if the node contains multiple semantic parts that cannot be segmented in the mesh
+        // or, maybe try to even separate the mesh
+        public List<Functionality.Functions> _funcs = new List<Functionality.Functions>();
         public Vector3d _ratios = new Vector3d();
-        public bool[] _isFunctionalPatch = new bool[Common.__TOTAL_FUNCTONAL_PATCHES];
+        public bool[] _isFunctionalPatch = new bool[Functionality._TOTAL_FUNCTONAL_PATCHES];
         public Prism _functionalSpaceAgent;
 
         public Node(Part p, int idx)
@@ -2070,13 +2455,13 @@ namespace Component
             return null;
         }// getEdge
 
-        public void addFunctionality(Common.Functionality func)
+        public void addFunctionality(Functionality.Functions func)
         {
             if (!_funcs.Contains(func))
             {
                 _funcs.Add(func);
             }
-            if (func == Common.Functionality.GROUND_TOUCHING)
+            if (func == Functionality.Functions.GROUND_TOUCHING)
             {
                 _isGroundTouching = true;
             }
@@ -2100,7 +2485,7 @@ namespace Component
         {
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
-            cloned._funcs = new List<Common.Functionality>(_funcs);
+            cloned._funcs = new List<Functionality.Functions>(_funcs);
             return cloned;
         }// Clone
 
@@ -2109,7 +2494,7 @@ namespace Component
             Part p = _part.Clone() as Part;
             Node cloned = new Node(p, _index);
             cloned._isGroundTouching = _isGroundTouching;
-            cloned._funcs = new List<Common.Functionality>(_funcs);
+            cloned._funcs = new List<Functionality.Functions>(_funcs);
             if (this._functionalSpaceAgent != null)
             {
                 cloned._functionalSpaceAgent = this._functionalSpaceAgent.Clone() as Prism;
@@ -2124,6 +2509,25 @@ namespace Component
             if (_functionalSpaceAgent != null)
             {
                 _functionalSpaceAgent.Transform(T);
+            }
+        }
+
+        public void TransformFromOrigin(Matrix4d T)
+        {
+            _part.TransformFromOrigin(T);
+            _pos = _part._BOUNDINGBOX.CENTER;
+            if (_functionalSpaceAgent != null)
+            {
+                _functionalSpaceAgent.TransformFromOrigin(T);
+            }
+        }
+
+        public void updateOriginPos()
+        {
+            _part.updateOriginPos();
+            if (_functionalSpaceAgent != null)
+            {
+                _functionalSpaceAgent.updateOrigin();
             }
         }
 
@@ -2319,23 +2723,23 @@ namespace Component
 
     public class FunctionalityFeatures
     {
-        public Common.Category[] _cats = new Common.Category[Common._NUM_CATEGORIY];
-        public double[] _funScores = new double[Common._NUM_CATEGORIY];
-        public List<Common.Category> _parentCategories = new List<Common.Category>();
-        public double[] _inClassProbs = new double[Common._NUM_CATEGORIY];
-        public double[] _outClassProbs = new double[Common._NUM_CATEGORIY];
-        public double[] _classProbs = new double[Common._NUM_CATEGORIY];
-        public double _noveltyVal = Common._NOVELTY_MINIMUM;
+        public Functionality.Category[] _cats = new Functionality.Category[Functionality._NUM_CATEGORIY];
+        public double[] _funScores = new double[Functionality._NUM_CATEGORIY];
+        public List<Functionality.Category> _parentCategories = new List<Functionality.Category>();
+        public double[] _inClassProbs = new double[Functionality._NUM_CATEGORIY];
+        public double[] _outClassProbs = new double[Functionality._NUM_CATEGORIY];
+        public double[] _classProbs = new double[Functionality._NUM_CATEGORIY];
+        public double _noveltyVal = Functionality._NOVELTY_MINIMUM;
         public double _validityVal = 0;
         public FunctionalityFeatures()
         {
-            for (int i = 0; i < Common._NUM_CATEGORIY; ++i)
+            for (int i = 0; i < Functionality._NUM_CATEGORIY; ++i)
             {
-                _cats[i] = (Common.Category)i;
+                _cats[i] = (Functionality.Category)i;
             }
         }
 
-        public FunctionalityFeatures(List<Common.Category> cats, List<double> vals)
+        public FunctionalityFeatures(List<Functionality.Category> cats, List<double> vals)
         {
             _cats = cats.ToArray();
             _funScores = vals.ToArray();
@@ -2343,15 +2747,15 @@ namespace Component
 
         public Object clone()
         {
-            List<Common.Category> cats = new List<Common.Category>(_cats);
+            List<Functionality.Category> cats = new List<Functionality.Category>(_cats);
             List<double> vals = new List<double>(_funScores);
             FunctionalityFeatures ff = new FunctionalityFeatures(cats, vals);
             return ff;
         }
 
-        public void addParentCategories(List<Common.Category> parents)
+        public void addParentCategories(List<Functionality.Category> parents)
         {
-            foreach (Common.Category cat in parents) {
+            foreach (Functionality.Category cat in parents) {
                 if (!_parentCategories.Contains(cat))
                 {
                     _parentCategories.Add(cat);
